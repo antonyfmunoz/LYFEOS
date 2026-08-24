@@ -8,7 +8,6 @@ import { getRank } from "@/lib/ranks";
 import { useAuth } from "@/lib/authContext";
 import { useTheme } from "@/lib/themeContext";
 import { usePageTitle } from "@/hooks/use-page-title";
-import { usePushNotifications } from "@/hooks/usePushNotifications";
 import CompactStatsWidget from "@/components/dashboard/CompactStatsWidget";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -95,6 +94,14 @@ const PLACEHOLDER_PROVIDERS = [
   { provider: "notion", name: "Notion", icon: BookOpen },
 ] as const;
 
+const AI_CONTEXT_OPTIONS = [
+  { key: "planning", label: "Plans & missions", description: "Goals, routines, mission list, schedule, and related images referenced there." },
+  { key: "identity", label: "Identity profile", description: "Values, archetypes, beliefs, and affirmation." },
+  { key: "dailyState", label: "Daily state", description: "Energy, resources, daily reflections, and images referenced in those reflections." },
+  { key: "conversationHistory", label: "Conversation history", description: "Earlier conversations with your AI." },
+] as const;
+type AIContextPreferenceKey = typeof AI_CONTEXT_OPTIONS[number]["key"];
+
 function IntegrationsSection({ userId }: { userId?: number }) {
   const { toast } = useToast();
   const [connectingGoogle, setConnectingGoogle] = useState(false);
@@ -105,47 +112,7 @@ function IntegrationsSection({ userId }: { userId?: number }) {
     enabled: !!userId,
   });
 
-  const { data: integrationsData, isLoading } = useQuery<{ integrations: any[] }>({
-    queryKey: ["/api/users", userId, "integrations"],
-    queryFn: async () => {
-      if (!userId) return { integrations: [] };
-      const res = await fetch(`/api/users/${userId}/integrations`, { credentials: "include" });
-      if (!res.ok) return { integrations: [] };
-      return res.json();
-    },
-    enabled: !!userId,
-  });
-
-  const integrations = integrationsData?.integrations || [];
-
-  const getIntegration = (provider: string) =>
-    integrations.find((i: any) => i.provider === provider && i.status === "active");
-
-  const [togglingProvider, setTogglingProvider] = useState<string | null>(null);
   const [appSearchQuery, setAppSearchQuery] = useState("");
-
-  const toggleIntegration = async (provider: string, providerName: string) => {
-    if (!userId) return;
-    setTogglingProvider(provider);
-    try {
-      const existing = getIntegration(provider);
-      if (existing) {
-        await apiRequest(`/api/integrations/${existing.id}`, { method: "DELETE" });
-        toast({ title: `${providerName} disconnected` });
-      } else {
-        await apiRequest("/api/integrations", {
-          method: "POST",
-          body: JSON.stringify({ provider, providerName, status: "active" }),
-        });
-        toast({ title: `${providerName} connected` });
-      }
-      queryClient.invalidateQueries({ queryKey: ["/api/users", userId, "integrations"] });
-    } catch {
-      toast({ title: "Error", description: `Could not update ${providerName}.`, variant: "destructive" });
-    } finally {
-      setTogglingProvider(null);
-    }
-  };
 
   const connectGoogle = async () => {
     setConnectingGoogle(true);
@@ -166,7 +133,6 @@ function IntegrationsSection({ userId }: { userId?: number }) {
       await apiRequest("/api/google/disconnect", { method: "POST" });
       toast({ title: "Google disconnected" });
       queryClient.invalidateQueries({ queryKey: ["/api/google/status"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/users", userId, "integrations"] });
     } catch {
       toast({ title: "Error", description: "Could not disconnect Google.", variant: "destructive" });
     } finally {
@@ -217,7 +183,7 @@ function IntegrationsSection({ userId }: { userId?: number }) {
             <div>
               <span className="text-sm">Google</span>
               {isGoogleConnected && (
-                <p className="text-xs text-primary">Connected — Calendar &amp; Tasks</p>
+                <p className="text-xs text-primary">Connected — Calendar, Tasks &amp; Drive</p>
               )}
             </div>
           </div>
@@ -246,38 +212,16 @@ function IntegrationsSection({ userId }: { userId?: number }) {
         ) : null}
 
         {PLACEHOLDER_PROVIDERS.filter(({ name }) => name.toLowerCase().includes(appSearchQuery.toLowerCase())).map(({ provider, name, icon: Icon }) => {
-          const isConnected = !!getIntegration(provider);
-          const isToggling = togglingProvider === provider;
           return (
-            <div key={provider} className="flex items-center justify-between p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors">
+            <div key={provider} className="flex items-center justify-between p-3 bg-card/50 rounded-lg">
               <div className="flex items-center">
                 <Icon className="h-4 w-4 text-primary mr-2" />
                 <div>
                   <span className="text-sm">{name}</span>
-                  {isConnected && (
-                    <p className="text-xs text-primary">Connected</p>
-                  )}
+                  <p className="text-xs text-muted-foreground">Not available yet</p>
                 </div>
               </div>
-              <button
-                disabled={isToggling || isLoading}
-                onClick={() => toggleIntegration(provider, name)}
-                className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors duration-200 disabled:opacity-40 ${
-                  isConnected ? 'bg-primary/30' : 'bg-card'
-                }`}
-                aria-pressed={isConnected}
-                role="switch"
-              >
-                {isToggling ? (
-                  <Loader2 className="h-3 w-3 animate-spin absolute top-1 left-3.5 text-primary" />
-                ) : (
-                  <div
-                    className={`absolute top-0.5 w-4 h-4 rounded-full transition-all duration-300 ${
-                      isConnected ? 'left-5 bg-primary shadow-[0_0_5px_var(--primary-glow-medium)]' : 'left-0.5 bg-muted-foreground'
-                    }`}
-                  ></div>
-                )}
-              </button>
+              <span className="text-xs font-mono text-muted-foreground border border-primary/10 rounded px-2 py-1">Planned</span>
             </div>
           );
         })}
@@ -290,6 +234,7 @@ type CrossProductSharing = {
   enabled: boolean;
   destinations: Array<"entrepreneuros" | "creativesos">;
   purposes: Array<"coordination" | "correlation">;
+  availability: { available: boolean; reason: string | null };
 };
 
 function CrossProductSharingSection() {
@@ -298,6 +243,7 @@ function CrossProductSharingSection() {
   const [enabled, setEnabled] = useState(false);
   const [destinations, setDestinations] = useState<Array<"entrepreneuros" | "creativesos">>([]);
   const [purposes, setPurposes] = useState<Array<"coordination" | "correlation">>([]);
+  const sharingAvailable = data?.sharing.availability.available ?? false;
 
   useEffect(() => {
     if (!data?.sharing) return;
@@ -335,13 +281,13 @@ function CrossProductSharingSection() {
           <Link2 className="h-4 w-4 text-primary" />
           <Label className="text-sm text-foreground">Ecosystem connections</Label>
         </div>
-        <Switch checked={enabled} onCheckedChange={setEnabled} disabled={isLoading || save.isPending} aria-label="Enable ecosystem sharing" />
+        <Switch checked={enabled} onCheckedChange={setEnabled} disabled={isLoading || save.isPending || (!sharingAvailable && !enabled)} aria-label="Enable ecosystem sharing" />
       </div>
-      <p className="text-xs text-muted-foreground mb-3">LyfeOS keeps your XP, skills, missions, reflections, and health details private. Choose exactly what limited context may move through UMH to the products you select.</p>
+      <p className="text-xs text-muted-foreground mb-3">{sharingAvailable ? "LyfeOS keeps your XP, skills, missions, reflections, and health details private. Choose exactly what limited context may move through UMH to the products you select." : (data?.sharing.availability.reason || "Ecosystem sharing is unavailable.")}</p>
       <div className="space-y-2 rounded-lg border border-primary/10 bg-card/50 p-3">
         {(["entrepreneuros", "creativesos"] as const).map((destination) => (
           <label key={destination} className="flex items-center gap-2 text-sm text-foreground">
-            <input type="checkbox" checked={destinations.includes(destination)} onChange={() => toggleDestination(destination)} disabled={isLoading || save.isPending} className="accent-primary" />
+            <input type="checkbox" checked={destinations.includes(destination)} onChange={() => toggleDestination(destination)} disabled={isLoading || save.isPending || !sharingAvailable} className="accent-primary" />
             {destination === "entrepreneuros" ? "EntrepreneurOS" : "CreativesOS"}
           </label>
         ))}
@@ -349,17 +295,17 @@ function CrossProductSharingSection() {
       <div className="mt-2 space-y-2 rounded-lg border border-primary/10 bg-card/50 p-3">
         <p className="text-xs font-medium text-foreground">Share for</p>
         <label className="flex items-start gap-2 text-sm text-foreground">
-          <input type="checkbox" checked={purposes.includes("coordination")} onChange={() => togglePurpose("coordination")} disabled={isLoading || save.isPending} className="mt-0.5 accent-primary" />
+          <input type="checkbox" checked={purposes.includes("coordination")} onChange={() => togglePurpose("coordination")} disabled={isLoading || save.isPending || !sharingAvailable} className="mt-0.5 accent-primary" />
           <span><span className="font-medium">Linked work coordination</span><span className="block text-xs text-muted-foreground">Only for a mission you explicitly link to work in another product; shares its open/completed state and your summary.</span></span>
         </label>
         <label className="flex items-start gap-2 text-sm text-foreground">
-          <input type="checkbox" checked={purposes.includes("correlation")} onChange={() => togglePurpose("correlation")} disabled={isLoading || save.isPending} className="mt-0.5 accent-primary" />
+          <input type="checkbox" checked={purposes.includes("correlation")} onChange={() => togglePurpose("correlation")} disabled={isLoading || save.isPending || !sharingAvailable} className="mt-0.5 accent-primary" />
           <span><span className="font-medium">Capacity pattern insights</span><span className="block text-xs text-muted-foreground">Shares only a daily low, steady, or high capacity band. It is for patterns and hypotheses, never a health record or causal claim.</span></span>
         </label>
       </div>
       <div className="mt-3 flex items-center justify-between gap-3">
-        <span className="text-[11px] text-muted-foreground">{enabled ? `${destinations.length} destination${destinations.length === 1 ? "" : "s"} / ${purposes.length} purpose${purposes.length === 1 ? "" : "s"}` : "Sharing is off"}</span>
-        <Button size="sm" variant="outline" className="border-primary/30 text-primary hover:bg-primary/10" onClick={() => save.mutate()} disabled={isLoading || save.isPending || (enabled && (destinations.length === 0 || purposes.length === 0))}>
+        <span className="text-[11px] text-muted-foreground">{!sharingAvailable ? "No ecosystem data is leaving LyfeOS" : enabled ? `${destinations.length} destination${destinations.length === 1 ? "" : "s"} / ${purposes.length} purpose${purposes.length === 1 ? "" : "s"}` : "Sharing is off"}</span>
+        <Button size="sm" variant="outline" className="border-primary/30 text-primary hover:bg-primary/10" onClick={() => save.mutate()} disabled={isLoading || save.isPending || (!sharingAvailable && enabled) || (enabled && (destinations.length === 0 || purposes.length === 0))}>
           {save.isPending ? "Saving…" : "Save sharing"}
         </Button>
       </div>
@@ -398,7 +344,7 @@ function CrossProductWorkLinksSection({ userId }: { userId?: number }) {
   const [sharedSummary, setSharedSummary] = useState("");
   const [destinations, setDestinations] = useState<Array<"entrepreneuros" | "creativesos">>([]);
   const sharing = sharingData?.sharing;
-  const coordinationEnabled = Boolean(sharing?.enabled && sharing.purposes.includes("coordination"));
+  const coordinationEnabled = Boolean(sharing?.availability.available && sharing.enabled && sharing.purposes.includes("coordination"));
 
   useEffect(() => {
     if (!sharing) return;
@@ -439,7 +385,7 @@ function CrossProductWorkLinksSection({ userId }: { userId?: number }) {
         <Label className="text-sm text-foreground">Linked ecosystem work</Label>
       </div>
       {!coordinationEnabled ? (
-        <p className="text-xs text-muted-foreground">Enable “Linked work coordination” above before connecting a mission. A link shares only the summary you write and the mission’s open/completed state.</p>
+        <p className="text-xs text-muted-foreground">{sharing?.availability.available ? "Enable “Linked work coordination” above before connecting a mission. A link shares only the summary you write and the mission’s open/completed state." : "Ecosystem delivery is unavailable, so no mission can be linked for sharing."}</p>
       ) : (
         <div className="space-y-3">
           <p className="text-xs text-muted-foreground">Use this only when one real-world work item belongs in LyfeOS and another product. Your mission title remains private.</p>
@@ -628,7 +574,6 @@ export default function ProfilePage() {
   const { user, logout } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const pushNotifs = usePushNotifications();
 
   const PROFILE_TOUR_STEPS: TutorialStep[] = [
     {
@@ -822,6 +767,48 @@ export default function ProfilePage() {
   }>({
     queryKey: ["/api/account/ai-memory"],
     enabled: !!user?.id,
+  });
+  const aiContextPreferences = {
+    planning: (userProfileData as any)?.aiContextPreferences?.planning !== false,
+    identity: (userProfileData as any)?.aiContextPreferences?.identity === true,
+    dailyState: (userProfileData as any)?.aiContextPreferences?.dailyState === true,
+    conversationHistory: (userProfileData as any)?.aiContextPreferences?.conversationHistory === true,
+  };
+  const updateAiContextPreference = async (key: AIContextPreferenceKey) => {
+    const next = { ...aiContextPreferences, [key]: !aiContextPreferences[key] };
+    try {
+      await apiRequest("/api/profile", { method: "PATCH", body: JSON.stringify({ aiContextPreferences: next }) });
+      queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+      toast({ title: "AI context updated", description: `${AI_CONTEXT_OPTIONS.find((option) => option.key === key)?.label} ${next[key] ? "shared with your AI" : "kept private from your AI"}.` });
+    } catch {
+      toast({ title: "Could not update AI context", description: "Your previous setting is unchanged.", variant: "destructive" });
+    }
+  };
+
+  const { data: aiActions } = useQuery<{
+    actions: Array<{ id: number; tool_name: string; risk: string; state: string; outcome_summary?: string | null; created_at: string }>;
+  }>({
+    queryKey: ["/api/account/ai-actions"],
+    enabled: !!user?.id,
+  });
+
+  const { data: pendingAiActions } = useQuery<{
+    actions: Array<{ id: number; toolName: string; preview: string; expiresAt: string; createdAt: string }>;
+  }>({
+    queryKey: ["/api/ai-actions/pending"],
+    enabled: !!user?.id,
+  });
+
+  const decideAiActionMutation = useMutation({
+    mutationFn: ({ actionId, decision }: { actionId: number; decision: "approve" | "reject" }) =>
+      apiRequest(`/api/ai-actions/${actionId}/${decision}`, { method: "POST" }),
+    onSuccess: (_, input) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/ai-actions/pending"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/account/ai-actions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/quests"] });
+      toast({ title: input.decision === "approve" ? "Assistant action approved" : "Assistant action declined", description: input.decision === "approve" ? "LyfeOS executed the exact reviewed action." : "Nothing was changed." });
+    },
+    onError: (error: Error) => toast({ title: "Could not process approval", description: error.message, variant: "destructive" }),
   });
 
   const clearAiMemoryMutation = useMutation({
@@ -1905,89 +1892,67 @@ export default function ProfilePage() {
                 <Label className="text-sm text-foreground">Push Notifications</Label>
               </div>
               <p className="text-xs text-muted-foreground mb-3">
-                Get notified about mission reminders, streak alerts, and milestone completions — even when the app is closed.
+                Push delivery is not available in this LyfeOS release. Mission reminders remain visible in the app.
               </p>
               <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors">
                 <div className="flex items-center">
                   <span className="material-icons text-primary text-sm mr-2">notifications_active</span>
                   <div>
                     <span className="text-sm">Push Notifications</span>
-                    {!pushNotifs.isSupported && (
-                      <p className="text-xs text-muted-foreground">Not supported in this browser</p>
-                    )}
-                    {pushNotifs.permission === 'denied' && (
-                      <p className="text-xs text-red-400">Blocked — enable in browser settings</p>
-                    )}
+                    <p className="text-xs text-muted-foreground">Not yet configured</p>
                   </div>
                 </div>
-                <button 
+                <button
+                  type="button"
                   disabled
-                  onClick={async () => {
-                    if (pushNotifs.isSubscribed) {
-                      const ok = await pushNotifs.unsubscribe();
-                      if (ok) {
-                        toast({ title: "Notifications disabled", description: "You won't receive push notifications anymore." });
-                        if (user?.id) {
-                          try {
-                            await fetch(`/api/users/${user.id}/stats`, {
-                              method: "PATCH",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({ notificationsEnabled: false }),
-                              credentials: "include"
-                            });
-                            updateUserStats({ ...stats, notificationsEnabled: false });
-                          } catch {}
-                        }
-                      }
-                    } else {
-                      const result = await pushNotifs.subscribe();
-                      if (result === true) {
-                        toast({ title: "Notifications enabled!", description: "You'll receive mission reminders, streak alerts, and more." });
-                        if (user?.id) {
-                          try {
-                            await fetch(`/api/users/${user.id}/stats`, {
-                              method: "PATCH",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({ notificationsEnabled: true }),
-                              credentials: "include"
-                            });
-                            updateUserStats({ ...stats, notificationsEnabled: true });
-                          } catch {}
-                        }
-                      } else if (result === false) {
-                        toast({ title: "Notifications blocked", description: "Please enable notifications in your browser/phone settings.", variant: "destructive" });
-                      } else {
-                        toast({ title: "Push notification setup issue", description: String(result), variant: "destructive" });
-                      }
-                    }
-                  }}
-                  className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors duration-200 disabled:opacity-40 ${
-                    pushNotifs.isSubscribed ? 'bg-primary/30' : 'bg-card'
-                  }`}
-                  aria-pressed={pushNotifs.isSubscribed}
+                  className="w-10 h-5 rounded-full relative bg-card opacity-40"
                   role="switch"
+                  aria-checked={false}
+                  aria-label="Push notifications are not yet configured"
                 >
-                  <div 
-                    className={`absolute top-0.5 w-4 h-4 rounded-full transition-all duration-300 ${
-                      pushNotifs.isSubscribed ? 'left-5 bg-primary shadow-[0_0_5px_var(--primary-glow-medium)]' : 'left-0.5 bg-muted-foreground'
-                    }`}
-                  ></div>
+                  <span className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-muted-foreground" />
                 </button>
               </div>
-              {pushNotifs.isSubscribed && (
-                <button
-                  onClick={async () => {
-                    const result = await pushNotifs.sendTestNotification();
-                    if (result === true) toast({ title: "Test sent!", description: "You should receive a test notification shortly." });
-                    else toast({ title: "Test failed", description: String(result), variant: "destructive" });
-                  }}
-                  className="mt-2 w-full text-xs py-1.5 px-3 rounded border border-primary/30 text-primary hover:bg-primary/10 transition-colors"
-                >
-                  Send Test Notification
-                </button>
-              )}
             </div>
-            
+
+            <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Clock className="h-4 w-4 text-primary" />
+                <Label className="text-sm text-foreground">Assistant activity</Label>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">A compact record of actions your named assistant attempted. It never repeats your private prompts or raw tool inputs.</p>
+              {(pendingAiActions?.actions || []).length > 0 && (
+                <div className="mb-3 space-y-2 rounded-md border border-amber-400/25 bg-amber-400/5 p-2.5">
+                  <p className="text-[10px] font-mono uppercase tracking-widest text-amber-200">Awaiting your approval</p>
+                  {pendingAiActions!.actions.map((action) => (
+                    <div key={action.id} className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                      <div className="min-w-0">
+                        <p className="text-foreground">{action.toolName.replaceAll("_", " ")}</p>
+                        <p className="mt-0.5 text-muted-foreground">{action.preview} No change has happened. Expires {new Date(action.expiresAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}.</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="sm" className="h-7 bg-primary/20 px-2 text-xs text-primary hover:bg-primary/30" onClick={() => decideAiActionMutation.mutate({ actionId: action.id, decision: "approve" })} disabled={decideAiActionMutation.isPending}>Approve</Button>
+                        <Button size="sm" variant="outline" className="h-7 border-amber-300/30 px-2 text-xs text-amber-200 hover:bg-amber-300/10" onClick={() => decideAiActionMutation.mutate({ actionId: action.id, decision: "reject" })} disabled={decideAiActionMutation.isPending}>Decline</Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {(aiActions?.actions || []).length > 0 ? (
+                <div className="space-y-2">
+                  {aiActions!.actions.slice(0, 5).map((action) => (
+                    <div key={action.id} className="flex items-start justify-between gap-3 text-xs">
+                      <div className="min-w-0">
+                        <p className="truncate text-foreground">{action.tool_name.replaceAll("_", " ")}</p>
+                        {action.outcome_summary && <p className="mt-0.5 truncate text-muted-foreground">{action.outcome_summary}</p>}
+                      </div>
+                      <span className={`shrink-0 font-mono uppercase ${action.state === "succeeded" ? "text-primary" : action.state === "failed" ? "text-red-300" : action.state === "rejected" ? "text-amber-300" : "text-muted-foreground"}`}>{action.state} · {action.risk}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : <p className="text-xs text-muted-foreground">No assistant actions have been recorded yet.</p>}
+            </div>
+
             <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
               <div className="flex items-center gap-2 mb-2">
                 <Brain className="h-4 w-4 text-primary" />
@@ -1999,6 +1964,23 @@ export default function ProfilePage() {
               <div className="space-y-2 text-xs text-muted-foreground">
                 <p>{aiMemory?.conversationCount || 0} saved conversations and {aiMemory?.legacyMessageCount || 0} legacy messages.</p>
                 <p>{aiMemory?.affirmationStored || aiMemory?.profileContextStored ? "A generated assistant profile is stored." : "No generated assistant profile is stored."}</p>
+              </div>
+              <div className="mt-3 space-y-2 border-t border-primary/10 pt-3">
+                <p className="text-xs text-muted-foreground">Choose what can be included in future AI prompts. Turning a setting off does not delete your data.</p>
+                {AI_CONTEXT_OPTIONS.map((option) => {
+                  const enabled = aiContextPreferences[option.key];
+                  return (
+                    <div key={option.key} className="flex items-center justify-between gap-3 rounded-md bg-card/40 px-3 py-2">
+                      <div>
+                        <p className="text-xs text-foreground">{option.label}</p>
+                        <p className="text-[11px] text-muted-foreground">{option.description}</p>
+                      </div>
+                      <button type="button" onClick={() => updateAiContextPreference(option.key)} className={`w-10 h-5 shrink-0 rounded-full relative cursor-pointer transition-colors ${enabled ? "bg-primary/30" : "bg-card"}`} aria-pressed={enabled} aria-label={`Share ${option.label} with AI`} role="switch">
+                        <span className={`absolute top-0.5 w-4 h-4 rounded-full transition-all ${enabled ? "left-5 bg-primary" : "left-0.5 bg-muted-foreground"}`} />
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
                 <Button size="sm" variant="outline" className="border-primary/30 text-primary hover:bg-primary/10" onClick={() => clearAiMemoryMutation.mutate("chat-history")} disabled={clearAiMemoryMutation.isPending}>
@@ -2015,8 +1997,11 @@ export default function ProfilePage() {
                 <Download className="h-4 w-4 text-primary" />
                 <Label className="text-sm text-foreground">Your Data</Label>
               </div>
-              <p className="text-xs text-muted-foreground mb-3">Download a portable copy of your LyfeOS record. Sensitive provider credentials and password data are never included.</p>
-              <Button size="sm" variant="outline" className="border-primary/30 text-primary hover:bg-primary/10" onClick={() => window.location.assign("/api/account/export")}>
+              <p className="text-xs text-muted-foreground mb-3">Download a portable copy of your LyfeOS record, including relationship records, mission proof, planning history, and LyfeOS-side federation audit records. Sensitive provider credentials and password data are never included.</p>
+              <Button size="sm" variant="outline" className="border-primary/30 text-primary hover:bg-primary/10" onClick={() => {
+                toast({ title: "Preparing your export", description: "Your browser will download your LyfeOS record when it is ready." });
+                window.location.assign("/api/account/export");
+              }}>
                 <Download className="mr-2 h-3.5 w-3.5" /> Download my data
               </Button>
               <div className="mt-4 border-t border-red-500/20 pt-3">

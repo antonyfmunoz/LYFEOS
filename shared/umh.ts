@@ -109,6 +109,10 @@ export const umhEventEnvelopeSchema = umhProjectionEventEnvelopeSchema;
 export type UMHProjectionEventEnvelope = z.infer<typeof umhProjectionEventEnvelopeSchema>;
 export type UMHEventEnvelope = UMHProjectionEventEnvelope;
 
+export function validateUMHProjectionEvent(input: unknown): UMHProjectionEventEnvelope {
+  return umhProjectionEventEnvelopeSchema.parse(input);
+}
+
 export interface UMHCapabilityManifest {
   protocolVersion: typeof UMH_FEDERATION_PROTOCOL;
   projection: { id: "lyfeos"; name: "LyfeOS"; version: string };

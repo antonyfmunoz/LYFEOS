@@ -64,6 +64,10 @@ export async function classifyMission(
   if (PRESET_CATEGORIES.includes(defaults.category)) {
     return defaults;
   }
+  // Classification is an optional enhancement. An intentionally unconfigured
+  // provider must use the caller's deterministic defaults without attempting a
+  // request or emitting an operational error for every mission creation.
+  if (!process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY) return defaults;
 
   try {
     const anthropic = new Anthropic({

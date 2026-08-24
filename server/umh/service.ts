@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { and, eq } from "drizzle-orm";
 import {
   LYFEOS_MISSION_CREATED_EVENT,
+  validateUMHProjectionEvent,
   type UMHCommandEnvelope, type UMHProjectionEventEnvelope,
 } from "@shared/umh";
 import {
@@ -10,10 +11,13 @@ import {
   umhAuditRecords,
   umhInboundCommands,
   umhOutboxEvents,
+  userActivityEvents,
   users,
 } from "@shared/schema";
 import { db } from "../db";
+import { prepareMissionCreation } from "../mission-lifecycle";
 import type { UMHFederationConfig } from "./config";
+import { hashUMHPayload } from "./crypto";
 
 export class FederationError extends Error {
   constructor(readonly status: number, message: string) {
@@ -33,8 +37,8 @@ function isUniqueViolation(error: unknown): boolean {
   return Boolean(error && typeof error === "object" && "code" in error && error.code === "23505");
 }
 
-async function existingIdempotentOutcome(command: UMHCommandEnvelope): Promise<CommandOutcome | undefined> {
-  const [existing] = await db.select({ outcome: umhInboundCommands.outcome })
+async function existingIdempotentOutcome(command: UMHCommandEnvelope, payloadHash: string): Promise<CommandOutcome | undefined> {
+  const [existing] = await db.select({ outcome: umhInboundCommands.outcome, payloadHash: umhInboundCommands.payloadHash })
     .from(umhInboundCommands)
     .where(and(
       eq(umhInboundCommands.installationId, command.installationId),
@@ -44,7 +48,11 @@ async function existingIdempotentOutcome(command: UMHCommandEnvelope): Promise<C
     ))
     .limit(1);
 
-  if (!existing?.outcome) return undefined;
+  if (!existing) return undefined;
+  if (existing.payloadHash !== payloadHash) {
+    throw new FederationError(409, "Idempotency key was already used with a different command payload");
+  }
+  if (!existing.outcome) return undefined;
   return { ...(existing.outcome as Omit<CommandOutcome, "replayed">), replayed: true };
 }
 
@@ -63,7 +71,8 @@ export async function executeMissionCreateCommand(
     throw new FederationError(400, "Command issuance time is in the future");
   }
 
-  const replay = await existingIdempotentOutcome(command);
+  const payloadHash = hashUMHPayload(command.payload);
+  const replay = await existingIdempotentOutcome(command, payloadHash);
   if (replay) return replay;
 
   const [subject] = await db.select({ id: users.id })
@@ -75,8 +84,22 @@ export async function executeMissionCreateCommand(
     .limit(1);
   if (!subject) throw new FederationError(403, "Command subject is not valid for this projection");
 
-  const payloadHash = crypto.createHash("sha256").update(JSON.stringify(command.payload)).digest("hex");
   const occurredAt = new Date();
+  const missionInput = await prepareMissionCreation({
+    userId: command.subject.localUserId,
+    title: command.payload.title,
+    description: command.payload.description,
+    category: command.payload.category,
+    difficulty: command.payload.difficulty,
+    experienceReward: command.payload.experienceReward,
+    energyCost: command.payload.energyCost,
+    attentionCost: command.payload.attentionCost,
+    timeCost: command.payload.timeCost,
+    dueDate: command.payload.scheduledFor?.slice(0, 10),
+    externalId: command.id,
+    externalSource: "umh",
+    missionStatus: "confirmed",
+  });
 
   try {
     return await db.transaction(async (tx) => {
@@ -99,21 +122,12 @@ export async function executeMissionCreateCommand(
         rationale: "Mission creation is the explicitly allow-listed, low-risk federation capability.",
       });
 
-      const [mission] = await tx.insert(quests).values({
-        userId: command.subject.localUserId,
-        title: command.payload.title,
-        description: command.payload.description,
-        category: command.payload.category,
-        difficulty: command.payload.difficulty,
-        experienceReward: command.payload.experienceReward,
-        energyCost: command.payload.energyCost,
-        attentionCost: command.payload.attentionCost,
-        timeCost: command.payload.timeCost,
-        dueDate: command.payload.scheduledFor?.slice(0, 10),
-        externalId: command.id,
-        externalSource: "umh",
-        missionStatus: "confirmed",
-      }).returning();
+      const [mission] = await tx.insert(quests).values(missionInput).returning();
+      await tx.insert(userActivityEvents).values({
+        userId: mission.userId,
+        eventType: "mission_created",
+        metadata: { questId: mission.id, title: mission.title, source: "umh" },
+      });
 
       const event: UMHProjectionEventEnvelope = {
         schemaVersion: "umh.v1",
@@ -138,12 +152,13 @@ export async function executeMissionCreateCommand(
         },
       };
 
+      const validatedEvent = validateUMHProjectionEvent(event);
       await tx.insert(umhOutboxEvents).values({
-        eventId: event.eventId,
-        eventType: event.eventType,
+        eventId: validatedEvent.eventId,
+        eventType: validatedEvent.eventType,
         aggregateType: "mission",
         aggregateId: String(mission.id),
-        payload: event,
+        payload: validatedEvent,
       });
 
       const outcome: CommandOutcome = {
@@ -172,7 +187,7 @@ export async function executeMissionCreateCommand(
     });
   } catch (error) {
     if (isUniqueViolation(error)) {
-      const idempotent = await existingIdempotentOutcome(command);
+      const idempotent = await existingIdempotentOutcome(command, payloadHash);
       if (idempotent) return idempotent;
       throw new FederationError(409, "Command or nonce has already been used");
     }

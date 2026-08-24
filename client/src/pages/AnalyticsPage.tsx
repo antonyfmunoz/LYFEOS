@@ -87,6 +87,7 @@ export default function AnalyticsPage() {
     { id: 'completion-rate', title: 'Completion Rate', icon: <Target className="h-5 w-5 text-primary" /> },
     { id: 'activity-heatmap', title: 'Activity Heatmap', icon: <Activity className="h-5 w-5 text-primary" /> },
     { id: 'weekly-patterns', title: 'Weekly Patterns', icon: <BarChart3 className="h-5 w-5 text-primary" /> },
+    { id: 'pattern-explorer', title: 'Pattern Explorer', icon: <TrendingUp className="h-5 w-5 text-primary" /> },
     { id: 'personal-records', title: 'Personal Records', icon: <Trophy className="h-5 w-5 text-primary" /> },
     { id: 'milestone-analytics', title: 'Objective Analytics', icon: <Milestone className="h-5 w-5 text-primary" /> },
   ]);
@@ -145,6 +146,8 @@ export default function AnalyticsPage() {
   const streakHistory = analytics?.streakHistory ?? [];
   const personalRecords = analytics?.personalRecords ?? {};
   const tokenEfficiency = analytics?.tokenEfficiency ?? {};
+  const sleepWellnessCorrelation = analytics?.sleepWellnessCorrelation ?? [];
+  const sleepWellnessDataQuality = analytics?.sleepWellnessDataQuality ?? { observations: 0, availableDays: days, coveragePercent: 0, level: "insufficient", readyToExplore: false, note: "Log sleep and daily state to begin." };
 
   const categoryData = useMemo(() => Object.entries(categoryStats as Record<string, any>).map(([name, data], i) => ({
     name: name.charAt(0).toUpperCase() + name.slice(1),
@@ -370,6 +373,30 @@ export default function AnalyticsPage() {
             </ChartCard>
           </div>
         );
+      case 'pattern-explorer':
+        if (!sleepWellnessDataQuality.readyToExplore) {
+          return <EmptyState message={`${sleepWellnessDataQuality.note} ${sleepWellnessDataQuality.observations}/${sleepWellnessDataQuality.availableDays} complete days in this range.`} />;
+        }
+        return (
+          <ChartCard title="Sleep and daily state" icon={<TrendingUp className="h-5 w-5" />}>
+            <ResponsiveContainer width="100%" height={250}>
+              <LineChart data={sleepWellnessCorrelation}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted))" opacity={0.3} />
+                <XAxis dataKey="date" tickFormatter={formatDate} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                <YAxis yAxisId="sleep" domain={[0, 12]} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                <YAxis yAxisId="mood" orientation="right" domain={[0, 10]} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                <Tooltip content={<CustomTooltipContent />} />
+                <Line yAxisId="sleep" type="monotone" dataKey="sleepHours" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 3 }} name="Sleep hours" />
+                <Line yAxisId="mood" type="monotone" dataKey="mood" stroke="#34d399" strokeWidth={2} dot={{ r: 3 }} name="Daily state" />
+              </LineChart>
+            </ResponsiveContainer>
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <span className="rounded-full border border-primary/20 bg-primary/5 px-2 py-1 font-mono uppercase tracking-[0.08em] text-primary">{sleepWellnessDataQuality.level} data</span>
+              <span>{sleepWellnessDataQuality.observations}/{sleepWellnessDataQuality.availableDays} complete days · {sleepWellnessDataQuality.coveragePercent}% coverage</span>
+            </div>
+            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{sleepWellnessDataQuality.note} This is an observed co-occurrence in your self-reported data, not a causal or health conclusion.</p>
+          </ChartCard>
+        );
       case 'personal-records':
         if (!personalRecords) return null;
         return (
@@ -547,6 +574,7 @@ export default function AnalyticsPage() {
         <SummaryCard icon={<Flame className="h-5 w-5" />} label="Streak" value={`${summary.currentStreak || 0}d`} sub="consecutive" />
         <SummaryCard icon={<Zap className="h-5 w-5" />} label="Efficiency" value={`${tokenEfficiency.efficiency || 0}%`} sub="token usage" />
       </div>
+      <p className="-mt-3 mb-6 text-xs leading-relaxed text-muted-foreground">These charts summarize LyfeOS records and self-reported inputs. They show activity and patterns, not external certification or causal proof.</p>
 
       <div className="space-y-6" data-tour="tracker-widgets">
         {analyticsWidgets.map((widget, index) => {

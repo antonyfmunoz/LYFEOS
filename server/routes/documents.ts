@@ -332,12 +332,12 @@ export function registerDocumentRoutes(app: Express): void {
     }
   });
 
-  app.get("/api/documents/:id/file", async (req: Request, res: Response) => {
+  app.get("/api/documents/:id/file", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
       const doc = await storage.getDocument(id);
-      if (!doc || !doc.fileData) return res.status(404).json({ error: "File not found" });
+      if (!doc || doc.userId !== req.session.userId! || doc.deletedAt || !doc.fileData) return res.status(404).json({ error: "File not found" });
 
       const matches = doc.fileData.match(/^data:([^;]+);base64,(.+)$/);
       if (!matches) return res.status(500).json({ error: "Invalid file data" });
@@ -347,7 +347,8 @@ export function registerDocumentRoutes(app: Express): void {
 
       res.set('Content-Type', mimeType);
       res.set('Content-Length', buffer.length.toString());
-      res.set('Cache-Control', 'public, max-age=86400');
+      res.set('Cache-Control', 'private, no-store, max-age=0');
+      res.set('Vary', 'Cookie');
       return res.send(buffer);
     } catch (error) {
       return res.status(500).json({ error: "Failed to serve file" });

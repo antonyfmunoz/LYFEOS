@@ -1,0 +1,123 @@
+import { useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Download, LineChart as LineChartIcon, Save, SearchCheck, Trash2 } from "lucide-react";
+import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { apiRequest, timeContextHeaders } from "@/lib/queryClient";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import HealthPlanningHandoff from "@/components/health/HealthPlanningHandoff";
+
+type Option = { id: string; label: string; unit: string; aggregation: string };
+type Series = { id: string; label: string; unit: string; aggregation: "sum" | "average" | "latest"; source?: string; quality: { omittedAmbiguousDates: string[]; disclosure: string; coverage: { requestedDays: number; recordedDays: number; missingDays: number; withheldDays: number; recordedCoverage: number } }; points: Array<{ date: string; value: number; records: number; rollingAverage: number | null }> };
+type TrendResponse = { dates: string[]; left: Series; right: Series | null; disclosure: string };
+type MetricPanel = { id: number; name: string; leftSeriesId: string; rightSeriesId: string; seriesIds: string[]; periodDays: number; rollingAverage: boolean };
+type PanelDataResponse = { panel: MetricPanel; dates: string[]; series: Series[]; disclosure: string };
+type AssociationResponse = {
+  left: Pick<Series, "label" | "unit">; right: Pick<Series, "label" | "unit">;
+  result: { status: "available" | "insufficient"; pairedSamples: number; coverage: number; reasons?: string[]; coefficient?: number; magnitude?: string; direction?: string; disclosure?: string; diagnostics: { requestedDays: number; comparableDays: number; leftRecordedDays: number; rightRecordedDays: number; pairedDays: number; unpairedLeftRecordedDays: number; unpairedRightRecordedDays: number; missingValuesImputed: boolean } };
+  lagDays: number; lagAlignment: string; leftQuality: Series["quality"]; rightQuality: Series["quality"];
+  limitations: { adjustmentMethod: "none"; multipleLagSearchPerformed: false; missingValuesImputed: false; unadjustedFactors: string[]; disclosure: string };
+};
+
+export default function HealthTrendWorkbench() {
+  const queryClient = useQueryClient();
+  const [leftId, setLeftId] = useState("hydration_ml");
+  const [rightId, setRightId] = useState("recovery_minutes");
+  const [thirdId, setThirdId] = useState("");
+  const [fourthId, setFourthId] = useState("");
+  const [days, setDays] = useState(30);
+  const [rolling, setRolling] = useState(false);
+  const [associationConfirmed, setAssociationConfirmed] = useState(false);
+  const [lagDays, setLagDays] = useState(0);
+  const [downloadError, setDownloadError] = useState(false);
+  const [panelName, setPanelName] = useState("");
+  const [selectedPanelId, setSelectedPanelId] = useState<number | null>(null);
+  const options = useQuery<{ options: Option[]; disclosure: string }>({ queryKey: ["/api/health-insights/series-options"], queryFn: () => apiRequest("/api/health-insights/series-options") });
+  const panels = useQuery<{ panels: MetricPanel[]; disclosure: string }>({ queryKey: ["/api/health-insights/panels"], queryFn: () => apiRequest("/api/health-insights/panels") });
+  const panelData = useQuery<PanelDataResponse>({ queryKey: ["/api/health-insights/panels", selectedPanelId, "data"], queryFn: () => apiRequest(`/api/health-insights/panels/${selectedPanelId}/data`), enabled: selectedPanelId !== null });
+  const trends = useQuery<TrendResponse>({
+    queryKey: ["/api/health-insights/trends", { leftId, rightId, days }],
+    queryFn: () => apiRequest(`/api/health-insights/trends?left=${encodeURIComponent(leftId)}&right=${encodeURIComponent(rightId)}&days=${days}`),
+    enabled: !!leftId && !!rightId && leftId !== rightId,
+  });
+  const association = useMutation<AssociationResponse>({
+    mutationFn: () => apiRequest("/api/health-insights/associations", { method: "POST", body: JSON.stringify({ left: leftId, right: rightId, days, lagDays, confirmed: true }) }),
+  });
+  const savePanel = useMutation({
+    mutationFn: () => apiRequest("/api/health-insights/panels", { method: "POST", body: JSON.stringify({ name: panelName, seriesIds: [leftId, rightId, thirdId, fourthId].filter(Boolean), periodDays: days, rollingAverage: rolling }) }),
+    onSuccess: () => { setPanelName(""); void queryClient.invalidateQueries({ queryKey: ["/api/health-insights/panels"] }); },
+  });
+  const deletePanel = useMutation({
+    mutationFn: (id: number) => apiRequest(`/api/health-insights/panels/${id}`, { method: "DELETE" }),
+    onSuccess: (_result, id) => { if (selectedPanelId === id) setSelectedPanelId(null); void queryClient.invalidateQueries({ queryKey: ["/api/health-insights/panels"] }); },
+  });
+  const openPanel = (panel: MetricPanel) => {
+    const seriesIds = Array.isArray(panel.seriesIds) && panel.seriesIds.length >= 2 ? panel.seriesIds : [panel.leftSeriesId, panel.rightSeriesId];
+    setLeftId(seriesIds[0]); setRightId(seriesIds[1]); setThirdId(seriesIds[2] || ""); setFourthId(seriesIds[3] || ""); setDays(panel.periodDays); setRolling(panel.rollingAverage); setSelectedPanelId(panel.id); association.reset();
+  };
+  const selectedSeriesIds = [leftId, rightId, thirdId, fourthId].filter(Boolean);
+  const hasDuplicatePanelSeries = new Set(selectedSeriesIds).size !== selectedSeriesIds.length;
+  const chartData = useMemo(() => {
+    if (!trends.data) return [];
+    const left = new Map(trends.data.left.points.map((point) => [point.date, point]));
+    const right = new Map(trends.data.right?.points.map((point) => [point.date, point]) || []);
+    return trends.data.dates.map((date) => ({
+      date,
+      left: rolling ? left.get(date)?.rollingAverage ?? null : left.get(date)?.value ?? null,
+      right: rolling ? right.get(date)?.rollingAverage ?? null : right.get(date)?.value ?? null,
+    }));
+  }, [trends.data, rolling]);
+
+  const download = async () => {
+    setDownloadError(false);
+    try {
+      const response = await fetch(`/api/health-insights/trends?left=${encodeURIComponent(leftId)}&right=${encodeURIComponent(rightId)}&days=${days}&format=csv`, { credentials: "include", headers: timeContextHeaders() });
+      if (!response.ok) throw new Error("Trend export failed");
+      const url = URL.createObjectURL(await response.blob());
+      const anchor = document.createElement("a"); anchor.href = url; anchor.download = `lyfeos-health-trends-${new Date().toISOString().slice(0, 10)}.csv`; anchor.click();
+      URL.revokeObjectURL(url);
+    } catch { setDownloadError(true); }
+  };
+
+  return <section className="glassmorphic rounded-2xl p-6 mb-8 border border-primary/30" aria-labelledby="health-trends-heading">
+    <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 id="health-trends-heading" className="font-orbitron text-lg text-primary flex items-center gap-2"><LineChartIcon className="h-5 w-5" />Trend workbench</h2><p className="mt-1 text-sm text-muted-foreground">Compare two private record series, or save up to four as honest small multiples. Missing days stay missing and each unit keeps its own scale.</p></div><Button size="sm" variant="outline" disabled={!trends.data} onClick={download}><Download />Export CSV</Button></div>
+    <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_1fr_9rem]">
+      <select aria-label="First health trend" className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={leftId} onChange={(event) => { setLeftId(event.target.value); association.reset(); }} >{options.data?.options.map((option) => <option key={option.id} value={option.id}>{option.label} · {option.unit}</option>)}</select>
+      <select aria-label="Second health trend" className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={rightId} onChange={(event) => { setRightId(event.target.value); association.reset(); }} >{options.data?.options.map((option) => <option key={option.id} value={option.id}>{option.label} · {option.unit}</option>)}</select>
+      <select aria-label="Health trend period" className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={days} onChange={(event) => { setDays(Number(event.target.value)); association.reset(); }}>{[30, 90, 365, 730, 3650].map((period) => <option key={period} value={period}>{period === 3650 ? "10 years" : `${period} days`}</option>)}</select>
+    </div>
+    <div className="mt-2 grid gap-2 sm:grid-cols-2">
+      <select aria-label="Optional third saved-panel trend" className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={thirdId} onChange={(event) => { setThirdId(event.target.value); setSelectedPanelId(null); }}><option value="">Optional third panel series</option>{options.data?.options.map((option) => <option key={option.id} value={option.id}>{option.label} · {option.unit}</option>)}</select>
+      <select aria-label="Optional fourth saved-panel trend" className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={fourthId} disabled={!thirdId} onChange={(event) => { setFourthId(event.target.value); setSelectedPanelId(null); }}><option value="">Optional fourth panel series</option>{options.data?.options.map((option) => <option key={option.id} value={option.id}>{option.label} · {option.unit}</option>)}</select>
+    </div>
+    <details className="mt-3 rounded-lg border border-muted/20 bg-background/20 p-3">
+      <summary className="cursor-pointer text-xs font-medium text-muted-foreground">Saved metric panels ({panels.data?.panels.length || 0})</summary>
+      <p className="mt-2 text-[11px] text-muted-foreground">A panel remembers two to four selectors, period, and rolling-view choice. Each series is shown on its own scale; the panel does not snapshot, score, or reinterpret the underlying records.</p>
+      <div className="mt-2 flex flex-wrap gap-2"><Input className="min-w-52 flex-1" aria-label="Metric panel name" maxLength={80} placeholder="Panel name" value={panelName} onChange={(event) => setPanelName(event.target.value)} /><Button size="sm" variant="outline" disabled={!panelName.trim() || leftId === rightId || hasDuplicatePanelSeries || savePanel.isPending} onClick={() => savePanel.mutate()}><Save />Save current panel</Button></div>
+      {hasDuplicatePanelSeries ? <p className="mt-2 text-xs text-destructive" role="alert">Choose a different metric for each saved-panel position.</p> : null}
+      {savePanel.error ? <p className="mt-2 text-xs text-destructive" role="alert">Could not save this panel.</p> : null}
+      <div className="mt-3 flex flex-wrap gap-2">{panels.data?.panels.map((panel) => <div key={panel.id} className="inline-flex items-center rounded-md border border-muted/25"><Button size="sm" variant="ghost" onClick={() => openPanel(panel)}>{panel.name}</Button><Button size="icon" variant="ghost" className="h-8 w-8" aria-label={`Delete ${panel.name} metric panel`} disabled={deletePanel.isPending} onClick={() => deletePanel.mutate(panel.id)}><Trash2 className="h-3.5 w-3.5" /></Button></div>)}</div>
+      {panelData.data ? <div className="mt-4" aria-label={`${panelData.data.panel.name} saved metric panel`}><div className="grid gap-3 sm:grid-cols-2">{panelData.data.series.map((series, index) => { const values = new Map(series.points.map((point) => [point.date, rolling ? point.rollingAverage : point.value])); const data = panelData.data!.dates.map((date) => ({ date, value: values.get(date) ?? null })); return <div className="rounded-lg border border-muted/20 p-3" key={series.id}><p className="text-xs font-medium text-white">{series.label} <span className="text-muted-foreground">({series.unit})</span></p><p className="text-[11px] text-muted-foreground">{series.quality.coverage.recordedDays}/{series.quality.coverage.requestedDays} recorded days · {series.quality.coverage.withheldDays} withheld</p><div className="mt-2 h-28" role="img" aria-label={`${series.label} recorded values in ${series.unit}`}><ResponsiveContainer width="100%" height="100%"><LineChart data={data}><XAxis dataKey="date" hide /><YAxis width={38} tick={{ fontSize: 9 }} /><Tooltip labelFormatter={(date) => date} /><Line type="monotone" dataKey="value" name={`${series.label} (${series.unit})`} stroke={["hsl(var(--primary))", "#f59e0b", "#a78bfa", "#34d399"][index]} connectNulls={false} dot={false} /></LineChart></ResponsiveContainer></div></div>; })}</div><details className="mt-3 rounded-lg border border-muted/20 p-3"><summary className="cursor-pointer text-xs text-muted-foreground">View saved-panel data table</summary><div className="mt-2 max-h-64 overflow-auto"><table className="w-full min-w-[40rem] text-left text-xs"><caption className="sr-only">Saved metric panel values by local calendar date</caption><thead><tr><th className="p-2" scope="col">Date</th>{panelData.data.series.map((series) => <th className="p-2" scope="col" key={series.id}>{series.label} ({series.unit})</th>)}</tr></thead><tbody>{panelData.data.dates.map((date) => <tr className="border-t border-muted/10" key={date}><th className="p-2 font-normal" scope="row">{date}</th>{panelData.data!.series.map((series) => { const point = series.points.find((candidate) => candidate.date === date); return <td className="p-2" key={series.id}>{point ? (rolling ? point.rollingAverage ?? "Not recorded" : point.value) : "Not recorded"}</td>; })}</tr>)}</tbody></table></div></details><p className="mt-2 text-[11px] text-muted-foreground">{panelData.data.disclosure}</p></div> : null}
+    </details>
+    <label className="mt-3 flex items-center gap-2 text-xs text-muted-foreground"><input type="checkbox" checked={rolling} onChange={(event) => setRolling(event.target.checked)} />Show 7-record rolling averages (not a seven-calendar-day imputation)</label>
+    {leftId === rightId ? <p className="mt-3 text-xs text-destructive">Choose two different series.</p> : null}
+    {trends.data && (trends.data.left.quality.omittedAmbiguousDates.length || trends.data.right?.quality.omittedAmbiguousDates.length) ? <div className="mt-3 rounded-lg border border-amber-400/30 bg-amber-400/10 p-3 text-xs text-amber-100" role="status"><p>Some additive dates were withheld because their recorded intervals could not be combined without guessing.</p><p className="mt-1 text-[11px]">{trends.data.left.quality.disclosure}{trends.data.right?.quality.omittedAmbiguousDates.length ? ` ${trends.data.right.quality.disclosure}` : ""}</p></div> : null}
+    {trends.data ? <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-2" aria-label="Trend evidence coverage"><div className="rounded-lg border border-muted/20 p-3"><dt className="text-muted-foreground">{trends.data.left.label} recorded coverage</dt><dd className="mt-1 text-white">{trends.data.left.quality.coverage.recordedDays} of {trends.data.left.quality.coverage.requestedDays} days ({Math.round(trends.data.left.quality.coverage.recordedCoverage * 100)}%)</dd><dd className="text-[11px] text-muted-foreground">{trends.data.left.quality.coverage.missingDays} missing · {trends.data.left.quality.coverage.withheldDays} withheld</dd></div>{trends.data.right ? <div className="rounded-lg border border-muted/20 p-3"><dt className="text-muted-foreground">{trends.data.right.label} recorded coverage</dt><dd className="mt-1 text-white">{trends.data.right.quality.coverage.recordedDays} of {trends.data.right.quality.coverage.requestedDays} days ({Math.round(trends.data.right.quality.coverage.recordedCoverage * 100)}%)</dd><dd className="text-[11px] text-muted-foreground">{trends.data.right.quality.coverage.missingDays} missing · {trends.data.right.quality.coverage.withheldDays} withheld</dd></div> : null}</dl> : null}
+    {trends.data ? <div className="mt-4 h-64" role="img" aria-label={`${trends.data.left.label} and ${trends.data.right?.label} recorded trend comparison`}><ResponsiveContainer width="100%" height="100%"><LineChart data={chartData}><CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" /><XAxis dataKey="date" tickFormatter={(date) => date.slice(5)} tick={{ fontSize: 10 }} /><YAxis yAxisId="left" width={42} tick={{ fontSize: 10 }} /><YAxis yAxisId="right" orientation="right" width={42} tick={{ fontSize: 10 }} /><Tooltip labelFormatter={(date) => date} /><Legend /><Line yAxisId="left" type="monotone" dataKey="left" name={`${trends.data.left.label} (${trends.data.left.unit})`} stroke="hsl(var(--primary))" connectNulls={false} dot={false} /><Line yAxisId="right" type="monotone" dataKey="right" name={`${trends.data.right?.label} (${trends.data.right?.unit})`} stroke="#f59e0b" connectNulls={false} dot={false} /></LineChart></ResponsiveContainer></div> : <p className="mt-4 text-xs text-muted-foreground">Loading recorded series…</p>}
+    {trends.data ? <details className="mt-3 rounded-lg border border-muted/20 p-3"><summary className="cursor-pointer text-xs text-muted-foreground">View accessible trend data table</summary><div className="mt-2 max-h-64 overflow-auto"><table className="w-full min-w-[34rem] text-left text-xs"><caption className="sr-only">Recorded health trend values by local calendar date</caption><thead><tr className="border-b border-muted/20"><th scope="col" className="p-2">Date</th><th scope="col" className="p-2">{trends.data.left.label} ({trends.data.left.unit})</th><th scope="col" className="p-2">{trends.data.right?.label} ({trends.data.right?.unit})</th></tr></thead><tbody>{chartData.map((row) => <tr key={row.date} className="border-b border-muted/10"><th scope="row" className="p-2 font-normal">{row.date}</th><td className="p-2">{row.left ?? "Not recorded"}</td><td className="p-2">{row.right ?? "Not recorded"}</td></tr>)}</tbody></table></div></details> : null}
+    {trends.data?.right ? <HealthPlanningHandoff leftId={leftId} rightId={rightId} leftLabel={trends.data.left.label} rightLabel={trends.data.right.label} days={days} /> : null}
+    <div className="mt-4 rounded-xl border border-muted/20 bg-background/20 p-4">
+      <p className="text-sm font-medium text-white flex items-center gap-2"><SearchCheck className="h-4 w-4 text-primary" />Optional association check</p>
+      <p className="mt-1 text-xs text-muted-foreground">This uses only the day alignment you select and calculates Pearson correlation after you request it. It does not search for a favorable lag and cannot establish cause, treatment effect, readiness, or a health outcome.</p>
+      <label className="mt-3 block text-xs text-muted-foreground">Day alignment<select aria-label="Association day alignment" className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground" value={lagDays} onChange={(event) => { setLagDays(Number(event.target.value)); association.reset(); }}>{[-14, -7, -3, -1, 0, 1, 3, 7, 14].map((lag) => <option key={lag} value={lag}>{lag === 0 ? "Same local-calendar day" : lag > 0 ? `Second series ${lag} day${lag === 1 ? "" : "s"} later` : `First series ${Math.abs(lag)} day${lag === -1 ? "" : "s"} later`}</option>)}</select></label>
+      <label className="mt-3 flex items-start gap-2 text-xs text-muted-foreground"><input className="mt-0.5" type="checkbox" checked={associationConfirmed} onChange={(event) => { setAssociationConfirmed(event.target.checked); association.reset(); }} />I want LyfeOS to privately compare these two selected series for this period.</label>
+      <Button className="mt-3" size="sm" variant="outline" disabled={!associationConfirmed || leftId === rightId || association.isPending} onClick={() => association.mutate()}>Run private comparison</Button>
+      {association.data?.result.status === "insufficient" ? <div role="status" className="mt-3 rounded-lg border border-amber-400/30 bg-amber-400/10 p-3 text-xs text-amber-100"><p>Not enough aligned evidence: {association.data.result.pairedSamples} paired days ({Math.round(association.data.result.coverage * 100)}% coverage).</p><p className="mt-1">{association.data.lagAlignment}</p><ul className="mt-1 list-disc pl-4">{association.data.result.reasons?.map((reason) => <li key={reason}>{reason}</li>)}</ul></div> : null}
+      {association.data?.result.status === "available" ? <div role="status" className="mt-3 rounded-lg border border-primary/30 bg-primary/10 p-3 text-xs text-muted-foreground"><p className="text-white">Recorded association: r = {association.data.result.coefficient} · {association.data.result.magnitude} · {association.data.result.direction}</p><p>{association.data.result.pairedSamples} aligned days · {Math.round(association.data.result.coverage * 100)}% comparable-period coverage.</p><p>{association.data.lagAlignment}</p><p className="mt-1">{association.data.result.disclosure}</p></div> : null}
+      {association.data && (association.data.leftQuality.omittedAmbiguousDates.length || association.data.rightQuality.omittedAmbiguousDates.length) ? <p className="mt-2 text-[11px] text-amber-200">This calculation excludes dates withheld by the selected series' interval-quality rules. Missing and withheld dates are not treated as zero.</p> : null}
+      {association.data ? <details className="mt-3 rounded-lg border border-muted/20 p-3"><summary className="cursor-pointer text-xs text-muted-foreground">Review data coverage and unadjusted factors</summary><dl className="mt-2 grid gap-2 text-xs sm:grid-cols-2"><div><dt className="text-muted-foreground">Comparable calendar days</dt><dd className="text-white">{association.data.result.diagnostics.comparableDays} of {association.data.result.diagnostics.requestedDays}</dd></div><div><dt className="text-muted-foreground">Paired days used</dt><dd className="text-white">{association.data.result.diagnostics.pairedDays}</dd></div><div><dt className="text-muted-foreground">{association.data.left.label} recorded / unmatched</dt><dd className="text-white">{association.data.result.diagnostics.leftRecordedDays} / {association.data.result.diagnostics.unpairedLeftRecordedDays}</dd></div><div><dt className="text-muted-foreground">{association.data.right.label} recorded / unmatched</dt><dd className="text-white">{association.data.result.diagnostics.rightRecordedDays} / {association.data.result.diagnostics.unpairedRightRecordedDays}</dd></div></dl><p className="mt-3 text-xs text-muted-foreground">No missing values were filled in, no confounder adjustment was performed, and no alternate lag was searched.</p><p className="mt-2 text-xs text-muted-foreground">Not adjusted for:</p><ul className="mt-1 list-disc pl-4 text-xs text-muted-foreground">{association.data.limitations.unadjustedFactors.map((factor) => <li key={factor}>{factor}</li>)}</ul><p className="mt-2 text-[11px] text-muted-foreground">{association.data.limitations.disclosure}</p></details> : null}
+    </div>
+    <p className="mt-3 text-[11px] text-muted-foreground">{trends.data?.disclosure || options.data?.disclosure}</p>
+    {downloadError ? <p className="mt-2 text-xs text-destructive" role="alert">Could not download the trend export.</p> : null}
+  </section>;
+}

@@ -1,17 +1,16 @@
 import type { Express, Request, Response } from "express";
 import { z } from "zod";
-import { eq, desc, and, gte, asc, sql, inArray } from "drizzle-orm";
+import { eq, desc, and, gte, asc, sql, inArray, isNotNull } from "drizzle-orm";
 import { storage } from "../storage";
 import { db } from "../db";
 import { logger, formatLocalDate, classifyMission } from "../utils";
-import { isAuthenticated, isOwner, calculateMissionCosts, calculateLevelFromTotalXP } from "./middleware";
-import { insertQuestSchema, insertMissionViewSchema, Quest, questSkillContributions, skillNodes, skillProgressionEvents, transformationThreadEvidence, transformationThreads, userDailyLogs, quests as questsTable } from "@shared/schema";
-import { sendPushToUser } from "../notificationScheduler";
-import { recordTransformationThreadEvidence } from "../transformation-thread-evidence";
-import { refreshProgressionState } from "../progression";
-import { queueLinkedWorkItemState } from "../cross-product";
+import { isAuthenticated, isOwner, calculateMissionCosts } from "./middleware";
+import { insertQuestSchema, insertMissionViewSchema, missionContracts, missionDeferrals, personalCapabilities, Quest, questSkillContributions, skillNodes, transformationThreadEvidence, transformationThreads, userDailyLogs, quests as questsTable } from "@shared/schema";
 import { allocateSkillExperience, buildSkillGraph } from "../skill-graph";
 import { missionExperience } from "@shared/progression";
+import { createMissionLifecycle, deferMissionLifecycle, MissionLifecycleError, toggleMissionLifecycle, updateMissionLifecycle } from "../mission-lifecycle";
+import { convertTodoIdeasToMissions } from "../todo-idea-conversion";
+import { localMidnight } from "../todo-idea-parsing";
 
 declare module "express-session" {
   interface SessionData {
@@ -22,6 +21,10 @@ declare module "express-session" {
 
 export function registerQuestRoutes(app: Express): void {
   const skillNodeIdsSchema = z.array(z.number().int().positive()).max(3);
+  const deferMissionSchema = z.object({
+    targetDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    reason: z.string().trim().min(2).max(280).optional(),
+  });
 
   const assignSkillContributions = async (input: {
     userId: number;
@@ -38,17 +41,28 @@ export function registerQuestRoutes(app: Express): void {
       throw new Error("Reopen this mission before changing its skill practice mapping.");
     }
     const [skills, completedSkillMissions, reviews] = await Promise.all([
-      db.select().from(skillNodes).where(and(
-        eq(skillNodes.userId, input.userId),
-        eq(skillNodes.transformationThreadId, input.quest.transformationThreadId),
-      )),
+      db.select({
+        skill: skillNodes,
+        recordedExperience: personalCapabilities.experience,
+        recordedLevel: personalCapabilities.level,
+      }).from(skillNodes)
+        .leftJoin(personalCapabilities, and(
+          eq(personalCapabilities.id, skillNodes.capabilityId),
+          eq(personalCapabilities.userId, input.userId),
+        ))
+        .where(and(
+          eq(skillNodes.userId, input.userId),
+          eq(skillNodes.transformationThreadId, input.quest.transformationThreadId),
+        )),
       db.select({ skillNodeId: questSkillContributions.skillNodeId })
         .from(questSkillContributions)
         .innerJoin(questsTable, eq(questSkillContributions.questId, questsTable.id))
+        .innerJoin(missionContracts, and(eq(missionContracts.questId, questsTable.id), eq(missionContracts.userId, questsTable.userId)))
         .where(and(
           eq(questSkillContributions.userId, input.userId),
           eq(questsTable.transformationThreadId, input.quest.transformationThreadId),
           eq(questsTable.completed, true),
+          isNotNull(missionContracts.progressionAppliedAt),
         )),
       db.select({ id: transformationThreadEvidence.id })
         .from(transformationThreadEvidence)
@@ -58,7 +72,12 @@ export function registerQuestRoutes(app: Express): void {
           eq(transformationThreadEvidence.sourceType, "weekly_review"),
         )),
     ]);
-    const ownedSkills = new Map(skills.map((skill) => [skill.id, skill]));
+    const skillsWithHistory = skills.map(({ skill, recordedExperience, recordedLevel }) => ({
+      ...skill,
+      recordedExperience,
+      recordedLevel,
+    }));
+    const ownedSkills = new Map(skillsWithHistory.map((skill) => [skill.id, skill]));
     if (skillNodeIds.some((id) => !ownedSkills.has(id))) {
       throw new Error("A selected skill does not belong to this Transformation Thread.");
     }
@@ -66,7 +85,7 @@ export function registerQuestRoutes(app: Express): void {
     for (const item of completedSkillMissions) {
       completedMissionCountBySkill.set(item.skillNodeId, (completedMissionCountBySkill.get(item.skillNodeId) || 0) + 1);
     }
-    const graph = buildSkillGraph({ skills, completedMissionCountBySkill, reviewCount: reviews.length });
+    const graph = buildSkillGraph({ skills: skillsWithHistory, completedMissionCountBySkill, reviewCount: reviews.length });
     const unavailable = graph.find((skill) => skillNodeIds.includes(skill.id) && skill.status === "locked");
     if (unavailable) {
       throw new Error(`${unavailable.name} is still locked: ${unavailable.unmetRequirements.join("; ")}`);
@@ -90,62 +109,72 @@ export function registerQuestRoutes(app: Express): void {
     });
   };
 
-  const skillLevelForExperience = (experience: number): number => {
-    let level = 1;
-    let remaining = Math.max(0, experience);
-    let threshold = 100;
-    while (remaining >= threshold) {
-      remaining -= threshold;
-      level += 1;
-      threshold = Math.floor(threshold * 1.35);
-    }
-    return level;
-  };
-
-  const applyQuestSkillProgression = async ({ quest, completed }: { quest: Quest; completed: boolean }): Promise<number> => {
-    const contributions = await db.select({
-      skillNodeId: questSkillContributions.skillNodeId,
-      experienceAmount: questSkillContributions.experienceAmount,
-      currentExperience: skillNodes.experience,
-    })
-      .from(questSkillContributions)
-      .innerJoin(skillNodes, eq(skillNodes.id, questSkillContributions.skillNodeId))
-      .where(and(
-        eq(questSkillContributions.questId, quest.id),
-        eq(questSkillContributions.userId, quest.userId),
-        eq(skillNodes.userId, quest.userId),
-      ));
-
-    if (contributions.length === 0) return 0;
-    const direction = completed ? 1 : -1;
-    await db.transaction(async (tx) => {
-      for (const contribution of contributions) {
-        const delta = contribution.experienceAmount * direction;
-        const nextExperience = Math.max(0, contribution.currentExperience + delta);
-        await tx.update(skillNodes)
-          .set({
-            experience: nextExperience,
-            level: skillLevelForExperience(nextExperience),
-            updatedAt: new Date(),
-          })
-          .where(and(eq(skillNodes.id, contribution.skillNodeId), eq(skillNodes.userId, quest.userId)));
-        await tx.insert(skillProgressionEvents).values({
-          userId: quest.userId,
-          skillNodeId: contribution.skillNodeId,
-          questId: quest.id,
-          transformationThreadId: quest.transformationThreadId || null,
-          sourceType: completed ? "mission_completion" : "mission_reversal",
-          experienceDelta: delta,
-          evidenceSummary: completed
-            ? `Completed mission: ${quest.title}`
-            : `Reopened mission: ${quest.title}`,
-        });
-      }
-    });
-    return contributions.reduce((total, contribution) => total + contribution.experienceAmount, 0);
+  const ensurePracticeContract = async (quest: Pick<Quest, "id" | "userId" | "title">, skillNodeIds: number[]) => {
+    const selectedSkills = await db.select({ name: skillNodes.name })
+      .from(skillNodes)
+      .where(and(eq(skillNodes.userId, quest.userId), inArray(skillNodes.id, skillNodeIds)));
+    await db.insert(missionContracts).values({
+      userId: quest.userId,
+      questId: quest.id,
+      purpose: `Practice ${selectedSkills.map((skill) => skill.name).join(", ")}.`,
+      expectedOutput: `Record what happened while completing ${quest.title}.`,
+      capabilityTargets: selectedSkills.map((skill) => skill.name),
+      prerequisites: [],
+      requiredEvidence: ["A short observation or artifact showing what happened."],
+      reviewMode: "self",
+      riskLevel: "low",
+      stopConditions: [],
+      state: "accepted",
+    }).onConflictDoNothing();
   };
 
   // QUEST ROUTES
+  app.post("/api/quests/:questId/defer", isAuthenticated, async (req: Request, res: Response) => {
+    const questId = Number(req.params.questId);
+    if (!Number.isInteger(questId)) return res.status(400).json({ error: "Invalid mission." });
+    const parsed = deferMissionSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: "Enter a valid future deferral date or short reason." });
+    const userId = req.session.userId!;
+    const today = new Date().toISOString().slice(0, 10);
+    const defaultTarget = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const targetDate = parsed.data.targetDate || defaultTarget;
+    if (targetDate <= today) return res.status(400).json({ error: "Choose a date after today for a deferral." });
+    try {
+      const updatedQuest = await deferMissionLifecycle({
+        questId,
+        userId,
+        deferredToDate: targetDate,
+        reason: parsed.data.reason || null,
+      });
+      return res.json({ quest: updatedQuest, deferredToDate: targetDate });
+    } catch (error) {
+      if (error instanceof MissionLifecycleError) return res.status(error.status).json({ error: error.message });
+      logger.error("Could not defer mission:", error);
+      return res.status(500).json({ error: "Could not defer this mission." });
+    }
+  });
+
+  app.get("/api/quests/:questId/deferrals", isAuthenticated, async (req: Request, res: Response) => {
+    const questId = Number(req.params.questId);
+    if (!Number.isInteger(questId)) return res.status(400).json({ error: "Invalid mission." });
+    const userId = req.session.userId!;
+    const [quest] = await db.select({ id: questsTable.id })
+      .from(questsTable)
+      .where(and(eq(questsTable.id, questId), eq(questsTable.userId, userId)))
+      .limit(1);
+    if (!quest) return res.status(404).json({ error: "Mission not found." });
+    const deferrals = await db.select({
+      id: missionDeferrals.id,
+      previousDueDate: missionDeferrals.previousDueDate,
+      deferredToDate: missionDeferrals.deferredToDate,
+      reason: missionDeferrals.reason,
+      createdAt: missionDeferrals.createdAt,
+    }).from(missionDeferrals)
+      .where(and(eq(missionDeferrals.questId, questId), eq(missionDeferrals.userId, userId)))
+      .orderBy(desc(missionDeferrals.createdAt));
+    return res.json({ deferrals });
+  });
+
   app.get("/api/users/:userId/quests", isOwner, async (req: Request, res: Response) => {
     try {
       const userId = parseInt(req.params.userId);
@@ -160,57 +189,22 @@ export function registerQuestRoutes(app: Express): void {
         logger.error("Error purging expired archived quests:", purgeError);
       }
       
-      // Auto-convert any unconverted todoIdeas from past days into quests
+      // Recover any idea capture not converted on the day after it was recorded.
       try {
         const clientTz = req.query.tz as string || 'UTC';
         const nowInTz = new Date(new Date().toLocaleString('en-US', { timeZone: clientTz }));
         const todayStr = formatLocalDate(nowInTz);
-        
-        const unconvertedLogs = await db.select()
-          .from(userDailyLogs)
-          .where(and(
-            eq(userDailyLogs.userId, userId),
-            eq(userDailyLogs.todosConverted, false)
-          ));
-        
-        const existingQuests = await db.select({ title: questsTable.title })
-          .from(questsTable)
-          .where(eq(questsTable.userId, userId));
-        const existingTitles = new Set(existingQuests.map(q => q.title.toLowerCase().trim()));
-        
-        for (const log of unconvertedLogs) {
-          if (log.todoIdeas && log.date < todayStr) {
-            const todoLines = log.todoIdeas
-              .split('\n')
-              .map((line: string) => line.trim())
-              .filter((line: string) => line.length > 0);
-            
-            const [year, month, day] = log.date.split('-').map(Number);
-            const nextDayMidnight = new Date(year, month - 1, day + 1, 0, 0, 0, 0);
-            
-            let created = 0;
-            for (const todoLine of todoLines) {
-              if (!existingTitles.has(todoLine.toLowerCase().trim())) {
-                await storage.createQuest({
-                  userId,
-                  title: todoLine,
-                  description: `Auto-created from To-Do Ideas on ${log.date}`,
-                  category: 'todo',
-                  completed: false,
-                  experienceReward: 50,
-                  createdAt: nextDayMidnight
-                });
-                existingTitles.add(todoLine.toLowerCase().trim());
-                created++;
-              }
-            }
-            
-            await db.update(userDailyLogs)
-              .set({ todosConverted: true })
-              .where(eq(userDailyLogs.id, log.id));
-            
-            logger.debug(`Auto-converted ${created}/${todoLines.length} todoIdeas from ${log.date} for user ${userId} (${todoLines.length - created} duplicates skipped)`);
-          }
+        const result = await convertTodoIdeasToMissions({
+          userId,
+          includeLog: (date) => date < todayStr,
+          createdAtForLog: (date) => {
+            const createdAt = localMidnight(date);
+            createdAt.setDate(createdAt.getDate() + 1);
+            return createdAt;
+          },
+        });
+        if (result.logsProcessed > 0) {
+          logger.debug(`Auto-converted ${result.created} todoIdeas across ${result.logsProcessed} daily logs for user ${userId} (${result.duplicatesSkipped} duplicates skipped)`);
         }
       } catch (todoError) {
         logger.error("Error auto-converting todoIdeas:", todoError);
@@ -313,26 +307,23 @@ export function registerQuestRoutes(app: Express): void {
         );
         if (existingOnboardingQuest) {
           if (processedBody.completed && !existingOnboardingQuest.completed) {
-            const { attentionCost: oaCost, timeCost: otCost, energyCost: oeCost } = calculateMissionCosts(
-              processedBody.startDate || existingOnboardingQuest.startDate || null,
-              processedBody.startTime || existingOnboardingQuest.startTime || null,
-              processedBody.endDate || existingOnboardingQuest.endDate || null,
-              processedBody.endTime || existingOnboardingQuest.endTime || null
-            );
-            const updatedQuest = await storage.updateQuest(existingOnboardingQuest.id, {
-              completed: true,
-              completedAt: processedBody.completedAt || new Date(),
+            await updateMissionLifecycle({
+              questId: existingOnboardingQuest.id,
+              userId: questData.userId,
+              source: "onboarding",
+              updates: {
+              completed: false,
+              completedAt: null,
               experienceReward: processedBody.experienceReward ?? existingOnboardingQuest.experienceReward,
               difficulty: processedBody.difficulty ?? existingOnboardingQuest.difficulty,
               startDate: processedBody.startDate ?? existingOnboardingQuest.startDate,
               startTime: processedBody.startTime ?? existingOnboardingQuest.startTime,
               endDate: processedBody.endDate ?? existingOnboardingQuest.endDate,
               endTime: processedBody.endTime ?? existingOnboardingQuest.endTime,
-              attentionCost: oaCost,
-              timeCost: otCost,
-              energyCost: oeCost,
+              },
             });
-            logger.debug(`Updated existing onboarding quest to completed for user ${questData.userId}: ${questData.title} (costs: AT=${oaCost}, TT=${otCost}, EP=${oeCost})`);
+            const updatedQuest = (await toggleMissionLifecycle({ questId: existingOnboardingQuest.id, userId: questData.userId, source: "onboarding" })).quest;
+            logger.debug(`Updated existing onboarding quest to completed for user ${questData.userId}: ${questData.title}`);
             await syncOnboardingProfile(questData.userId, questData.title);
             return res.status(200).json({ quest: updatedQuest, duplicate: true });
           }
@@ -341,32 +332,15 @@ export function registerQuestRoutes(app: Express): void {
         }
       }
       
-      // Auto-calculate attention, time, and energy costs based on duration
-      const { attentionCost, timeCost, energyCost } = calculateMissionCosts(
-        questData.startDate || null,
-        questData.startTime || null,
-        questData.endDate || null,
-        questData.endTime || null
-      );
-      
-      const classification = await classifyMission(
-        questData.title || "",
-        questData.description,
-        { category: questData.category || "general", difficulty: questData.difficulty || "D" }
-      );
-      
-      const quest = await storage.createQuest({
+      const quest = await createMissionLifecycle({
         ...questData,
-        category: classification.category,
-        difficulty: classification.difficulty,
-        attentionCost,
-        timeCost,
-        energyCost,
+        source: "ui",
       });
       if (skillNodeIds.length > 0) {
         await assignSkillContributions({ userId: quest.userId, quest, skillNodeIds });
+        await ensurePracticeContract(quest, skillNodeIds);
       }
-      if (classification.category === "onboarding" && quest.completed && quest.title) {
+      if (quest.category === "onboarding" && quest.completed && quest.title) {
         await syncOnboardingProfile(questData.userId, quest.title);
       }
       return res.status(201).json({ quest });
@@ -427,6 +401,7 @@ export function registerQuestRoutes(app: Express): void {
         quest,
         skillNodeIds: Array.from(new Set(parsed.data)),
       });
+      await ensurePracticeContract(quest, Array.from(new Set(parsed.data)));
       return res.json({ success: true });
     } catch (error) {
       return res.status(409).json({ error: error instanceof Error ? error.message : "Could not map this mission." });
@@ -439,104 +414,7 @@ export function registerQuestRoutes(app: Express): void {
       if (isNaN(questId)) {
         return res.status(400).json({ error: "Invalid quest ID" });
       }
-      
-      // Get the quest to check ownership
-      const quest = await storage.getQuest(questId);
-      if (!quest) {
-        return res.status(404).json({ error: "Quest not found" });
-      }
-      
-      // Verify ownership
-      if (quest.userId !== req.session.userId) {
-        return res.status(403).json({ error: "Not authorized to toggle this quest" });
-      }
-      
-      // Toggle completion - this now handles all stat updates (XP, time, energy, attention)
-      // Capture level before toggle for accurate level-up detection
-      const preToggleStats = await storage.getUserStats(quest.userId);
-      const previousLevel = preToggleStats?.level || 1;
-
-      const { quest: updatedQuest, statsUpdated } = await storage.toggleQuestCompletion(questId);
-      
-      // Get updated user stats and recalculate XP to ensure consistency
-      const userStats = await storage.getUserStats(quest.userId);
-      const xpData = await storage.recalculateXP(quest.userId);
-      const levelUp = updatedQuest.completed && xpData.level > previousLevel;
-      let skillExperienceAwarded = 0;
-      try {
-        skillExperienceAwarded = await applyQuestSkillProgression({ quest, completed: updatedQuest.completed });
-      } catch (progressionError) {
-        // The mission remains authoritative even if its secondary progression
-        // projection cannot be recorded. Logging preserves a repair path.
-        logger.error("Could not record skill progression for quest toggle:", progressionError);
-      }
-      
-      if (updatedQuest.completed) {
-        const xpGained = Math.floor(quest.experienceReward * ({ D: 1, C: 1.5, B: 2, A: 3, S: 5 }[quest.difficulty || 'D'] || 1));
-        sendPushToUser(quest.userId, {
-          title: levelUp ? "Level Up!" : "Mission Complete!",
-          body: levelUp
-            ? `${quest.title} completed! +${xpGained} XP — You leveled up!`
-            : `${quest.title} completed! +${xpGained} XP`,
-          tag: `quest-complete-${quest.id}`,
-          url: "/quests",
-        }).catch(() => {});
-        storage.logActivityEvent(quest.userId, 'mission_complete', { questId: quest.id, title: quest.title }).catch(() => {});
-        if (quest.transformationThreadId) {
-          await recordTransformationThreadEvidence({
-            userId: quest.userId,
-            transformationThreadId: quest.transformationThreadId,
-            sourceType: "mission_completion",
-            sourceId: String(quest.id),
-            summary: `Completed mission: ${quest.title}`,
-          }).catch((e) => logger.error("Could not record Thread evidence for quest toggle:", e));
-        }
-      }
-
-      let progression;
-      try {
-        progression = await refreshProgressionState(quest.userId, `mission:${quest.id}:${updatedQuest.completed ? "completed" : "reopened"}`);
-      } catch (progressionError) {
-        logger.error("Could not refresh progression for quest toggle:", progressionError);
-      }
-
-      let crossProductWorkUpdates = 0;
-      try {
-        crossProductWorkUpdates = await queueLinkedWorkItemState(quest.userId, quest.id);
-      } catch (integrationError) {
-        logger.error("Could not queue cross-product work item update:", integrationError);
-      }
-
-      return res.status(200).json({ 
-        quest: updatedQuest,
-        xpAwarded: updatedQuest.completed ? Math.floor(quest.experienceReward * ({ D: 1, C: 1.5, B: 2, A: 3, S: 5 }[quest.difficulty || 'D'] || 1)) : 0,
-        skillExperienceAwarded: updatedQuest.completed ? skillExperienceAwarded : 0,
-        progression,
-        crossProductWorkUpdates,
-        levelUp: levelUp,
-        statsUpdated: statsUpdated,
-        stats: userStats ? {
-          timeTokens: {
-            current: userStats.timeTokensCurrent,
-            max: userStats.timeTokensMax
-          },
-          attentionTokens: {
-            current: userStats.attentionTokensCurrent,
-            max: userStats.attentionTokensMax
-          },
-          energyPoints: {
-            current: userStats.energyPointsCurrent,
-            max: userStats.energyPointsMax
-          },
-          experience: {
-            current: xpData.experienceCurrent,
-            max: xpData.experienceMax,
-            level: xpData.level,
-            totalXP: xpData.totalXP,
-            showLevelUp: levelUp
-          }
-        } : undefined
-      });
+      return res.status(200).json(await toggleMissionLifecycle({ questId, userId: req.session.userId!, source: "ui" }));
     } catch (error) {
       logger.error("Error toggling quest completion:", error);
       return res.status(500).json({ error: "Internal server error" });
@@ -666,50 +544,7 @@ export function registerQuestRoutes(app: Express): void {
       
       const validatedData = updateQuestSchema.parse(req.body);
       
-      // Normalize empty strings to null for date/time fields
-      const dateFields = ['startDate', 'startTime', 'endDate', 'endTime'] as const;
-      for (const field of dateFields) {
-        if (field in validatedData && validatedData[field] === '') {
-          (validatedData as any)[field] = null;
-        }
-      }
-      
-      // Auto-calculate attention and time costs if dates/times are being updated
-      const startDate = validatedData.startDate ?? quest.startDate;
-      const startTime = validatedData.startTime ?? quest.startTime;
-      const endDate = validatedData.endDate ?? quest.endDate;
-      const endTime = validatedData.endTime ?? quest.endTime;
-      
-      const { attentionCost, timeCost, energyCost } = calculateMissionCosts(
-        startDate || null,
-        startTime || null,
-        endDate || null,
-        endTime || null
-      );
-      
-      const titleChanged = 'title' in validatedData && validatedData.title !== quest.title;
-      const descChanged = 'description' in validatedData && validatedData.description !== quest.description;
-      let reclassifiedCategory = validatedData.category;
-      let reclassifiedDifficulty = validatedData.difficulty;
-
-      if (titleChanged || descChanged) {
-        const reclassification = await classifyMission(
-          validatedData.title || quest.title || "",
-          validatedData.description || quest.description,
-          { category: validatedData.category || quest.category || "general", difficulty: validatedData.difficulty || quest.difficulty || "D" }
-        );
-        reclassifiedCategory = reclassification.category;
-        reclassifiedDifficulty = reclassification.difficulty;
-      }
-      
-      const updatedQuest = await storage.updateQuest(questId, {
-        ...validatedData,
-        ...(reclassifiedCategory ? { category: reclassifiedCategory } : {}),
-        ...(reclassifiedDifficulty ? { difficulty: reclassifiedDifficulty } : {}),
-        attentionCost,
-        timeCost,
-        energyCost,
-      });
+      const updatedQuest = await updateMissionLifecycle({ questId, userId: quest.userId, updates: validatedData, source: "ui" });
       return res.status(200).json({ quest: updatedQuest });
     } catch (error) {
       if (error instanceof z.ZodError) {

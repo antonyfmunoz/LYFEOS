@@ -2,10 +2,12 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useAuth } from "@/lib/authContext";
+import { useLYFEOS } from "@/lib/context";
 
 export default function CeremonyPage() {
   const [, navigate] = useLocation();
   const { user } = useAuth();
+  const { stats } = useLYFEOS();
   const [phase, setPhase] = useState(0);
   const [statsLoaded, setStatsLoaded] = useState({
     level: false,
@@ -70,12 +72,12 @@ export default function CeremonyPage() {
             </p>
             
             <div className="space-y-4 w-80">
-              <StatBar label="LEVEL" loaded={statsLoaded.level} value="1" />
-              <StatBar label="ENERGY POINTS" loaded={statsLoaded.energy} value="100 / 100" />
-              <StatBar label="HEALTH POINTS" loaded={statsLoaded.health} value="100 / 100" />
-              <StatBar label="TIME TOKENS" loaded={statsLoaded.time} value="100 / 100" />
-              <StatBar label="ATTENTION TOKENS" loaded={statsLoaded.attention} value="100 / 100" />
-              <StatBar label="EFFICIENCY SCORE" loaded={statsLoaded.efficiency} value="0%" />
+              <StatBar label="LEVEL" loaded={statsLoaded.level} value={String(stats.experience.level)} />
+              <StatBar label="ENERGY POINTS" loaded={statsLoaded.energy} value={`${stats.energyPoints.current} / ${stats.energyPoints.max}`} />
+              <StatBar label="HEALTH POINTS" loaded={statsLoaded.health} value={`${stats.healthPoints.current} / ${stats.healthPoints.max}`} />
+              <StatBar label="TIME TOKENS" loaded={statsLoaded.time} value={`${stats.timeTokens.current} / ${stats.timeTokens.max}`} />
+              <StatBar label="ATTENTION TOKENS" loaded={statsLoaded.attention} value={`${stats.attentionTokens.current} / ${stats.attentionTokens.max}`} />
+              <StatBar label="EFFICIENCY SCORE" loaded={statsLoaded.efficiency} value={`${stats.efficiencyScore}%`} />
             </div>
           </div>
         )}

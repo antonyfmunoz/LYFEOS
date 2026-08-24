@@ -10,7 +10,7 @@ import { ArrowLeft, Coins, Target, Flame, Loader2, TrendingUp, Activity, Zap } f
 import { LineChart, Line, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 
 function getStatusBadge(pct: number): { label: string; color: string; bg: string } {
-  if (pct >= 75) return { label: "OPTIMAL", color: "text-primary", bg: "bg-primary/20 border-primary/30" };
+  if (pct >= 75) return { label: "HIGH", color: "text-primary", bg: "bg-primary/20 border-primary/30" };
   if (pct >= 40) return { label: "MODERATE", color: "text-primary/80", bg: "bg-primary/15 border-primary/25" };
   return { label: "LOW", color: "text-muted-foreground", bg: "bg-primary/10 border-primary/20" };
 }
@@ -236,7 +236,7 @@ export default function WealthDetailPage() {
           <div className="glassmorphic rounded-2xl p-6 mb-8 border border-primary/30">
             <h2 className="font-orbitron text-lg mb-4 text-primary flex items-center gap-2">
               <Coins className="h-5 w-5" />
-              Wealth Growth Tips
+              Wealth planning prompts
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="rounded-xl border border-muted/20 bg-background/30 p-4">
@@ -245,7 +245,7 @@ export default function WealthDetailPage() {
                   <h3 className="text-white text-sm font-semibold">Maintain Your Streak</h3>
                 </div>
                 <p className="text-xs text-muted-foreground mb-3">
-                  Consistency builds wealth over time. Complete at least one mission daily to keep your streak alive and earn bonus tokens.
+                  A streak shows consecutive days with LyfeOS-recorded activity. It does not represent financial performance or a financial outcome.
                 </p>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-muted-foreground">Current streak:</span>
@@ -259,7 +259,7 @@ export default function WealthDetailPage() {
                   <h3 className="text-white text-sm font-semibold">Boost Completion Rate</h3>
                 </div>
                 <p className="text-xs text-muted-foreground mb-3">
-                  Higher completion rates directly impact your wealth score. Aim for completing all assigned missions.
+                  Completion updates your LyfeOS activity record. It does not measure or determine wealth.
                 </p>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-muted-foreground">Completion rate:</span>
@@ -275,7 +275,7 @@ export default function WealthDetailPage() {
                   <h3 className="text-white text-sm font-semibold">Diversify Activities</h3>
                 </div>
                 <p className="text-xs text-muted-foreground mb-3">
-                  Balance your missions across different categories to maximize wealth token generation.
+                  Use categories to review where your recorded effort is going. Wealth tokens remain an in-app planning signal.
                 </p>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-muted-foreground">Categories active:</span>
@@ -291,7 +291,7 @@ export default function WealthDetailPage() {
                   <h3 className="text-white text-sm font-semibold">Track Progress</h3>
                 </div>
                 <p className="text-xs text-muted-foreground mb-3">
-                  Monitor your wealth token trends over time to identify patterns and optimize your strategy.
+                  Review the in-app token trend as a planning prompt, not an account balance, financial advice, or investment result.
                 </p>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-muted-foreground">Current wealth:</span>

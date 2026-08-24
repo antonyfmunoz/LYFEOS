@@ -33,7 +33,7 @@ if ('serviceWorker' in navigator) {
       }
       const cacheNames = await caches.keys();
       for (const name of cacheNames) {
-        if (name !== 'lyfeos-v24') {
+        if (name !== 'lyfeos-v25') {
           await caches.delete(name);
         }
       }

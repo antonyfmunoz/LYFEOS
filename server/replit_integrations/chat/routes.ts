@@ -2,8 +2,14 @@ import type { Express, Request, Response, NextFunction } from "express";
 import Anthropic from "@anthropic-ai/sdk";
 import { chatStorage } from "./storage";
 import { storage } from "../../storage";
+import { createMissionLifecycle, toggleMissionLifecycle, updateMissionLifecycle } from "../../mission-lifecycle";
+import { db } from "../../db";
+import { aiActionRecords, aiPendingActions } from "@shared/schema";
+import { and, eq, gt, inArray, lt } from "drizzle-orm";
 import * as cheerio from 'cheerio';
 import { detectRelevantLayers, searchKnowledgeBase, getLayerById, KNOWLEDGE_LAYERS } from "./knowledge-base";
+import { resolveAIContextPreferences, resolveAIVisibleDisplayName } from "../../ai-context-preferences";
+import { buildCalendarMissionWindow } from "@shared/calendar";
 
 const anthropic = new Anthropic({
   apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY,
@@ -133,11 +139,11 @@ function buildSystemPrompt(ctx: NOVAContext): string {
 
   const todayStr = new Date().toLocaleDateString('en-US', { timeZone: 'America/Los_Angeles', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-  const playerName = user?.displayName || 'Commander';
+  const contextPreferences = resolveAIContextPreferences(profile?.aiContextPreferences);
+  const playerName = resolveAIVisibleDisplayName(contextPreferences, user?.displayName);
   const assistantName = typeof stats?.aiAssistantName === "string" && stats.aiAssistantName.trim()
     ? stats.aiAssistantName.trim()
     : "NOVA";
-
   const recentLogs = (dailyLogs || [])
     .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .slice(0, 7);
@@ -177,7 +183,7 @@ function buildSystemPrompt(ctx: NOVAContext): string {
   const totalTimeCost = activeMissions.reduce((s: number, m: any) => s + (m.timeCost || 0), 0);
   const totalAttentionCost = activeMissions.reduce((s: number, m: any) => s + (m.attentionCost || 0), 0);
 
-  const customCats = (userCategories || []).map((c: any) => c.label).join(', ');
+  const customCats = contextPreferences.planning ? (userCategories || []).map((c: any) => c.label).join(', ') : "";
 
   return `You are ${assistantName}, the user's named AI companion and the living intelligence of LYFEOS, the user's Life Operating System. You are not a chatbot. You are the primary interface between the Player and the complex systems running beneath the surface. You exist to maximize the human and their life holistically. Use your chosen name only when it helps clarity; do not claim that your name or personality is fixed by the platform.
 
@@ -205,12 +211,14 @@ Streak: ${stats?.streakDays || 0} days
 Efficiency Score: ${stats?.efficiencyScore || 0}%
 
 === PLAYER RESOURCES ===
+${contextPreferences.dailyState ? `
 Energy Points: ${stats?.energyPointsCurrent ?? 'N/A'}/${stats?.energyPointsMax ?? 'N/A'} (${totalEnergyCost} allocated to active missions)
 Health Points: ${stats?.healthPointsCurrent ?? 'N/A'}/${stats?.healthPointsMax ?? 'N/A'}
 Time Tokens: ${stats?.timeTokensCurrent ?? 'N/A'}/${stats?.timeTokensMax ?? 'N/A'} (${totalTimeCost} allocated)
-Attention Tokens: ${stats?.attentionTokensCurrent ?? 'N/A'}/${stats?.attentionTokensMax ?? 'N/A'} (${totalAttentionCost} allocated)
+Attention Tokens: ${stats?.attentionTokensCurrent ?? 'N/A'}/${stats?.attentionTokensMax ?? 'N/A'} (${totalAttentionCost} allocated)` : "Current wellbeing and resource data are not shared with you."}
 
 === ARCHETYPE & IDENTITY ===
+${contextPreferences.identity ? `
 Primary Archetype: ${profile?.archetypePrimary || 'Not set'}
 Secondary Archetype: ${profile?.archetypeSecondary || 'Not set'}
 Shadow Archetype: ${profile?.archetypeShadow || 'Not set'}
@@ -223,69 +231,72 @@ Primary Craft: ${profile?.primaryCraft || 'Not set'}
 Key Drivers: ${JSON.stringify(profile?.keyDrivers || [])}
 Collaboration Style: ${profile?.collaborationStyle || 'Not set'}
 Training Style: ${profile?.trainingStyle || 'Not set'}
-Energy Patterns: ${profile?.energyPatterns || 'Not set'}
+Energy Patterns: ${profile?.energyPatterns || 'Not set'}` : "Identity profile context is private unless the Player enables it."}
 
 === PERSONALITY & BELIEFS ===
+${contextPreferences.identity ? `
 Core Belief: ${profile?.coreBelief || 'Not set'}
 Limiting Belief: ${profile?.limitingBelief || 'Not set'}
 Empowering Belief: ${profile?.empoweringBelief || 'Not set'}
 Strengths: ${JSON.stringify(profile?.strengths || [])}
-Weaknesses: ${JSON.stringify(profile?.weaknesses || [])}
+Weaknesses: ${JSON.stringify(profile?.weaknesses || [])}` : "Personality and belief context is private unless the Player enables it."}
 
 === CHARACTER AFFIRMATION ===
-${profile?.characterAffirmation || 'Not generated yet'}
+${contextPreferences.identity ? profile?.characterAffirmation || 'Not generated yet' : 'Private unless the Player enables identity context.'}
 
 === VISION & ROADMAP ===
+${contextPreferences.planning ? `
 90-Day Vision: ${profile?.vision90Day || 'Not set'}
 18-Month Vision: ${profile?.vision18Month || 'Not set'}
 5-Year Vision: ${profile?.vision5Year || 'Not set'}
 10-Year Vision: ${profile?.vision10Year || 'Not set'}
 10-Year Legacy: ${profile?.vision10YearLegacy || 'Not set'}
-Current Goals: ${JSON.stringify(profile?.currentGoals || [])}
+Current Goals: ${JSON.stringify(profile?.currentGoals || [])}` : "Planning context is private unless the Player enables it."}
 
 === VISION MILESTONES ===
-${Object.entries(goalsByHorizon).map(([horizon, goals]) => {
+${contextPreferences.planning ? Object.entries(goalsByHorizon).map(([horizon, goals]) => {
   const active = goals.filter((g: any) => !g.completed);
   const done = goals.filter((g: any) => g.completed);
   return `[${horizon.toUpperCase()}] ${active.length} active, ${done.length} completed\n${active.slice(0, 5).map((g: any) => `  - "${g.title}"${g.rewardText ? ` (Reward: ${g.rewardText})` : ''}`).join('\n')}`;
-}).join('\n') || 'No vision milestones set'}
+}).join('\n') || 'No vision milestones set' : 'Planning context is private unless the Player enables it.'}
 
 === SYSTEMS & RITUALS ===
-Ideal Day: ${profile?.idealDay || 'Not set'}
+${contextPreferences.planning ? `Ideal Day: ${profile?.idealDay || 'Not set'}
 Locked Habit: ${profile?.lockedHabit || 'Not set'}
 Morning Rituals: ${JSON.stringify(profile?.morningRituals || [])}
 Evening Rituals: ${JSON.stringify(profile?.eveningRituals || [])}
-Grounding Ritual: ${profile?.groundingRitual || 'Not set'}
+Grounding Ritual: ${profile?.groundingRitual || 'Not set'}` : 'Planning context is private unless the Player enables it.'}
 
 === RECENT DAILY LOGS (7-day trend) ===
+${contextPreferences.dailyState ? `
 Mental avg: ${avgMental}/10 | Physical avg: ${avgPhysical}/10 | Emotional avg: ${avgEmotional}/10
 ${todayLog ? `Today's log: Mental ${todayLog.mentalState || '-'}/10, Physical ${todayLog.physicalState || '-'}/10, Emotional ${todayLog.emotionalState || '-'}/10, Wake: ${todayLog.wakeTime || '-'}, Sleep: ${todayLog.sleepTime || '-'}${todayLog.todayPrimaryMission ? `, Focus: "${todayLog.todayPrimaryMission}"` : ''}${todayLog.gratitude ? `, Gratitude: "${todayLog.gratitude.substring(0, 200)}"` : ''}` : 'No log for today yet'}
-${recentLogs.slice(1, 4).map((l: any) => `${l.date}: Mental ${l.mentalState || '-'}, Physical ${l.physicalState || '-'}, Emotional ${l.emotionalState || '-'}`).join('\n')}
+${recentLogs.slice(1, 4).map((l: any) => `${l.date}: Mental ${l.mentalState || '-'}, Physical ${l.physicalState || '-'}, Emotional ${l.emotionalState || '-'}`).join('\n')}` : 'Daily state and reflection data are private unless the Player enables it.'}
 
 === ACTIVE MISSIONS (${activeMissions.length}) ===
-${activeMissions.map(m => `- [ID:${m.id}] "${m.title}" | ${m.category || 'general'} | Difficulty: ${m.difficulty || 'D'} | XP: ${m.experienceReward} | Energy: ${m.energyCost || 0} | Start: ${m.startDate || 'none'} | Due: ${m.dueDate || 'none'}${m.description ? ` | Desc: ${m.description.substring(0, 100)}` : ''}`).join('\n') || 'No active missions'}
+${contextPreferences.planning ? activeMissions.map(m => `- [ID:${m.id}] "${m.title}" | ${m.category || 'general'} | Difficulty: ${m.difficulty || 'D'} | XP: ${m.experienceReward} | Energy: ${m.energyCost || 0} | Start: ${m.startDate || 'none'} | Due: ${m.dueDate || 'none'}${m.description ? ` | Desc: ${m.description.substring(0, 100)}` : ''}`).join('\n') || 'No active missions' : 'Mission context is private unless the Player enables it.'}
 
 === COMPLETED THIS WEEK (${completedThisWeek.length}) ===
-${completedThisWeek.slice(0, 8).map(m => `- "${m.title}" | ${m.category} | +${m.experienceReward}XP | ${m.completedAt ? new Date(m.completedAt).toLocaleDateString() : ''}`).join('\n') || 'None completed this week'}
+${contextPreferences.planning ? completedThisWeek.slice(0, 8).map(m => `- "${m.title}" | ${m.category} | +${m.experienceReward}XP | ${m.completedAt ? new Date(m.completedAt).toLocaleDateString() : ''}`).join('\n') || 'None completed this week' : 'Mission context is private unless the Player enables it.'}
 
 === ALL COMPLETED (${completedMissions.length}) | TERMINATED (${terminatedMissions.length}) ===
-${completedMissions.slice(0, 5).map(m => `- [ID:${m.id}] "${m.title}" | Completed: ${m.completedAt ? new Date(m.completedAt).toLocaleDateString() : 'unknown'}`).join('\n') || 'No completed missions'}
+${contextPreferences.planning ? completedMissions.slice(0, 5).map(m => `- [ID:${m.id}] "${m.title}" | Completed: ${m.completedAt ? new Date(m.completedAt).toLocaleDateString() : 'unknown'}`).join('\n') || 'No completed missions' : 'Mission context is private unless the Player enables it.'}
 
 === UPCOMING SCHEDULE ===
-${upcomingEvents.map((e: any) => `- ${e.startDate}${e.dueDate ? ` to ${e.dueDate}` : ''}: "${e.title}" (${e.category || 'personal'}, ${e.difficulty || 'D'})`).join('\n') || 'No upcoming events'}
+${contextPreferences.planning ? upcomingEvents.map((e: any) => `- ${e.startDate}${e.dueDate ? ` to ${e.dueDate}` : ''}: "${e.title}" (${e.category || 'personal'}, ${e.difficulty || 'D'})`).join('\n') || 'No upcoming events' : 'Mission context is private unless the Player enables it.'}
 
 === CUSTOM CATEGORIES ===
-${customCats || 'None created'}
+${contextPreferences.planning ? customCats || 'None created' : 'Planning context is private unless the Player enables it.'}
 
 === CAPABILITIES ===
-You can take actions for the Player using tools. When asked to do something (create, delete, complete, update missions, schedule events, update daily logs, etc.), use the appropriate tool immediately. Confirm what you did clearly and concisely.
+You can assist the Player using tools. Low-risk actions may execute after a direct request. Medium-risk changes (including editing or terminating a mission, changing profile data, or changing player resources) are placed in the Player's approval queue and have not happened until the Player explicitly approves them. Never describe a pending action as completed; say that it is awaiting approval.
 
-AUTONOMOUS AGENT CAPABILITIES:
+ASSISTED EXECUTION CAPABILITIES:
 - Search the internet with web_search and read full articles with read_webpage to gather real-world information
 - Create vision milestones with create_vision_goal across all 5 time horizons (90day, 18month, 5year, 10year, legacy)
 - Build full plans using batch_create_missions to create multiple related missions at once, optionally linked to a vision goal
-- Chain multiple tools together autonomously: for example, research a topic online, then create a vision goal, then break it into missions -- all in one interaction
-- You have up to 10 tool iterations per request, so tackle complex multi-step requests end-to-end without asking the user to repeat themselves
+- For a multi-step request, make the smallest useful low-risk change and clearly identify any queued approval before continuing
+- You can use up to 10 tool iterations per request, but never use that latitude to bypass the Player's approval or create avoidable work
 
 LIFE OPTIMIZATION KNOWLEDGE BASE:
 You have access to a comprehensive Life OS Knowledge Base via the lookup_knowledge_base tool, covering 16 domains:
@@ -314,7 +325,7 @@ KNOWLEDGE BASE USAGE RULES:
 - For medical, financial, or legal topics, always add a disclaimer to consult a professional
 - For crisis situations (suicidal ideation, self-harm), IMMEDIATELY provide crisis resources (988 Lifeline, Crisis Text Line 741741) before anything else
 - When the Player asks "why" something works, reference the underlying science or framework from the knowledge base
-- You can chain lookup_knowledge_base with other tools: for example, look up a sleep protocol, then create missions to implement it
+- You can use lookup_knowledge_base before a low-risk planning action, but keep the resulting mission scope user-directed and truthful
 
 When creating missions, use sensible defaults:
 - category: ALWAYS choose the most fitting category from: 'work', 'health', 'fitness', 'finance', 'learning', 'creative', 'social', 'personal', 'mindset', 'career', 'nutrition', 'recovery', 'planning', 'spiritual', 'household'${customCats ? `, or custom categories: ${customCats}` : ''}. Never use 'general'. Default to 'personal' if unclear.
@@ -338,13 +349,13 @@ When analyzing images, describe what you see concisely and relate it to the Play
 - When the Player is struggling, ask one reflective question before giving advice. Surface the pattern, not just the symptom.
 - When the Player is winning, reinforce the identity shift -- connect the behavior to who they are becoming.
 - Keep responses concise and high-signal. Avoid generic motivational fluff.
-- If they want changes made, use the tools -- do not just describe what to do.
+- If they want a change made, use the appropriate tool when it is authorized. If it is medium risk, make clear that the tool has prepared an approval rather than performed the change.
 - Adapt your tone to their archetype and current state: more direct for action-oriented archetypes, more reflective for introspective ones.
 
 === PREVIOUS CONVERSATION HISTORY ===
-${conversationHistory && conversationHistory.length > 0 
+${contextPreferences.conversationHistory && conversationHistory && conversationHistory.length > 0
   ? `You have had previous conversations with this Player. Maintain continuity -- reference past insights, commitments, and patterns:\n${conversationHistory.slice(-100).map(m => `[${m.conversationTitle || 'Chat'}] ${m.role === 'user' ? 'Player' : 'You'}: ${m.content.substring(0, 500)}${m.content.length > 500 ? '...' : ''}`).join('\n')}`
-  : 'No previous conversation history yet.'}${relevantKnowledge ? `\n\n${relevantKnowledge}` : ''}`;
+  : contextPreferences.conversationHistory ? 'No previous conversation history yet.' : 'Conversation history is private unless the Player enables it.'}${relevantKnowledge ? `\n\n${relevantKnowledge}` : ''}`;
 }
 
 const tools: Anthropic.Messages.Tool[] = [
@@ -458,7 +469,7 @@ const tools: Anthropic.Messages.Tool[] = [
   },
   {
     name: "create_calendar_event",
-    description: "Create a calendar event for the user. Use when user wants to schedule something.",
+    description: "Schedule a LyfeOS mission in the canonical mission calendar. Use when the user wants to schedule something.",
     input_schema: {
       type: "object" as const,
       properties: {
@@ -716,7 +727,90 @@ const tools: Anthropic.Messages.Tool[] = [
   }
 ];
 
+function toolRisk(toolName: string): "low" | "medium" {
+  return ["terminate_mission", "update_mission", "update_profile", "update_user_stats"].includes(toolName) ? "medium" : "low";
+}
+
+function actionInputSummary(input: unknown): Record<string, unknown> {
+  if (!input || typeof input !== "object" || Array.isArray(input)) return {};
+  const value = input as Record<string, unknown>;
+  const summary: Record<string, unknown> = { fields: Object.keys(value).sort() };
+  if (typeof value.mission_id === "number") summary.missionId = value.mission_id;
+  if (typeof value.widget_id === "string") summary.widgetId = value.widget_id;
+  return summary;
+}
+
+/** A pending approval must be understandable without echoing raw prompts or
+ * payload values back into the profile UI. Keep this intentionally structural:
+ * action type, target identifier where applicable, and changed field names. */
+function pendingActionPreview(toolName: string, input: unknown): string {
+  const summary = actionInputSummary(input);
+  const fields = Array.isArray(summary.fields) ? summary.fields.filter((field): field is string => typeof field === "string") : [];
+  const missionTarget = typeof summary.missionId === "number" ? `mission #${summary.missionId}` : "a mission";
+  if (toolName === "terminate_mission") return `Archive ${missionTarget}.`;
+  if (toolName === "update_mission") return `Update ${missionTarget}${fields.length ? ` (${fields.filter((field) => field !== "mission_id").join(", ") || "details"})` : ""}.`;
+  if (toolName === "update_profile") return `Update profile fields${fields.length ? `: ${fields.join(", ")}` : ""}.`;
+  if (toolName === "update_user_stats") return `Update LyfeOS resource values${fields.length ? `: ${fields.join(", ")}` : ""}.`;
+  return `Run ${toolName.replaceAll("_", " ")}${fields.length ? ` with ${fields.length} requested field${fields.length === 1 ? "" : "s"}` : ""}.`;
+}
+
 async function executeTool(toolName: string, input: any, userId: number): Promise<string> {
+  let recordId: number | undefined;
+  try {
+    const [record] = await db.insert(aiActionRecords).values({
+      userId,
+      toolName,
+      risk: toolRisk(toolName),
+      inputSummary: actionInputSummary(input),
+    }).returning({ id: aiActionRecords.id });
+    recordId = record.id;
+  } catch {
+    // A pending migration must not turn a user-facing conversation into an
+    // outage. The action still runs through its local authorization checks.
+  }
+
+  if (toolRisk(toolName) === "medium") {
+    if (!recordId) return JSON.stringify({ error: "This action needs approval, but its approval record could not be created. Please try again." });
+    try {
+      const [pending] = await db.insert(aiPendingActions).values({
+        userId,
+        actionRecordId: recordId,
+        toolName,
+        payload: input,
+        expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+      }).returning({ id: aiPendingActions.id, expiresAt: aiPendingActions.expiresAt });
+      await db.update(aiActionRecords)
+        .set({ state: "pending_approval", outcomeSummary: "Awaiting your approval in Profile before any change is made." })
+        .where(eq(aiActionRecords.id, recordId));
+      return JSON.stringify({ requiresApproval: true, actionId: pending.id, message: "This change is ready for your approval in Profile. Nothing has been changed yet." });
+    } catch (error) {
+      await db.update(aiActionRecords)
+        .set({ state: "failed", outcomeSummary: "Could not create an approval request.", completedAt: new Date() })
+        .where(eq(aiActionRecords.id, recordId)).catch(() => {});
+      throw error;
+    }
+  }
+
+  try {
+    const result = await executeToolUnsafe(toolName, input, userId);
+    if (recordId) {
+      const rejected = result.includes('"error"');
+      await db.update(aiActionRecords)
+        .set({ state: rejected ? "rejected" : "succeeded", outcomeSummary: rejected ? "Tool rejected the requested action." : "Tool completed.", completedAt: new Date() })
+        .where(eq(aiActionRecords.id, recordId));
+    }
+    return result;
+  } catch (error) {
+    if (recordId) {
+      await db.update(aiActionRecords)
+        .set({ state: "failed", outcomeSummary: "Tool execution failed.", completedAt: new Date() })
+        .where(eq(aiActionRecords.id, recordId)).catch(() => {});
+    }
+    throw error;
+  }
+}
+
+async function executeToolUnsafe(toolName: string, input: any, userId: number): Promise<string> {
   try {
     switch (toolName) {
       case "terminate_mission": {
@@ -729,13 +823,14 @@ async function executeTool(toolName: string, input: any, userId: number): Promis
       case "complete_mission": {
         const quest = await storage.getQuest(input.mission_id);
         if (!quest || quest.userId !== userId) return JSON.stringify({ error: "Mission not found or access denied" });
-        const result = await storage.toggleQuestCompletion(input.mission_id);
+        const result = await toggleMissionLifecycle({ questId: input.mission_id, userId, source: "ai" });
         return JSON.stringify({ 
           success: true, 
           action: "complete_mission",
           message: `Mission "${quest.title}" has been completed! +${quest.experienceReward} XP awarded.`,
           levelUp: result.levelUp,
-          xpAwarded: quest.experienceReward
+          xpAwarded: result.xpAwarded,
+          skillExperienceAwarded: result.skillExperienceAwarded
         });
       }
 
@@ -746,7 +841,7 @@ async function executeTool(toolName: string, input: any, userId: number): Promis
         
         const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
         
-        const quest = await storage.createQuest({
+        const quest = await createMissionLifecycle({
           userId,
           title: input.title,
           description: input.description || "",
@@ -760,6 +855,7 @@ async function executeTool(toolName: string, input: any, userId: number): Promis
           endDate: input.endDate || null,
           dueDate: input.dueDate || null,
           completed: false,
+          source: "ai",
         });
         return JSON.stringify({ success: true, action: "create_mission", message: `Mission "${quest.title}" created with ${xpReward} XP reward (Difficulty: ${difficulty}).`, missionId: quest.id });
       }
@@ -781,7 +877,7 @@ async function executeTool(toolName: string, input: any, userId: number): Promis
         if (input.timeCost !== undefined) updateData.timeCost = input.timeCost;
         if (input.experienceReward !== undefined) updateData.experienceReward = input.experienceReward;
         
-        const updated = await storage.updateQuest(input.mission_id, updateData);
+        const updated = await updateMissionLifecycle({ questId: input.mission_id, userId, updates: updateData, source: "ai" });
         return JSON.stringify({ success: true, action: "update_mission", message: `Mission "${updated.title}" has been updated.` });
       }
 
@@ -839,15 +935,19 @@ async function executeTool(toolName: string, input: any, userId: number): Promis
       }
 
       case "create_calendar_event": {
-        const event = await storage.createQuest({
+        const window = buildCalendarMissionWindow(input.date, input.startTime, input.duration);
+        if (!window) throw new Error("Calendar date, start time, or duration is invalid.");
+        const event = await createMissionLifecycle({
           userId,
           title: input.title,
           description: input.description || "",
-          startDate: input.date,
-          startTime: input.startTime,
-          timeCost: typeof input.duration === "number" ? input.duration : 0,
+          startDate: window.startDate,
+          startTime: window.startTime,
+          endDate: window.endDate,
+          endTime: window.endTime,
           category: input.category || "personal",
           experienceReward: 10,
+          source: "ai",
         });
         return JSON.stringify({ success: true, action: "create_calendar_event", message: `Calendar event "${event.title}" created for ${input.date} at ${input.startTime}.` });
       }
@@ -1161,7 +1261,7 @@ Write a 2-3 paragraph affirmation in second person ("You are..."). Make it power
         for (const m of input.missions) {
           const difficulty = m.difficulty || "D";
           const xpReward = m.experienceReward || difficultyXP[difficulty] || 10;
-          const quest = await storage.createQuest({
+          const quest = await createMissionLifecycle({
             userId,
             title: m.title,
             description: m.description || "",
@@ -1175,6 +1275,7 @@ Write a 2-3 paragraph affirmation in second person ("You are..."). Make it power
             endDate: null,
             dueDate: m.dueDate || null,
             completed: false,
+            source: "ai",
           });
           if (input.visionGoalId) {
             await storage.updateQuest(quest.id, { visionGoalId: input.visionGoalId } as any);
@@ -1195,7 +1296,7 @@ Write a 2-3 paragraph affirmation in second person ("You are..."). Make it power
         const quest = await storage.getQuest(input.mission_id);
         if (!quest || quest.userId !== userId) return JSON.stringify({ error: "Mission not found or access denied" });
         if (!quest.completed) return JSON.stringify({ error: "Mission is not completed." });
-        const result = await storage.toggleQuestCompletion(input.mission_id);
+        const result = await toggleMissionLifecycle({ questId: input.mission_id, userId, source: "ai" });
         return JSON.stringify({ 
           success: true, 
           action: "uncomplete_mission",
@@ -1237,7 +1338,84 @@ Write a 2-3 paragraph affirmation in second person ("You are..."). Make it power
   }
 }
 
+async function executeApprovedPendingAction(actionId: number, userId: number): Promise<{ state: "succeeded" | "rejected" | "failed"; result?: string }> {
+  const [pending] = await db.update(aiPendingActions)
+    .set({ state: "executing", updatedAt: new Date() })
+    .where(and(
+      eq(aiPendingActions.id, actionId),
+      eq(aiPendingActions.userId, userId),
+      eq(aiPendingActions.state, "pending"),
+      gt(aiPendingActions.expiresAt, new Date()),
+    ))
+    .returning();
+  if (!pending) return { state: "failed" };
+  await db.update(aiActionRecords)
+    .set({ state: "executing", outcomeSummary: "Approved by the user; executing now." })
+    .where(eq(aiActionRecords.id, pending.actionRecordId));
+  try {
+    const result = await executeToolUnsafe(pending.toolName, pending.payload, userId);
+    const rejected = result.includes('"error"');
+    const state = rejected ? "rejected" as const : "succeeded" as const;
+    await db.transaction(async (tx) => {
+      await tx.update(aiPendingActions).set({ state, updatedAt: new Date() }).where(eq(aiPendingActions.id, pending.id));
+      await tx.update(aiActionRecords).set({ state, outcomeSummary: rejected ? "Approved action was rejected by its domain policy." : "Approved action completed.", completedAt: new Date() }).where(eq(aiActionRecords.id, pending.actionRecordId));
+    });
+    return { state, result };
+  } catch {
+    await db.transaction(async (tx) => {
+      await tx.update(aiPendingActions).set({ state: "failed", updatedAt: new Date() }).where(eq(aiPendingActions.id, pending.id));
+      await tx.update(aiActionRecords).set({ state: "failed", outcomeSummary: "Approved action failed to execute.", completedAt: new Date() }).where(eq(aiActionRecords.id, pending.actionRecordId));
+    });
+    return { state: "failed" };
+  }
+}
+
 export function registerChatRoutes(app: Express): void {
+  app.get("/api/ai-actions/pending", isAuthenticated, async (req: Request, res: Response) => {
+    const userId = req.session.userId!;
+    try {
+      const expired = await db.update(aiPendingActions).set({ state: "expired", updatedAt: new Date() })
+        .where(and(eq(aiPendingActions.userId, userId), eq(aiPendingActions.state, "pending"), lt(aiPendingActions.expiresAt, new Date())))
+        .returning({ actionRecordId: aiPendingActions.actionRecordId });
+      if (expired.length) {
+        await db.update(aiActionRecords).set({ state: "expired", outcomeSummary: "Approval window expired; no change was made.", completedAt: new Date() })
+          .where(inArray(aiActionRecords.id, expired.map((action) => action.actionRecordId)));
+      }
+      const actions = await db.select({
+        id: aiPendingActions.id,
+        toolName: aiPendingActions.toolName,
+        payload: aiPendingActions.payload,
+        expiresAt: aiPendingActions.expiresAt,
+        createdAt: aiPendingActions.createdAt,
+      }).from(aiPendingActions)
+        .where(and(eq(aiPendingActions.userId, userId), eq(aiPendingActions.state, "pending"), gt(aiPendingActions.expiresAt, new Date())))
+        .orderBy(aiPendingActions.createdAt);
+      return res.json({ actions: actions.map(({ payload, ...action }) => ({ ...action, preview: pendingActionPreview(action.toolName, payload) })) });
+    } catch {
+      return res.status(500).json({ error: "Could not load pending assistant actions." });
+    }
+  });
+
+  app.post("/api/ai-actions/:actionId/approve", isAuthenticated, async (req: Request, res: Response) => {
+    const actionId = Number(req.params.actionId);
+    if (!Number.isInteger(actionId)) return res.status(400).json({ error: "Invalid assistant action." });
+    const outcome = await executeApprovedPendingAction(actionId, req.session.userId!);
+    if (outcome.state === "failed") return res.status(409).json({ error: "This approval is no longer available. It may have expired or already been handled." });
+    return res.json({ state: outcome.state, result: outcome.result });
+  });
+
+  app.post("/api/ai-actions/:actionId/reject", isAuthenticated, async (req: Request, res: Response) => {
+    const actionId = Number(req.params.actionId);
+    if (!Number.isInteger(actionId)) return res.status(400).json({ error: "Invalid assistant action." });
+    const [pending] = await db.update(aiPendingActions).set({ state: "rejected", updatedAt: new Date() })
+      .where(and(eq(aiPendingActions.id, actionId), eq(aiPendingActions.userId, req.session.userId!), eq(aiPendingActions.state, "pending")))
+      .returning();
+    if (!pending) return res.status(409).json({ error: "This approval is no longer available." });
+    await db.update(aiActionRecords).set({ state: "rejected", outcomeSummary: "User declined the requested change.", completedAt: new Date() })
+      .where(eq(aiActionRecords.id, pending.actionRecordId));
+    return res.json({ state: "rejected" });
+  });
+
   app.get("/api/conversations", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = req.session.userId!;
@@ -1344,6 +1522,7 @@ export function registerChatRoutes(app: Express): void {
       ]);
       const allMissions = [...missions, ...archivedMissions];
       const allVisionGoals = visionGoalResults.flat();
+      const contextPreferences = resolveAIContextPreferences(profile?.aiContextPreferences);
 
       const otherConversationMessages = allConversationMessages.filter(m => m.conversationId !== conversationId);
 
@@ -1379,7 +1558,9 @@ export function registerChatRoutes(app: Express): void {
         "desk", "room", "receipt", "document", "note", "journal",
         "log", "mission", "goal", "description"
       ];
-      const shouldExtractDataImages = !hasDirectAttachments && imageContextTriggers.some(t => contentLower.includes(t));
+      const shouldExtractDataImages = !hasDirectAttachments
+        && (contextPreferences.planning || contextPreferences.dailyState)
+        && imageContextTriggers.some(t => contentLower.includes(t));
       
       if (shouldExtractDataImages) {
         const inlineImageRegex = /\/api\/inline-upload\/(\d+)/g;
@@ -1392,21 +1573,25 @@ export function registerChatRoutes(app: Express): void {
           inlineImageRegex.lastIndex = 0;
         };
         
-        for (const mission of allMissions.filter(m => !m.deletedAt)) {
-          extractImageIdsFromText(mission.description);
+        if (contextPreferences.planning) {
+          for (const mission of allMissions.filter(m => !m.deletedAt)) {
+            extractImageIdsFromText(mission.description);
+          }
+          for (const goal of allVisionGoals) {
+            extractImageIdsFromText((goal as any).description);
+          }
         }
-        for (const goal of allVisionGoals) {
-          extractImageIdsFromText((goal as any).description);
-        }
-        const recentLogs = (dailyLogs || [])
-          .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())
-          .slice(0, 7);
-        for (const log of recentLogs) {
-          extractImageIdsFromText((log as any).gratitude);
-          extractImageIdsFromText((log as any).notes);
-          extractImageIdsFromText((log as any).wins);
-          extractImageIdsFromText((log as any).struggles);
-          extractImageIdsFromText((log as any).tomorrowFocus);
+        if (contextPreferences.dailyState) {
+          const recentLogs = (dailyLogs || [])
+            .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())
+            .slice(0, 7);
+          for (const log of recentLogs) {
+            extractImageIdsFromText((log as any).gratitude);
+            extractImageIdsFromText((log as any).notes);
+            extractImageIdsFromText((log as any).wins);
+            extractImageIdsFromText((log as any).struggles);
+            extractImageIdsFromText((log as any).tomorrowFocus);
+          }
         }
       }
       
@@ -1570,7 +1755,7 @@ export function registerChatRoutes(app: Express): void {
       const statContextMap: Record<string, string> = {
         experience: `XP: ${stats.experienceCurrent}/${stats.experienceMax}, Level: ${stats.level}, Active missions: ${activeMissions.length}, Completed missions: ${completedMissions.length}`,
         energy: `Energy: ${stats.energyPointsCurrent}/${stats.energyPointsMax}, Level: ${stats.level}, Active missions: ${activeMissions.length}`,
-        health: `Health: ${stats.healthPointsCurrent}/${stats.healthPointsMax}, Level: ${stats.level}, Streak: ${stats.streakDays} days`,
+        health: `Health-point game stat: ${stats.healthPointsCurrent}/${stats.healthPointsMax}, Level: ${stats.level}, Streak: ${stats.streakDays} days. These are gameplay values, not health measurements.`,
         wealth: `Wealth Tokens: ${stats.wealthTokensCurrent ?? 100}/${stats.wealthTokensMax ?? 100}, Level: ${stats.level}, Completed missions: ${completedMissions.length}`,
         time: `Time Tokens: ${stats.timeTokensCurrent}/${stats.timeTokensMax}, Active missions: ${activeMissions.length}, Level: ${stats.level}`,
         attention: `Attention Tokens: ${stats.attentionTokensCurrent}/${stats.attentionTokensMax}, Active missions: ${activeMissions.length}, Level: ${stats.level}`,
@@ -1589,11 +1774,12 @@ export function registerChatRoutes(app: Express): void {
         streak: "Streak Tracking",
       };
 
+      const healthBoundary = statType === "health" ? "For Health Points, discuss only LyfeOS participation, factual logging, review, and user-chosen planning. State that HP is a game stat. Do not infer health status or provide medical, nutrition, supplement, sleep, or exercise prescriptions." : "";
       const prompt = `You are ${stats.aiAssistantName || "NOVA"}, the user's personal AI life coach. The user "${user.displayName}" is viewing their ${statLabelMap[statType]} stats page.
 
 Their current data: ${statContextMap[statType]}
 
-Provide 3 concise, personalized, actionable tips to help them improve this stat. Each tip should be 1-2 sentences max. Base your advice on their actual numbers. Be direct, motivating, and specific. No emojis. Format each tip on its own line, numbered 1-3.`;
+Provide 3 concise, personalized, actionable tips to help them improve this stat. Each tip should be 1-2 sentences max. Base your advice on their actual numbers. Be direct, motivating, and specific. No emojis. ${healthBoundary} Format each tip on its own line, numbered 1-3.`;
 
       const response = await anthropic.messages.create({
         model: MODEL_HAIKU,
@@ -1632,7 +1818,7 @@ Provide 3 concise, personalized, actionable tips to help them improve this stat.
 
       const allContext = `User: ${user.displayName}
 Level: ${stats.level}, Total XP: ${stats.experienceCurrent}/${stats.experienceMax}
-Energy: ${stats.energyPointsCurrent}/${stats.energyPointsMax}, Health: ${stats.healthPointsCurrent}/${stats.healthPointsMax}
+Energy: ${stats.energyPointsCurrent}/${stats.energyPointsMax}, Health-point game stat: ${stats.healthPointsCurrent}/${stats.healthPointsMax} (not a health measurement)
 Wealth Tokens: ${stats.wealthTokensCurrent ?? 100}/${stats.wealthTokensMax ?? 100}
 Time Tokens: ${stats.timeTokensCurrent}/${stats.timeTokensMax}, Attention Tokens: ${stats.attentionTokensCurrent}/${stats.attentionTokensMax}
 Efficiency: ${stats.efficiencyScore || 0}%, Streak: ${stats.streakDays} days
@@ -1645,6 +1831,8 @@ User data:
 ${allContext}
 
 Generate personalized tips for ALL 8 stat categories. For each category, provide exactly 3 concise, actionable tips (1-2 sentences each). Base advice on their actual numbers. Be direct, motivating, specific. No emojis.
+
+For the health category, discuss only LyfeOS participation, factual logging, review, and user-chosen planning. Explicitly treat Health Points as a game stat, never a health measurement. Do not infer health status or give medical, nutrition, supplement, sleep, or exercise prescriptions.
 
 Format your response as JSON with this exact structure:
 {"experience":["tip1","tip2","tip3"],"energy":["tip1","tip2","tip3"],"health":["tip1","tip2","tip3"],"wealth":["tip1","tip2","tip3"],"time":["tip1","tip2","tip3"],"attention":["tip1","tip2","tip3"],"efficiency":["tip1","tip2","tip3"],"streak":["tip1","tip2","tip3"]}

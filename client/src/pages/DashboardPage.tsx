@@ -16,6 +16,7 @@ import { CustomTimePicker } from '@/components/ui/custom-time-picker';
 import PWAInstallPrompt from '@/components/PWAInstallPrompt';
 import EnhancedMissionWidget from '@/components/dashboard/EnhancedMissionWidget';
 import { TransformationThreadPanel } from '@/components/dashboard/TransformationThreadPanel';
+import { RelationshipCommitmentsPanel } from '@/components/dashboard/RelationshipCommitmentsPanel';
 import { useToast } from '@/hooks/use-toast';
 import { DraggableWidget, DraggableWidgetProps } from '@/components/ui/draggable-widget';
 import update from 'immutability-helper';
@@ -534,6 +535,22 @@ export default function DashboardPage() {
         })
       });
     }
+  });
+  const routeTodoIdeas = useMutation({
+    mutationFn: () => apiRequest("/api/inbox/captures/batch", {
+      method: "POST",
+      body: JSON.stringify({ text: dataLog.todoIdeas, sourceDate: todayDateStr }),
+    }),
+    onSuccess: (result: { created: unknown[]; skipped: number }) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/quests"] });
+      toast({
+        title: result.created.length ? "Ideas routed to Missions" : "Ideas already in Missions",
+        description: result.created.length
+          ? `${result.created.length} inbox mission${result.created.length === 1 ? "" : "s"} created${result.skipped ? `; ${result.skipped} duplicate${result.skipped === 1 ? " was" : "s were"} skipped` : ""}.`
+          : "No duplicate missions were created.",
+      });
+    },
+    onError: (error: Error) => toast({ title: "Could not route ideas", description: error.message, variant: "destructive" }),
   });
   
   // Register pre-logout callback to save data BEFORE session is invalidated
@@ -1251,10 +1268,15 @@ export default function DashboardPage() {
             </div>
             
             <div className="space-y-2">
-              <label className="text-sm flex items-center text-muted-foreground">
-                <ListChecks className="h-4 w-4 text-primary" />
-                <span className="ml-2">To-Do Ideas</span>
-              </label>
+              <div className="flex items-center justify-between gap-2">
+                <label className="text-sm flex items-center text-muted-foreground">
+                  <ListChecks className="h-4 w-4 text-primary" />
+                  <span className="ml-2">To-Do Ideas</span>
+                </label>
+                <Button type="button" size="sm" variant="ghost" className="h-7 border border-primary/20 px-2 text-xs text-primary hover:bg-primary/10" onClick={() => routeTodoIdeas.mutate()} disabled={dataLog.todoIdeas.trim().length < 2 || routeTodoIdeas.isPending}>
+                  {routeTodoIdeas.isPending ? "Routing…" : "Route to inbox"}
+                </Button>
+              </div>
               <MarkdownEditor
                 placeholder="Things you want to remember to do later..."
                 value={reflection.todoIdeas}
@@ -1262,6 +1284,7 @@ export default function DashboardPage() {
                 onBlur={handleBlurSave}
                 minHeight="80px"
               />
+              <p className="text-[11px] text-muted-foreground">Your notes stay here. Routing creates editable Inbox missions from the distinct lines above.</p>
             </div>
           </div>
         );
@@ -1646,6 +1669,7 @@ export default function DashboardPage() {
         </section>
 
         <TransformationThreadPanel />
+        <RelationshipCommitmentsPanel />
         
         {/* Draggable Widget Sections */}
         {widgets.map((widget, index) => (

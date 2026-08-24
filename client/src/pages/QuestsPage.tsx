@@ -48,7 +48,6 @@ import { StatInfoDialog } from "@/components/ui/stat-info-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { achievementToast } from "@/lib/gamified-toast";
 import { Quest, QuestNotification } from "@/lib/types";
-import { usePushNotifications } from "@/hooks/usePushNotifications";
 import {
   Popover,
   PopoverContent,
@@ -290,13 +289,12 @@ function DraggableVisualItem({ index, section, ritualGroup, missionIds, onMoveVi
 }
 
 export default function QuestsPage() {
-  usePageTitle('Missions');
+  usePageTitle(window.location.pathname === '/calendar' ? 'Calendar' : 'Missions');
   const [, navigate] = useLocation();
   
   const { quests, toggleQuestCompletion, createQuest, updateQuest, deleteQuest, refetchQuests, activeTimerQuest, missionElapsedTimes, missionBreakTimes, startMissionTimer, resumeMissionTimer, restartMissionTimer, userProfile } = useLYFEOS();
   const { user } = useAuth();
   const { toast } = useToast();
-  const pushNotifs = usePushNotifications();
   const { data: activeThreadData } = useQuery<ActiveThreadData>({
     queryKey: ["/api/transformation-thread"],
     enabled: !!user,
@@ -634,7 +632,9 @@ export default function QuestsPage() {
     }
   };
   
-  const [viewMode, setViewMode] = useState<'board' | 'list' | 'calendar'>('board');
+  const [viewMode, setViewMode] = useState<'board' | 'list' | 'calendar'>(() =>
+    window.location.pathname === '/calendar' ? 'calendar' : 'board'
+  );
   const [showCompleted, setShowCompleted] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategories, setFilterCategories] = useState<string[]>([]);
@@ -2984,7 +2984,8 @@ export default function QuestsPage() {
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-1 p-1 rounded-lg bg-background/30 border border-primary/20">
             <button
-              onClick={() => { setViewMode('board'); setActiveCustomViewId(null); }}
+              onClick={() => { setViewMode('board'); setActiveCustomViewId(null); if (window.location.pathname === '/calendar') navigate('/missions'); }}
+              aria-pressed={viewMode === 'board' && !activeCustomViewId}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-mono transition-colors ${
                 viewMode === 'board' && !activeCustomViewId
                   ? 'bg-primary/20 border border-primary/50 text-primary'
@@ -2995,7 +2996,8 @@ export default function QuestsPage() {
               Board
             </button>
             <button
-              onClick={() => { setViewMode('list'); setActiveCustomViewId(null); }}
+              onClick={() => { setViewMode('list'); setActiveCustomViewId(null); if (window.location.pathname === '/calendar') navigate('/missions'); }}
+              aria-pressed={viewMode === 'list' && !activeCustomViewId}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-mono transition-colors ${
                 viewMode === 'list' && !activeCustomViewId
                   ? 'bg-primary/20 border border-primary/50 text-primary'
@@ -3006,7 +3008,8 @@ export default function QuestsPage() {
               List
             </button>
             <button
-              onClick={() => { setViewMode('calendar'); setActiveCustomViewId(null); }}
+              onClick={() => { setViewMode('calendar'); setActiveCustomViewId(null); if (window.location.pathname !== '/calendar') navigate('/calendar'); }}
+              aria-pressed={viewMode === 'calendar' && !activeCustomViewId}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-mono transition-colors ${
                 viewMode === 'calendar' && !activeCustomViewId
                   ? 'bg-primary/20 border border-primary/50 text-primary'
@@ -3951,6 +3954,9 @@ export default function QuestsPage() {
 
         return (
           <div className="glassmorphic rounded-xl overflow-hidden neon-border">
+            <p className="border-b border-primary/10 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">
+              Calendar is a scheduling view of your canonical Missions. Creating or editing here updates the same mission record and lifecycle.
+            </p>
             <div className="p-3 flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-1">
                 <button onClick={calNavPrev} className="h-8 w-8 inline-flex items-center justify-center rounded hover:bg-primary/10 transition-colors">

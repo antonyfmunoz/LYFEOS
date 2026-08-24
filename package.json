@@ -9,7 +9,9 @@
     "start": "NODE_ENV=production node dist/index.js",
     "check": "tsc",
     "test": "vitest run",
-    "verify": "npm run check && npm test && npm run build",
+    "budget": "node scripts/check-bundle-budget.mjs",
+    "verify": "npm run check && npm test && npm run build && npm run budget",
+    "ops:health-integrity": "tsx scripts/health-integrity-drill.ts",
     "db:push": "drizzle-kit push"
   },
   "dependencies": {

@@ -13,10 +13,52 @@ import { registerUMHRoutes } from "./routes/umh";
 import { registerTransformationThreadRoutes } from "./routes/transformation-threads";
 import { registerProgressionRoutes } from "./routes/progression";
 import { registerCrossProductSharingRoutes } from "./routes/cross-product-sharing";
+import { registerMissionContractRoutes } from "./routes/mission-contracts";
+import { registerMissionReviewRoutes } from "./routes/mission-reviews";
+import { registerRelationshipRoutes } from "./routes/relationships";
+import { registerInboxRoutes } from "./routes/inbox";
+import { registerHealthFitnessRoutes } from "./routes/health-fitness";
+import { registerNutritionRoutes } from "./routes/nutrition";
+import { registerWorkoutRoutes } from "./routes/workouts";
+import { registerRecoveryRoutes } from "./routes/recovery";
+import { registerHealthObservationRoutes } from "./routes/health-observations";
+import { registerIngredientScannerRoutes } from "./routes/ingredient-scanner";
+import { registerExerciseRoutes } from "./routes/exercises";
+import { registerTrainingProgramRoutes } from "./routes/training-programs";
+import { registerSupplementScheduleRoutes } from "./routes/supplement-schedules";
+import { registerMealPlanRoutes } from "./routes/meal-plans";
+import { registerHealthInsightRoutes } from "./routes/health-insights";
+import { registerHealthConnectionRoutes } from "./routes/health-connections";
+import { registerOperationalRoutes } from "./routes/operations";
+import { registerSearchRoutes } from "./routes/search";
+import { registerTableRoutes } from "./routes/tables";
+import { registerAutomationRoutes } from "./routes/automations";
+import { registerProjectRoutes } from "./routes/projects";
+import { registerMessageRoutes } from "./routes/messages";
 import { db } from "./db";
 import { sql } from "drizzle-orm";
+import { isHealthEvidenceMutation, scheduleHealthProgressionReconcile } from "./health-progression";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  app.use((req, res, next) => {
+    const privateHealthPrefixes = [
+      "/api/health-fitness", "/api/health-progression", "/api/health-insights", "/api/health-data", "/api/health-connections",
+      "/api/health-observations", "/api/health-metric-definitions", "/api/nutrition", "/api/workouts",
+      "/api/workout-templates", "/api/workout-programs", "/api/workout-program-sessions", "/api/recovery-activities",
+      "/api/recovery-routines", "/api/exercises", "/api/supplement-schedules", "/api/ingredient-scans",
+      "/api/ingredient-preferences",
+    ];
+    if (privateHealthPrefixes.some((prefix) => req.path === prefix || req.path.startsWith(`${prefix}/`))) {
+      res.setHeader("Cache-Control", "private, no-store, max-age=0");
+      res.setHeader("Pragma", "no-cache");
+      res.setHeader("Vary", "Cookie");
+    }
+    res.on("finish", () => {
+      const userId = req.session?.userId;
+      if (userId && res.statusCode < 400 && isHealthEvidenceMutation(req.method, req.path)) scheduleHealthProgressionReconcile(userId);
+    });
+    next();
+  });
   app.get("/api/health", (req, res) => {
     try {
       const payload: Record<string, any> = { status: "ok", timestamp: Date.now(), buildTime: "2026-06-22", uptime: process.uptime() };
@@ -42,10 +84,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ version: "1.0.0", env: process.env.NODE_ENV || "development", createdAt: new Date().toISOString() });
   });
 
+  registerOperationalRoutes(app);
   registerAuthRoutes(app);
   registerProfileRoutes(app);
   registerQuestRoutes(app);
   registerContentRoutes(app);
+  registerSearchRoutes(app);
+  registerTableRoutes(app);
+  registerAutomationRoutes(app);
+  registerProjectRoutes(app);
+  registerMessageRoutes(app);
   registerGoalRoutes(app);
   registerDocumentRoutes(app);
   registerChatRoutes(app);
@@ -55,6 +103,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerTransformationThreadRoutes(app);
   registerProgressionRoutes(app);
   registerCrossProductSharingRoutes(app);
+  registerMissionContractRoutes(app);
+  registerMissionReviewRoutes(app);
+  registerRelationshipRoutes(app);
+  registerInboxRoutes(app);
+  registerHealthFitnessRoutes(app);
+  registerNutritionRoutes(app);
+  registerWorkoutRoutes(app);
+  registerRecoveryRoutes(app);
+  registerHealthObservationRoutes(app);
+  registerIngredientScannerRoutes(app);
+  registerExerciseRoutes(app);
+  registerTrainingProgramRoutes(app);
+  registerSupplementScheduleRoutes(app);
+  registerMealPlanRoutes(app);
+  registerHealthInsightRoutes(app);
+  registerHealthConnectionRoutes(app);
 
   const httpServer = createServer(app);
   return httpServer;

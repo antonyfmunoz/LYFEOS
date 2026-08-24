@@ -78,6 +78,7 @@ export default function ExperienceDetailPage() {
           Experience
         </h1>
       </div>
+      <p className="-mt-4 mb-6 max-w-3xl text-xs leading-relaxed text-muted-foreground">XP and levels reflect recorded LyfeOS activity. Evidence-backed capability progress is tracked separately and neither is external certification or a measure of personal worth.</p>
 
       <div className="flex items-center gap-2 mb-6">
         <span className="text-sm text-muted-foreground font-mono">Period:</span>

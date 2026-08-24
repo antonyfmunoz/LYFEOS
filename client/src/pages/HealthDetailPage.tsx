@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
@@ -6,13 +6,53 @@ import { useAuth } from "@/lib/authContext";
 import { useLYFEOS } from "@/lib/context";
 import { usePageTitle } from "@/hooks/use-page-title";
 import AIStatTip from "@/components/stats/AIStatTip";
+import DailyHealthLog from "@/components/health/DailyHealthLog";
+import { useHealthOfflineSync } from "@/hooks/useHealthOfflineSync";
+import HealthPreferences from "@/components/health/HealthPreferences";
+import { healthTrackingDomains, type HealthTrackingDomain } from "@/components/health/HealthPreferences";
+import OfflineHealthQueueStatus from "@/components/health/OfflineHealthQueueStatus";
 import { ArrowLeft, Heart, Activity, Target, Flame, Loader2, TrendingUp, Brain, Zap, Smile } from "lucide-react";
 import { LineChart, Line, ScatterChart, Scatter, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 
+const NutritionDiary = lazy(() => import("@/components/health/NutritionDiary"));
+const WorkoutLog = lazy(() => import("@/components/health/WorkoutLog"));
+const BodyProgress = lazy(() => import("@/components/health/BodyProgress"));
+const RecoveryLog = lazy(() => import("@/components/health/RecoveryLog"));
+const RecoveryRoutines = lazy(() => import("@/components/health/RecoveryRoutines"));
+const HealthMetricsLedger = lazy(() => import("@/components/health/HealthMetricsLedger"));
+const IngredientScanner = lazy(() => import("@/components/health/IngredientScanner"));
+const CapabilityEvidencePanel = lazy(() => import("@/components/health/CapabilityEvidencePanel"));
+const SleepLog = lazy(() => import("@/components/health/SleepLog"));
+const HealthTimeline = lazy(() => import("@/components/health/HealthTimeline"));
+const ExerciseLibrary = lazy(() => import("@/components/health/ExerciseLibrary"));
+const TrainingPrograms = lazy(() => import("@/components/health/TrainingPrograms"));
+const WorkoutAnalytics = lazy(() => import("@/components/health/WorkoutAnalytics"));
+const SupplementSchedules = lazy(() => import("@/components/health/SupplementSchedules"));
+const MealPlanner = lazy(() => import("@/components/health/MealPlanner"));
+const HealthTrendWorkbench = lazy(() => import("@/components/health/HealthTrendWorkbench"));
+const HealthDataRights = lazy(() => import("@/components/health/HealthDataRights"));
+const HealthConnections = lazy(() => import("@/components/health/HealthConnections"));
+const HealthProgression = lazy(() => import("@/components/health/HealthProgression"));
+const HealthAssistant = lazy(() => import("@/components/health/HealthAssistant"));
+const ActivitySignals = lazy(() => import("@/components/health/ActivitySignals"));
+
+function DeferredHealthSection({ children, label, targetId }: { children: ReactNode; label: string; targetId?: string }) {
+  const target = useRef<HTMLDivElement>(null);
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    if (ready) return;
+    if (!target.current || typeof IntersectionObserver === "undefined") { setReady(true); return; }
+    const observer = new IntersectionObserver(([entry]) => { if (entry.isIntersecting) { setReady(true); observer.disconnect(); } }, { rootMargin: "600px 0px" });
+    observer.observe(target.current);
+    return () => observer.disconnect();
+  }, [ready]);
+  return <div ref={target} id={targetId} className="scroll-mt-6">{ready ? <Suspense fallback={<div className="glassmorphic mb-8 min-h-32 rounded-2xl border border-primary/20 p-6 text-sm text-muted-foreground" role="status">Loading {label}…</div>}>{children}</Suspense> : <div className="mb-8 min-h-32" aria-hidden="true" />}</div>;
+}
+
 function getStatusBadge(pct: number): { label: string; color: string; bg: string } {
-  if (pct >= 75) return { label: "OPTIMAL", color: "text-primary", bg: "bg-primary/20 border-primary/30" };
-  if (pct >= 40) return { label: "MODERATE", color: "text-primary/80", bg: "bg-primary/15 border-primary/25" };
-  return { label: "LOW", color: "text-muted-foreground", bg: "bg-primary/10 border-primary/20" };
+  if (pct >= 75) return { label: "ADVANCED", color: "text-primary", bg: "bg-primary/20 border-primary/30" };
+  if (pct >= 40) return { label: "BUILDING", color: "text-primary/80", bg: "bg-primary/15 border-primary/25" };
+  return { label: "STARTING", color: "text-muted-foreground", bg: "bg-primary/10 border-primary/20" };
 }
 
 function getScoreColor(score: number): string {
@@ -38,10 +78,12 @@ function getGradientColors(pct: number): string {
 }
 
 export default function HealthDetailPage() {
+  useHealthOfflineSync();
   usePageTitle("Health Points - LYFEOS");
   const { user } = useAuth();
   const { stats, computedStats } = useLYFEOS();
   const [days, setDays] = useState(30);
+  const healthProfile = useQuery<{ profile: { trackedDomains?: HealthTrackingDomain[] } | null }>({ queryKey: ["/api/health-fitness/profile"], queryFn: () => apiRequest("/api/health-fitness/profile"), enabled: !!user });
 
   const { data, isLoading } = useQuery<any>({
     queryKey: ['/api/stat-analytics', { days }],
@@ -69,10 +111,10 @@ export default function HealthDetailPage() {
   const avgMoodPct = Math.min(Math.round((avgMoodScore / 10) * 100), 100);
 
   const healthMetrics = [
-    { name: "Activity Level", score: activityScore, icon: Target, desc: "Based on completed missions" },
-    { name: "Consistency", score: consistencyScore, icon: Flame, desc: "Based on current streak" },
-    { name: "Mission Balance", score: missionBalanceScore, icon: Activity, desc: "Category diversity" },
-    { name: "Average Mood", score: avgMoodPct, icon: Smile, desc: "Mood tracking average" },
+    { name: "Health-category missions", score: activityScore, icon: Target, desc: "Game progress from completed missions" },
+    { name: "Mission consistency", score: consistencyScore, icon: Flame, desc: "Game progress from the current streak" },
+    { name: "Mission category breadth", score: missionBalanceScore, icon: Activity, desc: "Distribution of recorded mission categories" },
+    { name: "Self-reported mood", score: avgMoodPct, icon: Smile, desc: "Average of the mood check-ins you recorded" },
   ];
 
   const moodTrend = data?.moodTrend ?? [];
@@ -122,6 +164,55 @@ export default function HealthDetailPage() {
         </div>
       </div>
 
+      <DailyHealthLog />
+
+      <HealthPreferences />
+
+      {(healthProfile.data?.profile?.trackedDomains ?? healthTrackingDomains).length ? <nav className="mb-8 flex flex-wrap gap-2 rounded-xl border border-primary/20 bg-primary/5 p-3" aria-label="Selected Health workspace shortcuts">{(healthProfile.data?.profile?.trackedDomains ?? healthTrackingDomains).map((domain) => <a key={domain} href={`#health-section-${domain}`} className="rounded-md border border-primary/20 bg-background/30 px-2 py-1 text-xs capitalize text-primary hover:bg-primary/10">{domain}</a>)}</nav> : <p className="mb-8 rounded-xl border border-muted/20 bg-background/20 p-3 text-xs text-muted-foreground">No Health workspace shortcuts selected. Every workspace remains available below, and you can add shortcuts in Health units &amp; calendar context.</p>}
+
+      <OfflineHealthQueueStatus />
+
+      <DeferredHealthSection label="supplement schedules" targetId="health-section-supplements"><SupplementSchedules /></DeferredHealthSection>
+
+      <DeferredHealthSection label="sleep records" targetId="health-section-sleep"><SleepLog /></DeferredHealthSection>
+
+      <DeferredHealthSection label="health timeline"><HealthTimeline /></DeferredHealthSection>
+
+      <DeferredHealthSection label="activity signals" targetId="health-section-activity"><ActivitySignals /></DeferredHealthSection>
+
+      <DeferredHealthSection label="capability evidence"><CapabilityEvidencePanel /></DeferredHealthSection>
+
+      <DeferredHealthSection label="nutrition diary" targetId="health-section-nutrition"><NutritionDiary /></DeferredHealthSection>
+
+      <DeferredHealthSection label="meal planning" targetId="health-section-planning"><MealPlanner /></DeferredHealthSection>
+
+      <DeferredHealthSection label="ingredient scanner"><IngredientScanner /></DeferredHealthSection>
+
+      <DeferredHealthSection label="exercise library"><ExerciseLibrary /></DeferredHealthSection>
+
+      <DeferredHealthSection label="workout log" targetId="health-section-training"><WorkoutLog /></DeferredHealthSection>
+
+      <DeferredHealthSection label="workout analytics"><WorkoutAnalytics /></DeferredHealthSection>
+
+      <DeferredHealthSection label="training programs"><TrainingPrograms /></DeferredHealthSection>
+
+      <DeferredHealthSection label="body progress" targetId="health-section-body"><BodyProgress /></DeferredHealthSection>
+
+      <DeferredHealthSection label="recovery log" targetId="health-section-recovery"><RecoveryLog /></DeferredHealthSection>
+      <DeferredHealthSection label="recovery routines"><RecoveryRoutines /></DeferredHealthSection>
+
+      <DeferredHealthSection label="health metrics" targetId="health-section-metrics"><HealthMetricsLedger /></DeferredHealthSection>
+
+      <DeferredHealthSection label="health trends"><HealthTrendWorkbench /></DeferredHealthSection>
+
+      <DeferredHealthSection label="private health-record assistant"><HealthAssistant /></DeferredHealthSection>
+
+      <DeferredHealthSection label="health progression"><HealthProgression /></DeferredHealthSection>
+
+      <DeferredHealthSection label="health connections" targetId="health-section-connections"><HealthConnections /></DeferredHealthSection>
+
+      <DeferredHealthSection label="health data controls"><HealthDataRights /></DeferredHealthSection>
+
       <div className={`glassmorphic rounded-2xl p-8 mb-8 border border-primary/30 relative overflow-hidden ${healthGlow}`}>
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/3 pointer-events-none" />
         <div className={`absolute top-0 left-0 w-full h-1 ${gradientColors}`} />
@@ -131,7 +222,7 @@ export default function HealthDetailPage() {
             <div className="text-center md:text-left">
               <h2 className="font-orbitron text-lg mb-3 text-primary flex items-center gap-2">
                 <Heart className="h-5 w-5" />
-                Current Health Status
+                Health-point game progress
               </h2>
               <div className="flex items-baseline gap-2">
                 <span className="text-7xl font-orbitron font-bold text-primary leading-none">
@@ -142,6 +233,7 @@ export default function HealthDetailPage() {
               <p className="text-sm text-muted-foreground mt-2">
                 {stats.healthPoints.current} / {stats.healthPoints.max} HP
               </p>
+              <p className="max-w-md text-xs text-muted-foreground mt-2">HP rewards participation in your LyfeOS system. It is not a measurement, score, diagnosis, or prediction of your health.</p>
             </div>
 
             <div className="flex flex-col items-center gap-3">
@@ -281,7 +373,7 @@ export default function HealthDetailPage() {
           <div className="glassmorphic rounded-2xl p-6 mb-8 border border-primary/30">
             <h2 className="font-orbitron text-lg mb-6 text-primary flex items-center gap-2">
               <Activity className="h-5 w-5" />
-              Health Components
+              Inputs to this game stat
             </h2>
             <div className="space-y-5">
               {healthMetrics.map((metric) => {
@@ -374,7 +466,7 @@ export default function HealthDetailPage() {
                 Category Balance
               </h2>
               <p className="text-sm text-muted-foreground mb-5">
-                A balanced distribution across categories contributes to health
+                Recorded mission distribution only; this does not establish a health outcome
               </p>
               <div className="space-y-3">
                 {categoryEntries.map(([category, value]: [string, any]) => {
@@ -403,7 +495,7 @@ export default function HealthDetailPage() {
             <div className="glassmorphic rounded-2xl p-6 mb-8 border border-primary/30">
               <h2 className="font-orbitron text-lg mb-4 text-primary flex items-center gap-2">
                 <Heart className="h-5 w-5" />
-                Sleep & Wellness Correlation
+                Sleep & daily-state observations
                 <span className="text-xs text-muted-foreground font-mono ml-2">(past {days} days)</span>
               </h2>
               <ResponsiveContainer width="100%" height={280}>
@@ -441,13 +533,14 @@ export default function HealthDetailPage() {
                   <Scatter data={data.sleepWellnessCorrelation} fill="hsl(var(--primary))" fillOpacity={0.7} />
                 </ScatterChart>
               </ResponsiveContainer>
+              <p className="mt-3 text-xs leading-relaxed text-muted-foreground">These are self-reported observations in your LyfeOS record, not a medical conclusion or evidence that sleep caused a change in mood.</p>
             </div>
           )}
 
           <div className="glassmorphic rounded-2xl p-6 mb-8 border border-primary/30">
             <h2 className="font-orbitron text-lg mb-4 text-primary flex items-center gap-2">
               <Heart className="h-5 w-5" />
-              Health Recovery Tips
+              Health planning prompts
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="rounded-xl border border-muted/20 bg-background/30 p-4">
@@ -456,7 +549,7 @@ export default function HealthDetailPage() {
                   <h3 className="text-white text-sm font-semibold">Maintain Your Streak</h3>
                 </div>
                 <p className="text-xs text-muted-foreground mb-3">
-                  Consistency is key to health recovery. Complete at least one mission daily to keep your streak alive.
+                  A streak shows consecutive days with LyfeOS-recorded activity. Complete only missions that are appropriate for you today.
                 </p>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-muted-foreground">Current streak:</span>
@@ -470,7 +563,7 @@ export default function HealthDetailPage() {
                   <h3 className="text-white text-sm font-semibold">Boost Completion Rate</h3>
                 </div>
                 <p className="text-xs text-muted-foreground mb-3">
-                  Higher completion rates directly impact your health score. Aim for completing all assigned missions.
+                  Completion updates your LyfeOS activity record. It does not measure or determine your health.
                 </p>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-muted-foreground">Completion rate:</span>
@@ -486,7 +579,7 @@ export default function HealthDetailPage() {
                   <h3 className="text-white text-sm font-semibold">Diversify Activities</h3>
                 </div>
                 <p className="text-xs text-muted-foreground mb-3">
-                  Working across different categories improves your mission balance score and overall wellness.
+                  This shows how your recorded activity is distributed across categories; it does not establish a wellness outcome.
                 </p>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-muted-foreground">Active categories:</span>
@@ -500,7 +593,7 @@ export default function HealthDetailPage() {
                   <h3 className="text-white text-sm font-semibold">Track Your Mood</h3>
                 </div>
                 <p className="text-xs text-muted-foreground mb-3">
-                  Regular mood check-ins help you understand patterns and improve your emotional wellness over time.
+                  Mood check-ins can help you notice self-reported patterns. They do not diagnose a cause or replace support from a qualified professional.
                 </p>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-muted-foreground">Avg mood score:</span>

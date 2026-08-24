@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, useParams } from "wouter";
 import { ArrowLeft, Calendar, Clock, MapPin, Zap, Award, Save, Edit2, Tag } from "lucide-react";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useLYFEOS } from "@/lib/context";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -8,6 +9,45 @@ import { useToast } from "@/hooks/use-toast";
 import { usePageTitle } from "@/hooks/use-page-title";
 import MarkdownEditor from "@/components/markdown/MarkdownEditor";
 import { MissionPage as MissionPageType } from "@/lib/types";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+
+type MissionContractBundle = {
+  contract: null | {
+    id: number;
+    purpose: string;
+    expectedOutput: string;
+    requiredEvidence: string[];
+    stopConditions: string[];
+    state: string;
+    reviewMode: "self" | "human";
+    riskLevel: "low" | "medium" | "high";
+    escalationPath: string | null;
+  };
+  evidence: Array<{ id: number; sourceType: string; sourceReference: string | null; summary: string; confidence: "self_reported" | "low" | "medium" | "high" }>;
+  reviews: Array<{ id: number; decision: string; summary: string; reviewerType: "self" | "human" }>;
+};
+
+type MissionReviewInvitationBundle = {
+  invitations: Array<{
+    id: number;
+    status: "pending" | "accepted" | "revoked" | "completed" | "expired";
+    reviewerDisplayName: string | null;
+    expiresAt: string;
+    acceptedAt: string | null;
+    completedAt: string | null;
+    createdAt: string;
+  }>;
+};
+
+type MissionDependencyBundle = {
+  dependencies: Array<{ id: number; prerequisiteQuestId: number; title: string; completed: boolean }>;
+};
+
+type MissionDeferralBundle = {
+  deferrals: Array<{ id: number; previousDueDate: string | null; deferredToDate: string; reason: string | null; createdAt: string }>;
+};
 
 export default function MissionDetailPage() {
   const { missionId } = useParams();
@@ -29,6 +69,148 @@ export default function MissionDetailPage() {
   const [content, setContent] = useState("");
   
   const [isDirty, setIsDirty] = useState(false);
+  const questId = Number(missionId);
+  const contractQuery = useQuery<MissionContractBundle>({
+    queryKey: ["/api/quests", questId, "contract"],
+    queryFn: () => apiRequest(`/api/quests/${questId}/contract`),
+    enabled: Number.isInteger(questId),
+  });
+  const dependencyQuery = useQuery<MissionDependencyBundle>({
+    queryKey: ["/api/quests", questId, "dependencies"],
+    queryFn: () => apiRequest(`/api/quests/${questId}/dependencies`),
+    enabled: Number.isInteger(questId),
+  });
+  const deferralQuery = useQuery<MissionDeferralBundle>({
+    queryKey: ["/api/quests", questId, "deferrals"],
+    queryFn: () => apiRequest(`/api/quests/${questId}/deferrals`),
+    enabled: Number.isInteger(questId),
+  });
+  const [purpose, setPurpose] = useState("");
+  const [expectedOutput, setExpectedOutput] = useState("");
+  const [evidenceRequirement, setEvidenceRequirement] = useState("");
+  const [riskLevel, setRiskLevel] = useState<"low" | "medium" | "high">("low");
+  const [reviewMode, setReviewMode] = useState<"self" | "human">("self");
+  const [stopCondition, setStopCondition] = useState("");
+  const [escalationPath, setEscalationPath] = useState("");
+  const [evidenceSummary, setEvidenceSummary] = useState("");
+  const [evidenceSourceType, setEvidenceSourceType] = useState<"self_report" | "artifact" | "observation" | "provider">("self_report");
+  const [evidenceSourceReference, setEvidenceSourceReference] = useState("");
+  const [evidenceConfidence, setEvidenceConfidence] = useState<"self_reported" | "low" | "medium" | "high">("self_reported");
+  const [reviewSummary, setReviewSummary] = useState("");
+  const [evidenceChecks, setEvidenceChecks] = useState<Record<string, boolean>>({});
+  const [prerequisiteQuestId, setPrerequisiteQuestId] = useState("");
+  const [latestReviewUrl, setLatestReviewUrl] = useState("");
+  const invitationQuery = useQuery<MissionReviewInvitationBundle>({
+    queryKey: ["/api/quests", questId, "review-invitations"],
+    queryFn: () => apiRequest(`/api/quests/${questId}/review-invitations`),
+    enabled: Number.isInteger(questId) && contractQuery.data?.contract?.reviewMode === "human",
+  });
+  const refreshContract = () => queryClient.invalidateQueries({ queryKey: ["/api/quests", questId, "contract"] });
+  const refreshDependencies = () => queryClient.invalidateQueries({ queryKey: ["/api/quests", questId, "dependencies"] });
+  const saveContract = useMutation({
+    mutationFn: () => apiRequest(`/api/quests/${questId}/contract`, {
+      method: "PUT",
+      body: JSON.stringify({
+        purpose,
+        expectedOutput,
+        requiredEvidence: evidenceRequirement ? [evidenceRequirement] : [],
+        reviewMode,
+        riskLevel,
+        stopConditions: stopCondition ? [stopCondition] : [],
+        escalationPath: escalationPath || null,
+        state: "accepted",
+      }),
+    }),
+    onSuccess: () => { refreshContract(); toast({ title: "Proof plan saved", description: "This mission now has a purpose and declared evidence." }); },
+  });
+  const changeReviewMode = useMutation({
+    mutationFn: (mode: "self" | "human") => apiRequest(`/api/quests/${questId}/contract/review-mode`, {
+      method: "PATCH",
+      body: JSON.stringify({ reviewMode: mode }),
+    }),
+    onSuccess: (_result, mode) => {
+      refreshContract();
+      toast({
+        title: mode === "human" ? "Human review required" : "Self-review enabled",
+        description: mode === "human" ? "Progression now waits for an explicitly authorized reviewer." : "This mission can now use the user-owned self-review flow.",
+      });
+    },
+  });
+  const createReviewInvitation = useMutation({
+    mutationFn: () => apiRequest(`/api/quests/${questId}/review-invitations`, {
+      method: "POST",
+      body: JSON.stringify({ expiresInDays: 7 }),
+    }) as Promise<{ reviewPath: string }>,
+    onSuccess: async (result) => {
+      const inviteUrl = `${window.location.origin}${result.reviewPath}`;
+      setLatestReviewUrl(inviteUrl);
+      let copied = false;
+      try {
+        if (navigator.clipboard) {
+          await navigator.clipboard.writeText(inviteUrl);
+          copied = true;
+        }
+      } catch {
+        copied = false;
+      }
+      queryClient.invalidateQueries({ queryKey: ["/api/quests", questId, "review-invitations"] });
+      toast({ title: copied ? "Review link copied" : "Review link created", description: copied ? "The link expires in seven days and replaces any earlier active link." : "Copy the visible link below. It is shown only for this new invitation." });
+    },
+    onError: (error: Error) => toast({ title: "Review link not created", description: error.message, variant: "destructive" }),
+  });
+  const revokeReviewInvitation = useMutation({
+    mutationFn: (invitationId: number) => apiRequest(`/api/quests/${questId}/review-invitations/${invitationId}`, { method: "DELETE" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/quests", questId, "review-invitations"] });
+      toast({ title: "Review link revoked", description: "That link can no longer grant access to this mission." });
+    },
+  });
+  const addEvidence = useMutation({
+    mutationFn: () => apiRequest(`/api/quests/${questId}/evidence`, { method: "POST", body: JSON.stringify({ sourceType: evidenceSourceType, sourceReference: evidenceSourceReference || null, summary: evidenceSummary, confidence: evidenceConfidence }) }),
+    onSuccess: () => { setEvidenceSummary(""); setEvidenceSourceReference(""); refreshContract(); toast({ title: "Evidence added", description: "Your proof is attached to this mission." }); },
+  });
+  const reviewMission = useMutation({
+    mutationFn: (decision: "meets_evidence" | "revisions_needed") => apiRequest(`/api/quests/${questId}/reviews`, {
+      method: "POST",
+      body: JSON.stringify({
+        decision,
+        rubric: { evidenceChecks: (contractQuery.data?.contract?.requiredEvidence || []).map((requirement) => ({ requirement, met: evidenceChecks[requirement] === true })) },
+        summary: reviewSummary,
+      }),
+    }),
+    onSuccess: (_result, decision) => {
+      setReviewSummary("");
+      refreshContract();
+      queryClient.invalidateQueries({ queryKey: ["/api/transformation-thread"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/quests"] });
+      toast({
+        title: decision === "meets_evidence" ? "Evidence reviewed" : "Revision recorded",
+        description: decision === "meets_evidence" ? "LyfeOS recorded the reviewed practice evidence; it is not external certification." : "Progression remains withheld until the declared evidence is met and reviewed.",
+      });
+    },
+  });
+  const addDependency = useMutation({
+    mutationFn: (dependencyQuestId: number) => apiRequest(`/api/quests/${questId}/dependencies`, {
+      method: "POST",
+      body: JSON.stringify({ prerequisiteQuestId: dependencyQuestId }),
+    }),
+    onSuccess: () => {
+      setPrerequisiteQuestId("");
+      refreshDependencies();
+      toast({ title: "Prerequisite added", description: "This mission cannot be completed until that mission is complete." });
+    },
+  });
+  const removeDependency = useMutation({
+    mutationFn: (dependencyId: number) => apiRequest(`/api/quests/${questId}/dependencies/${dependencyId}`, { method: "DELETE" }),
+    onSuccess: () => {
+      refreshDependencies();
+      toast({ title: "Prerequisite removed", description: "The mission sequence has been updated." });
+    },
+  });
+  useEffect(() => {
+    const requirements = contractQuery.data?.contract?.requiredEvidence || [];
+    setEvidenceChecks(Object.fromEntries(requirements.map((requirement) => [requirement, false])));
+  }, [contractQuery.data?.contract?.id]);
   
   useEffect(() => {
     if (mission) {
@@ -85,6 +267,13 @@ export default function MissionDetailPage() {
         return "text-primary";
     }
   };
+  const declaredEvidenceRequirements = contractQuery.data?.contract?.requiredEvidence || [];
+  const allEvidenceRequirementsChecked = declaredEvidenceRequirements.every((requirement) => evidenceChecks[requirement] === true);
+  const dependencyIds = new Set((dependencyQuery.data?.dependencies || []).map((dependency) => dependency.prerequisiteQuestId));
+  const availablePrerequisites = events.filter((event) => {
+    const eventId = Number(event.id);
+    return Number.isInteger(eventId) && eventId !== questId && !dependencyIds.has(eventId);
+  });
   
   const getCategoryBg = (category: string) => {
     switch (category) {
@@ -249,6 +438,142 @@ export default function MissionDetailPage() {
                 <p className="text-muted-foreground italic">Loading mission document...</p>
               </div>
             )}
+
+            <div className="mt-6 rounded-xl border border-primary/20 bg-card/30 p-4 space-y-3">
+              <div>
+                <h3 className="font-orbitron text-sm">MISSION SEQUENCE</h3>
+                <p className="text-xs text-muted-foreground">Use prerequisites only where order truly matters. Completing this mission is blocked until each prerequisite is complete.</p>
+              </div>
+              {dependencyQuery.data?.dependencies.length ? <div className="flex flex-wrap gap-2">
+                {dependencyQuery.data.dependencies.map((dependency) => <span key={dependency.id} className="inline-flex items-center gap-1 rounded-full border border-primary/25 bg-background/30 px-2 py-1 text-xs text-muted-foreground">
+                  {dependency.completed ? "✓" : "○"} {dependency.title}
+                  <button type="button" className="ml-1 text-primary hover:text-destructive" aria-label={`Remove prerequisite ${dependency.title}`} onClick={() => removeDependency.mutate(dependency.id)} disabled={removeDependency.isPending}>remove</button>
+                </span>)}
+              </div> : <p className="text-xs text-muted-foreground">No completion prerequisites.</p>}
+              {availablePrerequisites.length > 0 && <div className="flex flex-col gap-2 sm:flex-row">
+                <select aria-label="Prerequisite mission" value={prerequisiteQuestId} onChange={(event) => setPrerequisiteQuestId(event.target.value)} className="h-9 min-w-0 flex-1 rounded-md border border-primary/20 bg-background/40 px-2 text-sm text-foreground">
+                  <option value="">Choose a mission that must be completed first</option>
+                  {availablePrerequisites.map((event) => <option key={event.id} value={event.id}>{event.title}</option>)}
+                </select>
+                <Button size="sm" variant="outline" className="border-primary/30 text-primary hover:bg-primary/10" onClick={() => addDependency.mutate(Number(prerequisiteQuestId))} disabled={!prerequisiteQuestId || addDependency.isPending}>
+                  {addDependency.isPending ? "Adding…" : "Add prerequisite"}
+                </Button>
+              </div>}
+              {(deferralQuery.data?.deferrals.length || 0) > 0 && <div className="border-t border-primary/10 pt-3">
+                <p className="text-xs font-mono uppercase tracking-[0.1em] text-primary/80">Capacity adjustments</p>
+                <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+                  {deferralQuery.data!.deferrals.map((deferral) => <p key={deferral.id}>Deferred {deferral.previousDueDate ? `from ${deferral.previousDueDate} ` : ""}to {deferral.deferredToDate}{deferral.reason ? ` · ${deferral.reason}` : ""}</p>)}
+                </div>
+              </div>}
+            </div>
+
+            <div className="mt-6 rounded-xl border border-primary/20 bg-card/30 p-4 space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="font-orbitron text-sm">PROOF PLAN</h3>
+                  <p className="text-xs text-muted-foreground">Make progress visible without overstating competence.</p>
+                </div>
+                {contractQuery.data?.contract ? <span className="rounded-full border border-primary/30 px-2 py-1 text-xs text-primary">{contractQuery.data.contract.state.replaceAll("_", " ")}</span> : null}
+              </div>
+              {contractQuery.isLoading ? <p className="text-sm text-muted-foreground">Loading proof plan…</p> : !contractQuery.data?.contract ? (
+                <div className="grid gap-2">
+                  <Input value={purpose} onChange={(event) => setPurpose(event.target.value)} placeholder="Why does this mission matter?" />
+                  <Input value={expectedOutput} onChange={(event) => setExpectedOutput(event.target.value)} placeholder="What observable output will show progress?" />
+                  <Input value={evidenceRequirement} onChange={(event) => setEvidenceRequirement(event.target.value)} placeholder="What proof will you attach? (optional)" />
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <select aria-label="Mission risk level" value={riskLevel} onChange={(event) => setRiskLevel(event.target.value as typeof riskLevel)} className="h-9 rounded-md border border-primary/20 bg-background/40 px-2 text-sm text-foreground">
+                      <option value="low">low risk</option>
+                      <option value="medium">medium risk</option>
+                      <option value="high">high risk</option>
+                    </select>
+                    <select aria-label="Evidence review method" value={reviewMode} onChange={(event) => setReviewMode(event.target.value as typeof reviewMode)} className="h-9 rounded-md border border-primary/20 bg-background/40 px-2 text-sm text-foreground">
+                      <option value="self">self review</option>
+                      <option value="human">authorized human review</option>
+                    </select>
+                    <Input value={stopCondition} onChange={(event) => setStopCondition(event.target.value)} placeholder="When should you stop? (optional)" />
+                    <Input value={escalationPath} onChange={(event) => setEscalationPath(event.target.value)} placeholder="Who or what helps if blocked? (optional)" />
+                  </div>
+                  <Button size="sm" className="w-fit" disabled={purpose.trim().length < 3 || expectedOutput.trim().length < 3 || saveContract.isPending} onClick={() => saveContract.mutate()}>
+                    {saveContract.isPending ? "Saving…" : "Save proof plan"}
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-3 text-sm">
+                  <p><span className="text-muted-foreground">Purpose:</span> {contractQuery.data.contract.purpose}</p>
+                  <p><span className="text-muted-foreground">Expected proof:</span> {contractQuery.data.contract.expectedOutput}</p>
+                  {contractQuery.data.contract.requiredEvidence.length ? <p><span className="text-muted-foreground">Declared evidence:</span> {contractQuery.data.contract.requiredEvidence.join(" · ")}</p> : null}
+                  <p><span className="text-muted-foreground">Risk:</span> {contractQuery.data.contract.riskLevel}</p>
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
+                    <span className="text-muted-foreground">Review:</span>
+                    <span className="rounded border border-primary/20 px-2 py-1">{contractQuery.data.contract.reviewMode === "human" ? "authorized human" : "self"}</span>
+                    {!mission.completed && <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-primary" disabled={changeReviewMode.isPending} onClick={() => changeReviewMode.mutate(contractQuery.data!.contract!.reviewMode === "human" ? "self" : "human")}>Use {contractQuery.data.contract.reviewMode === "human" ? "self-review" : "human review"}</Button>}
+                  </div>
+                  {contractQuery.data.contract.stopConditions.length ? <p><span className="text-muted-foreground">Stop condition:</span> {contractQuery.data.contract.stopConditions.join(" · ")}</p> : null}
+                  {contractQuery.data.contract.escalationPath ? <p><span className="text-muted-foreground">If blocked:</span> {contractQuery.data.contract.escalationPath}</p> : null}
+                  <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                    {contractQuery.data.evidence.map((item) => <span key={item.id} className="rounded border border-primary/20 px-2 py-1">Evidence ({item.sourceType.replaceAll("_", " ")} · {item.confidence.replaceAll("_", " ")}): {item.summary}{item.sourceReference ? " · reference attached" : ""}</span>)}
+                    {contractQuery.data.reviews.map((item) => <span key={item.id} className="rounded border border-primary/20 px-2 py-1">{item.reviewerType === "human" ? "Human review" : "Self-review"}: {item.decision.replaceAll("_", " ")}</span>)}
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-3">
+                    <select aria-label="Evidence source" value={evidenceSourceType} onChange={(event) => setEvidenceSourceType(event.target.value as typeof evidenceSourceType)} className="h-9 rounded-md border border-primary/20 bg-background/40 px-2 text-sm text-foreground">
+                      <option value="self_report">self report</option>
+                      <option value="artifact">artifact</option>
+                      <option value="observation">observation</option>
+                      <option value="provider">provider record</option>
+                    </select>
+                    <select aria-label="Evidence confidence" value={evidenceConfidence} onChange={(event) => setEvidenceConfidence(event.target.value as typeof evidenceConfidence)} className="h-9 rounded-md border border-primary/20 bg-background/40 px-2 text-sm text-foreground">
+                      <option value="self_reported">self-reported</option>
+                      <option value="low">low confidence</option>
+                      <option value="medium">medium confidence</option>
+                      <option value="high">high confidence</option>
+                    </select>
+                    <Input value={evidenceSourceReference} onChange={(event) => setEvidenceSourceReference(event.target.value)} placeholder="Optional source or link" />
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">Source and confidence are review context you provide; LyfeOS does not infer proof quality from them.</p>
+                  <Textarea value={evidenceSummary} onChange={(event) => setEvidenceSummary(event.target.value)} placeholder="Add a concise description of the proof you produced…" className="min-h-20" />
+                  <Button size="sm" variant="outline" disabled={evidenceSummary.trim().length < 3 || addEvidence.isPending} onClick={() => addEvidence.mutate()}>
+                    {addEvidence.isPending ? "Adding…" : "Add evidence"}
+                  </Button>
+                  {contractQuery.data.contract.reviewMode === "human" ? <div className="border-t border-primary/10 pt-3 space-y-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <p className="text-xs font-medium">Authorized human review</p>
+                        <p className="text-[11px] leading-relaxed text-muted-foreground">Create a private, revocable link for one authenticated reviewer. They receive access only to this proof plan and its evidence.</p>
+                      </div>
+                      <Button size="sm" variant="outline" disabled={createReviewInvitation.isPending} onClick={() => createReviewInvitation.mutate()}>{createReviewInvitation.isPending ? "Creating…" : "Copy review link"}</Button>
+                    </div>
+                    {latestReviewUrl && <div className="flex gap-2">
+                      <Input readOnly aria-label="New review invitation link" value={latestReviewUrl} className="h-8 text-xs" onFocus={(event) => event.currentTarget.select()} />
+                      <Button size="sm" variant="ghost" className="h-8" disabled={!navigator.clipboard} onClick={async () => { await navigator.clipboard.writeText(latestReviewUrl); toast({ title: "Review link copied" }); }}>Copy</Button>
+                    </div>}
+                    {(invitationQuery.data?.invitations || []).map((invitation) => <div key={invitation.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-primary/10 bg-background/30 p-2 text-xs">
+                      <span>{invitation.status.replaceAll("_", " ")}{invitation.reviewerDisplayName ? ` · ${invitation.reviewerDisplayName}` : ""} · expires {new Date(invitation.expiresAt).toLocaleDateString()}</span>
+                      {["pending", "accepted"].includes(invitation.status) && <button type="button" className="text-primary hover:text-destructive" onClick={() => revokeReviewInvitation.mutate(invitation.id)} disabled={revokeReviewInvitation.isPending}>revoke</button>}
+                    </div>)}
+                    {mission.completed ? <p className="text-xs leading-relaxed text-muted-foreground">Self-review cannot advance this mission. Progression remains withheld until the invited reviewer accepts the link and records a decision.</p> : null}
+                  </div> : null}
+                  {mission.completed && contractQuery.data.contract.reviewMode === "self" ? <div className="border-t border-primary/10 pt-3 space-y-2">
+                    <Textarea value={reviewSummary} onChange={(event) => setReviewSummary(event.target.value)} placeholder="What evidence supports completion, and what will you improve next?" className="min-h-20" />
+                    {declaredEvidenceRequirements.length > 0 && <div className="space-y-1 rounded-md border border-primary/10 bg-background/30 p-2">
+                      <p className="text-xs text-muted-foreground">Confirm each declared requirement against the evidence you attached:</p>
+                      {declaredEvidenceRequirements.map((requirement) => <label key={requirement} className="flex items-start gap-2 text-xs text-foreground">
+                        <input type="checkbox" checked={evidenceChecks[requirement] === true} onChange={(event) => setEvidenceChecks((current) => ({ ...current, [requirement]: event.target.checked }))} className="mt-0.5" />
+                        <span>{requirement}</span>
+                      </label>)}
+                    </div>}
+                    <div className="flex flex-wrap gap-2">
+                    <Button size="sm" disabled={reviewSummary.trim().length < 3 || !contractQuery.data.evidence.length || !allEvidenceRequirementsChecked || reviewMission.isPending} onClick={() => reviewMission.mutate("meets_evidence")}>
+                      {reviewMission.isPending ? "Reviewing…" : "Record self-review"}
+                    </Button>
+                    <Button size="sm" variant="outline" disabled={reviewSummary.trim().length < 3 || !contractQuery.data.evidence.length || reviewMission.isPending} onClick={() => reviewMission.mutate("revisions_needed")}>
+                      Record revision needed
+                    </Button>
+                    </div>
+                    <p className="text-[11px] leading-relaxed text-muted-foreground">A self-review records your own assessment and can unlock LyfeOS practice progression. It is not external certification or verification of competence.</p>
+                  </div> : null}
+                </div>
+              )}
+            </div>
             
             <div className="text-xs text-muted-foreground mt-4">
               <p>This mission document supports Markdown, including task lists using "- [ ]" syntax and wiki-style links with "[[Page Name]]".</p>

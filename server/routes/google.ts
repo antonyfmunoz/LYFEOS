@@ -1,8 +1,18 @@
 import type { Express, Request, Response } from "express";
 import { google } from "googleapis";
+import crypto from "crypto";
 import { isAuthenticated } from "./middleware";
 import { storage } from "../storage";
 import { logger } from "../utils";
+import { createMissionLifecycle, updateMissionLifecycle } from "../mission-lifecycle";
+import { shiftCalendarDate } from "@shared/calendar";
+
+declare module "express-session" {
+  interface SessionData {
+    googleOAuthState?: string;
+    googleOAuthUserId?: number;
+  }
+}
 
 const SCOPES = [
   "https://www.googleapis.com/auth/calendar",
@@ -84,7 +94,9 @@ export function registerGoogleRoutes(app: Express): void {
     }
     try {
       const oauth2Client = getOAuth2Client();
-      const state = JSON.stringify({ userId: req.session.userId });
+      const state = crypto.randomUUID();
+      req.session.googleOAuthState = state;
+      req.session.googleOAuthUserId = req.session.userId;
 
       const authUrl = oauth2Client.generateAuthUrl({
         access_type: "offline",
@@ -108,17 +120,12 @@ export function registerGoogleRoutes(app: Express): void {
         return res.redirect("/profile?google=error&reason=no_code");
       }
 
-      let userId: number;
-      try {
-        const parsed = JSON.parse(state as string);
-        userId = parsed.userId;
-      } catch {
-        return res.redirect("/profile?google=error&reason=invalid_state");
-      }
-
-      if (!userId || userId !== req.session.userId) {
+      if (typeof state !== "string" || state !== req.session.googleOAuthState || req.session.googleOAuthUserId !== req.session.userId) {
         return res.redirect("/profile?google=error&reason=session_mismatch");
       }
+      const userId = req.session.userId!;
+      delete req.session.googleOAuthState;
+      delete req.session.googleOAuthUserId;
 
       const oauth2Client = getOAuth2Client();
       const { tokens } = await oauth2Client.getToken(code);
@@ -268,7 +275,7 @@ export function registerGoogleRoutes(app: Express): void {
           description: gDescription,
           startDate: start.date,
           startTime: isAllDay ? null : start.time,
-          endDate: end.date,
+          endDate: isAllDay ? (shiftCalendarDate(end.date, -1) || start.date) : end.date,
           endTime: isAllDay ? null : end.time,
           location: gLocation || null,
           allDay: isAllDay,
@@ -279,7 +286,12 @@ export function registerGoogleRoutes(app: Express): void {
         };
 
         if (externalIdMap.has(gEvent.id)) {
-          await storage.updateQuest(externalIdMap.get(gEvent.id)!, questFields);
+          await updateMissionLifecycle({
+            questId: externalIdMap.get(gEvent.id)!,
+            userId,
+            updates: questFields,
+            source: "system",
+          });
           updated++;
           continue;
         }
@@ -288,16 +300,21 @@ export function registerGoogleRoutes(app: Express): void {
 
         if (questFingerprints.has(fingerprint)) {
           const questId = questFingerprints.get(fingerprint)!;
-          await storage.updateQuest(questId, {
-            ...questFields,
-            externalId: gEvent.id,
-            externalSource: "google_calendar",
+          await updateMissionLifecycle({
+            questId,
+            userId,
+            updates: {
+              ...questFields,
+              externalId: gEvent.id,
+              externalSource: "google_calendar",
+            },
+            source: "system",
           });
           linkedExisting++;
           continue;
         }
 
-        await storage.createQuest({
+        await createMissionLifecycle({
           userId,
           ...questFields,
           category: "general",
@@ -306,6 +323,7 @@ export function registerGoogleRoutes(app: Express): void {
           experienceReward: 25,
           externalId: gEvent.id,
           externalSource: "google_calendar",
+          source: "system",
         });
         imported++;
       }
@@ -350,6 +368,7 @@ export function registerGoogleRoutes(app: Express): void {
         ? undefined
         : `${mission.startDate}T${mission.startTime || "00:00"}:00`;
       const endDate = mission.endDate || mission.startDate;
+      const googleAllDayEndDate = mission.allDay ? shiftCalendarDate(endDate, 1) : null;
       const endDateTime = mission.allDay
         ? undefined
         : `${endDate}T${mission.endTime || mission.startTime || "00:00"}:00`;
@@ -362,7 +381,7 @@ export function registerGoogleRoutes(app: Express): void {
           ? { date: mission.startDate }
           : { dateTime: startDateTime, timeZone: tz },
         end: mission.allDay
-          ? { date: endDate }
+          ? { date: googleAllDayEndDate }
           : { dateTime: endDateTime, timeZone: tz },
       };
 
@@ -387,9 +406,14 @@ export function registerGoogleRoutes(app: Express): void {
           requestBody: eventBody,
         });
         if (created.data.id) {
-          await storage.updateQuest(mission.id, {
-            externalId: created.data.id,
-            externalSource: "google_calendar",
+          await updateMissionLifecycle({
+            questId: mission.id,
+            userId,
+            updates: {
+              externalId: created.data.id,
+              externalSource: "google_calendar",
+            },
+            source: "system",
           });
         }
         return res.json({ success: true, action: "created", googleEventId: created.data.id });
@@ -502,7 +526,7 @@ export function registerGoogleRoutes(app: Express): void {
           continue;
         }
 
-        await storage.createQuest({
+        await createMissionLifecycle({
           userId,
           title: task.title,
           description: task.notes || `Imported from Google Tasks (${task.listName})`,
@@ -513,6 +537,7 @@ export function registerGoogleRoutes(app: Express): void {
           startDate,
           externalId: task.id,
           externalSource: "google_tasks",
+          source: "system",
         });
 
         imported++;

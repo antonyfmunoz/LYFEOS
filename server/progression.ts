@@ -2,6 +2,9 @@ import { and, desc, eq } from "drizzle-orm";
 import { getProgressionRank, type ProgressionRank } from "@shared/progression";
 import {
   progressionBadgeAwards,
+  missionContracts,
+  missionReviews,
+  personalCapabilities,
   quests,
   skillNodes,
   skillProgressionEvents,
@@ -28,8 +31,9 @@ type BadgeCandidate = Omit<ProgressionBadge, "awardedAt">;
 function badgeCandidates(input: {
   completedMissions: Array<{ id: number; completedAt: Date | null }>;
   evidence: Array<{ sourceType: string }>;
-  skills: Array<{ id: number; key: string; name: string; experience: number }>;
-  skillEvents: Array<{ skillNodeId: number; questId: number | null; sourceType: string }>;
+  reviewedMissionCount: number;
+  capabilities: Array<{ id: number; key: string; name: string; experience: number }>;
+  capabilityEvents: Array<{ capabilityId: number; questId: number | null; sourceType: string; experienceDelta: number }>;
 }): BadgeCandidate[] {
   const candidates: BadgeCandidate[] = [];
   const distinctPracticeDays = new Set(
@@ -53,12 +57,12 @@ function badgeCandidates(input: {
       evidence: { distinctPracticeDays },
     });
   }
-  if (input.evidence.length >= 3) {
+  if (input.reviewedMissionCount >= 3) {
     candidates.push({
       key: "evidence-builder",
       name: "Evidence builder",
-      description: "Recorded after three Thread evidence entries.",
-      evidence: { evidenceRecords: input.evidence.length },
+      description: "Recorded after three mission evidence reviews met their declared threshold.",
+      evidence: { reviewedMissions: input.reviewedMissionCount },
     });
   }
   if (reviews >= 2) {
@@ -70,18 +74,21 @@ function badgeCandidates(input: {
     });
   }
 
-  for (const skill of input.skills) {
+  for (const capability of input.capabilities) {
     const completedMissionIds = new Set(
-      input.skillEvents
-        .filter((event) => event.skillNodeId === skill.id && event.sourceType === "mission_completion" && event.questId !== null)
+      input.capabilityEvents
+        .filter((event) => event.capabilityId === capability.id && event.sourceType === "mission_evidence_review" && event.questId !== null)
         .map((event) => event.questId!),
     );
-    if (skill.experience >= 100 && completedMissionIds.size >= 3 && reviews >= 2) {
+    const evidenceBackedExperience = input.capabilityEvents
+      .filter((event) => event.capabilityId === capability.id && (event.sourceType === "mission_evidence_review" || event.sourceType === "mission_evidence_reversal"))
+      .reduce((total, event) => total + event.experienceDelta, 0);
+    if (evidenceBackedExperience >= 100 && completedMissionIds.size >= 3 && reviews >= 2) {
       candidates.push({
-        key: `skill-practitioner:${skill.id}`,
-        name: `${skill.name} practitioner`,
+        key: `capability-practitioner:${capability.id}`,
+        name: `${capability.name} practitioner`,
         description: "Evidence-backed repeated practice in this private LyfeOS skill. This is not external certification.",
-        evidence: { skillKey: skill.key, skillExperience: skill.experience, distinctCompletedMissions: completedMissionIds.size, reviews },
+        evidence: { capabilityKey: capability.key, evidenceBackedExperience, distinctReviewedMissions: completedMissionIds.size, reviews },
       });
     }
   }
@@ -89,27 +96,42 @@ function badgeCandidates(input: {
 }
 
 async function progressionData(userId: number, rank: ProgressionRank) {
-  const [completedMissions, evidence, skills, skillEvents, awards] = await Promise.all([
+  const [completedMissions, evidence, reviewedMissions, skills, skillEvents, awards] = await Promise.all([
     db.select({ id: quests.id, completedAt: quests.completedAt }).from(quests)
       .where(and(eq(quests.userId, userId), eq(quests.completed, true))),
     db.select({ sourceType: transformationThreadEvidence.sourceType }).from(transformationThreadEvidence)
       .where(eq(transformationThreadEvidence.userId, userId)),
-    db.select({ id: skillNodes.id, key: skillNodes.key, name: skillNodes.name, experience: skillNodes.experience }).from(skillNodes)
-      .where(eq(skillNodes.userId, userId)),
-    db.select({ skillNodeId: skillProgressionEvents.skillNodeId, questId: skillProgressionEvents.questId, sourceType: skillProgressionEvents.sourceType }).from(skillProgressionEvents)
-      .where(eq(skillProgressionEvents.userId, userId)),
+    db.select({ questId: missionContracts.questId }).from(missionReviews)
+      .innerJoin(missionContracts, eq(missionContracts.id, missionReviews.missionContractId))
+      .where(and(
+        eq(missionReviews.userId, userId),
+        eq(missionContracts.userId, userId),
+        eq(missionReviews.decision, "meets_evidence"),
+      )),
+    db.select({ id: personalCapabilities.id, key: personalCapabilities.key, name: personalCapabilities.name, experience: personalCapabilities.experience }).from(personalCapabilities)
+      .where(eq(personalCapabilities.userId, userId)),
+    db.select({ capabilityId: skillNodes.capabilityId, questId: skillProgressionEvents.questId, sourceType: skillProgressionEvents.sourceType, experienceDelta: skillProgressionEvents.experienceDelta }).from(skillProgressionEvents)
+      .innerJoin(skillNodes, eq(skillNodes.id, skillProgressionEvents.skillNodeId))
+      .where(and(eq(skillProgressionEvents.userId, userId), eq(skillNodes.userId, userId))),
     db.select().from(progressionBadgeAwards).where(eq(progressionBadgeAwards.userId, userId))
       .orderBy(desc(progressionBadgeAwards.awardedAt)),
   ]);
-  const candidates = badgeCandidates({ completedMissions, evidence, skills, skillEvents });
+  const capabilityEvents = skillEvents.flatMap((event) => event.capabilityId === null ? [] : [{ ...event, capabilityId: event.capabilityId }]);
+  const candidates = badgeCandidates({
+    completedMissions,
+    evidence,
+    reviewedMissionCount: new Set(reviewedMissions.map((review) => review.questId)).size,
+    capabilities: skills,
+    capabilityEvents,
+  });
   const definitions = new Map(candidates.map((candidate) => [candidate.key, candidate]));
   const badges: ProgressionBadge[] = awards.flatMap((award) => {
     const definition = definitions.get(award.badgeKey);
     if (!definition) return [];
     return [{ ...definition, evidence: award.evidence as Record<string, unknown>, awardedAt: award.awardedAt }];
   });
-  const evidenceBackedSkills = candidates.filter((candidate) => candidate.key.startsWith("skill-practitioner:")).length;
-  return { completedMissions, evidence, skills, candidates, badges, evidenceBackedSkills, rank };
+  const evidenceBackedSkills = candidates.filter((candidate) => candidate.key.startsWith("capability-practitioner:")).length;
+  return { completedMissions, evidence, capabilities: skills, candidates, badges, evidenceBackedSkills, rank };
 }
 
 export async function getProgressionSummary(userId: number) {
@@ -126,7 +148,7 @@ export async function getProgressionSummary(userId: number) {
     rank,
     badges: data.badges,
     competenceSignals: {
-      practicingSkills: data.skills.filter((skill) => skill.experience > 0).length,
+      practicingSkills: data.capabilities.filter((capability) => capability.experience > 0).length,
       evidenceBackedSkills: data.evidenceBackedSkills,
       note: "Signals summarize LyfeOS-recorded practice and reflection. They are not external certification.",
     },
@@ -154,7 +176,7 @@ export async function refreshProgressionState(userId: number, reason: string) {
     rank,
     newlyAwardedBadges: newBadges.map((badge) => ({ ...badge, awardedAt: new Date() })),
     competenceSignals: {
-      practicingSkills: data.skills.filter((skill) => skill.experience > 0).length,
+      practicingSkills: data.capabilities.filter((capability) => capability.experience > 0).length,
       evidenceBackedSkills: data.evidenceBackedSkills,
       note: "Signals summarize LyfeOS-recorded practice and reflection. They are not external certification.",
     },

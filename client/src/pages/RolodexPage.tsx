@@ -3,7 +3,7 @@ import { useLocation } from 'wouter';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
 import { usePageTitle } from '@/hooks/use-page-title';
-import { Contact } from '@shared/schema';
+import { Contact, Quest } from '@shared/schema';
 import {
   ArrowLeft, Users, Star, Search, Briefcase, Mail, Phone,
   MapPin, Trash2, Edit3, X, ChevronDown, Calendar, SlidersHorizontal,
@@ -80,6 +80,22 @@ interface ContactFormData {
   contactFrequency: string;
 }
 
+type RelationshipRecord = {
+  relationship: null | { id: number; contactId: number; relationshipKind: string; state: string; purpose?: string | null; boundaries?: string | null; desiredCadence?: string | null; privateContext?: string | null };
+  interactions: Array<{ id: number; kind: string; summary: string; occurredAt: string }>;
+  commitments: Array<{
+    id: number;
+    title: string;
+    state: string;
+    dueDate?: string | null;
+    questId?: number | null;
+    linkedMissionTitle?: string | null;
+    linkedMissionCompleted?: boolean | null;
+    linkedMissionReviewState?: string | null;
+    linkedMissionProgressionAppliedAt?: string | null;
+  }>;
+};
+
 const emptyForm: ContactFormData = {
   name: '',
   alias: '',
@@ -133,6 +149,14 @@ export default function RolodexPage() {
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [contacts, setContacts] = useState<Contact[]>([]);
+  const [relationshipInteractionSummary, setRelationshipInteractionSummary] = useState('');
+  const [relationshipCommitmentTitle, setRelationshipCommitmentTitle] = useState('');
+  const [relationshipCommitmentQuestId, setRelationshipCommitmentQuestId] = useState('');
+  const [relationshipCommitmentDueDate, setRelationshipCommitmentDueDate] = useState('');
+  const [relationshipPurpose, setRelationshipPurpose] = useState('');
+  const [relationshipBoundaries, setRelationshipBoundaries] = useState('');
+  const [relationshipPrivateContext, setRelationshipPrivateContext] = useState('');
+  const [relationshipCadence, setRelationshipCadence] = useState('');
 
   const { isLoading } = useQuery<{ contacts: Contact[] }>({
     queryKey: ['/api/users', user?.id, 'contacts'],
@@ -144,6 +168,113 @@ export default function RolodexPage() {
       setContacts(data.contacts || []);
       return data;
     },
+  });
+
+  useEffect(() => {
+    if (!contacts.length) return;
+    const requestedContactId = Number(new URLSearchParams(window.location.search).get('contact'));
+    if (!Number.isInteger(requestedContactId) || !contacts.some((contact) => contact.id === requestedContactId)) return;
+    setExpandedId(requestedContactId);
+    window.history.replaceState({}, '', window.location.pathname);
+  }, [contacts]);
+
+  const { data: relationshipRecord, refetch: refetchRelationship } = useQuery<RelationshipRecord>({
+    queryKey: ['/api/contacts', expandedId, 'relationship'],
+    enabled: !!expandedId,
+    queryFn: async () => {
+      const res = await fetch(`/api/contacts/${expandedId}/relationship`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch relationship record');
+      return res.json();
+    },
+  });
+
+  useEffect(() => {
+    if (!relationshipRecord?.relationship) return;
+    setRelationshipPurpose(relationshipRecord.relationship.purpose || '');
+    setRelationshipBoundaries(relationshipRecord.relationship.boundaries || '');
+    setRelationshipPrivateContext(relationshipRecord.relationship.privateContext || '');
+    setRelationshipCadence(relationshipRecord.relationship.desiredCadence || '');
+  }, [relationshipRecord?.relationship?.id]);
+
+  const { data: questData } = useQuery<{ quests: Quest[] }>({
+    queryKey: ['/api/users', user?.id, 'quests', 'relationship-links'],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const res = await fetch(`/api/users/${user?.id}/quests`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch missions');
+      return res.json();
+    },
+  });
+
+  const initializeRelationshipMutation = useMutation({
+    mutationFn: async (contact: Contact) => {
+      const res = await fetch(`/api/contacts/${contact.id}/relationship`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({ relationshipKind: contact.relationshipType || contact.category || 'personal', state: 'active' }),
+      });
+      if (!res.ok) throw new Error('Failed to create relationship profile');
+      return res.json();
+    },
+    onSuccess: () => refetchRelationship(),
+  });
+
+  const saveRelationshipProfileMutation = useMutation({
+    mutationFn: async (contact: Contact) => {
+      const relationship = relationshipRecord?.relationship;
+      const res = await fetch(`/api/contacts/${contact.id}/relationship`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({
+          relationshipKind: relationship?.relationshipKind || contact.relationshipType || contact.category || 'personal',
+          state: relationship?.state || 'active',
+          purpose: relationshipPurpose || null,
+          boundaries: relationshipBoundaries || null,
+          privateContext: relationshipPrivateContext || null,
+          desiredCadence: relationshipCadence || null,
+        }),
+      });
+      if (!res.ok) throw new Error('Failed to save relationship profile');
+      return res.json();
+    },
+    onSuccess: () => refetchRelationship(),
+  });
+
+  const recordInteractionMutation = useMutation({
+    mutationFn: async (contactId: number) => {
+      const res = await fetch(`/api/contacts/${contactId}/relationship/interactions`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({ kind: 'check_in', summary: relationshipInteractionSummary }),
+      });
+      if (!res.ok) throw new Error('Failed to record interaction');
+      return res.json();
+    },
+    onSuccess: () => { setRelationshipInteractionSummary(''); refetchRelationship(); },
+  });
+
+  const createCommitmentMutation = useMutation({
+    mutationFn: async (contactId: number) => {
+      const res = await fetch(`/api/contacts/${contactId}/relationship/commitments`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({
+          title: relationshipCommitmentTitle,
+          questId: relationshipCommitmentQuestId ? Number(relationshipCommitmentQuestId) : null,
+          dueDate: relationshipCommitmentDueDate || null,
+        }),
+      });
+      if (!res.ok) throw new Error('Failed to create commitment');
+      return res.json();
+    },
+    onSuccess: () => { setRelationshipCommitmentTitle(''); setRelationshipCommitmentQuestId(''); setRelationshipCommitmentDueDate(''); refetchRelationship(); },
+  });
+
+  const updateCommitmentMutation = useMutation({
+    mutationFn: async ({ contactId, commitmentId, state }: { contactId: number; commitmentId: number; state: 'completed' | 'open' }) => {
+      const res = await fetch(`/api/contacts/${contactId}/relationship/commitments/${commitmentId}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ state }),
+      });
+      if (!res.ok) throw new Error('Failed to update commitment');
+      return res.json();
+    },
+    onSuccess: () => refetchRelationship(),
   });
 
   const createMutation = useMutation({
@@ -348,14 +479,19 @@ export default function RolodexPage() {
           <h1 className="text-2xl font-orbitron mb-1">Rolodex</h1>
           <p className="text-muted-foreground">Your personal contacts</p>
         </div>
-        <Button
-          onClick={openCreateForm}
-          className="bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30 font-mono text-xs"
-          size="sm"
-          data-tour="rolodex-create"
-        >
-          Create Contact
-        </Button>
+        <div className="flex flex-wrap justify-end gap-2">
+          <Button onClick={() => navigate('/messages')} variant="outline" className="border-primary/30 text-primary hover:bg-primary/10 font-mono text-xs" size="sm">
+            <MessageSquare className="h-4 w-4" /> Messages
+          </Button>
+          <Button
+            onClick={openCreateForm}
+            className="bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30 font-mono text-xs"
+            size="sm"
+            data-tour="rolodex-create"
+          >
+            Create Contact
+          </Button>
+        </div>
       </div>
 
       <div className="glassmorphic rounded-xl neon-border p-3 mb-4" data-tour="rolodex-search">
@@ -634,6 +770,65 @@ export default function RolodexPage() {
                         </span>
                       </div>
                     )}
+
+                    <div className="mb-3 border-t border-primary/10 pt-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <p className="text-[10px] font-mono uppercase tracking-widest text-primary">Relationship record</p>
+                          <p className="mt-1 text-[11px] text-muted-foreground">Private context, check-ins, and commitments stay in LyfeOS. Sharing with other products is disabled; no contact notes or messages leave this record.</p>
+                        </div>
+                        {relationshipRecord?.relationship?.contactId !== contact.id && (
+                          <Button size="sm" variant="outline" className="h-7 border-primary/30 text-primary hover:bg-primary/10" onClick={() => initializeRelationshipMutation.mutate(contact)} disabled={initializeRelationshipMutation.isPending}>
+                            Start record
+                          </Button>
+                        )}
+                      </div>
+                      {relationshipRecord?.relationship && relationshipRecord.relationship.contactId === contact.id && (
+                        <div className="mt-2 rounded-md border border-primary/15 bg-background/30 p-2.5">
+                          <div className="flex flex-wrap gap-2 text-[10px] font-mono uppercase text-primary/80">
+                            <span>{relationshipRecord.relationship.relationshipKind}</span>
+                            <span>{relationshipRecord.relationship.state}</span>
+                            {relationshipRecord.relationship.desiredCadence && <span>{relationshipRecord.relationship.desiredCadence}</span>}
+                          </div>
+                          {relationshipRecord.interactions[0] && <p className="mt-2 text-xs text-muted-foreground"><span className="text-primary/80">Latest:</span> {relationshipRecord.interactions[0].summary}</p>}
+                          <div className="mt-2 flex gap-2">
+                            <input value={relationshipInteractionSummary} onChange={(event) => setRelationshipInteractionSummary(event.target.value)} placeholder="Record a check-in" maxLength={2000} className="h-8 min-w-0 flex-1 rounded-md border border-primary/20 bg-background/40 px-2 text-xs" />
+                            <Button size="sm" variant="outline" className="h-8 shrink-0 border-primary/30 text-primary hover:bg-primary/10" onClick={() => recordInteractionMutation.mutate(contact.id)} disabled={relationshipInteractionSummary.trim().length < 2 || recordInteractionMutation.isPending}>Save</Button>
+                          </div>
+                          <details className="mt-3 border-t border-primary/10 pt-2">
+                            <summary className="cursor-pointer text-[10px] font-mono uppercase tracking-widest text-primary/80">Private relationship context</summary>
+                            <div className="mt-2 space-y-2">
+                              <input value={relationshipPurpose} onChange={(event) => setRelationshipPurpose(event.target.value)} placeholder="Purpose of this relationship" maxLength={1000} className="h-8 w-full rounded-md border border-primary/20 bg-background/40 px-2 text-xs" />
+                              <input value={relationshipCadence} onChange={(event) => setRelationshipCadence(event.target.value)} placeholder="Desired cadence, e.g. monthly" maxLength={48} className="h-8 w-full rounded-md border border-primary/20 bg-background/40 px-2 text-xs" />
+                              <textarea value={relationshipBoundaries} onChange={(event) => setRelationshipBoundaries(event.target.value)} placeholder="Private boundaries" maxLength={2000} className="min-h-16 w-full rounded-md border border-primary/20 bg-background/40 px-2 py-1.5 text-xs" />
+                              <textarea value={relationshipPrivateContext} onChange={(event) => setRelationshipPrivateContext(event.target.value)} placeholder="Private relationship context" maxLength={4000} className="min-h-16 w-full rounded-md border border-primary/20 bg-background/40 px-2 py-1.5 text-xs" />
+                              <Button size="sm" variant="outline" className="h-8 border-primary/30 text-primary hover:bg-primary/10" onClick={() => saveRelationshipProfileMutation.mutate(contact)} disabled={saveRelationshipProfileMutation.isPending}>Save private context</Button>
+                            </div>
+                          </details>
+                          <div className="mt-3 border-t border-primary/10 pt-2">
+                            <p className="text-[10px] font-mono uppercase tracking-widest text-primary/80">Commitments</p>
+                            {relationshipRecord.commitments.slice(0, 3).map((commitment) => (
+                              <div key={commitment.id} className="mt-1 flex items-center justify-between gap-2 text-xs">
+                                <span className={cn("min-w-0 truncate", commitment.state === 'completed' ? 'text-muted-foreground line-through' : 'text-foreground')}>
+                                  {commitment.title}{commitment.dueDate ? ` · ${commitment.dueDate}` : ''}
+                                  {commitment.linkedMissionTitle && <span className="block text-[10px] no-underline text-muted-foreground">Mission proof: {commitment.linkedMissionReviewState === 'reviewed' ? 'reviewed evidence' : commitment.linkedMissionCompleted ? 'awaiting evidence review' : 'mission incomplete'}</span>}
+                                </span>
+                                <button className="shrink-0 text-[10px] font-mono text-primary hover:underline" onClick={() => updateCommitmentMutation.mutate({ contactId: contact.id, commitmentId: commitment.id, state: commitment.state === 'completed' ? 'open' : 'completed' })}>{commitment.state === 'completed' ? 'Reopen' : 'Complete'}</button>
+                              </div>
+                            ))}
+                            <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                              <input value={relationshipCommitmentTitle} onChange={(event) => setRelationshipCommitmentTitle(event.target.value)} placeholder="Add a commitment" maxLength={240} className="h-8 min-w-0 flex-1 rounded-md border border-primary/20 bg-background/40 px-2 text-xs" />
+                              <input type="date" aria-label="Commitment due date" value={relationshipCommitmentDueDate} onChange={(event) => setRelationshipCommitmentDueDate(event.target.value)} className="h-8 rounded-md border border-primary/20 bg-background/40 px-2 text-xs text-muted-foreground sm:w-36" />
+                              <select value={relationshipCommitmentQuestId} onChange={(event) => setRelationshipCommitmentQuestId(event.target.value)} className="h-8 max-w-full rounded-md border border-primary/20 bg-background/40 px-2 text-xs text-muted-foreground sm:w-44">
+                                <option value="">No mission link</option>
+                                {(questData?.quests || []).filter((quest) => !quest.completed).slice(0, 25).map((quest) => <option key={quest.id} value={quest.id}>{quest.title}</option>)}
+                              </select>
+                              <Button size="sm" variant="outline" className="h-8 shrink-0 border-primary/30 text-primary hover:bg-primary/10" onClick={() => createCommitmentMutation.mutate(contact.id)} disabled={relationshipCommitmentTitle.trim().length < 2 || createCommitmentMutation.isPending}>Add</Button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
 
                     {contact.notes && (
                       <div className="mb-3 p-2 rounded-lg bg-primary/5 border border-primary/10">

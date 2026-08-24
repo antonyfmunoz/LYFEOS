@@ -41,6 +41,23 @@ describe("LyfeOS skill graph", () => {
     expect(graph[0].status).toBe("mastered");
   });
 
+  it("carries reviewed capability history into a new Thread without carrying its mission count", () => {
+    const graph = buildSkillGraph({
+      skills: [{
+        ...primary,
+        experience: 0,
+        level: 1,
+        recordedExperience: 120,
+        recordedLevel: 2,
+      }],
+      completedMissionCountBySkill: new Map(),
+      reviewCount: 0,
+    });
+    expect(graph[0].experience).toBe(120);
+    expect(graph[0].threadExperience).toBe(0);
+    expect(graph[0].status).toBe("unlocked");
+  });
+
   it("recommends an available skill rather than a locked branch", () => {
     const graph = buildSkillGraph({
       skills: [primary, {

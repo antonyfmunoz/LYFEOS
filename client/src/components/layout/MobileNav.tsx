@@ -185,8 +185,9 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
   return (
     <>
       {isOpen && (
-        <div
+        <nav
           ref={menuRef}
+          aria-label="Primary navigation"
           className="lg:hidden fixed z-50 transition-all duration-300 ease-out"
           style={{
             left: menuPos.menuX,
@@ -198,6 +199,7 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
               <button
                 key={item.id}
                 onClick={() => handleNavClick(item.id)}
+                aria-current={currentPage === item.id ? "page" : undefined}
                 className="flex flex-col items-center justify-center w-14 h-14 rounded-full transition-all duration-200 text-muted-foreground active:opacity-70"
               >
                 <span className="material-icons text-xl">{item.icon}</span>
@@ -205,7 +207,7 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
               </button>
             ))}
           </div>
-        </div>
+        </nav>
       )}
 
       <div
@@ -242,6 +244,14 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
           }`}
           role="button"
           tabIndex={0}
+          aria-label={isOpen ? "Close navigation" : "Open navigation"}
+          aria-expanded={isOpen}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              setIsOpen(prev => !prev);
+            }
+          }}
           style={{ cursor: "grab", WebkitUserSelect: "none", userSelect: "none" }}
         >
           <span className="material-icons text-2xl pointer-events-none">

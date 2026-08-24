@@ -20,6 +20,12 @@ export type SkillGraphSkill = {
   level: number;
   unlockRequirements: unknown;
   masteryRequirements: unknown;
+  // A node belongs to one Transformation Thread, while this value represents
+  // reviewed practice accumulated by the user's matching private capability
+  // across all Threads. It is deliberately supplied by the caller rather than
+  // copied into the node, so a new focus cannot silently rewrite history.
+  recordedExperience?: number | null;
+  recordedLevel?: number | null;
 };
 
 export type SkillGraphNode = SkillGraphSkill & {
@@ -28,6 +34,7 @@ export type SkillGraphNode = SkillGraphSkill & {
   masteryRequirements: Required<SkillMasteryRequirements>;
   completedMissionCount: number;
   unmetRequirements: string[];
+  threadExperience: number;
 };
 
 const DEFAULT_MASTERY_REQUIREMENTS: Required<SkillMasteryRequirements> = {
@@ -38,6 +45,14 @@ const DEFAULT_MASTERY_REQUIREMENTS: Required<SkillMasteryRequirements> = {
 
 function positiveInteger(value: unknown, fallback = 0): number {
   return typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : fallback;
+}
+
+function recordedExperience(skill: SkillGraphSkill): number {
+  return positiveInteger(skill.recordedExperience, positiveInteger(skill.experience));
+}
+
+function recordedLevel(skill: SkillGraphSkill): number {
+  return positiveInteger(skill.recordedLevel, positiveInteger(skill.level, 1));
 }
 
 export function parseUnlockRequirements(value: unknown): SkillUnlockRequirement[] {
@@ -83,21 +98,26 @@ export function buildSkillGraph(input: {
       const prerequisite = byKey.get(requirement.skillKey);
       if (!prerequisite) return [`Add the missing prerequisite: ${requirement.skillKey}`];
       const unmet: string[] = [];
-      if ((requirement.minExperience || 0) > prerequisite.experience) {
-        unmet.push(`${prerequisite.name}: ${prerequisite.experience}/${requirement.minExperience} skill XP`);
+      const prerequisiteExperience = recordedExperience(prerequisite);
+      const prerequisiteLevel = recordedLevel(prerequisite);
+      if ((requirement.minExperience || 0) > prerequisiteExperience) {
+        unmet.push(`${prerequisite.name}: ${prerequisiteExperience}/${requirement.minExperience} skill XP`);
       }
-      if ((requirement.minLevel || 0) > prerequisite.level) {
-        unmet.push(`${prerequisite.name}: level ${prerequisite.level}/${requirement.minLevel}`);
+      if ((requirement.minLevel || 0) > prerequisiteLevel) {
+        unmet.push(`${prerequisite.name}: level ${prerequisiteLevel}/${requirement.minLevel}`);
       }
       return unmet;
     });
     const completedMissionCount = input.completedMissionCountBySkill.get(skill.id) || 0;
     const isMastered = unmetRequirements.length === 0
-      && skill.experience >= masteryRequirements.minExperience
+      && recordedExperience(skill) >= masteryRequirements.minExperience
       && completedMissionCount >= masteryRequirements.minCompletedMissions
       && input.reviewCount >= masteryRequirements.minReviews;
     return {
       ...skill,
+      experience: recordedExperience(skill),
+      level: recordedLevel(skill),
+      threadExperience: positiveInteger(skill.experience),
       status: isMastered ? "mastered" : unmetRequirements.length > 0 ? "locked" : "unlocked",
       unlockRequirements,
       masteryRequirements,

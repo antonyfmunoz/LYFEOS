@@ -30,12 +30,14 @@ export default function Sidebar({ currentPage, displayName }: SidebarProps) {
           onClick={() => setCollapsed(!collapsed)}
           className="p-1.5 rounded-lg hover:bg-card hover:bg-opacity-30 text-muted-foreground transition duration-200 shrink-0"
           title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-expanded={!collapsed}
         >
           {collapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
         </button>
       </div>
 
-      <nav className="flex-grow">
+      <nav className="flex-grow" aria-label="Primary navigation">
         <ul className="space-y-2">
           {navItems.map((item) => (
             <li key={item.id}>

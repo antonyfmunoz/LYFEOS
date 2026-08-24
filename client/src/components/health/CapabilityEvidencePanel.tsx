@@ -1,0 +1,22 @@
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Activity } from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
+
+type Documentation = { confidence: "not_assessable" | "low" | "moderate" | "high"; scorePercent: number | null; distinctRecordedDays: number; dayCoveragePercent: number; sourceDocumentationPercent: number | null; methodDocumentationPercent: number | null; formula: string; meaning: string };
+type Domain = { key: string; label: string; records: number; basis: string; inputs: string[]; method: string; limitations: string; coverage: "recorded" | "not_recorded"; documentation: Documentation };
+
+export default function CapabilityEvidencePanel() {
+  const [days, setDays] = useState(30);
+  const coverage = useQuery<{ days: number; period: { startDate: string; endDate: string; timeZone: string }; domains: Domain[]; disclosure: string }>({
+    queryKey: ["/api/health-fitness/capability-coverage", { days }],
+    queryFn: () => apiRequest(`/api/health-fitness/capability-coverage?days=${days}`),
+    placeholderData: (previous) => previous,
+  });
+  if (!coverage.data) return null;
+  return <section className="glassmorphic rounded-2xl p-6 mb-8 border border-primary/30" aria-labelledby="capability-evidence-heading">
+    <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 id="capability-evidence-heading" className="font-orbitron text-lg text-primary flex items-center gap-2"><Activity className="h-5 w-5" />Physical capability evidence</h2><p className="mt-1 text-sm text-muted-foreground">A {coverage.data.days}-day coverage map of what has been recorded—not a score of your body or ability.</p><p className="mt-1 text-[11px] text-muted-foreground">Evidence window: {coverage.data.period.startDate} through {coverage.data.period.endDate} in {coverage.data.period.timeZone}.{coverage.isFetching ? " Updating…" : ""}</p></div><label className="text-xs text-muted-foreground">Evidence period<select aria-label="Physical capability evidence period" className="ml-2 h-9 rounded-md border border-input bg-background px-2 text-xs text-foreground" value={days} onChange={(event) => setDays(Number(event.target.value))}><option value={7}>7 days</option><option value={30}>30 days</option><option value={90}>90 days</option><option value={180}>180 days</option><option value={365}>365 days</option></select></label></div>
+    <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">{coverage.data.domains.map((domain) => <article key={domain.key} className="rounded-lg border border-muted/25 bg-background/20 p-3"><p className="text-sm font-medium">{domain.label}</p><p className={`mt-1 font-mono text-xs ${domain.coverage === "recorded" ? "text-primary" : "text-muted-foreground"}`}>{domain.coverage === "recorded" ? `${domain.records} records` : "Not recorded"}</p><p className="mt-1 text-[10px] text-muted-foreground">Record-documentation confidence: <span className="font-medium text-foreground/80">{domain.documentation.confidence.replace("_", " ")}{domain.documentation.scorePercent === null ? "" : ` (${domain.documentation.scorePercent}%)`}</span></p><p className="text-[10px] text-muted-foreground">Recorded days: {domain.documentation.distinctRecordedDays}/{coverage.data.days} ({domain.documentation.dayCoveragePercent}%) · Source: {domain.documentation.sourceDocumentationPercent === null ? "n/a" : `${domain.documentation.sourceDocumentationPercent}%`} · Method: {domain.documentation.methodDocumentationPercent === null ? "n/a" : `${domain.documentation.methodDocumentationPercent}%`}</p><p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">{domain.basis}</p><dl className="mt-2 space-y-1 text-[10px] leading-relaxed text-muted-foreground"><div><dt className="inline font-medium text-foreground/80">Inputs: </dt><dd className="inline">{domain.inputs.length ? domain.inputs.join(", ") : "None"}</dd></div><div><dt className="inline font-medium text-foreground/80">Method: </dt><dd className="inline">{domain.method}</dd></div><div><dt className="inline font-medium text-foreground/80">Documentation formula: </dt><dd className="inline">{domain.documentation.formula}</dd></div><div><dt className="inline font-medium text-foreground/80">Limit: </dt><dd className="inline">{domain.limitations} {domain.documentation.meaning}</dd></div></dl></article>)}</div>
+    <p className="mt-4 text-xs text-muted-foreground">{coverage.data.disclosure}</p>
+  </section>;
+}

@@ -1,7 +1,9 @@
-import { describe, it, expect } from 'vitest';
+import { afterAll, describe, it, expect } from 'vitest';
 
 const BASE_URL = process.env.LYFEOS_TEST_API_URL;
-const describeApi = BASE_URL ? describe : describe.skip;
+// These tests create and delete an account. Make the isolated test target an
+// explicit opt-in so a generic production URL cannot be exercised by mistake.
+const describeApi = BASE_URL && process.env.LYFEOS_TEST_ENV === 'isolated' ? describe : describe.skip;
 
 async function apiRequest(method: string, path: string, body?: any, cookie?: string) {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -30,24 +32,44 @@ describeApi('Auth API', () => {
 
   let sessionCookie = '';
 
-  it('rejects registration without displayName', async () => {
-    const { status, data } = await apiRequest('POST', '/api/auth/register', {
+  afterAll(async () => {
+    const login = await apiRequest('POST', '/api/auth/login', {
+      identifier: testUser.displayName,
+      password: testUser.password,
+    });
+    const cleanupCookie = login.cookie || sessionCookie;
+    if (login.status !== 200 || !cleanupCookie) return;
+    const { status } = await apiRequest('DELETE', '/api/account', {
+      confirmation: 'DELETE MY ACCOUNT',
+    }, cleanupCookie);
+    expect(status).toBe(200);
+  });
+
+  it('rejects completed registration without displayName', async () => {
+    const { status, data } = await apiRequest('POST', '/api/auth/complete-registration', {
+      email: testUser.email,
       password: 'TestPass123!',
+      termsAccepted: true,
     });
     expect(status).toBe(400);
     expect(data.error).toBeTruthy();
   });
 
-  it('rejects registration without password', async () => {
-    const { status, data } = await apiRequest('POST', '/api/auth/register', {
+  it('rejects completed registration without password', async () => {
+    const { status, data } = await apiRequest('POST', '/api/auth/complete-registration', {
+      email: testUser.email,
       displayName: 'test',
+      termsAccepted: true,
     });
     expect(status).toBe(400);
     expect(data.error).toBeTruthy();
   });
 
-  it('registers a new user successfully', async () => {
-    const { status, data, cookie } = await apiRequest('POST', '/api/auth/register', testUser);
+  it('registers a new user and chosen display name successfully', async () => {
+    const { status, data, cookie } = await apiRequest('POST', '/api/auth/complete-registration', {
+      ...testUser,
+      termsAccepted: true,
+    });
     expect(status).toBe(201);
     expect(data.user).toBeTruthy();
     expect(data.user.displayName).toBe(testUser.displayName);
@@ -98,22 +120,13 @@ describeApi('Auth API', () => {
   });
 });
 
-describeApi('Password Reset Validation', () => {
-  it('rejects reset-password with invalid token format', async () => {
+describeApi('Retired password API boundary', () => {
+  it('does not treat the retired server reset route as a successful SPA request', async () => {
     const { status, data } = await apiRequest('POST', '/api/auth/reset-password', {
       token: 'invalid-token',
       newPassword: 'NewPass123!',
     });
-    expect([400, 429]).toContain(status);
-    expect(data.error).toBeTruthy();
-  });
-
-  it('rejects reset-password with short password', async () => {
-    const { status, data } = await apiRequest('POST', '/api/auth/reset-password', {
-      token: 'a'.repeat(64),
-      newPassword: '12345',
-    });
-    expect([400, 429]).toContain(status);
+    expect(status).toBe(404);
     expect(data.error).toBeTruthy();
   });
 });

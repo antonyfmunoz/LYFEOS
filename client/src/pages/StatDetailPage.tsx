@@ -78,7 +78,7 @@ export default function StatDetailPage({ stat }: StatDetailPageProps) {
   const weekdayPatterns = data?.weekdayPatterns || [];
   const topMissions = data?.topMissions || [];
 
-  const statusLabel = percentage > 70 ? "OPTIMAL" : percentage > 30 ? "MODERATE" : "LOW";
+  const statusLabel = percentage > 70 ? "HIGH" : percentage > 30 ? "MODERATE" : "LOW";
   const statusBg = percentage > 70 ? "bg-primary/20" : percentage > 30 ? "bg-primary/15" : "bg-primary/10";
   const statusText = percentage > 70 ? "text-primary" : percentage > 30 ? "text-primary/80" : "text-muted-foreground";
 
@@ -88,23 +88,23 @@ export default function StatDetailPage({ stat }: StatDetailPageProps) {
 
   const tips = stat === "energy"
     ? [
-        { title: "Energy Cycling", desc: `You average ${avgEnergy} EP per mission. Schedule demanding tasks during peak hours.` },
-        { title: "Strategic Recovery", desc: "Take 10-minute breaks between high-cost missions to regenerate energy faster." },
-        { title: "Batch Low-Cost Tasks", desc: "Group D-rank missions together to preserve energy for harder challenges." },
-        { title: "Streak Power", desc: `${summary.currentStreak || 0}-day streak active. Consistent effort compounds energy efficiency over time.` },
+        { title: "Energy planning", desc: `Your recorded average is ${avgEnergy} EP per mission. Use it as a personal planning reference, not a measure of health or performance.` },
+        { title: "Pacing", desc: "Consider a short break between demanding missions when it helps you. Breaks do not automatically regenerate app tokens." },
+        { title: "Right-size missions", desc: "Group lower-cost missions when that fits your day, and revise a mission if its listed cost no longer fits." },
+        { title: "Activity record", desc: `${summary.currentStreak || 0}-day streak active. It records consecutive days of LyfeOS activity, not energy efficiency.` },
       ]
     : stat === "time"
     ? [
-        { title: "Time Blocking", desc: `With ${current}/${max} tokens remaining, allocate blocks for deep work sessions.` },
-        { title: "Pomodoro Method", desc: "Work in focused 25-minute intervals with 5-minute breaks for optimal token usage." },
-        { title: "Priority Stacking", desc: "Complete high-value missions first when your time pool is fullest." },
-        { title: "Daily Cadence", desc: `${summary.currentStreak || 0}-day streak. Consistent daily mission completion optimizes time allocation.` },
+        { title: "Time blocking", desc: `With ${current}/${max} tokens remaining, choose a realistic block for the next mission.` },
+        { title: "Work rhythm", desc: "Try a focused work-and-break rhythm if it suits you; LyfeOS does not prescribe one universally optimal schedule." },
+        { title: "Priority review", desc: "Choose the mission that best fits your current purpose, constraints, and available time." },
+        { title: "Activity record", desc: `${summary.currentStreak || 0}-day streak records consecutive days of LyfeOS activity; it does not optimize time allocation.` },
       ]
     : [
-        { title: "Single-Tasking", desc: `Averaging ${avgEnergy} AT per mission. Focus fully on one task before switching.` },
-        { title: "Digital Minimalism", desc: "Eliminate notifications during focus sessions to preserve attention tokens." },
-        { title: "Context Switching", desc: "Each task switch costs 2-3 attention tokens. Batch similar work together." },
-        { title: "Focus Streaks", desc: `${summary.currentStreak || 0}-day streak active. Sustained focus builds stronger attention capacity.` },
+        { title: "Single-tasking", desc: `Your recorded average is ${avgEnergy} AT per mission. Use it as a planning reference, not a measure of attention capacity.` },
+        { title: "Notification boundaries", desc: "Reducing interruptions may help you focus when you choose it; LyfeOS does not infer an outcome from that choice." },
+        { title: "Mission costs", desc: "Missions carry attention costs you set or accept. Revise a mission if the cost no longer reflects your current context." },
+        { title: "Activity record", desc: `${summary.currentStreak || 0}-day streak records LyfeOS activity; it does not establish attention capacity.` },
       ];
 
   const maxCategoryEnergy = Math.max(
@@ -415,7 +415,7 @@ export default function StatDetailPage({ stat }: StatDetailPageProps) {
 
           <div className="mb-8">
             <h2 className="text-xl font-orbitron mb-4" style={{ color: config.color }}>
-              {stat === "energy" ? "Energy Recovery Tips" : stat === "time" ? "Time Management Tips" : "Focus Enhancement Tips"}
+              {stat === "energy" ? "Energy planning prompts" : stat === "time" ? "Time planning prompts" : "Attention planning prompts"}
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {tips.map((tip, i) => (

@@ -3,6 +3,7 @@ import { and, eq } from "drizzle-orm";
 import {
   LYFEOS_COORDINATION_CONTEXT_UPDATED_EVENT,
   LYFEOS_WORK_ITEM_UPDATED_EVENT,
+  validateUMHProjectionEvent,
   type UMHProjectionEventEnvelope,
 } from "@shared/umh";
 import {
@@ -23,6 +24,23 @@ export const crossProductPurposes = ["coordination", "correlation"] as const;
 export type CrossProductDestination = typeof crossProductDestinations[number];
 export type CrossProductPurpose = typeof crossProductPurposes[number];
 
+export type CrossProductSharingAvailability = {
+  available: boolean;
+  reason: string | null;
+};
+
+/**
+ * Consent must not imply a working delivery channel. Local preferences are
+ * never treated as enabled ecosystem sharing unless the signed UMH outbox has
+ * a configured receiver.
+ */
+export function getCrossProductSharingAvailability(): CrossProductSharingAvailability {
+  const config = getUMHFederationConfig();
+  return config?.controlPlaneUrl
+    ? { available: true, reason: null }
+    : { available: false, reason: "Ecosystem delivery is not configured for this LyfeOS release." };
+}
+
 function selected<T extends string>(value: unknown, allowed: readonly T[]): T[] {
   if (!Array.isArray(value)) return [];
   return value.filter((item): item is T => typeof item === "string" && (allowed as readonly string[]).includes(item));
@@ -42,21 +60,22 @@ async function queueEvent(userId: number, event: UMHProjectionEventEnvelope, act
   const config = getUMHFederationConfig();
   const [user] = config ? await db.select({ clerkId: users.clerkId }).from(users).where(eq(users.id, userId)).limit(1) : [];
   if (!config || !user?.clerkId) return false;
+  const validatedEvent = validateUMHProjectionEvent(event);
   await db.transaction(async (tx) => {
     await tx.insert(umhOutboxEvents).values({
-      eventId: event.eventId,
-      eventType: event.eventType,
-      aggregateType: event.aggregateType,
-      aggregateId: event.aggregateId,
-      payload: event,
+      eventId: validatedEvent.eventId,
+      eventType: validatedEvent.eventType,
+      aggregateType: validatedEvent.aggregateType,
+      aggregateId: validatedEvent.aggregateId,
+      payload: validatedEvent,
     });
     await tx.insert(umhAuditRecords).values({
       action,
       actorType: "lyfeos",
       actorId: String(userId),
       localUserId: userId,
-      correlationId: event.correlationId,
-      details: { eventId: event.eventId, ...details },
+      correlationId: validatedEvent.correlationId,
+      details: { eventId: validatedEvent.eventId, ...details },
     });
   });
   return true;
@@ -138,5 +157,5 @@ export async function queueLinkedWorkItemState(userId: number, questId: number):
 }
 
 export async function getCrossProductSharing(userId: number) {
-  return sharingFor(userId);
+  return { ...(await sharingFor(userId)), availability: getCrossProductSharingAvailability() };
 }

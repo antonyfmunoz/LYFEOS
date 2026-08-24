@@ -4,7 +4,7 @@ import { transformationThreadEvidence, transformationThreads } from "@shared/sch
 
 type EvidenceInput = {
   userId: number;
-  sourceType: "mission_completion" | "daily_reflection" | "weekly_review" | "thread_completion";
+  sourceType: "mission_activity" | "mission_evidence_review" | "daily_reflection" | "weekly_review" | "thread_completion";
   sourceId: string;
   summary: string;
   transformationThreadId?: number;

@@ -127,7 +127,10 @@ function verifyClerkWebhook(req: Request): { ok: true; body: Record<string, any>
 }
 
 export function registerAuthRoutes(app: Express): void {
-  app.use(clerkMiddleware());
+  app.use(clerkMiddleware({
+    publishableKey: process.env.VITE_CLERK_PUBLISHABLE_KEY,
+    secretKey: process.env.CLERK_SECRET_KEY,
+  }));
   app.use(bindAuthenticatedPrincipal);
 
   const bindSession = (req: Request, user: { id: number; displayName: string | null }) => {
