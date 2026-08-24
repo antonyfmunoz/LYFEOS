@@ -14,8 +14,11 @@ interface NotificationPayload {
   actions?: { action: string; title: string }[];
 }
 
-export async function sendPushToUser(userId: number, payload: NotificationPayload) {
+export const PUSH_NOTIFICATIONS_CONFIGURED = false;
+
+export async function sendPushToUser(userId: number, payload: NotificationPayload): Promise<false> {
   logger.warn(`sendPushToUser: Push notifications disabled (no provider configured). Skipping notification for user ${userId}: ${payload.title}`);
+  return false;
 }
 
 async function checkAndSendNotifications() {
@@ -238,9 +241,11 @@ let smartReminderInterval: ReturnType<typeof setInterval> | null = null;
 let learningInterval: ReturnType<typeof setInterval> | null = null;
 
 export function startNotificationScheduler() {
+  if (!PUSH_NOTIFICATIONS_CONFIGURED) {
+    logger.info("Push notification scheduler not started: no delivery provider is configured");
+    return;
+  }
   if (schedulerInterval) return;
-
-  logger.warn("Push notifications disabled - notification scheduler running without push delivery");
 
   logger.info("Notification scheduler started (checking every 60s)");
   schedulerInterval = setInterval(checkAndSendNotifications, 60_000);

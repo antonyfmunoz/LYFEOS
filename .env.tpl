@@ -12,3 +12,6 @@ CLERK_WEBHOOK_SIGNING_SECRET=whsec_value_from_clerk
 SENTRY_DSN=https://public-key@o0.ingest.sentry.io/project-id
 SENTRY_ENVIRONMENT=development_or_production
 SENTRY_RELEASE=git-commit-or-semantic-release
+# Use the same random 32+ character value in Fly and the GitHub Actions
+# LYFEOS_MONITOR_TOKEN repository secret. Never expose it to the browser.
+LYFEOS_MONITOR_TOKEN=generate-a-random-32-byte-or-longer-value

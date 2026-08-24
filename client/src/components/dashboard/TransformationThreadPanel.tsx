@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { CapabilityConstellation } from "@/components/dashboard/CapabilityConstellation";
 
 type StarterMission = {
   title: string;
@@ -21,11 +22,19 @@ type TransformationThread = {
   rationale: string;
   status: "draft" | "active" | "paused" | "completed";
   starterMissions: StarterMission[];
+  sourceSnapshot?: {
+    planningContext?: {
+      capturedAt: string;
+      declaredWeeklyHours: number | null;
+      capacity: { energy: number | null; time: number | null; attention: number | null; availability: "low" | "steady" | "high" | "unknown" };
+      constraints: string[];
+    };
+  };
   progress?: { missionsTotal: number; missionsCompleted: number; evidenceCount: number };
   evidence?: Array<{ id: number; sourceType: string; summary: string; createdAt: string }>;
-  completionReadiness?: { completedMissionCount: number; requiredMissionCount: number; reviewCount: number; requiredReviewCount: number; activeDays: number; requiredActiveDays: number; remainingDays: number; ready: boolean };
-  skills?: Array<{ id: number; key: string; name: string; description: string; kind: "primary" | "supporting" | "capacity" | "application"; experience: number; level: number }>;
-  skillEdges?: Array<{ id: number; sourceSkillId: number; targetSkillId: number; relationship: string }>;
+  completionReadiness?: { completedMissionCount: number; evidenceBackedMissionCount: number; requiredMissionCount: number; reviewCount: number; requiredReviewCount: number; activeDays: number; requiredActiveDays: number; remainingDays: number; ready: boolean };
+  skills?: Array<{ id: number; key: string; name: string; description: string; kind: "primary" | "supporting" | "capacity" | "application"; capabilityId?: number | null; experience: number; level: number }>;
+  skillEdges?: Array<{ id: number; sourceSkillId: number; targetSkillId: number; relationship: string; influenceWeight?: number }>;
   skillGraph?: {
     reviewCount: number;
     nodes: Array<{
@@ -40,8 +49,9 @@ type TransformationThread = {
       unmetRequirements: string[];
       masteryRequirements: { minExperience: number; minCompletedMissions: number; minReviews: number };
       completedMissionCount: number;
+      threadExperience: number;
     }>;
-    nextPractice: null | { skillNodeId: number; skillName: string; title: string; description: string };
+    nextPractice: null | { skillNodeId: number; skillName: string; questId: number | null; deferralCount: number; title: string; description: string; fitsCurrentCapacity: boolean };
   };
   progression?: { level: number; rank: { name: string; color: string }; badges: Array<{ key: string; name: string; description: string }>; competenceSignals: { practicingSkills: number; evidenceBackedSkills: number; note: string } };
 };
@@ -50,11 +60,18 @@ export function TransformationThreadPanel() {
   const { toast } = useToast();
   const [reflection, setReflection] = useState("");
   const [branchName, setBranchName] = useState("");
+  const [edgeSourceId, setEdgeSourceId] = useState("");
+  const [edgeTargetId, setEdgeTargetId] = useState("");
+  const [edgeRelationship, setEdgeRelationship] = useState("reinforces");
+  const [edgeInfluenceWeight, setEdgeInfluenceWeight] = useState("1");
   const { data, isLoading } = useQuery<{ thread: TransformationThread | null }>({
     queryKey: ["/api/transformation-thread"],
   });
   const { data: profile } = useQuery<{ onboardingCompleted?: boolean; completedOnboardingMissions?: number[] }>({
     queryKey: ["/api/profile"],
+  });
+  const { data: capabilityData } = useQuery<{ capabilities: Array<{ id: number; name: string; experience: number; level: number }> }>({
+    queryKey: ["/api/capabilities"],
   });
   const initializeThread = useMutation({
     mutationFn: () => apiRequest("/api/transformation-thread/initialize", { method: "POST" }),
@@ -89,6 +106,31 @@ export function TransformationThreadPanel() {
       queryClient.invalidateQueries({ queryKey: ["/api/transformation-thread"] });
     },
     onError: (error: Error) => toast({ title: "Could not add skill branch", description: error.message || "Your growth map is unchanged.", variant: "destructive" }),
+  });
+  const addSkillEdge = useMutation({
+    mutationFn: ({ threadId, sourceSkillId, targetSkillId, relationship, influenceWeight }: { threadId: number; sourceSkillId: number; targetSkillId: number; relationship: string; influenceWeight: number }) =>
+      apiRequest(`/api/transformation-thread/${threadId}/skill-edges`, { method: "POST", body: JSON.stringify({ sourceSkillId, targetSkillId, relationship, influenceWeight }) }),
+    onSuccess: () => {
+      setEdgeSourceId("");
+      setEdgeTargetId("");
+      queryClient.invalidateQueries({ queryKey: ["/api/transformation-thread"] });
+    },
+    onError: (error: Error) => toast({ title: "Could not connect skills", description: error.message || "Your growth map is unchanged.", variant: "destructive" }),
+  });
+  const removeSkillEdge = useMutation({
+    mutationFn: ({ threadId, edgeId }: { threadId: number; edgeId: number }) =>
+      apiRequest(`/api/transformation-thread/${threadId}/skill-edges/${edgeId}`, { method: "DELETE" }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/transformation-thread"] }),
+    onError: (error: Error) => toast({ title: "Could not remove connection", description: error.message || "Your growth map is unchanged.", variant: "destructive" }),
+  });
+  const deferMission = useMutation({
+    mutationFn: (questId: number) => apiRequest(`/api/quests/${questId}/defer`, { method: "POST" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/transformation-thread"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/quests"] });
+      toast({ title: "Mission deferred", description: "Moved to tomorrow. This capacity decision is kept with the mission." });
+    },
+    onError: (error: Error) => toast({ title: "Could not defer mission", description: error.message || "Your mission was not changed.", variant: "destructive" }),
   });
   const onboardingComplete = profile?.onboardingCompleted && (profile.completedOnboardingMissions?.length || 0) >= 8;
   if (isLoading) return null;
@@ -128,11 +170,14 @@ export function TransformationThreadPanel() {
   const skills = thread.skills || [];
   const primarySkill = skills.find((skill) => skill.kind === "primary");
   const edges = thread.skillEdges || [];
+  const skillsById = new Map(skills.map((skill) => [skill.id, skill]));
   const graphNodesById = new Map((thread.skillGraph?.nodes || []).map((skill) => [skill.id, skill]));
   const nextPractice = thread.skillGraph?.nextPractice;
   const edgeLabels = new Map(edges.map((edge) => [edge.targetSkillId, edge.relationship]));
   const completionReadiness = thread.completionReadiness;
   const progression = thread.progression;
+  const planningContext = thread.sourceSnapshot?.planningContext;
+  const capabilitiesById = new Map((capabilityData?.capabilities || []).map((capability) => [capability.id, capability]));
 
   return (
     <section className="mb-6" data-tour="transformation-thread">
@@ -175,6 +220,19 @@ export function TransformationThreadPanel() {
             </div>
           )}
         </div>
+
+        {planningContext && (
+          <div className="mt-3 rounded-md border border-primary/10 bg-card/20 px-3 py-2 text-[11px] text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span className="font-mono uppercase tracking-[0.1em] text-primary/80">Plan context at setup</span>
+              <span title="Source: your available energy, time, and attention at setup">Capacity: {planningContext.capacity.availability}</span>
+            {planningContext.declaredWeeklyHours !== null && <span>{planningContext.declaredWeeklyHours}h/week declared</span>}
+            {planningContext.constraints.slice(0, 2).map((constraint) => <span key={constraint} className="truncate">• {constraint}</span>)}
+              <Link href="/profile" className="ml-auto text-primary hover:underline">Update inputs</Link>
+            </div>
+            <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground/80">Sources: Profile direction and constraints, plus your current capacity and daily check-in. This setup record stays intact; updates inform your next plan.</p>
+          </div>
+        )}
 
         {isDraft && starterMissions.length > 0 && (
           <div className="mt-4 grid gap-2 border-t border-primary/10 pt-3 md:grid-cols-3">
@@ -233,7 +291,7 @@ export function TransformationThreadPanel() {
                 </div>
                 {completionReadiness && !completionReadiness.ready && (
                   <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-                    Completion is earned through sustained evidence: {completionReadiness.completedMissionCount}/{completionReadiness.requiredMissionCount} linked missions, {completionReadiness.reviewCount}/{completionReadiness.requiredReviewCount} reviews, and {completionReadiness.remainingDays > 0 ? `${completionReadiness.remainingDays} more active days` : "active duration complete"}.
+                    Completion is earned through sustained evidence: {completionReadiness.evidenceBackedMissionCount}/{completionReadiness.requiredMissionCount} reviewed linked missions, {completionReadiness.reviewCount}/{completionReadiness.requiredReviewCount} reviews, and {completionReadiness.remainingDays > 0 ? `${completionReadiness.remainingDays} more active days` : "active duration complete"}.
                   </p>
                 )}
               </div>
@@ -254,28 +312,49 @@ export function TransformationThreadPanel() {
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <div>
                 <p className="text-xs font-mono uppercase tracking-[0.12em] text-primary">Growth map</p>
-                <p className="mt-1 text-xs text-muted-foreground">Real-world missions can advance connected capabilities. This map is private to your Thread.</p>
+                <p className="mt-1 text-xs text-muted-foreground">This Thread’s map is private. Reviewed capability history carries forward across LyfeOS; Thread missions and reviews remain distinct.</p>
               </div>
               {primarySkill && <span className="text-xs text-primary">Primary: {primarySkill.name}</span>}
             </div>
+            {thread.skillGraph?.nodes && <CapabilityConstellation nodes={thread.skillGraph.nodes} edges={edges} />}
+            {edges.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {edges.map((edge) => {
+                  const source = skillsById.get(edge.sourceSkillId);
+                  const target = skillsById.get(edge.targetSkillId);
+                  if (!source || !target) return null;
+                  const strength = edge.influenceWeight === 3 ? "strong" : edge.influenceWeight === 2 ? "meaningful" : "light";
+                  return (
+                    <span key={edge.id} className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-card/30 px-2 py-1 text-[10px] text-muted-foreground">
+                      <span className="max-w-24 truncate text-foreground">{source.name}</span> {edge.relationship} <span className="max-w-24 truncate text-foreground">{target.name}</span> · {strength}
+                      {isActive && <button type="button" aria-label={`Remove ${source.name} ${edge.relationship} ${target.name} connection`} onClick={() => removeSkillEdge.mutate({ threadId: thread.id, edgeId: edge.id })} disabled={removeSkillEdge.isPending} className="ml-1 text-primary hover:text-destructive disabled:opacity-50">remove</button>}
+                    </span>
+                  );
+                })}
+              </div>
+            )}
             <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
               {skills.map((skill) => {
                 const relationship = edgeLabels.get(skill.id);
                 const graphNode = graphNodesById.get(skill.id);
+                const capability = skill.capabilityId ? capabilitiesById.get(skill.capabilityId) : undefined;
                 const status = graphNode?.status || "unlocked";
+                const recordedExperience = graphNode?.experience ?? capability?.experience ?? skill.experience;
+                const recordedLevel = graphNode?.level ?? capability?.level ?? skill.level;
                 return (
                   <div key={skill.id} className={`rounded-md border p-3 ${status === "locked" ? "border-primary/10 bg-card/20 opacity-70" : skill.kind === "primary" ? "border-primary/45 bg-primary/10" : status === "mastered" ? "border-emerald-400/40 bg-emerald-400/5" : "border-primary/15 bg-card/30"}`}>
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-[10px] font-mono uppercase tracking-[0.1em] text-primary/80">{status === "locked" ? "Locked" : status === "mastered" ? "Evidence met" : skill.kind === "primary" ? "Focus" : relationship || skill.kind}</span>
-                      <span className="text-xs text-muted-foreground">Lv {skill.level}</span>
+                      <span className="text-xs text-muted-foreground">Lv {recordedLevel}</span>
                     </div>
                     <p className="mt-1 text-sm text-foreground">{skill.name}</p>
                     <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-primary/10">
-                      <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${Math.min(100, skill.experience % 100)}%` }} />
+                      <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${Math.min(100, recordedExperience % 100)}%` }} />
                     </div>
-                    <p className="mt-1 text-[11px] text-muted-foreground">{skill.experience} skill XP</p>
+                    <p className="mt-1 text-[11px] text-muted-foreground">{recordedExperience} reviewed skill XP</p>
+                    {graphNode && graphNode.threadExperience !== recordedExperience && <p className="mt-1 text-[10px] text-muted-foreground">This Thread: {graphNode.threadExperience} XP</p>}
                     {graphNode && status === "locked" && graphNode.unmetRequirements[0] && <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">{graphNode.unmetRequirements[0]}</p>}
-                    {graphNode && status !== "locked" && <p className="mt-1 text-[10px] text-muted-foreground">{graphNode.completedMissionCount}/{graphNode.masteryRequirements.minCompletedMissions} missions · {thread.skillGraph?.reviewCount || 0}/{graphNode.masteryRequirements.minReviews} reviews</p>}
+                    {graphNode && status !== "locked" && <p className="mt-1 text-[10px] text-muted-foreground">{graphNode.completedMissionCount}/{graphNode.masteryRequirements.minCompletedMissions} reviewed missions · {thread.skillGraph?.reviewCount || 0}/{graphNode.masteryRequirements.minReviews} reviews</p>}
                   </div>
                 );
               })}
@@ -284,27 +363,71 @@ export function TransformationThreadPanel() {
               <div className="mt-3 rounded-md border border-primary/20 bg-primary/5 p-3">
                 <p className="text-[10px] font-mono uppercase tracking-[0.12em] text-primary">Recommended next practice · {nextPractice.skillName}</p>
                 <p className="mt-1 text-sm text-foreground">{nextPractice.title}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{nextPractice.description}</p>
+                <p className={`mt-1 text-xs ${nextPractice.fitsCurrentCapacity ? "text-muted-foreground" : "text-amber-200"}`}>{nextPractice.description}</p>
+                {nextPractice.deferralCount >= 2 && <p className="mt-2 text-[11px] leading-relaxed text-amber-200">This mission has been deferred {nextPractice.deferralCount} times. That is a scheduling signal, not a failure—consider reducing its scope, changing its timing, or asking for support.</p>}
+                {nextPractice.questId && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <Link href={`/mission/${nextPractice.questId}`} className="inline-flex h-8 items-center justify-center rounded-md border border-primary/30 px-2.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10">Review or right-size mission</Link>
+                    {!nextPractice.fitsCurrentCapacity && <Button size="sm" variant="outline" className="h-8 border-primary/30 text-primary hover:bg-primary/10" onClick={() => deferMission.mutate(nextPractice.questId!)} disabled={deferMission.isPending}>
+                      {deferMission.isPending ? "Deferring…" : "Defer to tomorrow"}
+                    </Button>}
+                  </div>
+                )}
               </div>
             )}
             {isActive && (
-              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                <Input
-                  value={branchName}
-                  onChange={(event) => setBranchName(event.target.value)}
-                  placeholder="Add a connected skill branch"
-                  maxLength={72}
-                  className="h-9 border-primary/20 bg-background/40 text-sm"
-                />
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="shrink-0 border-primary/30 text-primary hover:bg-primary/10"
-                  onClick={() => thread && addSkillBranch.mutate({ threadId: thread.id, name: branchName.trim() })}
-                  disabled={branchName.trim().length < 2 || addSkillBranch.isPending}
-                >
-                  <Plus className="mr-1.5 h-3.5 w-3.5" /> Add branch
-                </Button>
+              <div className="mt-3 space-y-2">
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Input
+                    value={branchName}
+                    onChange={(event) => setBranchName(event.target.value)}
+                    placeholder="Add a connected skill branch"
+                    maxLength={72}
+                    className="h-9 border-primary/20 bg-background/40 text-sm"
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="shrink-0 border-primary/30 text-primary hover:bg-primary/10"
+                    onClick={() => thread && addSkillBranch.mutate({ threadId: thread.id, name: branchName.trim() })}
+                    disabled={branchName.trim().length < 2 || addSkillBranch.isPending}
+                  >
+                    <Plus className="mr-1.5 h-3.5 w-3.5" /> Add branch
+                  </Button>
+                </div>
+                {skills.length >= 2 && (
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <select aria-label="Source skill" value={edgeSourceId} onChange={(event) => setEdgeSourceId(event.target.value)} className="h-9 min-w-0 rounded-md border border-primary/20 bg-background/40 px-2 text-sm text-foreground sm:flex-1">
+                      <option value="">From skill</option>
+                      {skills.map((skill) => <option key={skill.id} value={skill.id}>{skill.name}</option>)}
+                    </select>
+                    <select aria-label="Skill relationship" value={edgeRelationship} onChange={(event) => setEdgeRelationship(event.target.value)} className="h-9 rounded-md border border-primary/20 bg-background/40 px-2 text-sm text-foreground">
+                      <option value="reinforces">reinforces</option>
+                      <option value="supports">supports</option>
+                      <option value="requires">requires</option>
+                      <option value="clarifies">clarifies</option>
+                      <option value="sustains">sustains</option>
+                    </select>
+                    <select aria-label="Connection strength" value={edgeInfluenceWeight} onChange={(event) => setEdgeInfluenceWeight(event.target.value)} className="h-9 rounded-md border border-primary/20 bg-background/40 px-2 text-sm text-foreground">
+                      <option value="1">light link</option>
+                      <option value="2">meaningful link</option>
+                      <option value="3">strong link</option>
+                    </select>
+                    <select aria-label="Target skill" value={edgeTargetId} onChange={(event) => setEdgeTargetId(event.target.value)} className="h-9 min-w-0 rounded-md border border-primary/20 bg-background/40 px-2 text-sm text-foreground sm:flex-1">
+                      <option value="">To skill</option>
+                      {skills.map((skill) => <option key={skill.id} value={skill.id}>{skill.name}</option>)}
+                    </select>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="shrink-0 border-primary/30 text-primary hover:bg-primary/10"
+                      onClick={() => thread && addSkillEdge.mutate({ threadId: thread.id, sourceSkillId: Number(edgeSourceId), targetSkillId: Number(edgeTargetId), relationship: edgeRelationship, influenceWeight: Number(edgeInfluenceWeight) })}
+                      disabled={!edgeSourceId || !edgeTargetId || edgeSourceId === edgeTargetId || addSkillEdge.isPending}
+                    >
+                      Connect
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
           </div>

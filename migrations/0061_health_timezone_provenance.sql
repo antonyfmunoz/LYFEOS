@@ -1,0 +1,19 @@
+ALTER TABLE "health_profiles" ADD COLUMN IF NOT EXISTS "time_zone" text;
+ALTER TABLE "health_profiles" ADD COLUMN IF NOT EXISTS "utc_offset_minutes" integer;
+ALTER TABLE "body_measurements" ADD COLUMN IF NOT EXISTS "recorded_time_zone" text;
+ALTER TABLE "body_measurements" ADD COLUMN IF NOT EXISTS "recorded_utc_offset_minutes" integer;
+
+ALTER TABLE "hydration_entries" ADD COLUMN IF NOT EXISTS "recorded_time_zone" text;
+ALTER TABLE "hydration_entries" ADD COLUMN IF NOT EXISTS "recorded_utc_offset_minutes" integer;
+ALTER TABLE "supplement_entries" ADD COLUMN IF NOT EXISTS "recorded_time_zone" text;
+ALTER TABLE "supplement_entries" ADD COLUMN IF NOT EXISTS "recorded_utc_offset_minutes" integer;
+ALTER TABLE "fasting_windows" ADD COLUMN IF NOT EXISTS "recorded_time_zone" text;
+ALTER TABLE "fasting_windows" ADD COLUMN IF NOT EXISTS "recorded_utc_offset_minutes" integer;
+ALTER TABLE "recovery_activities" ADD COLUMN IF NOT EXISTS "recorded_time_zone" text;
+ALTER TABLE "recovery_activities" ADD COLUMN IF NOT EXISTS "recorded_utc_offset_minutes" integer;
+ALTER TABLE "health_observations" ADD COLUMN IF NOT EXISTS "recorded_time_zone" text;
+ALTER TABLE "health_observations" ADD COLUMN IF NOT EXISTS "recorded_utc_offset_minutes" integer;
+ALTER TABLE "nutrition_diary_entries" ADD COLUMN IF NOT EXISTS "recorded_time_zone" text;
+ALTER TABLE "nutrition_diary_entries" ADD COLUMN IF NOT EXISTS "recorded_utc_offset_minutes" integer;
+ALTER TABLE "workouts" ADD COLUMN IF NOT EXISTS "recorded_time_zone" text;
+ALTER TABLE "workouts" ADD COLUMN IF NOT EXISTS "recorded_utc_offset_minutes" integer;

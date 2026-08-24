@@ -9,8 +9,6 @@ import {
   insertAIMessageSchema,
   insertMissionPageSchema,
   insertContactSchema,
-  insertSpreadsheetSchema,
-  insertCanvasSchema,
   insertGraphSchema,
   insertFolderSchema,
   insertDocumentSchema,
@@ -20,6 +18,8 @@ import {
   MediaItem,
   InsertMediaItem,
 } from "@shared/schema";
+import { createSpreadsheetRequestSchema, updateSpreadsheetRequestSchema } from "@shared/spreadsheets";
+import { createCanvasRequestSchema, updateCanvasRequestSchema } from "@shared/canvases";
 
 declare module "express-session" {
   interface SessionData {
@@ -29,6 +29,14 @@ declare module "express-session" {
 }
 
 export function registerContentRoutes(app: Express): void {
+  app.use((req, res, next) => {
+    if (req.path.includes("/spreadsheets") || req.path.includes("/canvases")) {
+      res.setHeader("Cache-Control", "private, no-store, max-age=0");
+      res.setHeader("Pragma", "no-cache");
+      res.setHeader("Vary", "Cookie");
+    }
+    next();
+  });
   // AI MESSAGE ROUTES
   app.get("/api/users/:userId/messages", isOwner, async (req: Request, res: Response) => {
     try {
@@ -456,14 +464,12 @@ export function registerContentRoutes(app: Express): void {
   
   app.post("/api/spreadsheets", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      // Validate spreadsheet data
-      const validateData = insertSpreadsheetSchema.parse({
-        ...req.body,
-        userId: req.session.userId
+      const input = createSpreadsheetRequestSchema.parse(req.body);
+      const spreadsheet = await storage.createSpreadsheet({
+        ...input,
+        description: input.description || null,
+        userId: req.session.userId!,
       });
-      
-      // Create spreadsheet
-      const spreadsheet = await storage.createSpreadsheet(validateData);
       
       return res.status(201).json({ spreadsheet });
     } catch (error) {
@@ -493,8 +499,11 @@ export function registerContentRoutes(app: Express): void {
         return res.status(403).json({ error: "Not authorized to update this spreadsheet" });
       }
       
-      // Update spreadsheet
-      const updatedSpreadsheet = await storage.updateSpreadsheet(spreadsheetId, req.body);
+      const input = updateSpreadsheetRequestSchema.parse(req.body);
+      const updatedSpreadsheet = await storage.updateSpreadsheet(spreadsheetId, {
+        ...input,
+        ...(input.description !== undefined ? { description: input.description || null } : {}),
+      });
       
       return res.status(200).json({ spreadsheet: updatedSpreadsheet });
     } catch (error) {
@@ -624,14 +633,12 @@ export function registerContentRoutes(app: Express): void {
   
   app.post("/api/canvases", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      // Validate canvas data
-      const validateData = insertCanvasSchema.parse({
-        ...req.body,
-        userId: req.session.userId
-      });
+      const validateData = createCanvasRequestSchema.parse(req.body);
       
-      // Create canvas
-      const canvas = await storage.createCanvas(validateData);
+      const canvas = await storage.createCanvas({
+        ...validateData,
+        userId: req.session.userId!,
+      });
       
       return res.status(201).json({ canvas });
     } catch (error) {
@@ -661,8 +668,8 @@ export function registerContentRoutes(app: Express): void {
         return res.status(403).json({ error: "Not authorized to update this canvas" });
       }
       
-      // Update canvas
-      const updatedCanvas = await storage.updateCanvas(canvasId, req.body);
+      const validateData = updateCanvasRequestSchema.parse(req.body);
+      const updatedCanvas = await storage.updateCanvas(canvasId, validateData);
       
       return res.status(200).json({ canvas: updatedCanvas });
     } catch (error) {
@@ -1123,7 +1130,7 @@ export function registerContentRoutes(app: Express): void {
       
       // Check ownership
       if (document.userId !== req.session.userId) {
-        return res.status(403).json({ error: "Not authorized" });
+        return res.status(404).json({ error: "Document not found" });
       }
       
       return res.status(200).json({ document });
@@ -1184,7 +1191,7 @@ export function registerContentRoutes(app: Express): void {
       
       // Check ownership
       if (document.userId !== req.session.userId) {
-        return res.status(403).json({ error: "Not authorized" });
+        return res.status(404).json({ error: "Document not found" });
       }
       
       // If moving to a different folder, verify folder exists and belongs to user
@@ -1222,7 +1229,7 @@ export function registerContentRoutes(app: Express): void {
       
       // Check ownership
       if (document.userId !== req.session.userId) {
-        return res.status(403).json({ error: "Not authorized" });
+        return res.status(404).json({ error: "Document not found" });
       }
       
       await storage.softDeleteDocument(documentId);

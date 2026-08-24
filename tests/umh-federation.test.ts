@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { umhCommandEnvelopeSchema } from "../shared/umh";
-import { signUMHMessage, verifyUMHSignature } from "../server/umh/crypto";
+import { hashUMHPayload, signUMHMessage, verifyUMHSignature } from "../server/umh/crypto";
 
 const command = {
   protocolVersion: "umh.federation.v1",
@@ -30,6 +30,12 @@ describe("LyfeOS UMH federation envelope", () => {
 
   it("rejects unexpected payload fields", () => {
     expect(() => umhCommandEnvelopeSchema.parse({ ...command, payload: { title: "x", unrestricted: true } })).toThrow();
+  });
+
+  it("uses the payload fingerprint to distinguish an idempotent replay from a conflicting request", () => {
+    const parsed = umhCommandEnvelopeSchema.parse(command);
+    expect(hashUMHPayload(parsed.payload)).toBe(hashUMHPayload({ ...parsed.payload }));
+    expect(hashUMHPayload(parsed.payload)).not.toBe(hashUMHPayload({ ...parsed.payload, title: "Different mission" }));
   });
 
   it("verifies a signed canonical payload and rejects tampering", () => {

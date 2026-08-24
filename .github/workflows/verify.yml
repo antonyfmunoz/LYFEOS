@@ -19,6 +19,95 @@ jobs:
         with:
           node-version: 20
           cache: npm
+      - run: git diff --check
       - run: npm ci
       - run: npm run verify
       - run: npm audit --omit=dev --audit-level=critical
+
+  messages-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: lyfeos_messages_ci
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d lyfeos_messages_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/lyfeos_messages_ci
+      SESSION_SECRET: lyfeos-messages-ci-only-session-secret
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Apply the complete raw migration history
+        shell: bash
+        run: |
+          psql --version
+          while IFS= read -r migration; do
+            echo "Applying ${migration}"
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$migration" >/dev/null
+          done < <(printf '%s\n' migrations/*.sql | sort)
+      - name: Build and prove release migration convergence
+        shell: bash
+        run: |
+          export CLERK_SECRET_KEY="sk""_test_lyfeoslocalqualification000000000"
+          export VITE_CLERK_PUBLISHABLE_KEY="pk""_test_bG9jYWwubHlmZW9zLmRldiQ="
+          npm run build
+          node dist/release-migrate.js
+          second_pass="$(node dist/release-migrate.js)"
+          if [ -n "$second_pass" ]; then
+            echo "Release migration runner was not a no-op on its second pass:"
+            echo "$second_pass"
+            exit 1
+          fi
+      - name: Exercise authenticated native Messages journeys
+        shell: bash
+        env:
+          NODE_ENV: production
+          PORT: 5099
+          LYFEOS_TEST_ENV: isolated
+          LYFEOS_TEST_API_URL: http://127.0.0.1:5099
+        run: |
+          export CLERK_SECRET_KEY="sk""_test_lyfeoslocalqualification000000000"
+          export VITE_CLERK_PUBLISHABLE_KEY="pk""_test_bG9jYWwubHlmZW9zLmRldiQ="
+          server_log="$RUNNER_TEMP/lyfeos-messages-server.log"
+          node dist/index.js >"$server_log" 2>&1 &
+          server_pid=$!
+          cleanup() {
+            kill "$server_pid" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+
+          ready=false
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --show-error http://127.0.0.1:5099/api/ready >/dev/null; then
+              ready=true
+              break
+            fi
+            sleep 1
+          done
+          if [ "$ready" != true ]; then
+            echo "LyfeOS did not become ready. Server log:"
+            cat "$server_log"
+            exit 1
+          fi
+
+          test_status=0
+          npx vitest run tests/api-messages-convergence.test.ts || test_status=$?
+          if [ "$test_status" -ne 0 ]; then
+            echo "Messages integration failed. Server log:"
+            cat "$server_log"
+          fi
+          exit "$test_status"

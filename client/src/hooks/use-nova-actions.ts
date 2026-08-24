@@ -177,17 +177,13 @@ export function useNovaActions() {
     for (const ta of toolActions) {
       executeToolAction(ta);
     }
-    const missionActions = ['complete_mission', 'create_mission', 'terminate_mission', 'restore_mission', 'update_mission', 'batch_create_missions', 'uncomplete_mission'];
+    const missionActions = ['complete_mission', 'create_mission', 'create_calendar_event', 'terminate_mission', 'restore_mission', 'update_mission', 'batch_create_missions', 'uncomplete_mission'];
     if (toolActions.some(ta => ta.action && missionActions.includes(ta.action))) {
       refetchQuests();
       queryClient.invalidateQueries({ queryKey: ["/api/quests"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user-stats"] });
       queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
       queryClient.invalidateQueries({ queryKey: ["/api/quests/archived"] });
-    }
-    if (toolActions.some(ta => ta.action === 'create_calendar_event')) {
-      queryClient.invalidateQueries({ queryKey: ["/api/events"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/calendar-events"] });
     }
     if (toolActions.some(ta => ta.action === 'update_profile' || ta.action === 'generate_affirmation')) {
       queryClient.invalidateQueries({ queryKey: ["/api/profile"] });

@@ -128,8 +128,8 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
               }
               title="System Efficiency"
               titleColor="text-primary"
-              description="Measures how optimally you're using LYFEOS features. Balanced task completion, regular reflections, and consistent data entry improve your score."
-              additionalInfo="Higher efficiency scores indicate better life operating system utilization and typically correlate with improved productivity and wellbeing."
+              description="Summarizes LyfeOS-recorded planning and reflection activity."
+              additionalInfo="This app score is not a measure of productivity, wellbeing, or personal worth."
               statType="efficiency"
             />
             
@@ -177,8 +177,8 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
               }
               title="Attention Tokens"
               titleColor="text-primary"
-              description="Measures your focus capacity and attention allocation. High-quality focus time and mental clarity increase your Attention Tokens."
-              additionalInfo="Managing your Attention Tokens helps maintain deep focus on important tasks and prevent mental fatigue."
+              description="Your LyfeOS planning signal for the attention you have available today."
+              additionalInfo="Use it to right-size a mission; it is not a measure of cognitive ability or mental health."
               statType="attention"
             />
             
@@ -217,8 +217,8 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
               }
               title="Time Tokens"
               titleColor="text-primary"
-              description="Represents your available productive time for the day. Completing tasks consumes tokens, which replenish daily."
-              additionalInfo="Managing your Time Tokens helps balance productivity and prevents burnout by encouraging appropriate work limits."
+              description="Your LyfeOS planning signal for time you intend to allocate today. Completing tasks consumes tokens, which replenish daily."
+              additionalInfo="Use it to choose a realistic next mission; tokens are an app planning model, not time tracking."
               statType="time"
             />
             
@@ -257,8 +257,8 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
               }
               title="Energy Points"
               titleColor="text-primary"
-              description="Measures your mental and physical energy levels. Rest, nutrition, and wellness activities increase your Energy Points."
-              additionalInfo="Higher energy enables you to tackle more challenging tasks effectively and sustain focus throughout the day."
+              description="Your LyfeOS planning signal for self-reported energy today."
+              additionalInfo="Use it to right-size a mission; it is not a health or productivity measurement."
               statType="energy"
             />
             
@@ -297,8 +297,8 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
               }
               title="Health Points"
               titleColor="text-primary"
-              description="Indicates your overall physical wellbeing. Exercise, sleep, and self-care activities contribute to higher Health Points."
-              additionalInfo="Maintaining high Health Points improves resilience, prevents illness, and enhances long-term performance."
+              description="A self-reported LyfeOS wellbeing signal used for planning."
+              additionalInfo="It is not a medical metric, diagnosis, or prediction."
               statType="health"
             />
             

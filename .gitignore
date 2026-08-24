@@ -11,3 +11,8 @@ vite.config.ts.*
 !.env.op.tpl
 !.env.tpl
 !.env.example
+
+# Local database exports may contain user data, provider tokens, or billing data.
+dump.sql
+*.dump
+*.backup

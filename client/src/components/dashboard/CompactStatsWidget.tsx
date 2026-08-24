@@ -138,8 +138,8 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
             }
             title="System Efficiency"
             titleColor="text-primary"
-            description="How effectively you're using LYFEOS."
-            additionalInfo="Higher efficiency scores correlate with improved productivity."
+            description="A summary of your LyfeOS-recorded planning and reflection activity."
+            additionalInfo="This app score is not a measure of productivity, wellbeing, or personal worth."
             statType="efficiency"
           />
           
@@ -175,8 +175,8 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
             }
             title="Attention Tokens (AT)"
             titleColor="text-primary"
-            description="AT represent your focus, concentration and mental clarity."
-            additionalInfo="Higher attention tokens enable deeper focus on complex tasks."
+            description="AT are your LyfeOS planning signal for the attention you have available today."
+            additionalInfo="Use it to right-size a mission; it is not a measure of cognitive ability."
             statType="attention"
           />
           
@@ -212,8 +212,8 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
             }
             title="Time Tokens (TT)"
             titleColor="text-primary"
-            description="TT represent your time allocation and management resources."
-            additionalInfo="Spend tokens wisely to manage your schedule effectively."
+            description="TT are your LyfeOS planning signal for time you intend to allocate today."
+            additionalInfo="Use it to choose a realistic next mission; tokens are an app planning model, not time tracking."
             statType="time"
           />
           
@@ -249,8 +249,8 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
             }
             title="Energy Points (EP)"
             titleColor="text-primary"
-            description="EP represents your creative energy and vitality resources."
-            additionalInfo="Use EP to power creative tasks and maintain high productivity."
+            description="EP is your LyfeOS planning signal for self-reported energy today."
+            additionalInfo="Use it to right-size a mission; it is not a health or productivity measurement."
             statType="energy"
           />
           
@@ -286,8 +286,8 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
             }
             title="Health Points (HP)"
             titleColor="text-primary"
-            description="HP represents your physical well-being and resilience."
-            additionalInfo="Maintain high HP to perform at your best and recover quickly."
+            description="HP is a self-reported LyfeOS wellbeing signal used for planning."
+            additionalInfo="It is not a medical metric, diagnosis, or prediction."
             statType="health"
           />
           
@@ -323,8 +323,8 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
             }
             title="Wealth Tokens (WT)"
             titleColor="text-primary"
-            description="WT represents your financial health and resource accumulation."
-            additionalInfo="Build wealth tokens through smart financial habits and goal completion."
+            description="WT is a LyfeOS planning signal for a financial goal or resource focus."
+            additionalInfo="It is not an account balance, financial advice, or a measure of wealth."
             statType="wealth"
           />
           

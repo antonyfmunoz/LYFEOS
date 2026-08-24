@@ -202,6 +202,7 @@ export default function AICompanionPanel() {
           className="hidden lg:flex fixed bottom-6 right-6 z-50 w-14 h-14 items-center justify-center rounded-full bg-primary text-background shadow-lg hover:scale-105 transition-transform"
           style={{ boxShadow: "0 0 20px var(--primary-glow-light)" }}
           title={`Chat with ${aiCompanionName}`}
+          aria-label={`Chat with ${aiCompanionName}`}
         >
           <MessageCircle className="h-6 w-6" />
         </button>
@@ -219,6 +220,8 @@ export default function AICompanionPanel() {
                   size="sm"
                   onClick={() => setSidebarOpen(!sidebarOpen)}
                   className="mr-2 p-0 h-7 w-7 text-primary hover:bg-primary/10"
+                  aria-label={sidebarOpen ? "Close chat list" : "Open chat list"}
+                  aria-expanded={sidebarOpen}
                 >
                   {sidebarOpen ? <X className="h-4 w-4 text-primary" /> : <Menu className="h-4 w-4 text-primary" />}
                 </Button>
@@ -229,6 +232,7 @@ export default function AICompanionPanel() {
                 onClick={() => setIsOpen(false)}
                 className="p-1.5 rounded-lg hover:bg-primary/10 text-muted-foreground hover:text-primary transition"
                 title="Minimize"
+                aria-label="Minimize assistant"
               >
                 <Minimize2 className="h-4 w-4" />
               </button>
@@ -243,15 +247,16 @@ export default function AICompanionPanel() {
                   onChange={(e) => setNameInput(e.target.value)}
                   className="bg-transparent border border-primary/30 rounded-lg py-1 px-2 mr-2 outline-none flex-grow text-sm text-foreground focus:border-primary/60 transition"
                   placeholder="Enter AI name"
+                  aria-label="Assistant name"
                   maxLength={20}
                 />
-                <button onClick={handleSaveName} className="p-1 text-[#36F1CD] hover:bg-[#36F1CD]/10 rounded"><Check className="h-4 w-4" /></button>
-                <button onClick={() => { setNameInput(aiCompanionName); setIsEditingName(false); }} className="p-1 text-red-400 hover:bg-red-400/10 rounded ml-1"><X className="h-4 w-4" /></button>
+                <button onClick={handleSaveName} aria-label="Save assistant name" className="p-1 text-[#36F1CD] hover:bg-[#36F1CD]/10 rounded"><Check className="h-4 w-4" /></button>
+                <button onClick={() => { setNameInput(aiCompanionName); setIsEditingName(false); }} aria-label="Cancel assistant name edit" className="p-1 text-red-400 hover:bg-red-400/10 rounded ml-1"><X className="h-4 w-4" /></button>
               </div>
             ) : (
               <div className="flex items-center">
                 <span className="text-sm text-primary mr-2">{aiCompanionName}</span>
-                <button onClick={() => setIsEditingName(true)} className="p-1 text-primary hover:bg-primary/10 transition rounded">
+                <button onClick={() => setIsEditingName(true)} aria-label="Edit assistant name" className="p-1 text-primary hover:bg-primary/10 transition rounded">
                   <Edit2 className="h-3 w-3" />
                 </button>
               </div>
@@ -269,6 +274,7 @@ export default function AICompanionPanel() {
                       size="sm"
                       className="h-7 w-7 p-0 text-primary hover:bg-primary/10 rounded-full"
                       onClick={handleCreateChat}
+                      aria-label="Create new chat"
                     >
                       <PlusCircle className="h-4 w-4 text-primary" />
                     </Button>
@@ -277,6 +283,7 @@ export default function AICompanionPanel() {
                       size="sm"
                       className="h-7 w-7 p-0 text-muted-foreground hover:bg-primary/10 rounded-full"
                       onClick={() => setSidebarOpen(false)}
+                      aria-label="Close chat list"
                     >
                       <X className="h-4 w-4" />
                     </Button>
@@ -293,14 +300,15 @@ export default function AICompanionPanel() {
                             onChange={(e) => setChatTitleInput(e.target.value)}
                             className="h-8 text-sm bg-card/30 border border-primary/30 rounded px-2 flex-1 mr-2 outline-none focus:border-primary/60 text-foreground"
                             placeholder="Chat name"
+                            aria-label="Chat name"
                             maxLength={30}
                             onKeyDown={(e) => {
                               if (e.key === 'Enter') handleUpdateChatTitle();
                               else if (e.key === 'Escape') { setIsEditingChatTitle(false); setEditingChatId(""); setChatTitleInput(""); }
                             }}
                           />
-                          <button onClick={handleUpdateChatTitle} className="p-1 text-primary hover:bg-primary/20 rounded"><Check className="h-4 w-4" /></button>
-                          <button onClick={() => { setIsEditingChatTitle(false); setEditingChatId(""); setChatTitleInput(""); }} className="p-1 text-muted-foreground hover:bg-red-500/20 rounded ml-1"><X className="h-4 w-4" /></button>
+                          <button onClick={handleUpdateChatTitle} aria-label="Save chat name" className="p-1 text-primary hover:bg-primary/20 rounded"><Check className="h-4 w-4" /></button>
+                          <button onClick={() => { setIsEditingChatTitle(false); setEditingChatId(""); setChatTitleInput(""); }} aria-label="Cancel chat name edit" className="p-1 text-muted-foreground hover:bg-red-500/20 rounded ml-1"><X className="h-4 w-4" /></button>
                         </div>
                       ) : (
                         <div
@@ -308,6 +316,16 @@ export default function AICompanionPanel() {
                             chat.id === activeChatSessionId ? 'bg-primary/10 border border-primary/20' : ''
                           }`}
                           onClick={() => handleChatSelect(chat.id)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              handleChatSelect(chat.id);
+                            }
+                          }}
+                          role="button"
+                          tabIndex={0}
+                          aria-label={`Open chat: ${chat.title}`}
+                          aria-current={chat.id === activeChatSessionId ? "page" : undefined}
                         >
                           <div className="flex items-center flex-grow overflow-hidden mr-2">
                             <MessageSquare className="h-4 w-4 mr-2 text-primary flex-shrink-0" />
@@ -315,7 +333,7 @@ export default function AICompanionPanel() {
                           </div>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-primary hover:bg-primary/10 rounded-full" onClick={(e) => e.stopPropagation()}>
+                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-primary hover:bg-primary/10 rounded-full" onClick={(e) => e.stopPropagation()} aria-label={`Chat options for ${chat.title}`}>
                                 <MoreVertical className="h-3 w-3 text-primary" />
                               </Button>
                             </DropdownMenuTrigger>
@@ -370,6 +388,7 @@ export default function AICompanionPanel() {
                                   onClick={() => toggleTTS(message.id, message.content)}
                                   className="text-muted-foreground hover:text-primary transition-colors p-0.5"
                                   title={speakingMessageId === message.id ? "Stop reading" : "Read aloud"}
+                                  aria-label={speakingMessageId === message.id ? "Stop reading message aloud" : "Read message aloud"}
                                 >
                                   {speakingMessageId === message.id ? <VolumeX className="h-3 w-3" /> : <Volume2 className="h-3 w-3" />}
                                 </button>
@@ -416,7 +435,7 @@ export default function AICompanionPanel() {
                       <div key={img.id} className="flex items-center gap-1 px-2 py-1 rounded-lg bg-primary/10 border border-primary/20 text-xs text-primary">
                         <ImagePlus className="h-3 w-3" />
                         <span className="max-w-[80px] truncate">{img.name}</span>
-                        <button type="button" onClick={() => removeAttachedImage(img.id)} className="hover:text-destructive"><X className="h-3 w-3" /></button>
+                        <button type="button" onClick={() => removeAttachedImage(img.id)} aria-label={`Remove attached image: ${img.name}`} className="hover:text-destructive"><X className="h-3 w-3" /></button>
                       </div>
                     ))}
                   </div>
@@ -460,6 +479,7 @@ export default function AICompanionPanel() {
                     disabled={isUploadingImage}
                     className="absolute right-[72px] bottom-1.5 h-7 w-7 rounded border bg-card/50 border-primary/30 text-primary hover:bg-primary/20 transition-colors disabled:opacity-40 inline-flex items-center justify-center"
                     title="Attach image"
+                    aria-label="Attach image"
                   >
                     {isUploadingImage ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImagePlus className="h-3.5 w-3.5" />}
                   </button>
@@ -468,6 +488,7 @@ export default function AICompanionPanel() {
                     onClick={() => window.dispatchEvent(new CustomEvent('toggle-voice-control'))}
                     className="absolute right-10 bottom-1.5 h-7 w-7 rounded border bg-card/50 border-primary/30 text-primary hover:bg-primary/20 transition-colors inline-flex items-center justify-center"
                     title="Voice input"
+                    aria-label="Use voice input"
                   >
                     <Mic className="h-3.5 w-3.5" />
                   </button>
@@ -475,6 +496,7 @@ export default function AICompanionPanel() {
                     type="submit"
                     disabled={!inputText.trim() && attachedImageIds.length === 0}
                     className="absolute right-1.5 bottom-1.5 h-7 w-7 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center"
+                    aria-label="Send message"
                   >
                     <Send className="h-3.5 w-3.5" />
                   </button>

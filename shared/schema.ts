@@ -1,7 +1,7 @@
-import { pgTable, text, serial, integer, boolean, timestamp, jsonb, date, varchar, uuid, index, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, jsonb, date, varchar, uuid, index, uniqueIndex, real } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 
 // Users table (Core Account Information)
 export const users = pgTable("users", {
@@ -247,6 +247,8 @@ export const userProfile = pgTable("user_profile", {
   primaryThemeColor: text("primary_theme_color").default("#00e0ff"),
   futureSelfSummary: text("future_self_summary"),
   aiPersonalityProfile: jsonb("ai_personality_profile").default({}),
+  // Explicitly controls which personal domains may be included in an AI prompt.
+  aiContextPreferences: jsonb("ai_context_preferences").notNull().default({ planning: true, identity: false, dailyState: false, conversationHistory: false }),
   totalXP: integer("total_xp").notNull().default(0),
   onboardingCompleted: boolean("onboarding_completed").default(false).notNull(),
   completedOnboardingMissions: integer("completed_onboarding_missions").array().default([]),
@@ -267,6 +269,8 @@ export const userDailyLogs = pgTable("user_daily_logs", {
   // Energy log fields
   wakeTime: text("wake_time"), // Time user woke up (HH:MM format)
   sleepTime: text("sleep_time"), // Time user went to sleep (HH:MM format)
+  sleepQuality: integer("sleep_quality"), // Optional subjective reflection, 1-5
+  sleepNote: text("sleep_note"), // Optional user-authored context, not a measured signal
   mentalState: integer("mental_state").default(5), // 1-10 scale
   physicalState: integer("physical_state").default(5), // 1-10 scale
   emotionalState: integer("emotional_state").default(5), // 1-10 scale
@@ -332,7 +336,7 @@ export const transformationThreadEvidence = pgTable("transformation_thread_evide
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   transformationThreadId: integer("transformation_thread_id").notNull().references(() => transformationThreads.id, { onDelete: "cascade" }),
-  sourceType: text("source_type").notNull(), // mission_completion | daily_reflection | weekly_review | thread_completion
+  sourceType: text("source_type").notNull(), // mission_activity | mission_evidence_review | daily_reflection | weekly_review | thread_completion
   sourceId: text("source_id").notNull(),
   summary: text("summary").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -342,13 +346,73 @@ export const transformationThreadEvidence = pgTable("transformation_thread_evide
   index("transformation_thread_evidence_user_created_idx").on(table.userId, table.createdAt),
 ]);
 
-// A private, user-owned capability map. These skills are intentionally scoped to
-// a transformation thread: LyfeOS tracks the person's chosen development, not a
-// universal curriculum or a public ranking system.
+// A private, user-owned capability is the durable real-world development theme
+// behind one or more Thread-local skill nodes. It lets repeated practice in
+// different contexts accumulate without claiming external certification.
+export const personalCapabilities = pgTable("personal_capabilities", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  key: text("key").notNull(),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  experience: integer("experience").notNull().default(0),
+  level: integer("level").notNull().default(1),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("personal_capabilities_user_key_idx").on(table.userId, table.key),
+  index("personal_capabilities_user_experience_idx").on(table.userId, table.experience),
+]);
+
+export const sleepNaps = pgTable("sleep_naps", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  date: date("date").notNull(),
+  startTime: text("start_time").notNull(),
+  endTime: text("end_time").notNull(),
+  sleepQuality: integer("sleep_quality"),
+  note: text("note"),
+  source: text("source").notNull().default("manual"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [index("sleep_naps_user_date_idx").on(table.userId, table.date)]);
+
+// Timestamped sessions keep measured/transcribed source context separate from
+// the subjective daily reflection above. Stage values remain raw durations;
+// LyfeOS does not turn them into a sleep score or readiness claim.
+export const sleepSessions = pgTable("sleep_sessions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  startedAt: timestamp("started_at").notNull(),
+  endedAt: timestamp("ended_at").notNull(),
+  source: text("source").notNull().default("manual"),
+  deviceName: text("device_name"),
+  method: text("method"),
+  awakeMinutes: integer("awake_minutes"),
+  lightMinutes: integer("light_minutes"),
+  deepMinutes: integer("deep_minutes"),
+  remMinutes: integer("rem_minutes"),
+  subjectiveQuality: integer("subjective_quality"),
+  note: text("note"),
+  recordedTimeZone: text("recorded_time_zone"),
+  recordedUtcOffsetMinutes: integer("recorded_utc_offset_minutes"),
+  clientMutationId: text("client_mutation_id"),
+  mutationPayloadHash: text("mutation_payload_hash"),
+  revision: integer("revision").notNull().default(1),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("sleep_sessions_user_started_idx").on(table.userId, table.startedAt),
+  uniqueIndex("sleep_sessions_user_mutation_unique_idx").on(table.userId, table.clientMutationId).where(sql`${table.clientMutationId} IS NOT NULL`),
+]);
+
+// These nodes preserve a Thread's local sequence, prerequisites, and graph
+// relationships. Their capability link allows equivalent practice to accrue to
+// the user's durable private map across multiple Threads.
 export const skillNodes = pgTable("skill_nodes", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   transformationThreadId: integer("transformation_thread_id").notNull().references(() => transformationThreads.id, { onDelete: "cascade" }),
+  capabilityId: integer("capability_id").references(() => personalCapabilities.id, { onDelete: "set null" }),
   key: text("key").notNull(),
   name: text("name").notNull(),
   description: text("description").notNull(),
@@ -374,6 +438,9 @@ export const skillEdges = pgTable("skill_edges", {
   sourceSkillId: integer("source_skill_id").notNull().references(() => skillNodes.id, { onDelete: "cascade" }),
   targetSkillId: integer("target_skill_id").notNull().references(() => skillNodes.id, { onDelete: "cascade" }),
   relationship: text("relationship").notNull().default("reinforces"),
+  // User-described strength explains the visual relationship only. It never
+  // multiplies XP or determines real-world competence.
+  influenceWeight: integer("influence_weight").notNull().default(1),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   uniqueIndex("skill_edges_unique_idx").on(table.sourceSkillId, table.targetSkillId, table.relationship),
@@ -402,7 +469,7 @@ export const skillProgressionEvents = pgTable("skill_progression_events", {
   skillNodeId: integer("skill_node_id").notNull().references(() => skillNodes.id, { onDelete: "cascade" }),
   questId: integer("quest_id").references(() => quests.id, { onDelete: "set null" }),
   transformationThreadId: integer("transformation_thread_id").references(() => transformationThreads.id, { onDelete: "set null" }),
-  sourceType: text("source_type").notNull(), // mission_completion | mission_reversal
+  sourceType: text("source_type").notNull(), // mission_evidence_review | mission_evidence_reversal
   experienceDelta: integer("experience_delta").notNull(),
   evidenceSummary: text("evidence_summary").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -487,6 +554,9 @@ export const quests = pgTable("quests", {
   repeatEndDate: text("repeat_end_date"), // format: "YYYY-MM-DD", null means forever
   parentRitualId: integer("parent_ritual_id"), // links generated instances back to the original ritual
   visionGoalId: integer("vision_goal_id").references(() => visionGoals.id),
+  // Canonical Project membership. The FK is installed in migration 0097
+  // because the historical kanban_boards declaration appears later here.
+  projectId: integer("project_id"),
   transformationThreadId: integer("transformation_thread_id").references(() => transformationThreads.id, { onDelete: "set null" }),
   linkedItems: jsonb("linked_items").default([]),
   sortOrder: integer("sort_order").default(0),
@@ -498,12 +568,126 @@ export const quests = pgTable("quests", {
   url: text("url"),
   attendees: jsonb("attendees").default([]),
   missionStatus: text("mission_status").default("confirmed"),
+  // Internal idempotency/provenance key for lifecycle adapters. It is never
+  // inferred from user health data and is unique only within the owning user.
+  lifecycleKey: text("lifecycle_key"),
   viewId: integer("view_id"),
   viewColumn: text("view_column"),
   deletedAt: timestamp("deleted_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  uniqueIndex("quests_user_lifecycle_key_unique_idx").on(table.userId, table.lifecycleKey),
+]);
+
+// A mission contract keeps purpose, expected proof, review mode, and safety
+// bounds explicit. It is separate from the task record so legacy missions
+// remain readable while new developmental missions can be reviewed honestly.
+export const missionContracts = pgTable("mission_contracts", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  questId: integer("quest_id").notNull().references(() => quests.id, { onDelete: "cascade" }),
+  purpose: text("purpose").notNull(),
+  expectedOutput: text("expected_output").notNull(),
+  capabilityTargets: jsonb("capability_targets").notNull().default([]),
+  prerequisites: jsonb("prerequisites").notNull().default([]),
+  requiredEvidence: jsonb("required_evidence").notNull().default([]),
+  reviewMode: text("review_mode").notNull().default("self"), // self | human
+  riskLevel: text("risk_level").notNull().default("low"), // low | medium | high
+  stopConditions: jsonb("stop_conditions").notNull().default([]),
+  escalationPath: text("escalation_path"),
+  state: text("state").notNull().default("draft"), // draft | accepted | awaiting_review | reviewed | revisions_needed
+  // Set only after a completed mission's declared evidence receives a positive
+  // review. It is the idempotency and audit marker for capability progression.
+  progressionAppliedAt: timestamp("progression_applied_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("mission_contracts_quest_unique_idx").on(table.questId),
+  index("mission_contracts_user_state_idx").on(table.userId, table.state),
+]);
+
+// A deferral is not a failure or a hidden status change. It is a user-owned,
+// append-only record that explains why a mission was rescheduled so capacity
+// guidance can remain honest over time.
+export const missionDeferrals = pgTable("mission_deferrals", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  questId: integer("quest_id").notNull().references(() => quests.id, { onDelete: "cascade" }),
+  previousDueDate: text("previous_due_date"),
+  deferredToDate: text("deferred_to_date").notNull(),
+  reason: text("reason"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("mission_deferrals_user_quest_created_idx").on(table.userId, table.questId, table.createdAt),
+]);
+
+// Explicit same-user sequencing. Dependencies are a separate relation rather
+// than an overloaded JSON field so the lifecycle can enforce them and the user
+// can inspect or remove them without changing the mission's proof plan.
+export const missionDependencies = pgTable("mission_dependencies", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  dependentQuestId: integer("dependent_quest_id").notNull().references(() => quests.id, { onDelete: "cascade" }),
+  prerequisiteQuestId: integer("prerequisite_quest_id").notNull().references(() => quests.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("mission_dependencies_unique_idx").on(table.dependentQuestId, table.prerequisiteQuestId),
+  index("mission_dependencies_user_dependent_idx").on(table.userId, table.dependentQuestId),
+]);
+
+// Evidence is user-owned and append-only. A summary describes the proof while
+// an optional reference can point to an artifact without copying private data.
+export const missionEvidence = pgTable("mission_evidence", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  missionContractId: integer("mission_contract_id").notNull().references(() => missionContracts.id, { onDelete: "cascade" }),
+  sourceType: text("source_type").notNull(), // self_report | artifact | observation | provider
+  sourceReference: text("source_reference"),
+  summary: text("summary").notNull(),
+  confidence: text("confidence").notNull().default("self_reported"), // self_reported | low | medium | high
+  submittedAt: timestamp("submitted_at").notNull().defaultNow(),
+}, (table) => [
+  index("mission_evidence_contract_submitted_idx").on(table.missionContractId, table.submittedAt),
+]);
+
+// Human review access is capability-scoped: the owner creates an expiring,
+// revocable invitation for one mission and LyfeOS stores only a token hash.
+// Accepting an invitation binds it to one authenticated principal.
+export const missionReviewInvitations = pgTable("mission_review_invitations", {
+  id: serial("id").primaryKey(),
+  ownerUserId: integer("owner_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  missionContractId: integer("mission_contract_id").notNull().references(() => missionContracts.id, { onDelete: "cascade" }),
+  reviewerUserId: integer("reviewer_user_id").references(() => users.id, { onDelete: "set null" }),
+  tokenHash: text("token_hash").notNull(),
+  status: text("status").notNull().default("pending"), // pending | accepted | revoked | completed | expired
+  expiresAt: timestamp("expires_at").notNull(),
+  acceptedAt: timestamp("accepted_at"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("mission_review_invitations_token_unique_idx").on(table.tokenHash),
+  index("mission_review_invitations_owner_contract_idx").on(table.ownerUserId, table.missionContractId, table.createdAt),
+  index("mission_review_invitations_reviewer_status_idx").on(table.reviewerUserId, table.status),
+]);
+
+// Reviews explain whether the declared evidence threshold was met. Human
+// reviews record the authenticated reviewer and the exact invitation that
+// granted access; userId remains the mission owner's data-partition key.
+export const missionReviews = pgTable("mission_reviews", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  missionContractId: integer("mission_contract_id").notNull().references(() => missionContracts.id, { onDelete: "cascade" }),
+  reviewerType: text("reviewer_type").notNull().default("self"),
+  reviewerUserId: integer("reviewer_user_id").references(() => users.id, { onDelete: "set null" }),
+  reviewInvitationId: integer("review_invitation_id").references(() => missionReviewInvitations.id, { onDelete: "set null" }),
+  decision: text("decision").notNull(), // meets_evidence | revisions_needed
+  rubric: jsonb("rubric").notNull().default({}),
+  summary: text("summary").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("mission_reviews_contract_created_idx").on(table.missionContractId, table.createdAt),
+]);
 
 // AI Messages table
 export const aiMessages = pgTable("ai_messages", {
@@ -514,7 +698,9 @@ export const aiMessages = pgTable("ai_messages", {
   timestamp: timestamp("timestamp").defaultNow().notNull(),
 });
 
-// Calendar Events table
+// Legacy calendar compatibility records. Canonical user tasks and scheduled
+// work live in `quests`; new Calendar views and provider imports must project
+// or adapt into the mission lifecycle rather than creating a second authority.
 export const calendarEvents = pgTable("calendar_events", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id),
@@ -582,6 +768,60 @@ export const contacts = pgTable("contacts", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+
+// Private relationship intelligence is a LyfeOS domain, not a shared CRM.
+// A contact is the address book record; this profile stores user-authored
+// context, boundaries, and cadence without exposing it to another projection.
+export const personalRelationships = pgTable("personal_relationships", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  contactId: integer("contact_id").notNull().unique().references(() => contacts.id, { onDelete: "cascade" }),
+  relationshipKind: text("relationship_kind").notNull().default("personal"),
+  state: text("state").notNull().default("active"), // active | paused | ended
+  purpose: text("purpose"),
+  boundaries: text("boundaries"),
+  desiredCadence: text("desired_cadence"),
+  privateContext: text("private_context"),
+  sharingEnabled: boolean("sharing_enabled").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("personal_relationships_user_state_idx").on(table.userId, table.state),
+]);
+
+// Interactions are user-recorded evidence, not inferred sentiment or a score.
+export const relationshipInteractions = pgTable("relationship_interactions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  relationshipId: integer("relationship_id").notNull().references(() => personalRelationships.id, { onDelete: "cascade" }),
+  occurredAt: timestamp("occurred_at").notNull().defaultNow(),
+  kind: text("kind").notNull().default("check_in"),
+  summary: text("summary").notNull(),
+  source: text("source").notNull().default("self_report"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("relationship_interactions_relationship_occurred_idx").on(table.relationshipId, table.occurredAt),
+]);
+
+// Commitments can be linked to a real LyfeOS mission, but neither system marks
+// the other complete automatically. The user remains the authority.
+export const relationshipCommitments = pgTable("relationship_commitments", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  relationshipId: integer("relationship_id").notNull().references(() => personalRelationships.id, { onDelete: "cascade" }),
+  // The database FK is created in migration 0020. `quests` is declared later
+  // in this historical schema file, so the ORM declaration remains scalar.
+  questId: integer("quest_id"),
+  title: text("title").notNull(),
+  detail: text("detail"),
+  dueDate: text("due_date"),
+  state: text("state").notNull().default("open"), // open | completed | cancelled
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  completedAt: timestamp("completed_at"),
+}, (table) => [
+  index("relationship_commitments_relationship_state_idx").on(table.relationshipId, table.state),
+  index("relationship_commitments_quest_idx").on(table.questId),
+]);
 
 // Spreadsheets table
 export const spreadsheets = pgTable("spreadsheets", {
@@ -754,6 +994,7 @@ export const insertQuestSchema = createInsertSchema(quests).pick({
   timeCost: true,
   experienceReward: true,
   transformationThreadId: true,
+  projectId: true,
   startDate: true,
   startTime: true,
   endDate: true,
@@ -924,14 +1165,16 @@ export const insertUserIntegrationsSchema = createInsertSchema(userIntegrations)
 export const pushSubscriptions = pgTable("push_subscriptions", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id),
-  fcmToken: text("fcm_token").notNull(),
+  // Nullable only for preserved pre-FCM subscription rows. New subscriptions
+  // are still required to provide a token by the insert schema below.
+  fcmToken: text("fcm_token"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 export const insertPushSubscriptionSchema = createInsertSchema(pushSubscriptions).pick({
   userId: true,
   fcmToken: true,
-});
+}).extend({ fcmToken: z.string().min(1) });
 
 // Types
 export type PushSubscription = typeof pushSubscriptions.$inferSelect;
@@ -1227,12 +1470,311 @@ export const insertProgressTrackerSchema = createInsertSchema(progressTrackers).
 export type ProgressTracker = typeof progressTrackers.$inferSelect;
 export type InsertProgressTracker = z.infer<typeof insertProgressTrackerSchema>;
 
+// Health & Fitness is a private, user-owned domain. These records establish
+// the native foundation before food catalogs or device providers are added.
+export const healthProfiles = pgTable("health_profiles", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }).unique(),
+  weightUnit: text("weight_unit").notNull().default("kg"),
+  heightUnit: text("height_unit").notNull().default("cm"),
+  energyUnit: text("energy_unit").notNull().default("kcal"),
+  volumeUnit: text("volume_unit").notNull().default("ml"),
+  heightValue: real("height_value"),
+  bodyType: text("body_type"),
+  trainingExperience: text("training_experience"),
+  planningContextEnabled: boolean("planning_context_enabled").notNull().default(false),
+  aiContextEnabled: boolean("ai_context_enabled").notNull().default(false),
+  timeZone: text("time_zone"),
+  utcOffsetMinutes: integer("utc_offset_minutes"),
+  hydrationReminderEnabled: boolean("hydration_reminder_enabled").notNull().default(false),
+  hydrationReminderIntervalMinutes: integer("hydration_reminder_interval_minutes").notNull().default(120),
+  trackedDomains: jsonb("tracked_domains").notNull().default(["nutrition", "training", "recovery", "sleep", "activity", "body", "metrics", "supplements", "planning", "connections"]),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const workspaceDatabases = pgTable("workspace_databases", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  description: text("description"),
+  category: text("category").notNull().default("general"),
+  favorite: boolean("favorite").notNull().default(false),
+  definition: jsonb("definition").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [index("workspace_databases_user_updated_idx").on(table.userId, table.updatedAt)]);
+
+export const workspaceDatabaseRows = pgTable("workspace_database_rows", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  databaseId: integer("database_id").notNull().references(() => workspaceDatabases.id, { onDelete: "cascade" }),
+  values: jsonb("values").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [index("workspace_database_rows_database_updated_idx").on(table.databaseId, table.updatedAt), index("workspace_database_rows_user_idx").on(table.userId)]);
+
+export const workspaceForms = pgTable("workspace_forms", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  databaseId: integer("database_id").notNull().references(() => workspaceDatabases.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  description: text("description"),
+  fieldIds: jsonb("field_ids").notNull(),
+  confirmationText: text("confirmation_text").notNull().default("Response saved."),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [index("workspace_forms_user_updated_idx").on(table.userId, table.updatedAt), index("workspace_forms_database_idx").on(table.databaseId)]);
+
+// User-authored, local-only mission automations. The versioned definition is
+// validated at every write and execution boundary; enabled defaults to false
+// so saving a draft cannot silently begin changing a user's mission system.
+export const workflowAutomations = pgTable("workflow_automations", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  description: text("description"),
+  definition: jsonb("definition").notNull(),
+  enabled: boolean("enabled").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [index("workflow_automations_user_updated_idx").on(table.userId, table.updatedAt), index("workflow_automations_user_enabled_idx").on(table.userId, table.enabled)]);
+
+// Append-preserving execution receipts record only bounded action outcomes and
+// mission IDs. Private mission descriptions and generated content are not
+// copied into the audit record.
+export const workflowAutomationRuns = pgTable("workflow_automation_runs", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  automationId: integer("automation_id").references(() => workflowAutomations.id, { onDelete: "set null" }),
+  automationName: text("automation_name").notNull(),
+  triggerType: text("trigger_type").notNull(),
+  triggerQuestId: integer("trigger_quest_id").references(() => quests.id, { onDelete: "set null" }),
+  idempotencyKey: text("idempotency_key").notNull(),
+  status: text("status").notNull().default("running"),
+  actionResults: jsonb("action_results").notNull().default([]),
+  errorCode: text("error_code"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  completedAt: timestamp("completed_at"),
+}, (table) => [
+  uniqueIndex("workflow_automation_runs_user_automation_key_unique_idx").on(table.userId, table.automationId, table.idempotencyKey),
+  index("workflow_automation_runs_user_created_idx").on(table.userId, table.createdAt),
+  index("workflow_automation_runs_automation_created_idx").on(table.automationId, table.createdAt),
+]);
+
+export const healthConnections = pgTable("health_connections", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  provider: text("provider").notNull(),
+  providerName: text("provider_name").notNull(),
+  status: text("status").notNull().default("pending"),
+  scopes: jsonb("scopes").notNull().default([]),
+  consentVersion: text("consent_version").notNull(),
+  consentedAt: timestamp("consented_at").notNull().defaultNow(),
+  credentialRef: text("credential_ref"),
+  lastSyncAt: timestamp("last_sync_at"),
+  lastErrorCode: text("last_error_code"),
+  revokedAt: timestamp("revoked_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("health_connections_user_provider_unique_idx").on(table.userId, table.provider),
+  index("health_connections_user_status_idx").on(table.userId, table.status),
+  index("health_connections_status_error_idx").on(table.status, table.lastErrorCode),
+]);
+
+export const healthSyncCursors = pgTable("health_sync_cursors", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  connectionId: integer("connection_id").notNull().references(() => healthConnections.id, { onDelete: "cascade" }),
+  resourceType: text("resource_type").notNull(),
+  cursorValue: text("cursor_value"),
+  status: text("status").notNull().default("idle"),
+  consecutiveFailures: integer("consecutive_failures").notNull().default(0),
+  lastAttemptAt: timestamp("last_attempt_at"),
+  lastSuccessAt: timestamp("last_success_at"),
+  nextRetryAt: timestamp("next_retry_at"),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("health_sync_cursors_connection_resource_unique_idx").on(table.connectionId, table.resourceType),
+  index("health_sync_cursors_user_status_idx").on(table.userId, table.status),
+  index("health_sync_cursors_status_attempt_idx").on(table.status, table.lastAttemptAt, table.nextRetryAt, table.consecutiveFailures),
+]);
+
+export const healthImportRuns = pgTable("health_import_runs", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  connectionId: integer("connection_id").notNull().references(() => healthConnections.id, { onDelete: "cascade" }),
+  provider: text("provider").notNull(),
+  resourceType: text("resource_type").notNull(),
+  status: text("status").notNull().default("running"),
+  fetchedCount: integer("fetched_count").notNull().default(0),
+  importedCount: integer("imported_count").notNull().default(0),
+  replayedCount: integer("replayed_count").notNull().default(0),
+  correctedCount: integer("corrected_count").notNull().default(0),
+  suppressedCount: integer("suppressed_count").notNull().default(0),
+  failedCount: integer("failed_count").notNull().default(0),
+  errorCode: text("error_code"),
+  startedAt: timestamp("started_at").notNull().defaultNow(),
+  finishedAt: timestamp("finished_at"),
+}, (table) => [
+  index("health_import_runs_user_started_idx").on(table.userId, table.startedAt),
+  index("health_import_runs_connection_status_idx").on(table.connectionId, table.status),
+  index("health_import_runs_status_started_idx").on(table.status, table.startedAt),
+]);
+
+export const healthImportFailures = pgTable("health_import_failures", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  connectionId: integer("connection_id").notNull().references(() => healthConnections.id, { onDelete: "cascade" }),
+  runId: integer("run_id").notNull().references(() => healthImportRuns.id, { onDelete: "cascade" }),
+  provider: text("provider").notNull(),
+  resourceType: text("resource_type").notNull(),
+  errorCode: text("error_code").notNull(),
+  retryable: boolean("retryable").notNull().default(true),
+  status: text("status").notNull().default("retry_wait"),
+  nextRetryAt: timestamp("next_retry_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  resolvedAt: timestamp("resolved_at"),
+}, (table) => [
+  index("health_import_failures_user_status_idx").on(table.userId, table.status),
+  index("health_import_failures_run_idx").on(table.runId),
+  index("health_import_failures_status_retry_idx").on(table.status, table.nextRetryAt, table.resolvedAt),
+]);
+
+export const healthSourceRecords = pgTable("health_source_records", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  connectionId: integer("connection_id").notNull().references(() => healthConnections.id, { onDelete: "cascade" }),
+  provider: text("provider").notNull(),
+  sourceRecordId: text("source_record_id").notNull(),
+  recordType: text("record_type").notNull(),
+  observedAt: timestamp("observed_at").notNull(),
+  receivedAt: timestamp("received_at").notNull().defaultNow(),
+  payloadFingerprint: text("payload_fingerprint").notNull(),
+  transformVersion: text("transform_version").notNull(),
+  state: text("state").notNull().default("active"),
+  sourcePayload: jsonb("source_payload").notNull().default({}),
+  sourceMetadata: jsonb("source_metadata").notNull().default({}),
+}, (table) => [
+  uniqueIndex("health_source_records_user_provider_record_fingerprint_unique_idx").on(table.userId, table.provider, table.sourceRecordId, table.payloadFingerprint),
+  index("health_source_records_user_observed_idx").on(table.userId, table.observedAt),
+  index("health_source_records_connection_user_idx").on(table.connectionId, table.userId),
+]);
+
+export const healthSourceSuppressions = pgTable("health_source_suppressions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  connectionId: integer("connection_id").notNull().references(() => healthConnections.id, { onDelete: "cascade" }),
+  provider: text("provider").notNull(),
+  sourceRecordKeyHash: text("source_record_key_hash").notNull(),
+  reason: text("reason").notNull().default("user_deleted"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [uniqueIndex("health_source_suppressions_user_provider_key_unique_idx").on(table.userId, table.provider, table.sourceRecordKeyHash)]);
+
+export const healthSourcePreferences = pgTable("health_source_preferences", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  metricKey: text("metric_key").notNull(),
+  orderedSources: jsonb("ordered_sources").notNull().default([]),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [uniqueIndex("health_source_preferences_user_metric_unique_idx").on(table.userId, table.metricKey)]);
+
+export const healthConnectionAudits = pgTable("health_connection_audits", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  connectionId: integer("connection_id").references(() => healthConnections.id, { onDelete: "set null" }),
+  provider: text("provider").notNull(),
+  action: text("action").notNull(),
+  details: jsonb("details").notNull().default({}),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [index("health_connection_audits_user_created_idx").on(table.userId, table.createdAt)]);
+
+export const healthTargets = pgTable("health_targets", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  kind: text("kind").notNull(), // weight | hydration | energy | protein | carbohydrate | fat
+  targetValue: real("target_value").notNull(),
+  unit: text("unit").notNull(),
+  effectiveFrom: date("effective_from").notNull(),
+  effectiveTo: date("effective_to"),
+  source: text("source").notNull().default("user"), // user | professional | calculated
+  calculationVersion: text("calculation_version"),
+  weekdays: jsonb("weekdays").notNull().default([]),
+  rationale: text("rationale"),
+  methodId: text("method_id"),
+  methodVersion: text("method_version"),
+  note: text("note"),
+  revision: integer("revision").notNull().default(1),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [index("health_targets_user_kind_date_idx").on(table.userId, table.kind, table.effectiveFrom)]);
+
+export const healthTargetRevisions = pgTable("health_target_revisions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  targetId: integer("target_id").notNull(),
+  revisionNumber: integer("revision_number").notNull(),
+  action: text("action").notNull(), // baseline | created | updated | deleted
+  snapshot: jsonb("snapshot").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("health_target_revisions_user_target_revision_unique_idx").on(table.userId, table.targetId, table.revisionNumber),
+  index("health_target_revisions_user_created_idx").on(table.userId, table.createdAt),
+]);
+
+export const bodyMeasurements = pgTable("body_measurements", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  metric: text("metric").notNull(), // weight | body_fat_percent | waist | chest | hips | custom
+  value: real("value").notNull(),
+  unit: text("unit").notNull(),
+  observedAt: date("observed_at").notNull(),
+  source: text("source").notNull().default("manual"),
+  measurementMethod: text("measurement_method").notNull().default("unspecified"),
+  measurementProtocol: text("measurement_protocol"),
+  recordedTimeZone: text("recorded_time_zone"),
+  recordedUtcOffsetMinutes: integer("recorded_utc_offset_minutes"),
+  clientMutationId: text("client_mutation_id"),
+  mutationPayloadHash: text("mutation_payload_hash"),
+  note: text("note"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [index("body_measurements_user_metric_date_idx").on(table.userId, table.metric, table.observedAt), uniqueIndex("body_measurements_user_mutation_unique_idx").on(table.userId, table.clientMutationId).where(sql`${table.clientMutationId} IS NOT NULL`)]);
+
+export const hydrationEntries = pgTable("hydration_entries", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  volumeMl: integer("volume_ml").notNull(),
+  inputQuantity: real("input_quantity"),
+  inputUnit: text("input_unit"),
+  inputMlPerUnit: real("input_ml_per_unit"),
+  occurredAt: timestamp("occurred_at").notNull().defaultNow(),
+  source: text("source").notNull().default("manual"),
+  recordedTimeZone: text("recorded_time_zone"),
+  recordedUtcOffsetMinutes: integer("recorded_utc_offset_minutes"),
+  clientMutationId: text("client_mutation_id"),
+  mutationPayloadHash: text("mutation_payload_hash"),
+  note: text("note"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("hydration_entries_user_occurred_idx").on(table.userId, table.occurredAt),
+  uniqueIndex("hydration_entries_user_mutation_unique_idx").on(table.userId, table.clientMutationId).where(sql`${table.clientMutationId} IS NOT NULL`),
+]);
+
 // Kanban Board table
 export const kanbanBoards = pgTable("kanban_boards", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   description: text("description"),
+  outcome: text("outcome"),
+  state: text("state").notNull().default("planned"),
+  startDate: text("start_date"),
+  dueDate: text("due_date"),
+  completedAt: timestamp("completed_at"),
+  revision: integer("revision").notNull().default(1),
   isDefault: boolean("is_default").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -1415,10 +1957,223 @@ export const messages = pgTable("messages", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Canonical native Messages transport. The historical conversations/messages
+// tables above remain the AI companion's private chat history; keeping this
+// transport separate prevents relationship messages from being injected into
+// AI context or erased by the AI-memory controls.
+export const messageConversations = pgTable("message_conversations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  createdByUserId: integer("created_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  title: text("title").notNull(),
+  kind: text("kind").notNull().default("direct"),
+  status: text("status").notNull().default("open"),
+  priority: text("priority").notNull().default("normal"),
+  queue: text("queue").notNull().default("personal"),
+  aiMode: text("ai_mode").notNull().default("observe"),
+  snoozedUntil: timestamp("snoozed_until"),
+  lastMessageAt: timestamp("last_message_at"),
+  closedAt: timestamp("closed_at"),
+  version: integer("version").notNull().default(1),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("message_conversations_status_updated_idx").on(table.status, table.updatedAt),
+]);
+
+export const messageConversationParticipants = pgTable("message_conversation_participants", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  conversationId: uuid("conversation_id").notNull().references(() => messageConversations.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  role: text("role").notNull().default("member"),
+  status: text("status").notNull().default("active"),
+  inboxStatus: text("inbox_status").notNull().default("open"),
+  snoozedUntil: timestamp("snoozed_until"),
+  version: integer("version").notNull().default(1),
+  lastReadMessageId: uuid("last_read_message_id"),
+  lastReadAt: timestamp("last_read_at"),
+  joinedAt: timestamp("joined_at").notNull().defaultNow(),
+  leftAt: timestamp("left_at"),
+}, (table) => [
+  uniqueIndex("message_conversation_participant_unique").on(table.conversationId, table.userId),
+  index("message_conversation_participant_user_idx").on(table.userId, table.status, table.conversationId),
+]);
+
+export const messageChannelBindings = pgTable("message_channel_bindings", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  conversationId: uuid("conversation_id").notNull().references(() => messageConversations.id, { onDelete: "cascade" }),
+  provider: text("provider").notNull().default("native"),
+  connectionRef: text("connection_ref"),
+  channelKind: text("channel_kind").notNull().default("native"),
+  externalThreadId: text("external_thread_id"),
+  status: text("status").notNull().default("active"),
+  capabilities: jsonb("capabilities").notNull().default({ send: true, receive: true, receipts: true }),
+  version: integer("version").notNull().default(1),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("message_channel_binding_native_unique").on(table.conversationId, table.provider, table.channelKind),
+]);
+
+export const conversationMessages = pgTable("conversation_messages", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  conversationId: uuid("conversation_id").notNull().references(() => messageConversations.id, { onDelete: "cascade" }),
+  senderUserId: integer("sender_user_id").references(() => users.id, { onDelete: "set null" }),
+  senderParticipantRef: uuid("sender_participant_ref"),
+  direction: text("direction").notNull().default("outbound"),
+  provider: text("provider").notNull().default("native"),
+  body: text("body").notNull(),
+  bodyFormat: text("body_format").notNull().default("plain"),
+  status: text("status").notNull().default("queued"),
+  replyToMessageId: uuid("reply_to_message_id"),
+  providerMessageId: text("provider_message_id"),
+  idempotencyKey: text("idempotency_key").notNull(),
+  sentAt: timestamp("sent_at"),
+  receivedAt: timestamp("received_at"),
+  editedAt: timestamp("edited_at"),
+  deletedAt: timestamp("deleted_at"),
+  version: integer("version").notNull().default(1),
+  extension: jsonb("extension").notNull().default({}),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("conversation_messages_sender_idempotency_unique").on(table.senderUserId, table.idempotencyKey),
+  index("conversation_messages_conversation_created_idx").on(table.conversationId, table.createdAt),
+]);
+
+export const messageAttachments = pgTable("message_attachments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  messageId: uuid("message_id").notNull().references(() => conversationMessages.id, { onDelete: "cascade" }),
+  documentId: integer("document_id").references(() => documents.id, { onDelete: "set null" }),
+  externalMediaId: text("external_media_id"),
+  attachmentKind: text("attachment_kind").notNull().default("file_ref"),
+  filename: text("filename"),
+  mimeType: text("mime_type"),
+  sizeBytes: integer("size_bytes"),
+  durationMs: integer("duration_ms"),
+  snapshotData: text("snapshot_data"),
+  snapshotSha256: text("snapshot_sha256"),
+  snapshotAt: timestamp("snapshot_at"),
+  metadata: jsonb("metadata").notNull().default({}),
+  version: integer("version").notNull().default(1),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [index("message_attachments_message_idx").on(table.messageId)]);
+
+export const messageReactions = pgTable("message_reactions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  messageId: uuid("message_id").notNull().references(() => conversationMessages.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  reaction: text("reaction").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("message_reactions_message_user_unique").on(table.messageId, table.userId),
+  index("message_reactions_message_idx").on(table.messageId),
+]);
+
+// Every edit preserves the prior body for reviewable account export and
+// operational dispute recovery. It is never returned in the conversation API.
+export const messageEditHistory = pgTable("message_edit_history", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  messageId: uuid("message_id").notNull().references(() => conversationMessages.id, { onDelete: "cascade" }),
+  editorUserId: integer("editor_user_id").references(() => users.id, { onDelete: "set null" }),
+  priorBody: text("prior_body").notNull(),
+  replacementBody: text("replacement_body").notNull(),
+  priorVersion: integer("prior_version").notNull(),
+  editedAt: timestamp("edited_at").notNull().defaultNow(),
+}, (table) => [index("message_edit_history_message_idx").on(table.messageId, table.editedAt)]);
+
+export const messageDeliveryReceipts = pgTable("message_delivery_receipts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  messageId: uuid("message_id").notNull().references(() => conversationMessages.id, { onDelete: "cascade" }),
+  recipientUserId: integer("recipient_user_id").references(() => users.id, { onDelete: "set null" }),
+  provider: text("provider").notNull().default("native"),
+  state: text("state").notNull(),
+  occurredAt: timestamp("occurred_at").notNull().defaultNow(),
+  providerReceiptId: text("provider_receipt_id"),
+  failureCode: text("failure_code"),
+  failureDetail: text("failure_detail"),
+  evidence: jsonb("evidence").notNull().default({}),
+  version: integer("version").notNull().default(1),
+}, (table) => [
+  uniqueIndex("message_delivery_receipt_state_unique").on(table.messageId, table.recipientUserId, table.state),
+  index("message_delivery_receipts_message_occurred_idx").on(table.messageId, table.occurredAt),
+]);
+
+// Notes are visible only to their author. They are intentionally never joined
+// into recipient-visible messages or assistant context.
+export const messageInternalNotes = pgTable("message_internal_notes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  conversationId: uuid("conversation_id").notNull().references(() => messageConversations.id, { onDelete: "cascade" }),
+  authorUserId: integer("author_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  body: text("body").notNull(),
+  visibility: text("visibility").notNull().default("author_only"),
+  version: integer("version").notNull().default(1),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [index("message_internal_notes_author_conversation_idx").on(table.authorUserId, table.conversationId, table.createdAt)]);
+
+export const messageAuditEvents = pgTable("message_audit_events", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  conversationId: uuid("conversation_id").notNull().references(() => messageConversations.id, { onDelete: "cascade" }),
+  messageId: uuid("message_id").references(() => conversationMessages.id, { onDelete: "set null" }),
+  actorUserId: integer("actor_user_id").references(() => users.id, { onDelete: "set null" }),
+  eventType: text("event_type").notNull(),
+  metadata: jsonb("metadata").notNull().default({}),
+  aggregateVersion: integer("aggregate_version").notNull(),
+  occurredAt: timestamp("occurred_at").notNull().defaultNow(),
+}, (table) => [index("message_audit_events_conversation_occurred_idx").on(table.conversationId, table.occurredAt)]);
+
+export const projectEvents = pgTable("project_events", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  projectId: integer("project_id").notNull().references(() => kanbanBoards.id, { onDelete: "cascade" }),
+  eventType: text("event_type").notNull(),
+  fromState: text("from_state"),
+  toState: text("to_state"),
+  aggregateRevision: integer("aggregate_revision").notNull(),
+  actorSource: text("actor_source").notNull().default("ui"),
+  occurredAt: timestamp("occurred_at").notNull().defaultNow(),
+}, (table) => [index("project_events_project_occurred_idx").on(table.projectId, table.occurredAt), index("project_events_user_occurred_idx").on(table.userId, table.occurredAt)]);
+
+// Tool execution receipts are deliberately metadata-only: they make an AI
+// mutation reviewable without storing the user's prompt, private tool input,
+// or model output a second time.
+export const aiActionRecords = pgTable("ai_action_records", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  toolName: text("tool_name").notNull(),
+  risk: text("risk").notNull().default("low"),
+  state: text("state").notNull().default("started"), // started | succeeded | rejected | failed
+  inputSummary: jsonb("input_summary").notNull().default({}),
+  outcomeSummary: text("outcome_summary"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  completedAt: timestamp("completed_at"),
+}, (table) => [
+  index("ai_action_records_user_created_idx").on(table.userId, table.createdAt),
+]);
+
 export const insertConversationSchema = createInsertSchema(conversations).omit({
   id: true,
   createdAt: true,
 });
+
+// Medium-risk assistant actions are held here only until the user explicitly
+// approves or rejects them. Payload is never shown in activity receipts; it is
+// retained solely to execute the exact reviewed request and is user-exportable.
+export const aiPendingActions = pgTable("ai_pending_actions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  actionRecordId: integer("action_record_id").notNull().references(() => aiActionRecords.id, { onDelete: "cascade" }),
+  toolName: text("tool_name").notNull(),
+  payload: jsonb("payload").notNull(),
+  state: text("state").notNull().default("pending"), // pending | executing | succeeded | rejected | failed | expired
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("ai_pending_actions_user_state_idx").on(table.userId, table.state, table.createdAt),
+  uniqueIndex("ai_pending_actions_action_record_unique_idx").on(table.actionRecordId),
+]);
 
 export const insertMessageSchema = createInsertSchema(messages).omit({
   id: true,
@@ -1429,6 +2184,8 @@ export type Conversation = typeof conversations.$inferSelect;
 export type InsertConversation = z.infer<typeof insertConversationSchema>;
 export type Message = typeof messages.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
+export type AIActionRecord = typeof aiActionRecords.$inferSelect;
+export type AIPendingAction = typeof aiPendingActions.$inferSelect;
 
 export const dismissedKnowledge = pgTable("dismissed_knowledge", {
   id: serial("id").primaryKey(),
@@ -1676,3 +2433,688 @@ export const umhOutboxEvents = pgTable("umh_outbox_events", {
 
 export type UMHInboundCommand = typeof umhInboundCommands.$inferSelect;
 export type UMHOutboxEvent = typeof umhOutboxEvents.$inferSelect;
+
+// Nutrition is deliberately modeled as factual diary data: each entry points
+// to an owned food record and nutrient quantities retain their source.
+export const nutritionFoods = pgTable("nutrition_foods", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  brand: text("brand"),
+  barcode: text("barcode"),
+  source: text("source").notNull().default("manual"),
+  servingSizeGrams: real("serving_size_grams").notNull().default(100),
+  densityGramsPerMl: real("density_grams_per_ml"),
+  favorite: boolean("favorite").notNull().default(false),
+  note: text("note"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [index("nutrition_foods_user_name_idx").on(table.userId, table.name)]);
+
+export const nutritionFoodNutrients = pgTable("nutrition_food_nutrients", {
+  id: serial("id").primaryKey(),
+  foodId: integer("food_id").notNull().references(() => nutritionFoods.id, { onDelete: "cascade" }),
+  nutrientKey: text("nutrient_key").notNull(),
+  amountPer100g: real("amount_per_100g").notNull(),
+  unit: text("unit").notNull(),
+  source: text("source").notNull().default("manual"),
+}, (table) => [uniqueIndex("nutrition_food_nutrients_unique_idx").on(table.foodId, table.nutrientKey)]);
+
+export const nutritionFoodPortions = pgTable("nutrition_food_portions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  foodId: integer("food_id").notNull().references(() => nutritionFoods.id, { onDelete: "cascade" }),
+  label: text("label").notNull(),
+  gramsPerUnit: real("grams_per_unit").notNull(),
+  source: text("source").notNull().default("manual"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [uniqueIndex("nutrition_food_portions_food_label_unique_idx").on(table.foodId, table.label), index("nutrition_food_portions_user_idx").on(table.userId, table.foodId)]);
+
+export const nutritionDiaryEntries = pgTable("nutrition_diary_entries", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  foodId: integer("food_id").notNull().references(() => nutritionFoods.id, { onDelete: "cascade" }),
+  servingGrams: real("serving_grams").notNull(),
+  inputQuantity: real("input_quantity"),
+  inputUnit: text("input_unit"),
+  inputPortionId: integer("input_portion_id").references(() => nutritionFoodPortions.id, { onDelete: "set null" }),
+  inputUnitLabel: text("input_unit_label"),
+  inputGramsPerUnit: real("input_grams_per_unit"),
+  clientMutationId: text("client_mutation_id"),
+  mutationPayloadHash: text("mutation_payload_hash"),
+  nutrientSnapshot: jsonb("nutrient_snapshot").notNull().default([]),
+  mealSlot: text("meal_slot").notNull().default("other"),
+  occurredAt: timestamp("occurred_at").notNull().defaultNow(),
+  recordedTimeZone: text("recorded_time_zone"),
+  recordedUtcOffsetMinutes: integer("recorded_utc_offset_minutes"),
+  note: text("note"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [index("nutrition_diary_entries_user_occurred_idx").on(table.userId, table.occurredAt)]);
+
+export const nutritionRecipes = pgTable("nutrition_recipes", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  servings: real("servings").notNull().default(1),
+  note: text("note"),
+  folder: text("folder"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [index("nutrition_recipes_user_name_idx").on(table.userId, table.name)]);
+
+export const nutritionRecipeIngredients = pgTable("nutrition_recipe_ingredients", {
+  id: serial("id").primaryKey(),
+  recipeId: integer("recipe_id").notNull().references(() => nutritionRecipes.id, { onDelete: "cascade" }),
+  foodId: integer("food_id").notNull().references(() => nutritionFoods.id, { onDelete: "restrict" }),
+  grams: real("grams").notNull(),
+  sortOrder: integer("sort_order").notNull().default(0),
+}, (table) => [uniqueIndex("nutrition_recipe_ingredients_unique_idx").on(table.recipeId, table.foodId)]);
+
+export const nutritionRecipeRevisions = pgTable("nutrition_recipe_revisions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  recipeId: integer("recipe_id").notNull().references(() => nutritionRecipes.id, { onDelete: "cascade" }),
+  revisionNumber: integer("revision_number").notNull(),
+  name: text("name").notNull(),
+  servings: real("servings").notNull(),
+  folder: text("folder"),
+  note: text("note"),
+  ingredientsSnapshot: jsonb("ingredients_snapshot").notNull().default([]),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [uniqueIndex("nutrition_recipe_revisions_number_unique_idx").on(table.recipeId, table.revisionNumber), index("nutrition_recipe_revisions_user_idx").on(table.userId, table.recipeId)]);
+
+export const nutritionMealPlans = pgTable("nutrition_meal_plans", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date").notNull(),
+  status: text("status").notNull().default("active"),
+  note: text("note"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [index("nutrition_meal_plans_user_date_idx").on(table.userId, table.startDate)]);
+
+export const nutritionMealPlanEntries = pgTable("nutrition_meal_plan_entries", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  planId: integer("plan_id").notNull().references(() => nutritionMealPlans.id, { onDelete: "cascade" }),
+  scheduledDate: date("scheduled_date").notNull(),
+  mealSlot: text("meal_slot").notNull(),
+  foodId: integer("food_id").references(() => nutritionFoods.id, { onDelete: "restrict" }),
+  recipeId: integer("recipe_id").references(() => nutritionRecipes.id, { onDelete: "restrict" }),
+  quantity: real("quantity").notNull(),
+  inputUnit: text("input_unit").notNull(),
+  inputPortionId: integer("input_portion_id").references(() => nutritionFoodPortions.id, { onDelete: "set null" }),
+  status: text("status").notNull().default("planned"),
+  loggedDiaryEntryIds: jsonb("logged_diary_entry_ids").notNull().default([]),
+  note: text("note"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [index("nutrition_meal_plan_entries_user_date_idx").on(table.userId, table.scheduledDate)]);
+
+// Captures the label exactly as supplied. Classifications are intentionally
+// evidence-aware records, never a blanket medical or safety conclusion.
+export const ingredientScans = pgTable("ingredient_scans", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  captureMethod: text("capture_method").notNull().default("manual_label"),
+  barcode: text("barcode"),
+  productName: text("product_name"),
+  rawIngredientsText: text("raw_ingredients_text").notNull(),
+  parseVersion: text("parse_version").notNull().default("v1"),
+  status: text("status").notNull().default("reviewed"),
+  revision: integer("revision").notNull().default(1),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [index("ingredient_scans_user_created_idx").on(table.userId, table.createdAt), index("ingredient_scans_user_barcode_idx").on(table.userId, table.barcode)]);
+
+export const ingredientScanItems = pgTable("ingredient_scan_items", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  scanId: integer("scan_id").notNull().references(() => ingredientScans.id, { onDelete: "cascade" }),
+  rawName: text("raw_name").notNull(),
+  normalizedKey: text("normalized_key").notNull(),
+  sourceOrder: integer("source_order").notNull(),
+  classification: text("classification").notNull().default("unknown"),
+  reason: text("reason"),
+  evidenceTitle: text("evidence_title"),
+  evidenceUrl: text("evidence_url"),
+  evidenceStrength: text("evidence_strength").notNull().default("unverified"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("ingredient_scan_items_scan_order_unique_idx").on(table.scanId, table.sourceOrder),
+  index("ingredient_scan_items_user_normalized_idx").on(table.userId, table.normalizedKey),
+]);
+
+export const ingredientPreferenceRules = pgTable("ingredient_preference_rules", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  displayName: text("display_name").notNull(),
+  normalizedKey: text("normalized_key").notNull(),
+  preferenceType: text("preference_type").notNull(),
+  note: text("note"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [uniqueIndex("ingredient_preference_rules_user_key_unique_idx").on(table.userId, table.normalizedKey)]);
+
+export const workouts = pgTable("workouts", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  activityType: text("activity_type").notNull(),
+  durationMinutes: integer("duration_minutes"),
+  perceivedExertion: integer("perceived_exertion"),
+  movingTimeSeconds: integer("moving_time_seconds"),
+  elevationGainMeters: real("elevation_gain_meters"),
+  averageHeartRateBpm: integer("average_heart_rate_bpm"),
+  maxHeartRateBpm: integer("max_heart_rate_bpm"),
+  heartRateSource: text("heart_rate_source"),
+  occurredAt: timestamp("occurred_at").notNull().defaultNow(),
+  source: text("source").notNull().default("manual"),
+  recordedTimeZone: text("recorded_time_zone"),
+  recordedUtcOffsetMinutes: integer("recorded_utc_offset_minutes"),
+  note: text("note"),
+  clientMutationId: text("client_mutation_id"),
+  mutationPayloadHash: text("mutation_payload_hash"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [index("workouts_user_occurred_idx").on(table.userId, table.occurredAt)]);
+
+export const healthDeletionReceipts = pgTable("health_deletion_receipts", {
+  id: uuid("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  resourceType: text("resource_type").notNull(),
+  resourceSnapshot: jsonb("resource_snapshot").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  restoredAt: timestamp("restored_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [index("health_deletion_receipts_user_expiry_idx").on(table.userId, table.expiresAt)]);
+
+export const healthDataRightsAudit = pgTable("health_data_rights_audit", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  action: text("action").notNull(),
+  scope: text("scope").notNull(),
+  details: jsonb("details").notNull().default({}),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [index("health_data_rights_audit_user_created_idx").on(table.userId, table.createdAt)]);
+
+// Evidence selectors remain in the private Health domain. Confirmed missions
+// receive only the user's chosen title/category and a generic receipt note.
+export const healthPlanningDrafts = pgTable("health_planning_drafts", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  category: text("category").notNull(),
+  evidenceStart: date("evidence_start").notNull(),
+  evidenceEnd: date("evidence_end").notNull(),
+  evidenceSeries: jsonb("evidence_series").notNull().default([]),
+  state: text("state").notNull().default("pending"),
+  questId: integer("quest_id").references(() => quests.id, { onDelete: "set null" }),
+  expiresAt: timestamp("expires_at").notNull().default(sql`now() + interval '7 days'`),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  decidedAt: timestamp("decided_at"),
+}, (table) => [
+  index("health_planning_drafts_user_state_created_idx").on(table.userId, table.state, table.createdAt),
+  index("health_planning_drafts_state_decided_idx").on(table.state, table.decidedAt),
+]);
+
+export const healthPlanningDraftEvents = pgTable("health_planning_draft_events", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  draftId: integer("draft_id").notNull().references(() => healthPlanningDrafts.id, { onDelete: "cascade" }),
+  action: text("action").notNull(), // created | confirmed | rejected | expired | revoked
+  titleSnapshot: text("title_snapshot").notNull(),
+  categorySnapshot: text("category_snapshot").notNull(),
+  questIdSnapshot: integer("quest_id_snapshot"),
+  scopeSnapshot: text("scope_snapshot").notNull().default("mission_title_only"),
+  expiresAtSnapshot: timestamp("expires_at_snapshot").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("health_planning_draft_events_draft_action_unique_idx").on(table.draftId, table.action),
+  index("health_planning_draft_events_user_created_idx").on(table.userId, table.createdAt),
+]);
+
+export const workoutExercises = pgTable("workout_exercises", {
+  id: serial("id").primaryKey(),
+  workoutId: integer("workout_id").notNull().references(() => workouts.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  sets: integer("sets"),
+  reps: integer("reps"),
+  loadValue: real("load_value"),
+  loadUnit: text("load_unit"),
+  distanceMeters: real("distance_meters"),
+  durationSeconds: integer("duration_seconds"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  note: text("note"),
+}, (table) => [index("workout_exercises_workout_idx").on(table.workoutId)]);
+
+// Individual performed attempts. These are deliberately separate from the
+// older aggregate fields on workout_exercises so historic entries remain
+// portable and new logs can accurately vary set-level reps/load/RPE.
+export const workoutSets = pgTable("workout_sets", {
+  id: serial("id").primaryKey(),
+  workoutExerciseId: integer("workout_exercise_id").notNull().references(() => workoutExercises.id, { onDelete: "cascade" }),
+  setOrder: integer("set_order").notNull().default(0),
+  reps: integer("reps"),
+  loadValue: real("load_value"),
+  loadUnit: text("load_unit"),
+  distanceMeters: real("distance_meters"),
+  durationSeconds: integer("duration_seconds"),
+  perceivedExertion: integer("perceived_exertion"),
+  repsInReserve: integer("reps_in_reserve"),
+  completed: boolean("completed").notNull().default(true),
+  note: text("note"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [uniqueIndex("workout_sets_exercise_order_unique_idx").on(table.workoutExerciseId, table.setOrder)]);
+
+// User-owned definitions are private custom records. A null userId is reserved
+// for a future reviewed/licensed shared catalog with explicit source versioning.
+export const exerciseDefinitions = pgTable("exercise_definitions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  category: text("category"),
+  equipment: text("equipment"),
+  primaryMuscles: jsonb("primary_muscles").notNull().default([]),
+  secondaryMuscles: jsonb("secondary_muscles").notNull().default([]),
+  instructions: text("instructions"),
+  source: text("source").notNull().default("user_custom"),
+  sourceVersion: text("source_version"),
+  archivedAt: timestamp("archived_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("exercise_definitions_user_name_unique_idx").on(table.userId, table.name),
+  index("exercise_definitions_name_idx").on(table.name),
+]);
+
+// Planned values only. Loading a template pre-fills a draft; only a submitted
+// workout creates factual completed set records.
+export const workoutTemplates = pgTable("workout_templates", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  activityType: text("activity_type").notNull(),
+  exerciseBlueprint: jsonb("exercise_blueprint").notNull().default([]),
+  folder: text("folder"),
+  note: text("note"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [index("workout_templates_user_name_idx").on(table.userId, table.name)]);
+
+export const workoutTemplateRevisions = pgTable("workout_template_revisions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  templateId: integer("template_id").notNull().references(() => workoutTemplates.id, { onDelete: "cascade" }),
+  revisionNumber: integer("revision_number").notNull(),
+  name: text("name").notNull(),
+  activityType: text("activity_type").notNull(),
+  folder: text("folder"),
+  note: text("note"),
+  exerciseBlueprint: jsonb("exercise_blueprint").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  }, (table) => [uniqueIndex("workout_template_revisions_number_unique_idx").on(table.templateId, table.revisionNumber), index("workout_template_revisions_user_idx").on(table.userId, table.templateId)]);
+
+export const workoutRevisions = pgTable("workout_revisions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  workoutId: integer("workout_id").notNull().references(() => workouts.id, { onDelete: "cascade" }),
+  revisionNumber: integer("revision_number").notNull(),
+  snapshot: jsonb("snapshot").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [uniqueIndex("workout_revisions_number_unique_idx").on(table.workoutId, table.revisionNumber), index("workout_revisions_user_idx").on(table.userId, table.workoutId)]);
+
+export const workoutPrograms = pgTable("workout_programs", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  note: text("note"),
+  archivedAt: timestamp("archived_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [index("workout_programs_user_idx").on(table.userId, table.updatedAt)]);
+
+// Scheduled sessions are plans. They become completed only when linked to an
+// owned submitted workout, keeping planned targets separate from evidence.
+export const workoutProgramSessions = pgTable("workout_program_sessions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  programId: integer("program_id").notNull().references(() => workoutPrograms.id, { onDelete: "cascade" }),
+  templateId: integer("template_id").references(() => workoutTemplates.id, { onDelete: "set null" }),
+  originalTemplateId: integer("original_template_id").references(() => workoutTemplates.id, { onDelete: "set null" }),
+  substitutionReason: text("substitution_reason"),
+  substitutedAt: timestamp("substituted_at"),
+  recurrenceGroupId: uuid("recurrence_group_id"),
+  recurrenceIndex: integer("recurrence_index"),
+  missionId: integer("mission_id").references(() => quests.id, { onDelete: "set null" }),
+  completedWorkoutId: integer("completed_workout_id").references(() => workouts.id, { onDelete: "set null" }),
+  completionLinkLostAt: timestamp("completion_link_lost_at"),
+  title: text("title").notNull(),
+  scheduledDate: date("scheduled_date").notNull(),
+  status: text("status").notNull().default("planned"),
+  note: text("note"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("workout_program_sessions_user_date_idx").on(table.userId, table.scheduledDate),
+  index("workout_program_sessions_user_mission_idx").on(table.userId, table.missionId),
+  index("workout_program_sessions_status_completion_idx").on(table.status, table.completedWorkoutId, table.completionLinkLostAt),
+  index("workout_program_sessions_completed_workout_idx").on(table.completedWorkoutId),
+]);
+
+export const heartRateZoneProfiles = pgTable("heart_rate_zone_profiles", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  source: text("source").notNull().default("user"),
+  methodId: text("method_id"),
+  methodVersion: text("method_version"),
+  zones: jsonb("zones").notNull(),
+  active: boolean("active").notNull().default(true),
+  note: text("note"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [index("heart_rate_zone_profiles_user_idx").on(table.userId, table.updatedAt)]);
+
+export const workoutHeartRateSamples = pgTable("workout_heart_rate_samples", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  workoutId: integer("workout_id").notNull().references(() => workouts.id, { onDelete: "cascade" }),
+  sampledAt: timestamp("sampled_at").notNull(),
+  bpm: integer("bpm").notNull(),
+  source: text("source").notNull(),
+  deviceName: text("device_name"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [uniqueIndex("workout_hr_samples_workout_time_source_unique_idx").on(table.workoutId, table.sampledAt, table.source), index("workout_hr_samples_user_workout_idx").on(table.userId, table.workoutId, table.sampledAt)]);
+
+// A factual private record only: this is not a medication list, dose advice,
+// or a clinical recommendation surface.
+export const supplementEntries = pgTable("supplement_entries", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  amount: real("amount"),
+  unit: text("unit"),
+  brand: text("brand"),
+  manufacturer: text("manufacturer"),
+  form: text("form"),
+  barcode: text("barcode"),
+  lotNumber: text("lot_number"),
+  expiresOn: date("expires_on"),
+  occurredAt: timestamp("occurred_at").notNull().defaultNow(),
+  source: text("source").notNull().default("manual"),
+  recordedTimeZone: text("recorded_time_zone"),
+  recordedUtcOffsetMinutes: integer("recorded_utc_offset_minutes"),
+  clientMutationId: text("client_mutation_id"),
+  mutationPayloadHash: text("mutation_payload_hash"),
+  note: text("note"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [index("supplement_entries_user_occurred_idx").on(table.userId, table.occurredAt), uniqueIndex("supplement_entries_user_mutation_unique_idx").on(table.userId, table.clientMutationId).where(sql`${table.clientMutationId} IS NOT NULL`)]);
+
+export const supplementSchedules = pgTable("supplement_schedules", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  amount: real("amount"),
+  unit: text("unit"),
+  brand: text("brand"),
+  manufacturer: text("manufacturer"),
+  form: text("form"),
+  barcode: text("barcode"),
+  lotNumber: text("lot_number"),
+  expiresOn: date("expires_on"),
+  cadence: text("cadence").notNull().default("daily"),
+  weekdays: jsonb("weekdays").notNull().default([]),
+  timeOfDay: text("time_of_day"),
+  reminderEnabled: boolean("reminder_enabled").notNull().default(false),
+  active: boolean("active").notNull().default(true),
+  note: text("note"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [index("supplement_schedules_user_idx").on(table.userId, table.active)]);
+
+export const supplementScheduleEvents = pgTable("supplement_schedule_events", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  scheduleId: integer("schedule_id").notNull().references(() => supplementSchedules.id, { onDelete: "cascade" }),
+  date: date("date").notNull(),
+  status: text("status").notNull(),
+  supplementEntryId: integer("supplement_entry_id").references(() => supplementEntries.id, { onDelete: "set null" }),
+  nameSnapshot: text("name_snapshot").notNull(),
+  amountSnapshot: real("amount_snapshot"),
+  unitSnapshot: text("unit_snapshot"),
+  timeOfDaySnapshot: text("time_of_day_snapshot"),
+  brandSnapshot: text("brand_snapshot"),
+  manufacturerSnapshot: text("manufacturer_snapshot"),
+  formSnapshot: text("form_snapshot"),
+  barcodeSnapshot: text("barcode_snapshot"),
+  lotNumberSnapshot: text("lot_number_snapshot"),
+  expiresOnSnapshot: date("expires_on_snapshot"),
+  note: text("note"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [uniqueIndex("supplement_schedule_events_schedule_date_unique_idx").on(table.scheduleId, table.date)]);
+
+export const fastingWindows = pgTable("fasting_windows", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  startedAt: timestamp("started_at").notNull(),
+  endedAt: timestamp("ended_at"),
+  note: text("note"),
+  source: text("source").notNull().default("manual"),
+  recordedTimeZone: text("recorded_time_zone"),
+  recordedUtcOffsetMinutes: integer("recorded_utc_offset_minutes"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [index("fasting_windows_user_started_idx").on(table.userId, table.startedAt)]);
+
+export const recoveryRoutines = pgTable("recovery_routines", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  activityType: text("activity_type").notNull(),
+  customLabel: text("custom_label"),
+  durationMinutes: integer("duration_minutes"),
+  intensity: integer("intensity"),
+  cadence: text("cadence").notNull().default("daily"),
+  weekdays: jsonb("weekdays").notNull().default([]),
+  timeOfDay: text("time_of_day"),
+  reminderEnabled: boolean("reminder_enabled").notNull().default(false),
+  tags: jsonb("tags").notNull().default([]),
+  note: text("note"),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [index("recovery_routines_user_active_idx").on(table.userId, table.active)]);
+
+// Recovery tags never become sharing labels. Classification lets the owner
+// identify especially sensitive vocabulary while every class remains private.
+export const recoveryTagPolicies = pgTable("recovery_tag_policies", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  normalizedTag: text("normalized_tag").notNull(),
+  displayTag: text("display_tag").notNull(),
+  classification: text("classification").notNull().default("private_sensitive"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [uniqueIndex("recovery_tag_policies_user_tag_unique_idx").on(table.userId, table.normalizedTag)]);
+
+export const recoveryActivities = pgTable("recovery_activities", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  routineId: integer("routine_id").references(() => recoveryRoutines.id, { onDelete: "set null" }),
+  activityType: text("activity_type").notNull(),
+  customLabel: text("custom_label"),
+  durationMinutes: integer("duration_minutes"),
+  intensity: integer("intensity"),
+  perceivedEffect: integer("perceived_effect"),
+  occurredAt: timestamp("occurred_at").notNull().defaultNow(),
+  source: text("source").notNull().default("manual"),
+  recordedTimeZone: text("recorded_time_zone"),
+  recordedUtcOffsetMinutes: integer("recorded_utc_offset_minutes"),
+  clientMutationId: text("client_mutation_id"),
+  mutationPayloadHash: text("mutation_payload_hash"),
+  note: text("note"),
+  tags: jsonb("tags").notNull().default([]),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("recovery_activities_user_occurred_idx").on(table.userId, table.occurredAt),
+  uniqueIndex("recovery_activities_user_mutation_unique_idx").on(table.userId, table.clientMutationId).where(sql`${table.clientMutationId} IS NOT NULL`),
+]);
+
+export const healthMetricDefinitions = pgTable("health_metric_definitions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  metricKey: text("metric_key").notNull(),
+  displayName: text("display_name").notNull(),
+  category: text("category").notNull(),
+  canonicalUnit: text("canonical_unit").notNull(),
+  definitionSource: text("definition_source").notNull().default("user"),
+  sourceUrl: text("source_url"),
+  version: text("version").notNull(),
+  validMin: real("valid_min"),
+  validMax: real("valid_max"),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [uniqueIndex("health_metric_definitions_key_version_unique_idx").on(table.userId, table.metricKey, table.version), index("health_metric_definitions_user_active_idx").on(table.userId, table.active)]);
+
+// A panel is a user-owned view recipe, not a derived health conclusion. It
+// stores only series selectors and presentation choices; the chart always
+// resolves fresh values from the private source ledgers.
+export const healthMetricPanels = pgTable("health_metric_panels", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  leftSeriesId: text("left_series_id").notNull(),
+  rightSeriesId: text("right_series_id").notNull(),
+  seriesIds: jsonb("series_ids").notNull().default([]),
+  periodDays: integer("period_days").notNull().default(30),
+  rollingAverage: boolean("rolling_average").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("health_metric_panels_user_name_unique_idx").on(table.userId, table.name),
+  index("health_metric_panels_user_updated_idx").on(table.userId, table.updatedAt),
+]);
+
+// Health observations preserve the fact as measured. They intentionally do
+// not encode diagnosis or a universal reference-range interpretation.
+export const healthObservations = pgTable("health_observations", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  metricDefinitionId: integer("metric_definition_id").references(() => healthMetricDefinitions.id, { onDelete: "set null" }),
+  definitionVersion: text("definition_version"),
+  category: text("category").notNull(),
+  metricKey: text("metric_key").notNull(),
+  displayName: text("display_name").notNull(),
+  value: real("value").notNull(),
+  unit: text("unit").notNull(),
+  method: text("method"),
+  methodVersion: text("method_version"),
+  source: text("source").notNull().default("manual"),
+  recordedTimeZone: text("recorded_time_zone"),
+  recordedUtcOffsetMinutes: integer("recorded_utc_offset_minutes"),
+  clientMutationId: text("client_mutation_id"),
+  mutationPayloadHash: text("mutation_payload_hash"),
+  sourceRecordId: text("source_record_id"),
+  deviceName: text("device_name"),
+  importedAt: timestamp("imported_at"),
+  observedAt: timestamp("observed_at").notNull(),
+  temporalType: text("temporal_type").notNull().default("instant"),
+  intervalStartAt: timestamp("interval_start_at"),
+  intervalEndAt: timestamp("interval_end_at"),
+  aggregationKind: text("aggregation_kind").notNull().default("average"),
+  labName: text("lab_name"),
+  specimenType: text("specimen_type"),
+  collectedAt: timestamp("collected_at"),
+  referenceLow: real("reference_low"),
+  referenceHigh: real("reference_high"),
+  referenceUnit: text("reference_unit"),
+  note: text("note"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("health_observations_user_category_metric_date_idx").on(table.userId, table.category, table.metricKey, table.observedAt),
+  index("health_observations_user_metric_source_date_idx").on(table.userId, table.metricKey, table.unit, table.source, table.observedAt),
+  index("health_observations_user_metric_interval_idx").on(table.userId, table.metricKey, table.intervalStartAt, table.intervalEndAt),
+  index("health_observations_user_collected_at_idx").on(table.userId, table.collectedAt),
+  uniqueIndex("health_observations_user_mutation_unique_idx").on(table.userId, table.clientMutationId).where(sql`${table.clientMutationId} IS NOT NULL`),
+]);
+
+// User-controlled calculation preferences never alter the source observation.
+// They only determine whether a preserved fact participates in derived totals.
+export const healthObservationCalculationPreferences = pgTable("health_observation_calculation_preferences", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  observationId: integer("observation_id").notNull().references(() => healthObservations.id, { onDelete: "cascade" }),
+  included: boolean("included").notNull().default(true),
+  reason: text("reason").notNull().default("overlap_resolution"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [uniqueIndex("health_observation_calculation_preferences_user_observation_unique_idx").on(table.userId, table.observationId)]);
+
+export const healthProgressionEvents = pgTable("health_progression_events", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  eventKey: text("event_key").notNull(),
+  ruleKey: text("rule_key").notNull(),
+  evidenceDate: date("evidence_date").notNull(),
+  xpDelta: integer("xp_delta").notNull(),
+  action: text("action").notNull(),
+  evidence: jsonb("evidence").notNull().default({}),
+  reversalOfId: integer("reversal_of_id"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [uniqueIndex("health_progression_events_user_key_unique_idx").on(table.userId, table.eventKey), index("health_progression_events_user_created_idx").on(table.userId, table.createdAt)]);
+
+export const healthBadgeEvents = pgTable("health_badge_events", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  eventKey: text("event_key").notNull(),
+  badgeKey: text("badge_key").notNull(),
+  action: text("action").notNull(),
+  evidence: jsonb("evidence").notNull().default({}),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [uniqueIndex("health_badge_events_user_key_unique_idx").on(table.userId, table.eventKey), index("health_badge_events_user_badge_created_idx").on(table.userId, table.badgeKey, table.createdAt)]);
+
+// A user-authored review of recorded practice. It is reflection evidence, not
+// a health outcome, clinician note, or verification that an activity occurred.
+export const healthPracticeReviews = pgTable("health_practice_reviews", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  reviewDate: date("review_date").notNull(),
+  domains: jsonb("domains").notNull().default([]),
+  reflection: text("reflection").notNull(),
+  nextExperiment: text("next_experiment"),
+  revision: integer("revision").notNull().default(1),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [uniqueIndex("health_practice_reviews_user_date_unique_idx").on(table.userId, table.reviewDate), index("health_practice_reviews_user_date_idx").on(table.userId, table.reviewDate)]);
+
+// Metadata-only model receipts intentionally omit the private question, source
+// values, and model output. Those values live only in the originating response.
+export const healthAiRequests = pgTable("health_ai_requests", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  seriesIds: jsonb("series_ids").notNull().default([]),
+  periodDays: integer("period_days").notNull(),
+  sourceSummary: jsonb("source_summary").notNull().default([]),
+  provider: text("provider").notNull().default("none"),
+  model: text("model"),
+  state: text("state").notNull().default("started"),
+  boundaryKind: text("boundary_kind"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  completedAt: timestamp("completed_at"),
+}, (table) => [index("health_ai_requests_user_created_idx").on(table.userId, table.createdAt)]);
+
+// A structured model proposal is inert until the user saves or rejects it.
+// Even a saved proposal remains an assistant draft, not a verified health fact.
+export const healthAiDrafts = pgTable("health_ai_drafts", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  requestId: integer("request_id").notNull().references(() => healthAiRequests.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  reflection: text("reflection").notNull(),
+  domains: jsonb("domains").notNull().default([]),
+  nextExperiment: text("next_experiment"),
+  state: text("state").notNull().default("pending"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  decidedAt: timestamp("decided_at"),
+}, (table) => [index("health_ai_drafts_user_state_created_idx").on(table.userId, table.state, table.createdAt), uniqueIndex("health_ai_drafts_request_unique_idx").on(table.requestId)]);

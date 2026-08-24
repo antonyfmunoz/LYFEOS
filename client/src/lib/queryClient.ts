@@ -1,4 +1,9 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { getBrowserTimeZone } from "@/lib/utils";
+
+export function timeContextHeaders(): Record<string, string> {
+  return { "x-lyfeos-time-zone": getBrowserTimeZone(), "x-lyfeos-utc-offset-minutes": String(-new Date().getTimezoneOffset()) };
+}
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -14,6 +19,7 @@ export async function apiRequest<T = any>(
   const res = await fetch(url, {
     ...options,
     headers: {
+      ...timeContextHeaders(),
       ...(options?.headers || {}),
       ...(options?.body ? { "Content-Type": "application/json" } : {}),
     },
@@ -21,6 +27,7 @@ export async function apiRequest<T = any>(
   });
 
   await throwIfResNotOk(res);
+  if (res.status === 204) return undefined as T;
   return await res.json() as T;
 }
 
@@ -32,6 +39,7 @@ export const getQueryFn: <T>(options: {
   async ({ queryKey }) => {
     const res = await fetch(queryKey[0] as string, {
       credentials: "include",
+      headers: timeContextHeaders(),
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
@@ -48,7 +56,7 @@ function handleGlobal401(error: unknown) {
   if (redirecting401) return;
   if (error instanceof Error && error.message.startsWith("401:")) {
     const currentPath = window.location.pathname;
-    const publicPaths = ["/login", "/register", "/verify-email", "/forgot-password", "/reset-password", "/login-success", "/onboarding"];
+    const publicPaths = ["/login", "/register", "/forgot-password", "/reset-password", "/login-success", "/onboarding"];
     if (!publicPaths.some(p => currentPath.startsWith(p))) {
       redirecting401 = true;
       console.log("Session expired (401), clearing auth and redirecting to login");

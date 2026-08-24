@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { Suspense, useEffect } from "react";
 import { Route, Switch, useLocation } from "wouter";
 import { Toaster } from "@/components/ui/toaster";
 import { LYFEOSProvider } from "./lib/context";
@@ -9,53 +9,62 @@ import { HTML5Backend } from "react-dnd-html5-backend";
 import { TouchBackend } from "react-dnd-touch-backend";
 import { CelebrationProvider } from "./lib/celebrationContext";
 import CelebrationOverlay from "./components/CelebrationOverlay";
-import DashboardPage from "./pages/DashboardPage";
-import QuestsPage from "./pages/QuestsPage";
-
-import AIPage from "./pages/AIPage";
-import ChronilogPage from "./pages/ChronilogPage";
-import TimelinePage from "./pages/TimelinePage";
-import TimelineDetailPage from "./pages/TimelineDetailPage";
-import OnboardingPage from "./pages/OnboardingPage";
-import CeremonyPage from "./pages/CeremonyPage";
-import ProfilePage from "./pages/ProfilePage";
-import StatDetailPage from "./pages/StatDetailPage";
-import MissionDetailPage from "./pages/MissionDetailPage";
-import KanbanPage from "./pages/KanbanPage";
-import KanbanBoardPage from "./pages/KanbanBoardPage";
-import StreakDetailPage from "./pages/StreakDetailPage";
-import EfficiencyDetailPage from "./pages/EfficiencyDetailPage";
-import EnergyDetailPage from "./pages/EnergyDetailPage";
-import HealthDetailPage from "./pages/HealthDetailPage";
-import WealthDetailPage from "./pages/WealthDetailPage";
-import AttentionDetailPage from "./pages/AttentionDetailPage";
-import TimeDetailPage from "./pages/TimeDetailPage";
-import ExperienceDetailPage from "./pages/ExperienceDetailPage";
-import NotFound from "./pages/not-found";
-import EnhancedMissionPage from "./pages/EnhancedMissionPage";
-import MissionPage from "./components/markdown/MissionPage";
 import RootLayout from "./components/layout/RootLayout";
-import LoginPage from "./pages/LoginPage";
-import RegisterPage from "./pages/RegisterPage";
-import JournalArchivePage from "./pages/JournalArchivePage";
-import MissionArchivePage from "./pages/MissionArchivePage";
-import RitualsArchivePage from "./pages/RitualsArchivePage";
-import KnowledgeArchivePage from "./pages/KnowledgeArchivePage";
-import GoalsArchivePage from "./pages/GoalsArchivePage";
-import AnalyticsPage from "./pages/AnalyticsPage";
 import VoiceOverlay from "./components/VoiceOverlay";
-import ForgotPasswordPage from "./pages/ForgotPasswordPage";
-import ResetPasswordPage from "./pages/ResetPasswordPage";
-import LoginSuccessPage from "./pages/LoginSuccessPage";
-import SubscriptionPage from "./pages/SubscriptionPage";
-import LandingPage from "./pages/LandingPage";
-import RolodexPage from "./pages/RolodexPage";
-import DocumentVaultPage from "./pages/DocumentVaultPage";
-import WaitlistPage from "./pages/WaitlistPage";
-import WaitlistThankYouPage from "./pages/WaitlistThankYouPage";
 import BlueLightFilter from "./components/BlueLightFilter";
 import { setHapticEnabled } from "./lib/haptics";
 import { setSoundEnabled } from "./lib/sounds";
+
+const DashboardPage = React.lazy(() => import("./pages/DashboardPage"));
+const QuestsPage = React.lazy(() => import("./pages/QuestsPage"));
+const AIPage = React.lazy(() => import("./pages/AIPage"));
+const ChronilogPage = React.lazy(() => import("./pages/ChronilogPage"));
+const TimelinePage = React.lazy(() => import("./pages/TimelinePage"));
+const TimelineDetailPage = React.lazy(() => import("./pages/TimelineDetailPage"));
+const OnboardingPage = React.lazy(() => import("./pages/OnboardingPage"));
+const CeremonyPage = React.lazy(() => import("./pages/CeremonyPage"));
+const ProfilePage = React.lazy(() => import("./pages/ProfilePage"));
+const MissionDetailPage = React.lazy(() => import("./pages/MissionDetailPage"));
+const MissionReviewPage = React.lazy(() => import("./pages/MissionReviewPage"));
+const KanbanBoardPage = React.lazy(() => import("./pages/KanbanBoardPage"));
+const StreakDetailPage = React.lazy(() => import("./pages/StreakDetailPage"));
+const EfficiencyDetailPage = React.lazy(() => import("./pages/EfficiencyDetailPage"));
+const EnergyDetailPage = React.lazy(() => import("./pages/EnergyDetailPage"));
+const HealthDetailPage = React.lazy(() => import("./pages/HealthDetailPage"));
+const WealthDetailPage = React.lazy(() => import("./pages/WealthDetailPage"));
+const AttentionDetailPage = React.lazy(() => import("./pages/AttentionDetailPage"));
+const TimeDetailPage = React.lazy(() => import("./pages/TimeDetailPage"));
+const ExperienceDetailPage = React.lazy(() => import("./pages/ExperienceDetailPage"));
+const NotFound = React.lazy(() => import("./pages/not-found"));
+const EnhancedMissionPage = React.lazy(() => import("./pages/EnhancedMissionPage"));
+const LoginPage = React.lazy(() => import("./pages/LoginPage"));
+const RegisterPage = React.lazy(() => import("./pages/RegisterPage"));
+const JournalArchivePage = React.lazy(() => import("./pages/JournalArchivePage"));
+const MissionArchivePage = React.lazy(() => import("./pages/MissionArchivePage"));
+const RitualsArchivePage = React.lazy(() => import("./pages/RitualsArchivePage"));
+const KnowledgeArchivePage = React.lazy(() => import("./pages/KnowledgeArchivePage"));
+const GoalsArchivePage = React.lazy(() => import("./pages/GoalsArchivePage"));
+const AnalyticsPage = React.lazy(() => import("./pages/AnalyticsPage"));
+const ForgotPasswordPage = React.lazy(() => import("./pages/ForgotPasswordPage"));
+const ResetPasswordPage = React.lazy(() => import("./pages/ResetPasswordPage"));
+const LoginSuccessPage = React.lazy(() => import("./pages/LoginSuccessPage"));
+const SubscriptionPage = React.lazy(() => import("./pages/SubscriptionPage"));
+const LandingPage = React.lazy(() => import("./pages/LandingPage"));
+const RolodexPage = React.lazy(() => import("./pages/RolodexPage"));
+const DocumentVaultPage = React.lazy(() => import("./pages/DocumentVaultPage"));
+const SpreadsheetsPage = React.lazy(() => import("./pages/SpreadsheetsPage"));
+const SpreadsheetEditorPage = React.lazy(() => import("./pages/SpreadsheetEditorPage"));
+const CanvasesPage = React.lazy(() => import("./pages/CanvasesPage"));
+const CanvasEditorPage = React.lazy(() => import("./pages/CanvasEditorPage"));
+const SearchPage = React.lazy(() => import("./pages/SearchPage"));
+const TablesPage = React.lazy(() => import("./pages/TablesPage"));
+const TableEditorPage = React.lazy(() => import("./pages/TableEditorPage"));
+const FormPage = React.lazy(() => import("./pages/FormPage"));
+const AutomationsPage = React.lazy(() => import("./pages/AutomationsPage"));
+const ProjectsPage = React.lazy(() => import("./pages/ProjectsPage"));
+const MessagesPage = React.lazy(() => import("./pages/MessagesPage"));
+const WaitlistPage = React.lazy(() => import("./pages/WaitlistPage"));
+const WaitlistThankYouPage = React.lazy(() => import("./pages/WaitlistThankYouPage"));
 
 const isTouchDevice = () =>
   typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
@@ -113,6 +122,17 @@ function OAuthLoadingScreen() {
       </span>
       <div className="w-8 h-8 rounded-full animate-spin border-2 border-white border-t-transparent" />
       <p className="text-muted-foreground text-sm mt-4">Signing you in...</p>
+    </div>
+  );
+}
+
+function RouteLoadingScreen() {
+  return (
+    <div className="min-h-[100dvh] flex items-center justify-center bg-background" role="status" aria-live="polite">
+      <div className="flex flex-col items-center gap-3 text-muted-foreground">
+        <div className="h-7 w-7 rounded-full animate-spin border-2 border-primary border-t-transparent" />
+        <span className="text-sm">Loading LyfeOS…</span>
+      </div>
     </div>
   );
 }
@@ -262,6 +282,10 @@ function Router() {
     
     const currentPath = window.location.pathname;
 
+    if (currentPath.startsWith('/review-mission')) {
+      grantAccess();
+    }
+
     if (isAuthenticated) {
       grantAccess();
     }
@@ -324,7 +348,7 @@ function Router() {
     }
     
     // Public paths that don't require auth
-    const publicPaths = ['/login', '/register', '/login-success', '/waitlist'];
+    const publicPaths = ['/login', '/register', '/login-success', '/waitlist', '/review-mission'];
     const exactPublicPaths = ['/subscription'];
     if (publicPaths.some(path => currentPath.startsWith(path)) || exactPublicPaths.includes(currentPath)) {
       return;
@@ -345,6 +369,7 @@ function Router() {
   }, [isAuthenticated, isLoading, isLoginTransition, navigate]);
 
   return (
+    <Suspense fallback={<RouteLoadingScreen />}>
     <Switch>
       {/* Public routes */}
       <Route path="/login">
@@ -356,6 +381,7 @@ function Router() {
       <Route path="/forgot-password" component={ForgotPasswordPage} />
       <Route path="/reset-password" component={ResetPasswordPage} />
       <Route path="/login-success" component={LoginSuccessPage} />
+      <Route path="/review-mission" component={MissionReviewPage} />
       
       {/* Onboarding route - requires auth but has special handling */}
       <Route path="/onboarding" component={OnboardingPage} />
@@ -371,6 +397,14 @@ function Router() {
       </Route>
       
       <Route path="/missions">
+        <ProtectedRoute>
+          <RootLayout>
+            <QuestsPage />
+          </RootLayout>
+        </ProtectedRoute>
+      </Route>
+
+      <Route path="/calendar">
         <ProtectedRoute>
           <RootLayout>
             <QuestsPage />
@@ -422,9 +456,13 @@ function Router() {
       <Route path="/kanban">
         <ProtectedRoute>
           <RootLayout>
-            <KanbanPage />
+            <ProjectsPage />
           </RootLayout>
         </ProtectedRoute>
+      </Route>
+
+      <Route path="/projects">
+        <ProtectedRoute><RootLayout><ProjectsPage /></RootLayout></ProtectedRoute>
       </Route>
       
       <Route path="/kanban/board/:boardId">
@@ -600,6 +638,58 @@ function Router() {
           </RootLayout>
         </ProtectedRoute>
       </Route>
+
+      <Route path="/messages">
+        <ProtectedRoute>
+          <RootLayout>
+            <MessagesPage />
+          </RootLayout>
+        </ProtectedRoute>
+      </Route>
+
+      <Route path="/spreadsheets/new">
+        <ProtectedRoute><RootLayout><SpreadsheetEditorPage /></RootLayout></ProtectedRoute>
+      </Route>
+
+      <Route path="/spreadsheets/:spreadsheetId">
+        <ProtectedRoute><RootLayout><SpreadsheetEditorPage /></RootLayout></ProtectedRoute>
+      </Route>
+
+      <Route path="/spreadsheets">
+        <ProtectedRoute><RootLayout><SpreadsheetsPage /></RootLayout></ProtectedRoute>
+      </Route>
+
+      <Route path="/canvases/new">
+        <ProtectedRoute><RootLayout><CanvasEditorPage /></RootLayout></ProtectedRoute>
+      </Route>
+
+      <Route path="/canvases/:canvasId">
+        <ProtectedRoute><RootLayout><CanvasEditorPage /></RootLayout></ProtectedRoute>
+      </Route>
+
+      <Route path="/canvases">
+        <ProtectedRoute><RootLayout><CanvasesPage /></RootLayout></ProtectedRoute>
+      </Route>
+
+      <Route path="/search">
+        <ProtectedRoute><RootLayout><SearchPage /></RootLayout></ProtectedRoute>
+      </Route>
+
+      <Route path="/databases/:databaseId">
+        <ProtectedRoute><RootLayout><TableEditorPage /></RootLayout></ProtectedRoute>
+      </Route>
+
+      <Route path="/databases">
+        <ProtectedRoute><RootLayout><TablesPage /></RootLayout></ProtectedRoute>
+      </Route>
+
+      <Route path="/forms/:formId">
+        <ProtectedRoute><RootLayout><FormPage /></RootLayout></ProtectedRoute>
+      </Route>
+
+      <Route path="/automations">
+        <ProtectedRoute><RootLayout><AutomationsPage /></RootLayout></ProtectedRoute>
+      </Route>
       
       {/* Redirect to dashboard if authenticated, or login if not */}
       <Route path="/">
@@ -615,6 +705,7 @@ function Router() {
       {/* Fallback to 404 */}
       <Route component={NotFound} />
     </Switch>
+    </Suspense>
   );
 }
 

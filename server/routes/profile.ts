@@ -6,19 +6,23 @@ import { clerkClient } from "@clerk/express";
 import { storage } from "../storage";
 import { db } from "../db";
 import { logger, formatLocalDate } from "../utils";
+import { assessObservedPatternQuality } from "../insight-quality";
 import { isAuthenticated, isOwner, calculateLevelFromTotalXP, calculateTotalXPForLevel } from "./middleware";
 import { InsertUser, InsertUserProfile, InsertUserStats, userDailyLogs, quests as questsTable, userStats, users } from "@shared/schema";
 import { eq, desc, and, gte, asc, sql } from "drizzle-orm";
 import { recordTransformationThreadEvidence } from "../transformation-thread-evidence";
 import { queueCoordinationContext } from "../cross-product";
+import { convertTodoIdeasToMissions } from "../todo-idea-conversion";
+import { localMidnight } from "../todo-idea-parsing";
+import { sleepDurationMinutes } from "../health-fitness";
 
 const accountExportTables = [
   "user_stats", "user_profile", "user_daily_logs", "user_integrations", "quests", "ai_messages",
-  "calendar_events", "mission_pages", "contacts", "spreadsheets", "canvases", "graphs", "folders",
-  "documents", "templates", "integrations", "progress_trackers", "kanban_boards", "media_albums",
+  "calendar_events", "mission_pages", "contacts", "personal_relationships", "relationship_interactions", "relationship_commitments", "spreadsheets", "canvases", "graphs", "workspace_databases", "workspace_database_rows", "workspace_forms", "workflow_automations", "workflow_automation_runs", "folders",
+  "documents", "templates", "integrations", "progress_trackers", "kanban_boards", "project_events", "media_albums",
   "media_items", "conversations", "dismissed_knowledge", "vision_goals", "user_categories", "ritual_groups",
-  "widget_states", "user_activity_events", "smart_reminders", "mission_views", "push_subscriptions",
-  "transformation_threads", "transformation_thread_evidence", "skill_nodes", "skill_edges", "quest_skill_contributions", "skill_progression_events", "progression_badge_awards", "cross_product_sharing_preferences", "cross_product_work_links",
+  "widget_states", "user_activity_events", "smart_reminders", "mission_views", "push_subscriptions", "ai_pending_actions", "ai_action_records",
+  "transformation_threads", "transformation_thread_evidence", "personal_capabilities", "skill_nodes", "skill_edges", "quest_skill_contributions", "skill_progression_events", "progression_badge_awards", "mission_contracts", "mission_evidence", "mission_reviews", "mission_deferrals", "mission_dependencies", "cross_product_sharing_preferences", "cross_product_work_links", "health_profiles", "health_targets", "health_target_revisions", "body_measurements", "health_observation_calculation_preferences", "health_observations", "health_metric_definitions", "health_metric_panels", "hydration_entries", "supplement_entries", "supplement_schedules", "supplement_schedule_events", "fasting_windows", "recovery_activities", "recovery_routines", "recovery_tag_policies", "sleep_naps", "sleep_sessions", "nutrition_foods", "nutrition_food_portions", "nutrition_diary_entries", "nutrition_recipes", "nutrition_recipe_revisions", "nutrition_meal_plans", "nutrition_meal_plan_entries", "health_deletion_receipts", "health_data_rights_audit", "health_planning_drafts", "health_planning_draft_events", "health_ai_requests", "health_ai_drafts", "health_practice_reviews", "health_progression_events", "health_badge_events", "ingredient_scans", "ingredient_scan_items", "ingredient_preference_rules", "exercise_definitions", "workout_programs", "workout_program_sessions", "workouts", "workout_revisions", "workout_templates", "workout_template_revisions", "heart_rate_zone_profiles", "workout_heart_rate_samples",
 ] as const;
 
 const identifier = (name: string) => sql.identifier(name);
@@ -28,8 +32,132 @@ async function selectAccountRows(table: string, userId: number): Promise<unknown
   return (result as { rows?: unknown[] }).rows || [];
 }
 
+async function selectNutritionNutrientRows(userId: number): Promise<unknown[]> {
+  const result = await db.execute(sql`
+    SELECT "nutrition_food_nutrients".* FROM "nutrition_food_nutrients"
+    INNER JOIN "nutrition_foods" ON "nutrition_foods"."id" = "nutrition_food_nutrients"."food_id"
+    WHERE "nutrition_foods"."user_id" = ${userId}
+  `);
+  return (result as { rows?: unknown[] }).rows || [];
+}
+
+async function selectNutritionRecipeIngredientRows(userId: number): Promise<unknown[]> {
+  const result = await db.execute(sql`
+    SELECT "nutrition_recipe_ingredients".* FROM "nutrition_recipe_ingredients"
+    INNER JOIN "nutrition_recipes" ON "nutrition_recipes"."id" = "nutrition_recipe_ingredients"."recipe_id"
+    WHERE "nutrition_recipes"."user_id" = ${userId}
+  `);
+  return (result as { rows?: unknown[] }).rows || [];
+}
+
+async function selectWorkoutExerciseRows(userId: number): Promise<unknown[]> {
+  const result = await db.execute(sql`
+    SELECT "workout_exercises".* FROM "workout_exercises"
+    INNER JOIN "workouts" ON "workouts"."id" = "workout_exercises"."workout_id"
+    WHERE "workouts"."user_id" = ${userId}
+  `);
+  return (result as { rows?: unknown[] }).rows || [];
+}
+
+async function selectWorkoutSetRows(userId: number): Promise<unknown[]> {
+  const result = await db.execute(sql`
+    SELECT "workout_sets".* FROM "workout_sets"
+    INNER JOIN "workout_exercises" ON "workout_exercises"."id" = "workout_sets"."workout_exercise_id"
+    INNER JOIN "workouts" ON "workouts"."id" = "workout_exercises"."workout_id"
+    WHERE "workouts"."user_id" = ${userId}
+  `);
+  return (result as { rows?: unknown[] }).rows || [];
+}
+
+async function selectMessageHubRows(userId: number): Promise<Record<string, unknown[]>> {
+  const queryRows = async (query: ReturnType<typeof sql>): Promise<unknown[]> => {
+    const result = await db.execute(query);
+    return (result as { rows?: unknown[] }).rows || [];
+  };
+  const conversationScope = sql`SELECT "conversation_id" FROM "message_conversation_participants" WHERE "user_id" = ${userId}`;
+  const rows = await Promise.all([
+    queryRows(sql`SELECT * FROM "message_conversations" WHERE "id" IN (${conversationScope})`),
+    queryRows(sql`SELECT * FROM "message_conversation_participants" WHERE "conversation_id" IN (${conversationScope})`),
+    queryRows(sql`SELECT * FROM "message_channel_bindings" WHERE "conversation_id" IN (${conversationScope})`),
+    queryRows(sql`SELECT * FROM "conversation_messages" WHERE "conversation_id" IN (${conversationScope})`),
+    queryRows(sql`SELECT * FROM "message_attachments" WHERE "message_id" IN (SELECT "id" FROM "conversation_messages" WHERE "conversation_id" IN (${conversationScope}))`),
+    queryRows(sql`SELECT * FROM "message_delivery_receipts" WHERE "message_id" IN (SELECT "id" FROM "conversation_messages" WHERE "conversation_id" IN (${conversationScope}))`),
+    queryRows(sql`SELECT * FROM "message_internal_notes" WHERE "author_user_id" = ${userId}`),
+    queryRows(sql`SELECT * FROM "message_audit_events" WHERE "conversation_id" IN (${conversationScope})`),
+    queryRows(sql`SELECT * FROM "message_reactions" WHERE "message_id" IN (SELECT "id" FROM "conversation_messages" WHERE "conversation_id" IN (${conversationScope}))`),
+    queryRows(sql`SELECT * FROM "message_edit_history" WHERE "message_id" IN (SELECT "id" FROM "conversation_messages" WHERE "conversation_id" IN (${conversationScope}))`),
+  ]);
+  return {
+    message_conversations: rows[0],
+    message_conversation_participants: rows[1],
+    message_channel_bindings: rows[2],
+    conversation_messages: rows[3],
+    message_attachments: rows[4],
+    message_delivery_receipts: rows[5],
+    message_internal_notes: rows[6],
+    message_audit_events: rows[7],
+    message_reactions: rows[8],
+    message_edit_history: rows[9],
+  };
+}
+
+async function selectSafeHealthConnectionRows(userId: number): Promise<Record<string, unknown[]>> {
+  const queryRows = async (query: ReturnType<typeof sql>): Promise<unknown[]> => {
+    const result = await db.execute(query);
+    return (result as { rows?: unknown[] }).rows || [];
+  };
+  const rows = await Promise.all([
+    queryRows(sql`SELECT "id", "user_id", "provider", "provider_name", "status", "scopes", "consent_version", "consented_at", "last_sync_at", "last_error_code", "revoked_at", "created_at", "updated_at" FROM "health_connections" WHERE "user_id" = ${userId}`),
+    queryRows(sql`SELECT "id", "user_id", "connection_id", "resource_type", "status", "consecutive_failures", "last_attempt_at", "last_success_at", "next_retry_at", "updated_at" FROM "health_sync_cursors" WHERE "user_id" = ${userId}`),
+    queryRows(sql`SELECT * FROM "health_source_records" WHERE "user_id" = ${userId}`),
+    queryRows(sql`SELECT * FROM "health_source_suppressions" WHERE "user_id" = ${userId}`),
+    queryRows(sql`SELECT * FROM "health_import_failures" WHERE "user_id" = ${userId}`),
+    queryRows(sql`SELECT * FROM "health_import_runs" WHERE "user_id" = ${userId}`),
+    queryRows(sql`SELECT * FROM "health_source_preferences" WHERE "user_id" = ${userId}`),
+    queryRows(sql`SELECT * FROM "health_connection_audits" WHERE "user_id" = ${userId}`),
+  ]);
+  return { health_connections: rows[0], health_sync_cursors: rows[1], health_source_records: rows[2], health_source_suppressions: rows[3], health_import_failures: rows[4], health_import_runs: rows[5], health_source_preferences: rows[6], health_connection_audits: rows[7] };
+}
+
+// Federation records use their own ownership columns and aggregate keys rather
+// than the application's conventional user_id column. Keep this export scope
+// deliberately identical to account deletion so a user can retain a portable
+// audit trail of the LyfeOS-side federation activity that belongs to them.
+async function selectFederationAuditRows(userId: number, clerkId?: string | null): Promise<Record<string, unknown[]>> {
+  const queryRows = async (query: ReturnType<typeof sql>): Promise<unknown[]> => {
+    const result = await db.execute(query);
+    return (result as { rows?: unknown[] }).rows || [];
+  };
+  const workItemClause = clerkId
+    ? sql` OR ("aggregate_type" = 'work_item' AND "payload"->>'actorId' = ${clerkId})`
+    : sql``;
+  const rows = await Promise.all([
+    queryRows(sql`SELECT * FROM "umh_inbound_commands" WHERE "local_user_id" = ${userId}`),
+    queryRows(sql`SELECT * FROM "umh_approval_requests" WHERE "command_id" IN (SELECT "command_id" FROM "umh_inbound_commands" WHERE "local_user_id" = ${userId})`),
+    queryRows(sql`SELECT * FROM "umh_audit_records" WHERE "local_user_id" = ${userId}`),
+    queryRows(sql`
+      SELECT * FROM "umh_outbox_events"
+      WHERE ("aggregate_type" = 'mission' AND "aggregate_id" IN (SELECT "id"::text FROM "quests" WHERE "user_id" = ${userId}))
+         OR ("aggregate_type" = 'progression' AND "aggregate_id" = ${String(userId)})
+         OR ("aggregate_type" = 'coordination_context' AND "aggregate_id" LIKE ${`${userId}:%`})
+         ${workItemClause}
+    `),
+  ]);
+  return {
+    umh_inbound_commands: rows[0],
+    umh_approval_requests: rows[1],
+    umh_audit_records: rows[2],
+    umh_outbox_events: rows[3],
+  };
+}
+
 async function deleteLocalAccountData(userId: number): Promise<void> {
   await db.transaction(async (tx) => {
+    await tx.execute(sql`DELETE FROM "message_reactions" WHERE "user_id" = ${userId}`);
+    await tx.execute(sql`DELETE FROM "conversation_messages" WHERE "sender_user_id" = ${userId}`);
+    await tx.execute(sql`DELETE FROM "message_internal_notes" WHERE "author_user_id" = ${userId}`);
+    await tx.execute(sql`DELETE FROM "message_conversation_participants" WHERE "user_id" = ${userId}`);
+    await tx.execute(sql`DELETE FROM "message_conversations" WHERE NOT EXISTS (SELECT 1 FROM "message_conversation_participants" WHERE "message_conversation_participants"."conversation_id" = "message_conversations"."id")`);
     await tx.execute(sql`DELETE FROM "messages" WHERE "conversation_id" IN (SELECT "id" FROM "conversations" WHERE "user_id" = ${userId})`);
     await tx.execute(sql`DELETE FROM "kanban_boards" WHERE "user_id" = ${userId}`);
     await tx.execute(sql`DELETE FROM "umh_outbox_events" WHERE "aggregate_type" = 'mission' AND "aggregate_id" IN (SELECT "id"::text FROM "quests" WHERE "user_id" = ${userId})`);
@@ -40,12 +168,17 @@ async function deleteLocalAccountData(userId: number): Promise<void> {
     await tx.execute(sql`DELETE FROM "umh_audit_records" WHERE "local_user_id" = ${userId}`);
     await tx.execute(sql`DELETE FROM "umh_inbound_commands" WHERE "local_user_id" = ${userId}`);
 
+    for (const table of ["health_source_records", "health_source_suppressions", "health_import_failures", "health_import_runs", "health_sync_cursors", "health_source_preferences", "health_connection_audits", "health_connections"]) {
+      await tx.execute(sql`DELETE FROM ${identifier(table)} WHERE "user_id" = ${userId}`);
+    }
+
     for (const table of [
-      "cross_product_work_links", "cross_product_sharing_preferences", "progression_badge_awards", "skill_progression_events", "quest_skill_contributions", "skill_edges", "skill_nodes", "transformation_thread_evidence", "quests", "transformation_threads", "mission_pages", "calendar_events",
-      "documents", "folders", "media_items", "media_albums", "conversations", "user_stats", "user_profile",
-      "user_daily_logs", "user_integrations", "ai_messages", "contacts", "spreadsheets", "canvases", "graphs",
+      "workflow_automation_runs", "workflow_automations", "cross_product_work_links", "cross_product_sharing_preferences", "progression_badge_awards", "skill_progression_events", "quest_skill_contributions", "skill_edges", "skill_nodes", "personal_capabilities", "transformation_thread_evidence", "mission_deferrals", "mission_dependencies", "quests", "transformation_threads", "mission_pages", "calendar_events",
+      "relationship_commitments", "relationship_interactions", "personal_relationships", "documents", "folders", "media_items", "media_albums", "conversations", "user_stats", "user_profile",
+      "user_daily_logs", "user_integrations", "ai_pending_actions", "ai_action_records", "ai_messages", "contacts", "spreadsheets", "canvases", "graphs", "workspace_forms", "workspace_database_rows", "workspace_databases",
       "templates", "integrations", "progress_trackers", "dismissed_knowledge", "vision_goals", "user_categories",
       "ritual_groups", "widget_states", "user_activity_events", "smart_reminders", "mission_views", "push_subscriptions",
+      "ingredient_scan_items", "ingredient_scans", "ingredient_preference_rules", "workout_heart_rate_samples", "heart_rate_zone_profiles", "workout_program_sessions", "workout_programs", "workout_template_revisions", "workout_templates", "workout_revisions", "workouts", "exercise_definitions", "nutrition_meal_plan_entries", "nutrition_meal_plans", "nutrition_diary_entries", "nutrition_recipe_revisions", "nutrition_recipes", "nutrition_food_portions", "nutrition_foods", "sleep_naps", "sleep_sessions", "health_observation_calculation_preferences", "health_observations", "health_metric_panels", "health_metric_definitions", "recovery_activities", "recovery_routines", "recovery_tag_policies", "fasting_windows", "supplement_schedule_events", "supplement_schedules", "supplement_entries", "hydration_entries", "body_measurements", "health_planning_draft_events", "health_planning_drafts", "health_ai_drafts", "health_ai_requests", "health_practice_reviews", "health_target_revisions", "health_targets", "health_profiles", "health_deletion_receipts", "health_data_rights_audit", "health_badge_events", "health_progression_events",
     ]) {
       await tx.execute(sql`DELETE FROM ${identifier(table)} WHERE "user_id" = ${userId}`);
     }
@@ -192,6 +325,16 @@ export function registerProfileRoutes(app: Express): void {
     try {
       const userId = req.session.userId!;
       const updateData = { ...req.body };
+      if (updateData.aiContextPreferences !== undefined) {
+        const parsed = z.object({
+          planning: z.boolean(),
+          identity: z.boolean(),
+          dailyState: z.boolean(),
+          conversationHistory: z.boolean(),
+        }).strict().safeParse(updateData.aiContextPreferences);
+        if (!parsed.success) return res.status(400).json({ error: "Choose valid AI context preferences." });
+        updateData.aiContextPreferences = parsed.data;
+      }
       updateData.updatedAt = new Date();
       
       if (updateData.primaryColor && !updateData.primaryThemeColor) {
@@ -330,8 +473,24 @@ export function registerProfileRoutes(app: Express): void {
       const userId = req.session.userId!;
       const user = await storage.getUser(userId);
       if (!user) return res.status(404).json({ error: "User not found" });
-      const rows = await Promise.all(accountExportTables.map(async (table) => [table, await selectAccountRows(table, userId)] as const));
+      const [rows, federationAudit, healthConnectionRows, nutritionNutrients, nutritionRecipeIngredients, workoutExerciseRows, workoutSetRows, messageHubRows] = await Promise.all([
+        Promise.all(accountExportTables.map(async (table) => [table, await selectAccountRows(table, userId)] as const)),
+        selectFederationAuditRows(userId, user.clerkId),
+        selectSafeHealthConnectionRows(userId),
+        selectNutritionNutrientRows(userId),
+        selectNutritionRecipeIngredientRows(userId),
+        selectWorkoutExerciseRows(userId),
+        selectWorkoutSetRows(userId),
+        selectMessageHubRows(userId),
+      ]);
       const data = Object.fromEntries(rows) as Record<string, unknown[]>;
+      Object.assign(data, federationAudit);
+      Object.assign(data, healthConnectionRows);
+      data.nutrition_food_nutrients = nutritionNutrients;
+      data.nutrition_recipe_ingredients = nutritionRecipeIngredients;
+      data.workout_exercises = workoutExerciseRows;
+      data.workout_sets = workoutSetRows;
+      Object.assign(data, messageHubRows);
       const safeUser = { ...user, password: undefined, passwordResetToken: undefined, passwordResetExpiry: undefined, emailVerificationToken: undefined, emailVerificationExpiry: undefined, twoFactorEmailCode: undefined, twoFactorEmailExpiry: undefined, twoFactorPhoneCode: undefined, twoFactorPhoneExpiry: undefined };
       data.integrations = data.integrations.map((entry: any) => {
         const { access_token, refresh_token, accessToken, refreshToken, ...safe } = entry;
@@ -833,6 +992,24 @@ Generate the complete affirmation now:`;
   app.post("/api/users/:userId/award-xp", isOwner, async (req: Request, res: Response) => {
     return res.status(410).json({ error: "XP is derived from completed missions and goals; direct awards are disabled." });
   });
+
+  // Metadata-only execution receipts let a user inspect what their assistant
+  // attempted without duplicating private prompt or tool payload content.
+  app.get("/api/account/ai-actions", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const result = await db.execute(sql`
+        SELECT "id", "tool_name", "risk", "state", "outcome_summary", "created_at"
+        FROM "ai_action_records"
+        WHERE "user_id" = ${req.session.userId!}
+        ORDER BY "created_at" DESC
+        LIMIT 20
+      `);
+      return res.json({ actions: (result as { rows?: unknown[] }).rows || [] });
+    } catch (error) {
+      logger.error("Error reading AI action receipts:", error);
+      return res.status(500).json({ error: "Could not read AI action receipts" });
+    }
+  });
   
   // Daily Log APIs
   
@@ -960,54 +1137,19 @@ Generate the complete affirmation now:`;
         });
       }
       
-      // Convert previous day's todoIdeas into upcoming missions (quests)
+      // Convert the immediately preceding day's captured ideas; mission-list
+      // loading provides recovery for any older unconverted day.
       try {
         const [year, month, day] = date.split('-').map(Number);
         const previousDay = new Date(year, month - 1, day - 1);
         const previousDateStr = formatLocalDate(previousDay);
-        const todayMidnight = new Date(year, month - 1, day, 0, 0, 0, 0);
-        
-        const previousLogs = await db.select()
-          .from(userDailyLogs)
-          .where(and(
-            eq(userDailyLogs.userId, userId),
-            eq(userDailyLogs.date, previousDateStr)
-          ));
-        
-        if (previousLogs.length > 0 && previousLogs[0].todoIdeas && !previousLogs[0].todosConverted) {
-          const todoIdeasText = previousLogs[0].todoIdeas;
-          const todoLines = todoIdeasText
-            .split('\n')
-            .map((line: string) => line.trim())
-            .filter((line: string) => line.length > 0);
-          
-          const existingQuests = await db.select({ title: questsTable.title })
-            .from(questsTable)
-            .where(eq(questsTable.userId, userId));
-          const existingTitles = new Set(existingQuests.map(q => q.title.toLowerCase().trim()));
-          
-          let created = 0;
-          for (const todoLine of todoLines) {
-            if (!existingTitles.has(todoLine.toLowerCase().trim())) {
-              await storage.createQuest({
-                userId,
-                title: todoLine,
-                description: `Auto-created from To-Do Ideas on ${previousDateStr}`,
-                category: 'todo',
-                completed: false,
-                experienceReward: 50,
-                createdAt: todayMidnight
-              });
-              existingTitles.add(todoLine.toLowerCase().trim());
-              created++;
-            }
-          }
-          
-          await db.update(userDailyLogs)
-            .set({ todosConverted: true })
-            .where(eq(userDailyLogs.id, previousLogs[0].id));
-          
-          logger.debug(`Created ${created}/${todoLines.length} quests from previous day's todoIdeas for user ${userId} (${todoLines.length - created} duplicates skipped)`);
+        const result = await convertTodoIdeasToMissions({
+          userId,
+          includeLog: (logDate) => logDate === previousDateStr,
+          createdAtForLog: () => localMidnight(date),
+        });
+        if (result.logsProcessed > 0) {
+          logger.debug(`Created ${result.created} missions from the previous day's todo ideas for user ${userId} (${result.duplicatesSkipped} duplicates skipped)`);
         }
       } catch (todoError) {
         logger.error("Error converting todoIdeas to quests:", todoError);
@@ -1350,14 +1492,13 @@ Generate the complete affirmation now:`;
       const sleepWellnessCorrelation = dailyLogs
         .filter(log => log.wakeTime && log.sleepTime && log.mentalState != null && log.physicalState != null && log.emotionalState != null)
         .map(log => {
-          const [wH, wM] = (log.wakeTime as string).split(":").map(Number);
-          const [sH, sM] = (log.sleepTime as string).split(":").map(Number);
-          let diffMin = (wH * 60 + wM) - (sH * 60 + sM);
-          if (diffMin < 0) diffMin += 24 * 60;
-          const sleepHours = Math.round(diffMin / 60 * 10) / 10;
+          const durationMinutes = sleepDurationMinutes(log.sleepTime, log.wakeTime);
+          if (durationMinutes === null) return null;
+          const sleepHours = Math.round(durationMinutes / 60 * 10) / 10;
           const mood = Math.round(((log.mentalState ?? 5) + (log.physicalState ?? 5) + (log.emotionalState ?? 5)) / 3 * 10) / 10;
           return { date: log.date, sleepHours, mood };
-        });
+        }).filter((entry): entry is { date: string; sleepHours: number; mood: number } => entry !== null);
+      const sleepWellnessDataQuality = assessObservedPatternQuality(sleepWellnessCorrelation.length, dateRange.length);
 
       res.json({
         moodTrends,
@@ -1370,6 +1511,7 @@ Generate the complete affirmation now:`;
         personalRecords,
         tokenEfficiency,
         sleepWellnessCorrelation,
+        sleepWellnessDataQuality,
         summary: {
           totalMissions: activeMissions.length,
           completedMissions: completedMissions.length,
@@ -1539,14 +1681,13 @@ Generate the complete affirmation now:`;
       const sleepWellnessCorrelation = dailyLogs
         .filter(log => log.wakeTime && log.sleepTime && log.mentalState != null && log.physicalState != null && log.emotionalState != null)
         .map(log => {
-          const [wH, wM] = (log.wakeTime as string).split(":").map(Number);
-          const [sH, sM] = (log.sleepTime as string).split(":").map(Number);
-          let diffMin = (wH * 60 + wM) - (sH * 60 + sM);
-          if (diffMin < 0) diffMin += 24 * 60;
-          const sleepHours = Math.round(diffMin / 60 * 10) / 10;
+          const durationMinutes = sleepDurationMinutes(log.sleepTime, log.wakeTime);
+          if (durationMinutes === null) return null;
+          const sleepHours = Math.round(durationMinutes / 60 * 10) / 10;
           const mood = Math.round(((log.mentalState ?? 5) + (log.physicalState ?? 5) + (log.emotionalState ?? 5)) / 3 * 10) / 10;
           return { date: log.date, sleepHours, mood };
-        });
+        }).filter((entry): entry is { date: string; sleepHours: number; mood: number } => entry !== null);
+      const sleepWellnessDataQuality = assessObservedPatternQuality(sleepWellnessCorrelation.length, dateRange.length);
 
       res.json({
         xpTrend,
@@ -1559,6 +1700,7 @@ Generate the complete affirmation now:`;
         topMissions,
         weekdayPatterns,
         sleepWellnessCorrelation,
+        sleepWellnessDataQuality,
         summary: {
           totalMissions: activeMissions.length,
           completedMissions: completedMissions.length,

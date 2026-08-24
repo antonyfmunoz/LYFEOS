@@ -7,6 +7,12 @@ export default function LoginSuccessPage() {
   useEffect(() => {
     sessionStorage.removeItem("login_success_username");
     sessionStorage.removeItem("login_success_new_user");
+    const returnAfterLogin = sessionStorage.getItem("lyfeos-return-after-login");
+    if (returnAfterLogin?.startsWith("/review-mission")) {
+      sessionStorage.removeItem("lyfeos-return-after-login");
+      navigate(returnAfterLogin, { replace: true });
+      return;
+    }
     const today = new Date().toDateString();
     const lastCeremonyDate = localStorage.getItem("lyfeos_ceremony_date");
 

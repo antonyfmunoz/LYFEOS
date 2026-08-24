@@ -12,7 +12,7 @@ import { AreaChart, Area, BarChart, Bar, ResponsiveContainer, XAxis, YAxis, Tool
 const DAY_OPTIONS = [7, 14, 30, 90];
 
 function getStatusBadge(score: number): { label: string; color: string; bg: string } {
-  if (score >= 80) return { label: "OPTIMAL", color: "text-primary", bg: "bg-primary/20 border-primary/30" };
+  if (score >= 80) return { label: "HIGH", color: "text-primary", bg: "bg-primary/20 border-primary/30" };
   if (score >= 50) return { label: "MODERATE", color: "text-primary/80", bg: "bg-primary/15 border-primary/25" };
   return { label: "LOW", color: "text-muted-foreground", bg: "bg-primary/10 border-primary/20" };
 }

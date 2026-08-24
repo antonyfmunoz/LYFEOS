@@ -17,6 +17,15 @@ export function signUMHMessage(secret: string, timestamp: string, nonce: string,
   return crypto.createHmac("sha256", secret).update(signingPayload(timestamp, nonce, body)).digest("hex");
 }
 
+/**
+ * Stable fingerprint for persisted idempotency records. Canonicalization keeps
+ * semantically identical JSON objects from producing different hashes merely
+ * because their keys arrived in a different order.
+ */
+export function hashUMHPayload(payload: unknown): string {
+  return crypto.createHash("sha256").update(canonicalize(payload)).digest("hex");
+}
+
 /** UMH projection ingress signs the exact JSON bytes sent over HTTPS. */
 export function signUMHProjectionEvent(secret: string, timestamp: string, nonce: string, serializedBody: string): string {
   return crypto.createHmac("sha256", secret).update(`${timestamp}.${nonce}.${serializedBody}`).digest("hex");

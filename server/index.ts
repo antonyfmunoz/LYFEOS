@@ -10,6 +10,11 @@ if (!process.env.CLERK_SECRET_KEY) {
   process.exit(1);
 }
 
+if (!process.env.VITE_CLERK_PUBLISHABLE_KEY) {
+  console.error("VITE_CLERK_PUBLISHABLE_KEY required");
+  process.exit(1);
+}
+
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic, log } from "./vite";
@@ -22,6 +27,7 @@ import { sql } from "drizzle-orm";
 import connectPgSimple from "connect-pg-simple";
 import { startNotificationScheduler } from "./notificationScheduler";
 import { startUMHOutboxWorker } from "./umh/outbox";
+import { startHealthDeletionReceiptCleanup } from "./health-deletion-cleanup";
 import { execSync } from "child_process";
 import * as Sentry from "@sentry/node";
 
@@ -207,6 +213,13 @@ async function ensureDatabaseSchema() {
   await ensureDatabaseSchema();
   const server = await registerRoutes(app);
 
+  // API callers must receive an API-shaped 404. Without this boundary, Vite
+  // (or the production SPA fallback) can return index.html with status 200 for
+  // a misspelled or retired API route, which looks like a successful mutation.
+  app.use("/api", (req: Request, res: Response) => {
+    res.status(404).json({ error: "API route not found", path: req.path });
+  });
+
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const requestId = (_req as Request & { requestId?: string }).requestId;
@@ -256,6 +269,7 @@ async function ensureDatabaseSchema() {
     log(`serving on port ${port}`);
     startNotificationScheduler();
     startUMHOutboxWorker();
+    startHealthDeletionReceiptCleanup();
   });
 
   server.listen({ port, host: "0.0.0.0" });

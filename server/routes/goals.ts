@@ -2,7 +2,6 @@ import type { Express, Request, Response } from "express";
 import { storage } from "../storage";
 import { logger } from "../utils";
 import { z } from "zod";
-import { sendPushToUser } from "../notificationScheduler";
 import { isAuthenticated } from "./middleware";
 import { db } from "../db";
 import { quests as questsTable } from "@shared/schema";
@@ -11,58 +10,12 @@ import type { InsertVisionGoal, InsertSmartReminder } from "@shared/schema";
 import { refreshProgressionState } from "../progression";
 
 export function registerGoalRoutes(app: Express): void {
-  // Push Notification routes (FCM)
-  app.post("/api/push/subscribe", isAuthenticated, async (req: Request, res: Response) => {
-    try {
-      const { fcmToken } = req.body;
-      if (!fcmToken || typeof fcmToken !== 'string') {
-        return res.status(400).json({ error: "Invalid FCM token" });
-      }
-      
-      const sub = await storage.savePushSubscription({
-        userId: req.session.userId!,
-        fcmToken,
-      });
-      
-      return res.status(200).json({ success: true, id: sub.id });
-    } catch (error) {
-      logger.error("Error saving FCM token:", error);
-      return res.status(500).json({ error: "Internal server error" });
-    }
-  });
-
-  app.delete("/api/push/subscribe", isAuthenticated, async (req: Request, res: Response) => {
-    try {
-      const { fcmToken } = req.body;
-      if (!fcmToken) {
-        return res.status(400).json({ error: "FCM token required" });
-      }
-      await storage.deletePushSubscription(fcmToken);
-      return res.status(200).json({ success: true });
-    } catch (error) {
-      logger.error("Error removing FCM token:", error);
-      return res.status(500).json({ error: "Internal server error" });
-    }
-  });
-
-  app.post("/api/push/test", isAuthenticated, async (req: Request, res: Response) => {
-    try {
-      const subs = await storage.getPushSubscriptions(req.session.userId!);
-      if (subs.length === 0) {
-        return res.status(400).json({ error: "No devices registered for push notifications. Try toggling notifications off and on again." });
-      }
-      await sendPushToUser(req.session.userId!, {
-        title: "LYFEOS",
-        body: "Push notifications are working! You'll receive mission reminders here.",
-        tag: "test-notification",
-        url: "/quests",
-      });
-      return res.status(200).json({ success: true });
-    } catch (error: any) {
-      logger.error("Error sending test push:", error?.message || error);
-      return res.status(500).json({ error: error?.message || "Failed to send test notification" });
-    }
-  });
+  // Delivery is deliberately unavailable until a provider, consent flow, and live acceptance pass exist.
+  const pushUnavailable = (_req: Request, res: Response) =>
+    res.status(503).json({ error: "Push notifications are not configured for this LyfeOS release." });
+  app.post("/api/push/subscribe", isAuthenticated, pushUnavailable);
+  app.delete("/api/push/subscribe", isAuthenticated, pushUnavailable);
+  app.post("/api/push/test", isAuthenticated, pushUnavailable);
 
   // Vision Goals CRUD
   app.get("/api/vision-goals/all", isAuthenticated, async (req: Request, res: Response) => {
@@ -213,15 +166,6 @@ export function registerGoalRoutes(app: Express): void {
       const progression = (isCompleting || isUncompleting)
         ? await refreshProgressionState(userId, `goal:${goal.id}:${isCompleting ? "completed" : "reopened"}`)
         : undefined;
-
-      if (isCompleting && xpAwarded > 0) {
-        sendPushToUser(userId, {
-          title: "Milestone Achieved!",
-          body: `${goal.title} completed! +${xpAwarded} bonus XP${goal.rewardText ? ` — Reward: ${goal.rewardText}` : ""}`,
-          tag: `goal-complete-${goal.id}`,
-          url: "/goals-archive",
-        }).catch(() => {});
-      }
 
       const dbStats = await storage.getUserStats(userId);
       const updatedStats = dbStats ? {

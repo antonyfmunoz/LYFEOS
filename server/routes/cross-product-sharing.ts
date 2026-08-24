@@ -8,6 +8,7 @@ import {
   crossProductDestinations,
   crossProductPurposes,
   getCrossProductSharing,
+  getCrossProductSharingAvailability,
   queueCoordinationContext,
   queueLinkedWorkItemState,
 } from "../cross-product";
@@ -36,6 +37,10 @@ export function registerCrossProductSharingRoutes(app: Express): void {
   app.patch("/api/cross-product-sharing", isAuthenticated, async (req: Request, res: Response) => {
     const parsed = updateSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: "Invalid sharing preference.", details: parsed.error.flatten() });
+    const availability = getCrossProductSharingAvailability();
+    if (parsed.data.enabled && !availability.available) {
+      return res.status(503).json({ error: availability.reason });
+    }
     const userId = req.session.userId!;
     const now = new Date();
     await db.insert(crossProductSharingPreferences).values({
@@ -65,6 +70,8 @@ export function registerCrossProductSharingRoutes(app: Express): void {
     const parsed = workLinkSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: "Invalid work link.", details: parsed.error.flatten() });
     const userId = req.session.userId!;
+    const availability = getCrossProductSharingAvailability();
+    if (!availability.available) return res.status(503).json({ error: availability.reason });
     const [quest] = await db.select({ id: quests.id }).from(quests).where(and(eq(quests.id, parsed.data.questId), eq(quests.userId, userId))).limit(1);
     if (!quest) return res.status(404).json({ error: "Mission not found." });
     const sharing = await getCrossProductSharing(userId);

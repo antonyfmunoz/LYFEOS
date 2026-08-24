@@ -15,10 +15,15 @@ permissions:
   contents: read
   issues: write
 
+concurrency:
+  group: lyfeos-production-monitor
+  cancel-in-progress: false
+
 jobs:
   synthetic:
     name: Check LyfeOS public endpoints
     runs-on: ubuntu-latest
+    timeout-minutes: 3
     steps:
       - name: Verify readiness
         run: |
@@ -32,6 +37,18 @@ jobs:
         run: |
           status="$(curl --silent --show-error --retry 2 --retry-all-errors --max-time 20 --output /dev/null --write-out '%{http_code}' https://lyfeos.net/api/auth/me)"
           test "$status" = "401"
+      - name: Verify protected health integrity aggregates
+        env:
+          LYFEOS_MONITOR_TOKEN: ${{ secrets.LYFEOS_MONITOR_TOKEN }}
+        run: |
+          if [ -z "$LYFEOS_MONITOR_TOKEN" ]; then
+            echo "::warning::Health integrity monitoring is not active until LYFEOS_MONITOR_TOKEN is configured in Fly and GitHub Actions"
+            exit 0
+          fi
+          body="$(curl --fail --silent --show-error --retry 2 --retry-all-errors --max-time 20 \
+            --header "x-lyfeos-monitor-token: $LYFEOS_MONITOR_TOKEN" \
+            https://lyfeos.net/api/operations/health-integrity)"
+          test "$(printf '%s' "$body" | jq -r '.status')" = "healthy"
       - name: Open an incident when the monitor fails
         if: failure()
         uses: actions/github-script@v7
