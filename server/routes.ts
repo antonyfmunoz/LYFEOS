@@ -80,6 +80,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/release", async (_req, res) => {
+    res.setHeader("Cache-Control", "no-store, max-age=0");
+    const bakedRevision = process.env.LYFEOS_RELEASE?.trim();
+    const sentryRevision = process.env.SENTRY_RELEASE?.trim();
+    const sourceRevision = bakedRevision || sentryRevision || null;
+    let migrations: { status: "available" | "unavailable"; count: number | null; latest: string | null } = {
+      status: "unavailable",
+      count: null,
+      latest: null,
+    };
+
+    try {
+      const result = await db.execute(sql`
+        SELECT
+          COUNT(*)::integer AS "count",
+          (SELECT "id" FROM "lyfeos_schema_migrations" ORDER BY "applied_at" DESC, "id" DESC LIMIT 1) AS "latest"
+        FROM "lyfeos_schema_migrations"
+      `);
+      const row = (result as unknown as { rows?: Array<{ count: number | string; latest: string | null }> }).rows?.[0];
+      migrations = {
+        status: "available",
+        count: Number(row?.count || 0),
+        latest: row?.latest || null,
+      };
+    } catch {
+      // Older releases may not have the release ledger yet. Keep this endpoint
+      // useful for source identification without exposing database errors.
+    }
+
+    return res.json({
+      service: "lyfeos",
+      sourceRevision,
+      imageReference: process.env.FLY_IMAGE_REF?.trim() || null,
+      environment: process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || "development",
+      migrations,
+    });
+  });
+
   app.get("/api/version", (_req, res) => {
     res.json({ version: "1.0.0", env: process.env.NODE_ENV || "development", createdAt: new Date().toISOString() });
   });
