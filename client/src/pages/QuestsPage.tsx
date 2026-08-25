@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef, type KeyboardEvent } from "react";
 import PageTutorial, { TutorialStep } from '@/components/ui/PageTutorial';
 import { useTutorialStatus } from '@/hooks/use-tutorial';
 import { useWidgetState } from "@/hooks/use-widget-state";
@@ -3891,6 +3891,10 @@ export default function QuestsPage() {
         const todayStr = formatDateStr(nowDate);
         const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         const HOURS = Array.from({ length: 24 }, (_, i) => i);
+        const activateCalendarControl = (event: KeyboardEvent<HTMLElement>, action: () => void) => {
+          if (event.target !== event.currentTarget || (event.key !== 'Enter' && event.key !== ' ')) return;
+          event.preventDefault(); action();
+        };
 
         const calNavPrev = () => {
           if (calendarZoom === 'year') setCalendarYear(y => y - 1);
@@ -3928,14 +3932,16 @@ export default function QuestsPage() {
             ? { bg: 'bg-muted/50', text: 'text-muted-foreground', border: 'border-muted' }
             : getCategoryColor(q.category);
           return (
-            <div
+            <button
+              type="button"
               key={q.id}
-              className={`${colors.bg} ${colors.text} text-[10px] leading-tight px-1.5 py-0.5 rounded-md truncate cursor-pointer transition-colors border ${colors.border} hover:brightness-125 ${q.completed ? 'line-through' : ''}`}
+              className={`${colors.bg} ${colors.text} pointer-events-auto block w-full text-left text-[10px] leading-tight px-1.5 py-0.5 rounded-md truncate cursor-pointer transition-colors border ${colors.border} hover:brightness-125 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${q.completed ? 'line-through' : ''}`}
               onClick={(e) => { e.stopPropagation(); openEditDialog(q); }}
               title={`${q.title}${q.startTime ? ` • ${q.startTime}` : ''}${q.location ? ` • ${q.location}` : ''}`}
+              aria-label={`Edit mission ${q.title}${q.startTime ? ` at ${q.startTime}` : ''}`}
             >
               {compact ? '' : (q.startTime ? `${q.startTime} ` : '')}{compact ? '•' : q.title}
-            </div>
+            </button>
           );
         };
 
@@ -3959,13 +3965,13 @@ export default function QuestsPage() {
             </p>
             <div className="p-3 flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-1">
-                <button onClick={calNavPrev} className="h-8 w-8 inline-flex items-center justify-center rounded hover:bg-primary/10 transition-colors">
+                <button type="button" aria-label={`Previous ${calendarZoom}`} onClick={calNavPrev} className="h-8 w-8 inline-flex items-center justify-center rounded hover:bg-primary/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
                   <ChevronLeft className="h-5 w-5 text-primary" />
                 </button>
-                <button onClick={calNavNext} className="h-8 w-8 inline-flex items-center justify-center rounded hover:bg-primary/10 transition-colors">
+                <button type="button" aria-label={`Next ${calendarZoom}`} onClick={calNavNext} className="h-8 w-8 inline-flex items-center justify-center rounded hover:bg-primary/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
                   <ChevronRight className="h-5 w-5 text-primary" />
                 </button>
-                <button onClick={calNavToday} className="text-xs font-mono px-2 py-1 rounded border border-primary/30 hover:bg-primary/10 transition-colors ml-1">
+                <button type="button" onClick={calNavToday} className="text-xs font-mono px-2 py-1 rounded border border-primary/30 hover:bg-primary/10 transition-colors ml-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
                   Today
                 </button>
                 <h2 className="text-lg font-orbitron ml-3">{calTitle}</h2>
@@ -3973,9 +3979,12 @@ export default function QuestsPage() {
               <div className="flex rounded-lg border border-primary/30 overflow-hidden">
                 {(['year', 'month', 'week', 'day'] as const).map(z => (
                   <button
+                    type="button"
                     key={z}
                     onClick={() => setCalendarZoom(z)}
-                    className={`text-[11px] font-mono px-3 py-1.5 transition-colors capitalize ${
+                    aria-pressed={calendarZoom === z}
+                    aria-label={`Show ${z} calendar`}
+                    className={`text-[11px] font-mono px-3 py-1.5 transition-colors capitalize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary ${
                       calendarZoom === z ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'
                     }`}
                   >
@@ -3994,11 +4003,15 @@ export default function QuestsPage() {
                     return (
                       <div
                         key={mo}
-                        className="cursor-pointer hover:bg-primary/5 rounded-lg p-2 transition-colors border border-transparent hover:border-primary/20"
+                        role="button"
+                        tabIndex={0}
+                        aria-label={`Open ${monthName} ${calendarYear} month`}
+                        className="cursor-pointer hover:bg-primary/5 rounded-lg p-2 transition-colors border border-transparent hover:border-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                         onClick={() => {
                           setCalendarMonth(new Date(calendarYear, mo, 1));
                           setCalendarZoom('month');
                         }}
+                        onKeyDown={(event) => activateCalendarControl(event, () => { setCalendarMonth(new Date(calendarYear, mo, 1)); setCalendarZoom('month'); })}
                       >
                         <div className="text-xs font-mono text-primary mb-1 text-center">{monthName}</div>
                         <div className="grid grid-cols-7 gap-px">
@@ -4048,22 +4061,25 @@ export default function QuestsPage() {
                         return (
                           <div
                             key={idx}
-                            className={`min-h-[80px] sm:min-h-[100px] p-1 bg-background/50 transition-colors hover:bg-primary/5 cursor-pointer ${
+                            className={`relative min-h-[80px] sm:min-h-[100px] bg-background/50 transition-colors ${
                               !cell.isCurrentMonth ? 'opacity-30' : ''
                             } ${selectedDate === formatDateStr(cell.date) ? 'ring-2 ring-primary bg-primary/10' : ''}`}
-                            onClick={() => {
-                              const ds = formatDateStr(cell.date);
-                              setSelectedDate(prev => prev === ds ? null : ds);
-                            }}
                           >
-                            <div className={`text-xs font-mono mb-1 ${
-                              isToday
-                                ? 'bg-primary text-primary-foreground w-6 h-6 rounded-full flex items-center justify-center font-bold'
-                                : 'text-muted-foreground pl-1'
-                            }`}>
-                              {cell.date.getDate()}
-                            </div>
-                            <div className="space-y-0.5">
+                            <button
+                              type="button"
+                              aria-label={`Select ${cell.date.toLocaleDateString()}; ${dayQuests.length} scheduled ${dayQuests.length === 1 ? 'mission' : 'missions'}`}
+                              className="absolute inset-0 z-0 p-1 text-left cursor-pointer transition-colors hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+                              onClick={() => { const ds = formatDateStr(cell.date); setSelectedDate(prev => prev === ds ? null : ds); }}
+                            >
+                              <span className={`text-xs font-mono mb-1 ${
+                                isToday
+                                  ? 'bg-primary text-primary-foreground w-6 h-6 rounded-full flex items-center justify-center font-bold'
+                                  : 'text-muted-foreground pl-1'
+                              }`}>
+                                {cell.date.getDate()}
+                              </span>
+                            </button>
+                            <div className="relative z-10 pt-7 px-1 pb-1 space-y-0.5 pointer-events-none">
                               {dayQuests.slice(0, maxShow).map(q => renderChip(q, false))}
                               {overflow > 0 && (
                                 <div className="text-[9px] text-muted-foreground pl-1">+{overflow} more</div>
@@ -4095,8 +4111,12 @@ export default function QuestsPage() {
                           return (
                             <div
                               key={i}
-                              className={`text-center p-2 border-l border-primary/10 cursor-pointer hover:bg-primary/5 transition-colors ${isT ? 'bg-primary/5' : ''} ${selectedDate === ds ? 'ring-2 ring-primary bg-primary/10' : ''}`}
+                              role="button"
+                              tabIndex={0}
+                              aria-label={`Select ${d.toLocaleDateString()}`}
+                              className={`text-center p-2 border-l border-primary/10 cursor-pointer hover:bg-primary/5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${isT ? 'bg-primary/5' : ''} ${selectedDate === ds ? 'ring-2 ring-primary bg-primary/10' : ''}`}
                               onClick={() => { setSelectedDate(prev => prev === ds ? null : ds); }}
+                              onKeyDown={(event) => activateCalendarControl(event, () => setSelectedDate(prev => prev === ds ? null : ds))}
                             >
                               <div className="text-[10px] font-mono text-muted-foreground uppercase">{weekDays[d.getDay()]}</div>
                               <div className={`text-sm font-mono mt-0.5 ${isT ? 'bg-primary text-primary-foreground w-7 h-7 rounded-full inline-flex items-center justify-center font-bold' : ''}`}>
@@ -4137,31 +4157,37 @@ export default function QuestsPage() {
                               return (
                                 <div
                                   key={i}
-                                  className="border-l border-primary/10 p-0.5 relative cursor-pointer hover:bg-primary/3 transition-colors"
-                                  onClick={() => {
-                                    const dateStr = ds;
+                                  className="border-l border-primary/10 p-0.5 relative min-h-[48px]"
+                                >
+                                  <button
+                                    type="button"
+                                    aria-label={`Create mission on ${d.toLocaleDateString()} at ${h === 0 ? '12 AM' : h < 12 ? `${h} AM` : h === 12 ? '12 PM' : `${h - 12} PM`}`}
+                                    className="absolute inset-0 z-0 cursor-pointer transition-colors hover:bg-primary/3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+                                    onClick={() => {
                                     setCreateFormData(prev => ({
                                       ...prev,
-                                      startDate: dateStr,
-                                      endDate: dateStr,
+                                      startDate: ds,
+                                      endDate: ds,
                                       startTime: `${String(h).padStart(2, '0')}:00`,
                                     }));
                                     setIsCreateOpen(true);
-                                  }}
-                                >
+                                    }}
+                                  />
                                   {dayQ.map(q => {
                                     const colors = q.completed
                                       ? { bg: 'bg-muted/50', text: 'text-muted-foreground', border: 'border-muted' }
                                       : getCategoryColor(q.category);
                                     return (
-                                      <div
+                                      <button
+                                        type="button"
                                         key={q.id}
-                                        className={`${colors.bg} ${colors.text} border-l-2 ${colors.border} text-[10px] px-1.5 py-1 rounded-r-md mb-0.5 truncate cursor-pointer hover:brightness-125 ${q.completed ? 'line-through' : ''}`}
+                                        className={`${colors.bg} ${colors.text} relative z-10 block w-full text-left border-l-2 ${colors.border} text-[10px] px-1.5 py-1 rounded-r-md mb-0.5 truncate cursor-pointer hover:brightness-125 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${q.completed ? 'line-through' : ''}`}
                                         onClick={(e) => { e.stopPropagation(); openEditDialog(q); }}
                                         title={q.title}
+                                        aria-label={`Edit mission ${q.title} at ${q.startTime}`}
                                       >
                                         {q.startTime} {q.title}
-                                      </div>
+                                      </button>
                                     );
                                   })}
                                 </div>
@@ -4213,8 +4239,13 @@ export default function QuestsPage() {
                               {h === 0 ? '12 AM' : h < 12 ? `${h} AM` : h === 12 ? '12 PM' : `${h - 12} PM`}
                             </div>
                             <div
-                              className="border-l border-primary/10 p-1 cursor-pointer hover:bg-primary/5 transition-colors space-y-0.5"
-                              onClick={() => {
+                              className="relative border-l border-primary/10 p-1 space-y-0.5"
+                            >
+                              <button
+                                type="button"
+                                aria-label={`Create mission on ${calendarDay.toLocaleDateString()} at ${h === 0 ? '12 AM' : h < 12 ? `${h} AM` : h === 12 ? '12 PM' : `${h - 12} PM`}`}
+                                className="absolute inset-0 z-0 cursor-pointer transition-colors hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+                                onClick={() => {
                                 setCreateFormData(prev => ({
                                   ...prev,
                                   startDate: ds,
@@ -4222,24 +4253,26 @@ export default function QuestsPage() {
                                   startTime: `${String(h).padStart(2, '0')}:00`,
                                 }));
                                 setIsCreateOpen(true);
-                              }}
-                            >
+                                }}
+                              />
                               {hourQuests.map(q => {
                                 const colors = q.completed
                                   ? { bg: 'bg-muted/50', text: 'text-muted-foreground', border: 'border-muted' }
                                   : getCategoryColor(q.category);
                                 return (
-                                  <div
+                                  <button
+                                    type="button"
                                     key={q.id}
-                                    className={`${colors.bg} ${colors.text} border-l-2 ${colors.border} text-xs px-2 py-1.5 rounded-r-md truncate cursor-pointer hover:brightness-125 ${q.completed ? 'line-through' : ''}`}
+                                    className={`${colors.bg} ${colors.text} relative z-10 block w-full text-left border-l-2 ${colors.border} text-xs px-2 py-1.5 rounded-r-md truncate cursor-pointer hover:brightness-125 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${q.completed ? 'line-through' : ''}`}
                                     onClick={(e) => { e.stopPropagation(); openEditDialog(q); }}
+                                    aria-label={`Edit mission ${q.title} at ${q.startTime}`}
                                   >
                                     <span className="font-mono text-[10px] mr-1.5">{q.startTime}</span>
                                     {q.title}
                                     {q.category && q.category !== 'general' && (
                                       <span className="ml-2 text-[9px] opacity-70">{mergedCategories.find(c => c.value === q.category)?.label || q.category}</span>
                                     )}
-                                  </div>
+                                  </button>
                                 );
                               })}
                             </div>
@@ -4280,7 +4313,8 @@ export default function QuestsPage() {
                     <button
                       type="button"
                       onClick={() => setSelectedDate(null)}
-                      className="h-6 w-6 inline-flex items-center justify-center rounded hover:bg-primary/10 transition-colors text-muted-foreground hover:text-primary"
+                      aria-label="Close selected date details"
+                      className="h-6 w-6 inline-flex items-center justify-center rounded hover:bg-primary/10 transition-colors text-muted-foreground hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                     >
                       <X className="h-4 w-4" />
                     </button>

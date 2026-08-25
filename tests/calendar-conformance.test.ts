@@ -59,4 +59,19 @@ describe("canonical mission Calendar", () => {
     expect(google).toContain("shiftCalendarDate(end.date, -1)");
     expect(google).toContain("shiftCalendarDate(endDate, 1)");
   });
+
+  it("provides keyboard-operable calendar navigation, scheduling, and mission editing", () => {
+    const quests = source("client/src/pages/QuestsPage.tsx");
+    expect(quests).toContain("const activateCalendarControl = (event: KeyboardEvent<HTMLElement>");
+    expect(quests).toContain("event.key !== 'Enter' && event.key !== ' '");
+    expect(quests).toContain("aria-label={`Show ${z} calendar`}");
+    expect(quests).toContain("aria-label={`Open ${monthName} ${calendarYear} month`}");
+    expect(quests).toContain("aria-label={`Select ${cell.date.toLocaleDateString()}");
+    expect(quests).toContain("aria-label={`Create mission on ${d.toLocaleDateString()}");
+    expect(quests).toContain("aria-label={`Create mission on ${calendarDay.toLocaleDateString()}");
+    expect(quests).toContain("aria-label={`Edit mission ${q.title}");
+    expect(quests).toContain('aria-label="Close selected date details"');
+    expect(quests).toContain("event.target !== event.currentTarget");
+    expect(quests).toContain("focus-visible:ring-2");
+  });
 });
