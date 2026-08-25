@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { createWorkspaceTableViewSchema, defaultWorkspaceFormDefinition, evaluateWorkspaceFormulas, filterAndSortWorkspaceRows, groupWorkspaceRows, parseWorkspaceTableCsv, serializeWorkspaceTableCsv, validateWorkspaceFormDefinition, validateWorkspaceFormFields, validateWorkspaceFormSubmission, validateWorkspaceRow, validateWorkspaceTableView, visibleWorkspaceFormFieldIds, workspaceBulkRowDeleteSchema, workspaceDatabaseDefinitionSchema, workspaceDatabaseRevisionSnapshotSchema, workspaceFormulaReferences, workspaceRowRevisionSnapshotSchema, workspaceTableRowImportSchema, type WorkspaceDatabaseDefinition, type WorkspaceTableViewDefinition } from "../shared/tables";
+import { createWorkspaceTableViewSchema, defaultWorkspaceFormDefinition, evaluateWorkspaceFormulas, filterAndSortWorkspaceRows, groupWorkspaceRows, parseWorkspaceTableCsv, serializeWorkspaceTableCsv, validateWorkspaceFormDefinition, validateWorkspaceFormFields, validateWorkspaceFormSubmission, validateWorkspaceRow, validateWorkspaceTableView, visibleWorkspaceFormFieldIds, workspaceBulkRowDeleteSchema, workspaceDatabaseDefinitionSchema, workspaceDatabaseRevisionSnapshotSchema, workspaceFormulaReferences, workspaceRowRevisionSnapshotSchema, workspaceTableRowImportSchema, workspaceUnlinkReferencesSchema, type WorkspaceDatabaseDefinition, type WorkspaceTableViewDefinition } from "../shared/tables";
 
 const source = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8");
 const definition: WorkspaceDatabaseDefinition = { version: 1, columns: [
@@ -297,6 +297,25 @@ describe("Tables and Forms instruments", () => {
     expect(routes).toContain("Remove relations from");
     expect(routes).toContain("evaluateWorkspaceFormulas(definition, values)");
     expect(routes).toContain("relationOptions");
+  });
+
+  it("derives reciprocal backlinks and unlinks them through reviewed immutable source-row updates", () => {
+    expect(workspaceUnlinkReferencesSchema.parse({ referenceCount: 3, confirmation: "UNLINK 3" })).toEqual({ referenceCount: 3, confirmation: "UNLINK 3" });
+    expect(workspaceUnlinkReferencesSchema.safeParse({ referenceCount: 3, confirmation: "UNLINK 2" }).success).toBe(false);
+    expect(workspaceUnlinkReferencesSchema.safeParse({ referenceCount: 501, confirmation: "UNLINK 501" }).success).toBe(false);
+    const routes = source("server/routes/tables.ts"); const editor = source("client/src/pages/TableEditorPage.tsx");
+    expect(routes).toContain("async function workspaceRowReferences");
+    expect(routes).toContain('app.get("/api/databases/:databaseId/rows/:rowId/references", isAuthenticated');
+    expect(routes).toContain('app.post("/api/databases/:databaseId/rows/:rowId/unlink-references", isAuthenticated');
+    expect(routes).toContain("references.entries.length !== input.referenceCount");
+    expect(routes).toContain("sourceRow.revision + 1");
+    expect(routes).toContain("workspaceDatabaseRowRevisions");
+    expect(routes).toContain('action: "updated"');
+    expect(routes).toContain("It does not delete either record.");
+    expect(editor).toContain("Incoming references to row #");
+    expect(editor).toContain("Backlinks are derived from canonical relation IDs.");
+    expect(editor).toContain("unlinkReferences.mutate");
+    expect(editor).toContain("no rows will be deleted");
   });
 
   it("exposes relation, formula, and rollup controls without making computed fields editable", () => {

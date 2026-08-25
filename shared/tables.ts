@@ -90,6 +90,12 @@ export const workspaceRowRequestSchema = z.object({ values: workspaceRowValuesSc
 export const workspaceBulkRowDeleteSchema = z.object({
   rowIds: z.array(z.number().int().positive()).min(1).max(100).refine((ids) => new Set(ids).size === ids.length, "Row IDs must be unique."),
 }).strict();
+export const workspaceUnlinkReferencesSchema = z.object({
+  referenceCount: z.number().int().min(1).max(500),
+  confirmation: z.string().max(40),
+}).strict().superRefine((value, ctx) => {
+  if (value.confirmation !== `UNLINK ${value.referenceCount}`) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["confirmation"], message: `Type UNLINK ${value.referenceCount} to confirm.` });
+});
 export const workspaceTableRowImportSchema = z.object({
   rows: z.array(workspaceRowValuesSchema).min(1).max(500),
 }).strict();
@@ -181,6 +187,7 @@ export type WorkspaceTableCsvPreview = {
 };
 export type WorkspaceRelationOption = { id: number; label: string };
 export type WorkspaceRelationOptions = Record<string, WorkspaceRelationOption[]>;
+export type WorkspaceRowBacklink = { sourceDatabaseId: number; sourceDatabaseTitle: string; sourceRowId: number; relationColumnId: string; relationColumnName: string };
 
 export function defaultWorkspaceFormDefinition(fieldIds: string[], title = "Response details"): WorkspaceFormDefinition {
   return workspaceFormDefinitionSchema.parse({ version: 1, sections: [{ id: "main", title, description: null, fieldIds }], conditions: [] });

@@ -4,8 +4,8 @@ import { and, desc, eq, inArray, not, sql } from "drizzle-orm";
 import { workspaceDatabaseRowRevisions, workspaceDatabaseRevisions, workspaceDatabaseRows, workspaceDatabases, workspaceFormAccessGrants, workspaceForms, workspaceFormSubmissionReceipts, workspaceTableViews } from "@shared/schema";
 import {
   createWorkspaceDatabaseSchema, createWorkspaceFormAccessGrantSchema, createWorkspaceFormSchema, createWorkspaceTableViewSchema, defaultWorkspaceFormDefinition, updateWorkspaceDatabaseSchema, updateWorkspaceFormSchema, updateWorkspaceTableViewSchema,
-  evaluateWorkspaceFormulas, validateWorkspaceFormDefinition, validateWorkspaceFormFields, validateWorkspaceFormSubmission, validateWorkspaceRow, validateWorkspaceTableView, workspaceBulkRowDeleteSchema, workspaceDatabaseDefinitionSchema, workspaceDatabaseRevisionSnapshotSchema, workspaceFormDefinitionSchema, workspaceRowRequestSchema, workspaceRowRevisionSnapshotSchema, workspaceTableRowImportSchema, workspaceTableViewDefinitionSchema,
-  type WorkspaceColumn, type WorkspaceDatabaseDefinition, type WorkspaceRelationOptions, type WorkspaceRowValues,
+  evaluateWorkspaceFormulas, validateWorkspaceFormDefinition, validateWorkspaceFormFields, validateWorkspaceFormSubmission, validateWorkspaceRow, validateWorkspaceTableView, workspaceBulkRowDeleteSchema, workspaceDatabaseDefinitionSchema, workspaceDatabaseRevisionSnapshotSchema, workspaceFormDefinitionSchema, workspaceRowRequestSchema, workspaceRowRevisionSnapshotSchema, workspaceTableRowImportSchema, workspaceTableViewDefinitionSchema, workspaceUnlinkReferencesSchema,
+  type WorkspaceColumn, type WorkspaceDatabaseDefinition, type WorkspaceRelationOptions, type WorkspaceRowBacklink, type WorkspaceRowValues,
 } from "@shared/tables";
 import { db } from "../db";
 import { logger } from "../utils";
@@ -83,6 +83,31 @@ async function validateWorkspaceRelationValues(tx: TableTransaction, definition:
   }
 }
 
+type WorkspaceRowReference = WorkspaceRowBacklink & { targetRowId: number };
+async function workspaceRowReferences(tx: TableTransaction, targetDatabaseId: number, targetRowIds: number[], userId: number): Promise<{ entries: WorkspaceRowReference[]; truncated: boolean }> {
+  if (!targetRowIds.length) return { entries: [], truncated: false };
+  const records = await tx.select({ id: workspaceDatabases.id, title: workspaceDatabases.title, definition: workspaceDatabases.definition }).from(workspaceDatabases).where(eq(workspaceDatabases.userId, userId));
+  const sources = records.flatMap((record) => workspaceDatabaseDefinitionSchema.parse(record.definition).columns.filter((column) => column.type === "relation" && column.relation?.databaseId === targetDatabaseId).map((column) => ({ databaseId: record.id, databaseTitle: record.title, column })));
+  const entries: WorkspaceRowReference[] = []; const seen = new Set<string>();
+  for (const source of sources) {
+    for (let offset = 0; offset < targetRowIds.length; offset += 100) {
+      const chunk = targetRowIds.slice(offset, offset + 100); const predicate = `$."${source.column.id}"[*] ? (${chunk.map((rowId) => `@ == ${rowId}`).join(" || ")})`;
+      const matches = await tx.select({ id: workspaceDatabaseRows.id, values: workspaceDatabaseRows.values }).from(workspaceDatabaseRows).where(and(eq(workspaceDatabaseRows.userId, userId), eq(workspaceDatabaseRows.databaseId, source.databaseId), sql<boolean>`jsonb_path_exists(${workspaceDatabaseRows.values}, ${predicate}::jsonpath)`)).limit(501);
+      for (const row of matches) {
+        const selected = Array.isArray((row.values as WorkspaceRowValues)[source.column.id]) ? (row.values as WorkspaceRowValues)[source.column.id] as number[] : [];
+        for (const targetRowId of selected.filter((rowId) => chunk.includes(rowId))) {
+          if (source.databaseId === targetDatabaseId && row.id === targetRowId) continue;
+          const key = `${source.databaseId}:${row.id}:${source.column.id}:${targetRowId}`; if (seen.has(key)) continue; seen.add(key);
+          entries.push({ targetRowId, sourceDatabaseId: source.databaseId, sourceDatabaseTitle: source.databaseTitle, sourceRowId: row.id, relationColumnId: source.column.id, relationColumnName: source.column.name });
+          if (entries.length > 500) return { entries: entries.slice(0, 500), truncated: true };
+        }
+      }
+      if (matches.length > 500) return { entries: entries.slice(0, 500), truncated: true };
+    }
+  }
+  return { entries, truncated: false };
+}
+
 async function workspaceTableProjection(databaseId: number, userId: number, definition: WorkspaceDatabaseDefinition, rows: Array<{ id: number; values: unknown }>) {
   const relationColumns = definition.columns.filter((column) => column.type === "relation" && column.relation);
   const targetIds = Array.from(new Set(relationColumns.map((column) => column.relation!.databaseId)));
@@ -102,6 +127,9 @@ async function workspaceTableProjection(databaseId: number, userId: number, defi
       return { id: row.id, label: displayColumn ? label : `Row #${row.id}` };
     }).sort((left, right) => left.label.localeCompare(right.label) || left.id - right.id);
   }
+  const references = rows.length ? await db.transaction((tx) => workspaceRowReferences(tx, databaseId, rows.map((row) => row.id), userId)) : { entries: [], truncated: false };
+  const backlinksByRow = new Map<number, WorkspaceRowBacklink[]>();
+  references.entries.forEach(({ targetRowId, ...entry }) => backlinksByRow.set(targetRowId, [...(backlinksByRow.get(targetRowId) || []), entry]));
   const projectedRows = rows.map((row) => {
     const values = row.values as WorkspaceRowValues; const computedValues = evaluateWorkspaceFormulas(definition, values);
     for (const column of relationColumns) {
@@ -118,7 +146,7 @@ async function workspaceTableProjection(databaseId: number, userId: number, defi
         computedValues[column.id] = !numbers.length ? null : config.aggregation === "sum" ? numbers.reduce((sum, value) => sum + value, 0) : config.aggregation === "average" ? numbers.reduce((sum, value) => sum + value, 0) / numbers.length : config.aggregation === "min" ? Math.min(...numbers) : Math.max(...numbers);
       }
     }
-    return { ...row, computedValues };
+    return { ...row, computedValues, backlinks: backlinksByRow.get(row.id) || [], backlinksTruncated: references.truncated };
   });
   return { rows: projectedRows, relationOptions, databaseId };
 }
@@ -339,6 +367,52 @@ export function registerTableRoutes(app: Express): void {
       if (outcome.kind === "missing") return res.status(404).json({ error: "Row not found" });
       if (outcome.kind === "referenced") return res.status(409).json({ error: "Remove this row from related records before deleting it." });
       res.status(204).end();
+    } catch (error) { return badRequest(res, error); }
+  });
+  app.get("/api/databases/:databaseId/rows/:rowId/references", isAuthenticated, async (req, res) => {
+    const databaseId = idParam(req.params.databaseId), rowId = idParam(req.params.rowId); if (!databaseId || !rowId) return res.status(400).json({ error: "Invalid row ID" });
+    const database = await ownedDatabase(databaseId, req.session.userId!); if (!database) return res.status(404).json({ error: "Database not found" });
+    const [row] = await db.select({ id: workspaceDatabaseRows.id }).from(workspaceDatabaseRows).where(and(eq(workspaceDatabaseRows.id, rowId), eq(workspaceDatabaseRows.databaseId, databaseId), eq(workspaceDatabaseRows.userId, req.session.userId!))).limit(1);
+    if (!row) return res.status(404).json({ error: "Row not found" });
+    const references = await db.transaction((tx) => workspaceRowReferences(tx, databaseId, [rowId], req.session.userId!));
+    res.json({ references: references.entries.map(({ targetRowId: _targetRowId, ...entry }) => entry), referenceCount: references.entries.length, truncated: references.truncated, disclosure: "Unlinking removes only these relation IDs from source rows and appends immutable row revisions. It does not delete either record." });
+  });
+  app.post("/api/databases/:databaseId/rows/:rowId/unlink-references", isAuthenticated, async (req, res) => {
+    try {
+      const databaseId = idParam(req.params.databaseId), rowId = idParam(req.params.rowId); if (!databaseId || !rowId) return res.status(400).json({ error: "Invalid row ID" });
+      const input = workspaceUnlinkReferencesSchema.parse(req.body);
+      const outcome = await db.transaction(async (tx) => {
+        const database = await lockedOwnedDatabase(tx, databaseId, req.session.userId!); if (!database) return { kind: "database-missing" } as const;
+        const [target] = await tx.select({ id: workspaceDatabaseRows.id }).from(workspaceDatabaseRows).where(and(eq(workspaceDatabaseRows.id, rowId), eq(workspaceDatabaseRows.databaseId, databaseId), eq(workspaceDatabaseRows.userId, req.session.userId!))).limit(1);
+        if (!target) return { kind: "missing" } as const;
+        const references = await workspaceRowReferences(tx, databaseId, [rowId], req.session.userId!);
+        if (references.truncated) return { kind: "too-many" } as const;
+        if (references.entries.length !== input.referenceCount) return { kind: "changed", referenceCount: references.entries.length } as const;
+        const rowIds = Array.from(new Set(references.entries.map((entry) => entry.sourceRowId))); const databaseIds = Array.from(new Set(references.entries.map((entry) => entry.sourceDatabaseId)));
+        const [sourceRows, sourceDatabases] = await Promise.all([
+          rowIds.length ? tx.select().from(workspaceDatabaseRows).where(and(eq(workspaceDatabaseRows.userId, req.session.userId!), inArray(workspaceDatabaseRows.id, rowIds))) : [],
+          databaseIds.length ? tx.select({ id: workspaceDatabases.id, definition: workspaceDatabases.definition }).from(workspaceDatabases).where(and(eq(workspaceDatabases.userId, req.session.userId!), inArray(workspaceDatabases.id, databaseIds))) : [],
+        ]);
+        const definitions = new Map(sourceDatabases.map((record) => [record.id, workspaceDatabaseDefinitionSchema.parse(record.definition)]));
+        for (const sourceRow of sourceRows) {
+          const definition = definitions.get(sourceRow.databaseId); if (!definition) throw new Error("A referring Table no longer exists.");
+          const values = { ...(sourceRow.values as WorkspaceRowValues) };
+          for (const reference of references.entries.filter((entry) => entry.sourceRowId === sourceRow.id && entry.sourceDatabaseId === sourceRow.databaseId)) {
+            const selected = Array.isArray(values[reference.relationColumnId]) ? values[reference.relationColumnId] as number[] : [];
+            values[reference.relationColumnId] = selected.filter((selectedId) => selectedId !== rowId);
+          }
+          const validated = validateWorkspaceRow(definition, values); await validateWorkspaceRelationValues(tx, definition, [validated], req.session.userId!);
+          const nextRevision = sourceRow.revision + 1;
+          await tx.update(workspaceDatabaseRows).set({ values: validated, revision: nextRevision, updatedAt: new Date() }).where(and(eq(workspaceDatabaseRows.id, sourceRow.id), eq(workspaceDatabaseRows.databaseId, sourceRow.databaseId), eq(workspaceDatabaseRows.userId, req.session.userId!)));
+          await tx.insert(workspaceDatabaseRowRevisions).values({ userId: req.session.userId!, databaseId: sourceRow.databaseId, rowId: sourceRow.id, revisionNumber: nextRevision, action: "updated", snapshot: { values: validated } });
+        }
+        return { kind: "unlinked", referenceCount: references.entries.length, affectedRowCount: sourceRows.length } as const;
+      });
+      if (outcome.kind === "database-missing") return res.status(404).json({ error: "Database not found" });
+      if (outcome.kind === "missing") return res.status(404).json({ error: "Row not found" });
+      if (outcome.kind === "too-many") return res.status(409).json({ error: "This row has more than 500 references. Unlink source records in smaller groups." });
+      if (outcome.kind === "changed") return res.status(409).json({ error: "References changed after review. Review them again.", referenceCount: outcome.referenceCount });
+      res.json({ unlinkedReferenceCount: outcome.referenceCount, affectedRowCount: outcome.affectedRowCount });
     } catch (error) { return badRequest(res, error); }
   });
   app.post("/api/databases/:id/rows/bulk-delete", isAuthenticated, async (req, res) => {
