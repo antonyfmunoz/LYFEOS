@@ -1607,11 +1607,11 @@ export class DatabaseStorage implements IStorage {
 
   // Kanban Board methods
   async getKanbanBoards(userId: number): Promise<KanbanBoard[]> {
-    return db.select().from(kanbanBoards).where(eq(kanbanBoards.userId, userId));
+    return db.select().from(kanbanBoards).where(and(eq(kanbanBoards.userId, userId), isNull(kanbanBoards.deletedAt)));
   }
   
   async getKanbanBoard(id: number): Promise<KanbanBoard | undefined> {
-    const [board] = await db.select().from(kanbanBoards).where(eq(kanbanBoards.id, id));
+    const [board] = await db.select().from(kanbanBoards).where(and(eq(kanbanBoards.id, id), isNull(kanbanBoards.deletedAt)));
     return board;
   }
   
@@ -1620,7 +1620,8 @@ export class DatabaseStorage implements IStorage {
       .from(kanbanBoards)
       .where(and(
         eq(kanbanBoards.userId, userId),
-        eq(kanbanBoards.isDefault, true)
+        eq(kanbanBoards.isDefault, true),
+        isNull(kanbanBoards.deletedAt)
       ));
     return board;
   }

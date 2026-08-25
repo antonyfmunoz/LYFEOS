@@ -1,32 +1,37 @@
+import { createHash } from "node:crypto";
 import type { Express, Response } from "express";
-import { and, desc, eq, isNull, sql } from "drizzle-orm";
-import { ZodError, z } from "zod";
-import { canTransitionProject, createProjectSchema, projectMissionSchema, projectStateSchema, transitionProjectSchema, updateProjectSchema } from "@shared/projects";
-import { kanbanBoards, projectEvents, quests } from "@shared/schema";
+import { and, desc, eq, isNull } from "drizzle-orm";
+import { ZodError } from "zod";
+import { canTransitionProject, createProjectMissionSchema, createProjectSchema, projectMissionSchema, projectRecoverySchema, projectStateSchema, removeProjectSchema, transitionProjectSchema, updateProjectSchema } from "@shared/projects";
+import { kanbanBoards, projectEvents, quests, type Quest } from "@shared/schema";
 import { db } from "../db";
-import { createMissionLifecycle, updateMissionLifecycle } from "../mission-lifecycle";
+import { changeMissionProjectMembershipLifecycle, createMissionLifecycle, MissionLifecycleError } from "../mission-lifecycle";
 import { logger } from "../utils";
 import { isAuthenticated } from "./middleware";
 
 function idParam(value: string): number | null { const id = Number(value); return Number.isInteger(id) && id > 0 ? id : null; }
+class ProjectRequestError extends Error {
+  constructor(readonly status: number, message: string) { super(message); }
+}
 function requestError(res: Response, error: unknown) {
   if (error instanceof ZodError) return res.status(400).json({ error: error.errors[0]?.message || "Invalid request" });
+  if (error instanceof ProjectRequestError) return res.status(error.status).json({ error: error.message });
+  if (error instanceof MissionLifecycleError) return res.status(error.status).json({ error: error.message });
   logger.error("Project request failed", { error: error instanceof Error ? error.message : "unknown" });
   return res.status(500).json({ error: "Project request could not be completed." });
 }
-async function ownedProject(id: number, userId: number) {
-  const [project] = await db.select().from(kanbanBoards).where(and(eq(kanbanBoards.id, id), eq(kanbanBoards.userId, userId))).limit(1);
+async function ownedProject(id: number, userId: number, includeRemoved = false) {
+  const [project] = await db.select().from(kanbanBoards).where(and(
+    eq(kanbanBoards.id, id),
+    eq(kanbanBoards.userId, userId),
+    ...(includeRemoved ? [] : [isNull(kanbanBoards.deletedAt)]),
+  )).limit(1);
   return project;
 }
 
-async function recordProjectTaskEvent(userId: number, projectId: number, eventType: "ProjectTaskLinked.v1" | "ProjectTaskUnlinked.v1") {
-  return db.transaction(async (tx) => {
-    const [project] = await tx.update(kanbanBoards).set({ revision: sql`${kanbanBoards.revision} + 1`, updatedAt: new Date() })
-      .where(and(eq(kanbanBoards.id, projectId), eq(kanbanBoards.userId, userId))).returning();
-    if (!project) throw new Error("PROJECT_NOT_FOUND");
-    await tx.insert(projectEvents).values({ userId, projectId, eventType, fromState: project.state, toState: project.state, aggregateRevision: project.revision });
-    return project;
-  });
+function publicMission(quest: Quest) {
+  const { lifecycleKey: _lifecycleKey, lifecyclePayloadHash: _lifecyclePayloadHash, planningContextSnapshot: _planningContextSnapshot, difficultyCalibration: _difficultyCalibration, ...safe } = quest;
+  return safe;
 }
 
 export function registerProjectRoutes(app: Express): void {
@@ -37,11 +42,12 @@ export function registerProjectRoutes(app: Express): void {
 
   app.get("/api/projects", isAuthenticated, async (req, res) => {
     const userId = req.session.userId!;
-    const [projects, missions] = await Promise.all([
+    const [allProjects, missions] = await Promise.all([
       db.select().from(kanbanBoards).where(eq(kanbanBoards.userId, userId)).orderBy(desc(kanbanBoards.updatedAt)),
       db.select({ id: quests.id, projectId: quests.projectId, completed: quests.completed }).from(quests).where(and(eq(quests.userId, userId), isNull(quests.deletedAt))),
     ]);
-    res.json({ projects: projects.map((project) => { const linked = missions.filter((mission) => mission.projectId === project.id); return { ...project, taskCount: linked.length, completedTaskCount: linked.filter((mission) => mission.completed).length }; }) });
+    const withCounts = allProjects.map((project) => { const linked = missions.filter((mission) => mission.projectId === project.id); return { ...project, taskCount: linked.length, completedTaskCount: linked.filter((mission) => mission.completed).length }; });
+    res.json({ projects: withCounts.filter((project) => !project.deletedAt), removedProjects: withCounts.filter((project) => project.deletedAt) });
   });
 
   app.post("/api/projects", isAuthenticated, async (req, res) => {
@@ -63,7 +69,7 @@ export function registerProjectRoutes(app: Express): void {
       db.select().from(quests).where(and(eq(quests.userId, req.session.userId!), eq(quests.projectId, id), isNull(quests.deletedAt))).orderBy(desc(quests.updatedAt)),
       db.select().from(projectEvents).where(and(eq(projectEvents.userId, req.session.userId!), eq(projectEvents.projectId, id))).orderBy(desc(projectEvents.occurredAt)).limit(50),
     ]);
-    res.json({ project, missions, history });
+    res.json({ project, missions: missions.map(publicMission), history });
   });
 
   app.patch("/api/projects/:id", isAuthenticated, async (req, res) => {
@@ -94,17 +100,19 @@ export function registerProjectRoutes(app: Express): void {
     try {
       const id = idParam(req.params.id); if (!id) return res.status(400).json({ error: "Invalid project ID" });
       const input = transitionProjectSchema.parse(req.body), userId = req.session.userId!;
-      const existing = await ownedProject(id, userId); if (!existing) return res.status(404).json({ error: "Project not found" });
-      const from = projectStateSchema.parse(existing.state);
-      if (!canTransitionProject(from, input.state)) return res.status(409).json({ error: `Project cannot move from ${from} to ${input.state}.` });
-      if (from === input.state) return res.json({ project: existing });
-      if (input.state === "completed") {
-        const incomplete = await db.select({ id: quests.id }).from(quests).where(and(eq(quests.userId, userId), eq(quests.projectId, id), eq(quests.completed, false), isNull(quests.deletedAt))).limit(1);
-        if (incomplete.length) return res.status(409).json({ error: "Complete or unlink every open mission before completing this project." });
-      }
       const project = await db.transaction(async (tx) => {
-        const [updated] = await tx.update(kanbanBoards).set({ state: input.state, completedAt: input.state === "completed" ? new Date() : null, revision: input.expectedRevision + 1, updatedAt: new Date() })
-          .where(and(eq(kanbanBoards.id, id), eq(kanbanBoards.userId, userId), eq(kanbanBoards.revision, input.expectedRevision))).returning();
+        const [existing] = await tx.select().from(kanbanBoards).where(and(eq(kanbanBoards.id, id), eq(kanbanBoards.userId, userId), isNull(kanbanBoards.deletedAt))).for("update").limit(1);
+        if (!existing) throw new ProjectRequestError(404, "Project not found");
+        if (existing.revision !== input.expectedRevision) throw new ProjectRequestError(409, "Project changed in another session. Refresh before changing state.");
+        const from = projectStateSchema.parse(existing.state);
+        if (!canTransitionProject(from, input.state)) throw new ProjectRequestError(409, `Project cannot move from ${from} to ${input.state}.`);
+        if (from === input.state) return existing;
+        if (input.state === "completed") {
+          const incomplete = await tx.select({ id: quests.id }).from(quests).where(and(eq(quests.userId, userId), eq(quests.projectId, id), eq(quests.completed, false), isNull(quests.deletedAt))).limit(1);
+          if (incomplete.length) throw new ProjectRequestError(409, "Complete or unlink every open mission before completing this project.");
+        }
+        const [updated] = await tx.update(kanbanBoards).set({ state: input.state, completedAt: input.state === "completed" ? new Date() : null, revision: existing.revision + 1, updatedAt: new Date() })
+          .where(and(eq(kanbanBoards.id, id), eq(kanbanBoards.userId, userId), eq(kanbanBoards.revision, existing.revision))).returning();
         if (updated) await tx.insert(projectEvents).values({ userId, projectId: id, eventType: input.state === "completed" ? "ProjectCompleted.v1" : "ProjectStateChanged.v1", fromState: from, toState: input.state, aggregateRevision: updated.revision });
         return updated;
       });
@@ -113,38 +121,114 @@ export function registerProjectRoutes(app: Express): void {
     } catch (error) { return requestError(res, error); }
   });
 
+  app.post("/api/projects/:id/reconcile-legacy", isAuthenticated, async (req, res) => {
+    try {
+      const id = idParam(req.params.id); if (!id) return res.status(400).json({ error: "Invalid project ID" });
+      const input = projectRecoverySchema.parse(req.body), userId = req.session.userId!;
+      const project = await db.transaction(async (tx) => {
+        const [existing] = await tx.select().from(kanbanBoards).where(and(eq(kanbanBoards.id, id), eq(kanbanBoards.userId, userId), isNull(kanbanBoards.deletedAt))).for("update").limit(1);
+        if (!existing) throw new ProjectRequestError(404, "Project not found");
+        if (existing.origin !== "legacy_kanban") throw new ProjectRequestError(409, "This Project is not a preserved legacy board.");
+        if (existing.legacyReconciledAt) return existing;
+        if (existing.revision !== input.expectedRevision) throw new ProjectRequestError(409, "Project changed in another session. Refresh before confirming it.");
+        const now = new Date();
+        const [updated] = await tx.update(kanbanBoards).set({ legacyReconciledAt: now, revision: existing.revision + 1, updatedAt: now })
+          .where(and(eq(kanbanBoards.id, id), eq(kanbanBoards.userId, userId), eq(kanbanBoards.revision, existing.revision))).returning();
+        if (!updated) throw new ProjectRequestError(409, "Project changed in another session. Refresh before confirming it.");
+        await tx.insert(projectEvents).values({ userId, projectId: id, eventType: "LegacyProjectReconciled.v1", fromState: existing.state, toState: existing.state, aggregateRevision: updated.revision });
+        return updated;
+      });
+      res.json({ project });
+    } catch (error) { return requestError(res, error); }
+  });
+
+  app.post("/api/projects/:id/remove", isAuthenticated, async (req, res) => {
+    try {
+      const id = idParam(req.params.id); if (!id) return res.status(400).json({ error: "Invalid project ID" });
+      const input = removeProjectSchema.parse(req.body), userId = req.session.userId!;
+      const project = await db.transaction(async (tx) => {
+        const [existing] = await tx.select().from(kanbanBoards).where(and(eq(kanbanBoards.id, id), eq(kanbanBoards.userId, userId), isNull(kanbanBoards.deletedAt))).for("update").limit(1);
+        if (!existing) throw new ProjectRequestError(404, "Project not found");
+        if (existing.revision !== input.expectedRevision) throw new ProjectRequestError(409, "Project changed in another session. Refresh before removing it.");
+        if (input.confirmationTitle !== existing.title) throw new ProjectRequestError(409, "Type the exact Project title to confirm removal.");
+        if (existing.state !== "archived") throw new ProjectRequestError(409, "Archive the Project before removing it.");
+        const linked = await tx.select({ id: quests.id }).from(quests).where(and(eq(quests.userId, userId), eq(quests.projectId, id))).limit(1);
+        if (linked.length) throw new ProjectRequestError(409, "Unlink every Mission before removing this Project.");
+        const now = new Date();
+        const [updated] = await tx.update(kanbanBoards).set({ deletedAt: now, revision: existing.revision + 1, updatedAt: now })
+          .where(and(eq(kanbanBoards.id, id), eq(kanbanBoards.userId, userId), eq(kanbanBoards.revision, existing.revision))).returning();
+        if (!updated) throw new ProjectRequestError(409, "Project changed in another session. Refresh before removing it.");
+        await tx.insert(projectEvents).values({ userId, projectId: id, eventType: "ProjectRemoved.v1", fromState: existing.state, toState: existing.state, aggregateRevision: updated.revision });
+        return updated;
+      });
+      res.json({ project });
+    } catch (error) { return requestError(res, error); }
+  });
+
+  app.post("/api/projects/:id/restore", isAuthenticated, async (req, res) => {
+    try {
+      const id = idParam(req.params.id); if (!id) return res.status(400).json({ error: "Invalid project ID" });
+      const input = projectRecoverySchema.parse(req.body), userId = req.session.userId!;
+      const project = await db.transaction(async (tx) => {
+        const [existing] = await tx.select().from(kanbanBoards).where(and(eq(kanbanBoards.id, id), eq(kanbanBoards.userId, userId))).for("update").limit(1);
+        if (!existing) throw new ProjectRequestError(404, "Project not found");
+        if (!existing.deletedAt) return existing;
+        if (existing.revision !== input.expectedRevision) throw new ProjectRequestError(409, "Project changed in another session. Refresh before restoring it.");
+        const now = new Date();
+        const [updated] = await tx.update(kanbanBoards).set({ deletedAt: null, revision: existing.revision + 1, updatedAt: now })
+          .where(and(eq(kanbanBoards.id, id), eq(kanbanBoards.userId, userId), eq(kanbanBoards.revision, existing.revision))).returning();
+        if (!updated) throw new ProjectRequestError(409, "Project changed in another session. Refresh before restoring it.");
+        await tx.insert(projectEvents).values({ userId, projectId: id, eventType: "ProjectRestored.v1", fromState: existing.state, toState: existing.state, aggregateRevision: updated.revision });
+        return updated;
+      });
+      res.json({ project });
+    } catch (error) { return requestError(res, error); }
+  });
+
   app.post("/api/projects/:id/missions", isAuthenticated, async (req, res) => {
     try {
       const id = idParam(req.params.id); if (!id) return res.status(400).json({ error: "Invalid project ID" });
       const input = projectMissionSchema.parse(req.body), userId = req.session.userId!;
-      const [project, mission] = await Promise.all([ownedProject(id, userId), db.select().from(quests).where(and(eq(quests.id, input.missionId), eq(quests.userId, userId), isNull(quests.deletedAt))).limit(1).then((rows) => rows[0])]);
-      if (!project) return res.status(404).json({ error: "Project not found" }); if (!mission) return res.status(404).json({ error: "Mission not found" });
-      if (project.revision !== input.expectedRevision) return res.status(409).json({ error: "Project changed in another session. Refresh before linking." });
-      const updated = await updateMissionLifecycle({ questId: mission.id, userId, updates: { projectId: id }, source: "ui" });
-      await recordProjectTaskEvent(userId, id, "ProjectTaskLinked.v1");
-      res.json({ mission: updated });
+      const result = await changeMissionProjectMembershipLifecycle({ userId, projectId: id, missionId: input.missionId, expectedProjectRevision: input.expectedRevision, expectedMissionRevision: input.expectedMissionRevision, mode: "link" });
+      res.json({ mission: publicMission(result.mission), project: result.project, replayed: result.replayed });
     } catch (error) { return requestError(res, error); }
   });
 
   app.delete("/api/projects/:id/missions/:missionId", isAuthenticated, async (req, res) => {
-    const id = idParam(req.params.id), missionId = idParam(req.params.missionId), userId = req.session.userId!;
-    if (!id || !missionId) return res.status(400).json({ error: "Invalid project or mission ID" });
-    const project = await ownedProject(id, userId); if (!project) return res.status(404).json({ error: "Project not found" });
-    const [mission] = await db.select().from(quests).where(and(eq(quests.id, missionId), eq(quests.userId, userId), eq(quests.projectId, id))).limit(1);
-    if (!mission) return res.status(404).json({ error: "Linked mission not found" });
-    const updated = await updateMissionLifecycle({ questId: mission.id, userId, updates: { projectId: null }, source: "ui" });
-    await recordProjectTaskEvent(userId, id, "ProjectTaskUnlinked.v1");
-    res.json({ mission: updated });
+    try {
+      const id = idParam(req.params.id), missionId = idParam(req.params.missionId), userId = req.session.userId!;
+      if (!id || !missionId) return res.status(400).json({ error: "Invalid project or mission ID" });
+      const input = projectMissionSchema.parse(req.body);
+      if (input.missionId !== missionId) return res.status(400).json({ error: "Mission ID does not match the requested link." });
+      const result = await changeMissionProjectMembershipLifecycle({ userId, projectId: id, missionId, expectedProjectRevision: input.expectedRevision, expectedMissionRevision: input.expectedMissionRevision, mode: "unlink" });
+      res.json({ mission: publicMission(result.mission), project: result.project });
+    } catch (error) { return requestError(res, error); }
   });
 
   app.post("/api/projects/:id/missions/new", isAuthenticated, async (req, res) => {
     try {
       const id = idParam(req.params.id); if (!id) return res.status(400).json({ error: "Invalid project ID" });
-      const input = z.object({ title: z.string().trim().min(1).max(160), description: z.string().trim().max(1_000).default(""), dueDate: z.string().trim().nullable().refine((value) => value === null || /^\d{4}-\d{2}-\d{2}$/.test(value), "Use YYYY-MM-DD.") }).strict().parse(req.body), userId = req.session.userId!;
+      const input = createProjectMissionSchema.parse(req.body), userId = req.session.userId!;
       const project = await ownedProject(id, userId); if (!project) return res.status(404).json({ error: "Project not found" });
-      const mission = await createMissionLifecycle({ userId, title: input.title, description: input.description, dueDate: input.dueDate, projectId: id, source: "ui" });
-      await recordProjectTaskEvent(userId, id, "ProjectTaskLinked.v1");
-      res.status(201).json({ mission });
+      const lifecycleKey = `project:${id}:create:${input.mutationId}`;
+      const payloadHash = createHash("sha256").update(JSON.stringify({ title: input.title, description: input.description, dueDate: input.dueDate })).digest("hex");
+      let [mission] = await db.select().from(quests).where(and(eq(quests.userId, userId), eq(quests.lifecycleKey, lifecycleKey))).limit(1);
+      let replayed = Boolean(mission);
+      if (mission && mission.lifecyclePayloadHash !== payloadHash) throw new ProjectRequestError(409, "This mission mutation identity was already used with different details.");
+      if (!mission) {
+        if (project.revision !== input.expectedRevision) return res.status(409).json({ error: "Project changed in another session. Refresh before creating a Mission." });
+        if (project.state === "completed" || project.state === "archived") return res.status(409).json({ error: "Reopen this Project before creating another Mission." });
+        try {
+          mission = await createMissionLifecycle({ userId, title: input.title, description: input.description, dueDate: input.dueDate, projectId: null, lifecycleKey, lifecyclePayloadHash: payloadHash, source: "ui" });
+        } catch (error) {
+          [mission] = await db.select().from(quests).where(and(eq(quests.userId, userId), eq(quests.lifecycleKey, lifecycleKey))).limit(1);
+          if (!mission) throw error;
+          replayed = true;
+        }
+      }
+      if (mission.lifecyclePayloadHash !== payloadHash) throw new ProjectRequestError(409, "This mission mutation identity was already used with different details.");
+      const result = await changeMissionProjectMembershipLifecycle({ userId, projectId: id, missionId: mission.id, expectedProjectRevision: input.expectedRevision, expectedMissionRevision: mission.revision, mode: "link" });
+      res.status(replayed || result.replayed ? 200 : 201).json({ mission: publicMission(result.mission), project: result.project, replayed: replayed || result.replayed });
     } catch (error) { return requestError(res, error); }
   });
 }

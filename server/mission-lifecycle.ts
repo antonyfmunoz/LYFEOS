@@ -2,7 +2,7 @@ import { and, desc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import { db } from "./db";
 import { storage } from "./storage";
 import { logger } from "./utils";
-import { missionContracts, missionDeferrals, missionDependencies, missionReviews, personalCapabilities, questSkillContributions, quests, skillNodes, skillProgressionEvents, type Quest } from "@shared/schema";
+import { kanbanBoards, missionContracts, missionDeferrals, missionDependencies, missionReviews, personalCapabilities, projectEvents, questSkillContributions, quests, skillNodes, skillProgressionEvents, type Quest } from "@shared/schema";
 import { recordTransformationThreadEvidence } from "./transformation-thread-evidence";
 import { refreshProgressionState } from "./progression";
 import { queueLinkedWorkItemState } from "./cross-product";
@@ -220,6 +220,55 @@ export async function updateMissionLifecycle(input: {
   }
   storage.logActivityEvent(quest.userId, "mission_updated", { questId: quest.id, source: input.source }).catch(() => {});
   return updatedQuest;
+}
+
+/** Atomically changes Project membership while keeping the Mission row as the
+ * sole task authority. Locking both aggregates serializes linking against
+ * Project completion and prevents silent moves between Projects. */
+export async function changeMissionProjectMembershipLifecycle(input: {
+  userId: number;
+  projectId: number;
+  missionId: number;
+  expectedProjectRevision: number;
+  expectedMissionRevision: number;
+  mode: "link" | "unlink";
+}) {
+  const result = await db.transaction(async (tx) => {
+    const [project] = await tx.select().from(kanbanBoards).where(and(
+      eq(kanbanBoards.id, input.projectId), eq(kanbanBoards.userId, input.userId), isNull(kanbanBoards.deletedAt),
+    )).for("update").limit(1);
+    if (!project) throw new MissionLifecycleError(404, "Project not found");
+    const [mission] = await tx.select().from(quests).where(and(
+      eq(quests.id, input.missionId), eq(quests.userId, input.userId), isNull(quests.deletedAt),
+    )).for("update").limit(1);
+    if (!mission) throw new MissionLifecycleError(404, "Mission not found");
+    if (input.mode === "link" && mission.projectId === project.id) return { project, mission, replayed: true };
+    if (input.mode === "link" && (project.state === "completed" || project.state === "archived")) throw new MissionLifecycleError(409, "Reopen this Project before linking another Mission.");
+    if (project.revision !== input.expectedProjectRevision) throw new MissionLifecycleError(409, "Project changed in another session. Refresh before changing Missions.");
+    if (mission.revision !== input.expectedMissionRevision) throw new MissionLifecycleError(409, "Mission changed in another session. Refresh before changing its Project.", mission);
+    if (input.mode === "link" && mission.projectId !== null) throw new MissionLifecycleError(409, "This Mission already belongs to another Project. Unlink it there first.", mission);
+    if (input.mode === "unlink" && mission.projectId !== project.id) throw new MissionLifecycleError(404, "Linked mission not found");
+
+    const [updatedMission] = await tx.update(quests).set({ projectId: input.mode === "link" ? project.id : null })
+      .where(and(eq(quests.id, mission.id), eq(quests.userId, input.userId), eq(quests.revision, input.expectedMissionRevision)))
+      .returning();
+    if (!updatedMission) throw new MissionLifecycleError(409, "Mission changed in another session. Refresh before changing its Project.");
+    const [updatedProject] = await tx.update(kanbanBoards).set({ revision: project.revision + 1, updatedAt: new Date() })
+      .where(and(eq(kanbanBoards.id, project.id), eq(kanbanBoards.userId, input.userId), eq(kanbanBoards.revision, project.revision)))
+      .returning();
+    if (!updatedProject) throw new MissionLifecycleError(409, "Project changed in another session. Refresh before changing Missions.");
+    await tx.insert(projectEvents).values({
+      userId: input.userId,
+      projectId: project.id,
+      eventType: input.mode === "link" ? "ProjectTaskLinked.v1" : "ProjectTaskUnlinked.v1",
+      fromState: project.state,
+      toState: project.state,
+      aggregateRevision: updatedProject.revision,
+    });
+    return { project: updatedProject, mission: updatedMission, replayed: false };
+  });
+  if (!result.replayed) storage.logActivityEvent(input.userId, "mission_updated", { questId: input.missionId, source: "ui" }).catch(() => {});
+  return result;
 }
 
 /** Reschedules an incomplete mission while retaining an append-only, user-owned

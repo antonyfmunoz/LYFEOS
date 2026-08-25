@@ -61,7 +61,7 @@ export function registerAutomationRoutes(app: Express): void {
   app.get("/api/automations/missions", isAuthenticated, async (req, res) => {
     const records = await db.select({
       id: quests.id, title: quests.title, description: quests.description, category: quests.category,
-      completed: quests.completed, completedAt: quests.completedAt, dueDate: quests.dueDate, projectId: quests.projectId, updatedAt: quests.updatedAt,
+      completed: quests.completed, completedAt: quests.completedAt, dueDate: quests.dueDate, projectId: quests.projectId, revision: quests.revision, updatedAt: quests.updatedAt,
     }).from(quests)
       .where(and(eq(quests.userId, req.session.userId!), isNull(quests.deletedAt)))
       .orderBy(desc(quests.updatedAt)).limit(100);

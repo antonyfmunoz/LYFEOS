@@ -25,7 +25,27 @@ export const transitionProjectSchema = z.object({
   expectedRevision: z.number().int().min(1),
 }).strict();
 
-export const projectMissionSchema = z.object({ missionId: z.number().int().positive(), expectedRevision: z.number().int().min(1) }).strict();
+export const projectMissionSchema = z.object({
+  missionId: z.number().int().positive(),
+  expectedRevision: z.number().int().min(1),
+  expectedMissionRevision: z.number().int().min(1),
+}).strict();
+
+export const createProjectMissionSchema = z.object({
+  title: z.string().trim().min(1).max(160),
+  description: z.string().trim().max(1_000).default(""),
+  dueDate: optionalDate.default(null),
+  expectedRevision: z.number().int().min(1),
+  mutationId: z.string().uuid(),
+}).strict();
+
+export const projectRecoverySchema = z.object({
+  expectedRevision: z.number().int().min(1),
+}).strict();
+
+export const removeProjectSchema = projectRecoverySchema.extend({
+  confirmationTitle: z.string().trim().min(1).max(160),
+}).strict();
 
 type ProjectState = z.infer<typeof projectStateSchema>;
 const transitions: Record<ProjectState, readonly ProjectState[]> = {

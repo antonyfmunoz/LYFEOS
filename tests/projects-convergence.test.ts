@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { canTransitionProject, createProjectSchema, updateProjectSchema } from "../shared/projects";
+import { canTransitionProject, createProjectMissionSchema, createProjectSchema, projectMissionSchema, removeProjectSchema, updateProjectSchema } from "../shared/projects";
 
 const source = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8");
 
@@ -11,6 +11,9 @@ describe("Projects convergence", () => {
     expect(createProjectSchema.safeParse({ title: "Launch", outcome: "", description: null, startDate: null, dueDate: null }).success).toBe(false);
     expect(createProjectSchema.safeParse({ title: "Launch", outcome: "Public release", description: null, startDate: "2026-09-01", dueDate: "2026-08-01" }).success).toBe(false);
     expect(updateProjectSchema.safeParse({ expectedRevision: 1 }).success).toBe(false);
+    expect(projectMissionSchema.safeParse({ missionId: 1, expectedRevision: 1, expectedMissionRevision: 2 }).success).toBe(true);
+    expect(createProjectMissionSchema.safeParse({ title: "Ship", description: "", dueDate: null, expectedRevision: 1, mutationId: crypto.randomUUID() }).success).toBe(true);
+    expect(removeProjectSchema.safeParse({ expectedRevision: 2, confirmationTitle: "Launch" }).success).toBe(true);
     expect(canTransitionProject("planned", "active")).toBe(true);
     expect(canTransitionProject("planned", "completed")).toBe(false);
     expect(canTransitionProject("completed", "active")).toBe(true);
@@ -25,25 +28,41 @@ describe("Projects convergence", () => {
     expect(migration).not.toContain('DROP TABLE "kanban');
     expect(release).toContain('id: "0097_projects_convergence"');
     expect(release).toContain('quests_project_id_kanban_boards_id_fk');
+    const recovery = source("migrations/0115_project_lifecycle_recovery.sql");
+    expect(recovery).toContain('"origin" text NOT NULL DEFAULT \'native\'');
+    expect(recovery).toContain('ProjectImportedFromLegacyKanban.v1');
+    expect(recovery).toContain('"deleted_at" timestamp');
+    expect(release).toContain('id: "0115_project_lifecycle_recovery"');
   });
 
   it("uses Missions as Project tasks and never writes duplicate kanban tasks", () => {
     const routes = source("server/routes/projects.ts");
+    const lifecycle = source("server/mission-lifecycle.ts");
     expect(routes).toContain("createMissionLifecycle({");
-    expect(routes).toContain("updateMissionLifecycle({");
+    expect(routes).toContain("changeMissionProjectMembershipLifecycle({");
+    expect(lifecycle).toContain("changeMissionProjectMembershipLifecycle");
+    expect(lifecycle).toContain("tx.update(quests)");
+    expect(lifecycle).toContain('storage.logActivityEvent(input.userId, "mission_updated"');
     expect(routes).toContain("eq(quests.projectId, id)");
     expect(routes).toContain("Complete or unlink every open mission");
+    expect(lifecycle).toContain('for("update")');
+    expect(lifecycle).toContain("expectedMissionRevision");
+    expect(lifecycle).toContain("This Mission already belongs to another Project");
     expect(routes).not.toContain("kanbanTasks");
     expect(routes).not.toContain("kanban_tasks");
   });
 
   it("owner-scopes private APIs, enforces revisions, and records project events", () => {
     const routes = source("server/routes/projects.ts");
+    const lifecycle = source("server/mission-lifecycle.ts");
     expect(routes).toContain('app.get("/api/projects", isAuthenticated');
     expect(routes).toContain("eq(kanbanBoards.userId, userId)");
     expect(routes).toContain("eq(kanbanBoards.revision, expectedRevision)");
     expect(routes).toContain('eventType: "ProjectCreated.v1"');
-    expect(routes).toContain('eventType: "ProjectTaskLinked.v1"');
+    expect(lifecycle).toContain('"ProjectTaskLinked.v1"');
+    expect(routes).toContain('eventType: "ProjectRemoved.v1"');
+    expect(routes).toContain('eventType: "ProjectRestored.v1"');
+    expect(routes).toContain('eventType: "LegacyProjectReconciled.v1"');
     expect(routes).toContain('res.setHeader("Cache-Control", "private, no-store, max-age=0")');
     expect(routes).not.toContain("userId: req.body");
   });
