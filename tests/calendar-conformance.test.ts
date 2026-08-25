@@ -60,6 +60,22 @@ describe("canonical mission Calendar", () => {
     expect(google).toContain("shiftCalendarDate(endDate, 1)");
   });
 
+  it("reconciles provider cancellation and keeps imported missions after credential revocation", () => {
+    const google = source("server/routes/google.ts");
+    const profile = source("client/src/pages/ProfilePage.tsx");
+    expect((google.match(/showDeleted: true/g) || []).length).toBe(2);
+    expect(google).toContain('updates: { missionStatus: "cancelled" }');
+    expect(google).toContain("cancelled++");
+    expect(google).toContain('status: "revoked"');
+    expect(google).toContain("accessToken: null");
+    expect(google).toContain("refreshToken: null");
+    expect(google).toContain("retainedMissionCount");
+    expect(google).not.toContain("storage.deleteIntegration(googleIntegration.id)");
+    expect(profile).toContain("Disconnected — imported LyfeOS missions retained");
+    expect(profile).toContain("description: result.message");
+    expect(source("client/src/pages/QuestsPage.tsx")).not.toContain("const result = await res.json()");
+  });
+
   it("provides keyboard-operable calendar navigation, scheduling, and mission editing", () => {
     const quests = source("client/src/pages/QuestsPage.tsx");
     expect(quests).toContain("const activateCalendarControl = (event: KeyboardEvent<HTMLElement>");
@@ -69,7 +85,7 @@ describe("canonical mission Calendar", () => {
     expect(quests).toContain("aria-label={`Select ${cell.date.toLocaleDateString()}");
     expect(quests).toContain("aria-label={`Create mission on ${d.toLocaleDateString()}");
     expect(quests).toContain("aria-label={`Create mission on ${calendarDay.toLocaleDateString()}");
-    expect(quests).toContain("aria-label={`Edit mission ${q.title}");
+    expect(quests).toContain("aria-label={`Edit ${q.missionStatus === 'cancelled' ? 'cancelled ' : ''}mission ${q.title}");
     expect(quests).toContain('aria-label="Close selected date details"');
     expect(quests).toContain("event.target !== event.currentTarget");
     expect(quests).toContain("focus-visible:ring-2");

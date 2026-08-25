@@ -182,6 +182,7 @@ export function registerGoogleRoutes(app: Express): void {
         timeMax: fourWeeksLater.toISOString(),
         maxResults: 250,
         singleEvents: true,
+        showDeleted: true,
         orderBy: "startTime",
       });
 
@@ -226,6 +227,7 @@ export function registerGoogleRoutes(app: Express): void {
         timeMax: fourWeeksLater.toISOString(),
         maxResults: 250,
         singleEvents: true,
+        showDeleted: true,
         orderBy: "startTime",
       });
 
@@ -248,9 +250,29 @@ export function registerGoogleRoutes(app: Express): void {
       let updated = 0;
       let skipped = 0;
       let linkedExisting = 0;
+      let cancelled = 0;
 
       for (const gEvent of googleEvents) {
-        if (!gEvent.id || gEvent.status === "cancelled") continue;
+        if (!gEvent.id) {
+          skipped++;
+          continue;
+        }
+
+        if (gEvent.status === "cancelled") {
+          const linkedQuestId = externalIdMap.get(gEvent.id);
+          if (!linkedQuestId) {
+            skipped++;
+            continue;
+          }
+          await updateMissionLifecycle({
+            questId: linkedQuestId,
+            userId,
+            updates: { missionStatus: "cancelled" },
+            source: "system",
+          });
+          cancelled++;
+          continue;
+        }
 
         const gTitle = gEvent.summary || "Untitled";
         const gDescription = gEvent.description || "";
@@ -328,7 +350,7 @@ export function registerGoogleRoutes(app: Express): void {
         imported++;
       }
 
-      return res.json({ imported, updated, skipped, linkedExisting, total: googleEvents.length });
+      return res.json({ imported, updated, cancelled, skipped, linkedExisting, total: googleEvents.length });
     } catch (error: any) {
       if (error?.code === 401 || error?.response?.status === 401) {
         return res.status(401).json({ error: "Google token expired. Please reconnect." });
@@ -555,6 +577,9 @@ export function registerGoogleRoutes(app: Express): void {
       const userId = req.session.userId as number;
       const integrations = await storage.getUserIntegrations(userId);
       const googleIntegration = integrations.find((i) => i.provider === "google");
+      const retainedMissionCount = (await storage.getQuests(userId)).filter(
+        (quest) => quest.externalSource === "google_calendar" || quest.externalSource === "google_tasks",
+      ).length;
 
       if (googleIntegration) {
         try {
@@ -564,10 +589,21 @@ export function registerGoogleRoutes(app: Express): void {
           }
         } catch {
         }
-        await storage.deleteIntegration(googleIntegration.id);
+        await storage.updateIntegration(googleIntegration.id, {
+          accessToken: null,
+          refreshToken: null,
+          tokenExpiry: null,
+          status: "revoked",
+        });
       }
 
-      return res.json({ success: true });
+      return res.json({
+        success: true,
+        retainedMissionCount,
+        message: retainedMissionCount > 0
+          ? "Google access was revoked. Imported LyfeOS missions were retained and will not sync until you reconnect."
+          : "Google access was revoked. No imported missions needed to be retained.",
+      });
     } catch (error) {
       logger.error("Error disconnecting Google:", error);
       return res.status(500).json({ error: "Failed to disconnect Google" });
@@ -578,15 +614,15 @@ export function registerGoogleRoutes(app: Express): void {
     try {
       const userId = req.session.userId as number;
       const integrations = await storage.getUserIntegrations(userId);
-      const googleIntegration = integrations.find(
-        (i) => i.provider === "google" && i.status === "active"
-      );
+      const googleRecord = integrations.find((i) => i.provider === "google");
+      const googleIntegration = googleRecord?.status === "active" ? googleRecord : undefined;
 
       return res.json({
         connected: !!googleIntegration,
         configured: isGoogleOAuthConfigured(),
         scope: googleIntegration?.scope || null,
         connectedAt: googleIntegration?.connectedAt || null,
+        status: googleRecord?.status || null,
       });
     } catch (error) {
       logger.error("Error checking Google status:", error);

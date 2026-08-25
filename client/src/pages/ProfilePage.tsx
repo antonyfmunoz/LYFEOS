@@ -107,7 +107,7 @@ function IntegrationsSection({ userId }: { userId?: number }) {
   const [connectingGoogle, setConnectingGoogle] = useState(false);
   const [disconnectingGoogle, setDisconnectingGoogle] = useState(false);
 
-  const { data: googleStatus, isLoading: isGoogleLoading } = useQuery<{ connected: boolean; configured: boolean; scope: string | null; connectedAt: string | null }>({
+  const { data: googleStatus, isLoading: isGoogleLoading } = useQuery<{ connected: boolean; configured: boolean; scope: string | null; connectedAt: string | null; status: string | null }>({
     queryKey: ["/api/google/status"],
     enabled: !!userId,
   });
@@ -130,8 +130,8 @@ function IntegrationsSection({ userId }: { userId?: number }) {
   const disconnectGoogle = async () => {
     setDisconnectingGoogle(true);
     try {
-      await apiRequest("/api/google/disconnect", { method: "POST" });
-      toast({ title: "Google disconnected" });
+      const result = await apiRequest<{ retainedMissionCount: number; message: string }>("/api/google/disconnect", { method: "POST" });
+      toast({ title: "Google disconnected", description: result.message });
       queryClient.invalidateQueries({ queryKey: ["/api/google/status"] });
     } catch {
       toast({ title: "Error", description: "Could not disconnect Google.", variant: "destructive" });
@@ -185,12 +185,16 @@ function IntegrationsSection({ userId }: { userId?: number }) {
               {isGoogleConnected && (
                 <p className="text-xs text-primary">Connected — Calendar, Tasks &amp; Drive</p>
               )}
+              {!isGoogleConnected && googleStatus?.status === "revoked" && (
+                <p className="text-xs text-muted-foreground">Disconnected — imported LyfeOS missions retained</p>
+              )}
             </div>
           </div>
           {isGoogleLoading ? (
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
           ) : isGoogleConnected ? (
             <button
+              type="button"
               disabled={disconnectingGoogle}
               onClick={disconnectGoogle}
               className="text-xs font-mono px-3 py-1.5 rounded border border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors inline-flex items-center gap-1 disabled:opacity-50"
@@ -200,6 +204,7 @@ function IntegrationsSection({ userId }: { userId?: number }) {
             </button>
           ) : (
             <button
+              type="button"
               disabled={connectingGoogle || !isGoogleConfigured}
               onClick={connectGoogle}
               className="text-xs font-mono px-3 py-1.5 rounded border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 transition-colors inline-flex items-center gap-1 disabled:opacity-50"

@@ -338,15 +338,15 @@ export default function QuestsPage() {
     setIsSyncing(true);
     try {
       if (mode === 'calendar') {
-        const res = await apiRequest('/api/google/calendar/sync', { method: 'POST' });
-        const result = await res.json();
+        const result = await apiRequest<{ imported: number; updated: number; cancelled: number; linkedExisting: number; skipped: number }>('/api/google/calendar/sync', { method: 'POST' });
         const parts: string[] = [];
         if (result.imported > 0) parts.push(`${result.imported} imported`);
         if (result.updated > 0) parts.push(`${result.updated} updated`);
+        if (result.cancelled > 0) parts.push(`${result.cancelled} cancelled`);
         if (result.linkedExisting > 0) parts.push(`${result.linkedExisting} linked`);
-        if (result.skipped > 0) parts.push(`${result.skipped} already existed`);
+        if (result.skipped > 0) parts.push(`${result.skipped} skipped`);
         toast({ title: "Calendar synced", description: parts.join(", ") || "Everything is up to date." });
-        queryClient.invalidateQueries({ queryKey: ['/api/users', user?.id, 'quests'] });
+        await refetchQuests();
       } else {
         const tasksRes = await fetch('/api/google/tasks', { credentials: 'include' });
         if (!tasksRes.ok) throw new Error('Failed to fetch tasks');
@@ -355,16 +355,15 @@ export default function QuestsPage() {
           toast({ title: "No tasks found", description: "Your Google Tasks lists are empty." });
           return;
         }
-        const importRes = await apiRequest('/api/google/tasks/import', {
+        const result = await apiRequest<{ imported: number; skipped: number }>('/api/google/tasks/import', {
           method: 'POST',
           body: JSON.stringify({ tasks }),
         });
-        const result = await importRes.json();
         toast({
           title: "Tasks synced",
           description: `Imported ${result.imported} task${result.imported !== 1 ? 's' : ''}${result.skipped > 0 ? `, ${result.skipped} already existed` : ''}.`,
         });
-        queryClient.invalidateQueries({ queryKey: ['/api/users', user?.id, 'quests'] });
+        await refetchQuests();
       }
     } catch (err) {
       toast({ title: "Sync failed", description: `Could not sync ${mode === 'calendar' ? 'calendar' : 'tasks'}.`, variant: "destructive" });
@@ -2961,6 +2960,7 @@ export default function QuestsPage() {
                       <SelectContent>
                         <SelectItem value="confirmed">Confirmed</SelectItem>
                         <SelectItem value="tentative">Tentative</SelectItem>
+                        <SelectItem value="cancelled">Cancelled</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -3928,17 +3928,18 @@ export default function QuestsPage() {
         }
 
         const renderChip = (q: Quest, compact?: boolean) => {
-          const colors = q.completed
+          const isInactive = q.completed || q.missionStatus === 'cancelled';
+          const colors = isInactive
             ? { bg: 'bg-muted/50', text: 'text-muted-foreground', border: 'border-muted' }
             : getCategoryColor(q.category);
           return (
             <button
               type="button"
               key={q.id}
-              className={`${colors.bg} ${colors.text} pointer-events-auto block w-full text-left text-[10px] leading-tight px-1.5 py-0.5 rounded-md truncate cursor-pointer transition-colors border ${colors.border} hover:brightness-125 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${q.completed ? 'line-through' : ''}`}
+              className={`${colors.bg} ${colors.text} pointer-events-auto block w-full text-left text-[10px] leading-tight px-1.5 py-0.5 rounded-md truncate cursor-pointer transition-colors border ${colors.border} hover:brightness-125 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${isInactive ? 'line-through' : ''}`}
               onClick={(e) => { e.stopPropagation(); openEditDialog(q); }}
               title={`${q.title}${q.startTime ? ` • ${q.startTime}` : ''}${q.location ? ` • ${q.location}` : ''}`}
-              aria-label={`Edit mission ${q.title}${q.startTime ? ` at ${q.startTime}` : ''}`}
+              aria-label={`Edit ${q.missionStatus === 'cancelled' ? 'cancelled ' : ''}mission ${q.title}${q.startTime ? ` at ${q.startTime}` : ''}`}
             >
               {compact ? '' : (q.startTime ? `${q.startTime} ` : '')}{compact ? '•' : q.title}
             </button>
@@ -4174,17 +4175,18 @@ export default function QuestsPage() {
                                     }}
                                   />
                                   {dayQ.map(q => {
-                                    const colors = q.completed
+                                    const isInactive = q.completed || q.missionStatus === 'cancelled';
+                                    const colors = isInactive
                                       ? { bg: 'bg-muted/50', text: 'text-muted-foreground', border: 'border-muted' }
                                       : getCategoryColor(q.category);
                                     return (
                                       <button
                                         type="button"
                                         key={q.id}
-                                        className={`${colors.bg} ${colors.text} relative z-10 block w-full text-left border-l-2 ${colors.border} text-[10px] px-1.5 py-1 rounded-r-md mb-0.5 truncate cursor-pointer hover:brightness-125 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${q.completed ? 'line-through' : ''}`}
+                                        className={`${colors.bg} ${colors.text} relative z-10 block w-full text-left border-l-2 ${colors.border} text-[10px] px-1.5 py-1 rounded-r-md mb-0.5 truncate cursor-pointer hover:brightness-125 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${isInactive ? 'line-through' : ''}`}
                                         onClick={(e) => { e.stopPropagation(); openEditDialog(q); }}
                                         title={q.title}
-                                        aria-label={`Edit mission ${q.title} at ${q.startTime}`}
+                                        aria-label={`Edit ${q.missionStatus === 'cancelled' ? 'cancelled ' : ''}mission ${q.title} at ${q.startTime}`}
                                       >
                                         {q.startTime} {q.title}
                                       </button>
@@ -4256,16 +4258,17 @@ export default function QuestsPage() {
                                 }}
                               />
                               {hourQuests.map(q => {
-                                const colors = q.completed
+                                const isInactive = q.completed || q.missionStatus === 'cancelled';
+                                const colors = isInactive
                                   ? { bg: 'bg-muted/50', text: 'text-muted-foreground', border: 'border-muted' }
                                   : getCategoryColor(q.category);
                                 return (
                                   <button
                                     type="button"
                                     key={q.id}
-                                    className={`${colors.bg} ${colors.text} relative z-10 block w-full text-left border-l-2 ${colors.border} text-xs px-2 py-1.5 rounded-r-md truncate cursor-pointer hover:brightness-125 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${q.completed ? 'line-through' : ''}`}
+                                    className={`${colors.bg} ${colors.text} relative z-10 block w-full text-left border-l-2 ${colors.border} text-xs px-2 py-1.5 rounded-r-md truncate cursor-pointer hover:brightness-125 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${isInactive ? 'line-through' : ''}`}
                                     onClick={(e) => { e.stopPropagation(); openEditDialog(q); }}
-                                    aria-label={`Edit mission ${q.title} at ${q.startTime}`}
+                                    aria-label={`Edit ${q.missionStatus === 'cancelled' ? 'cancelled ' : ''}mission ${q.title} at ${q.startTime}`}
                                   >
                                     <span className="font-mono text-[10px] mr-1.5">{q.startTime}</span>
                                     {q.title}
