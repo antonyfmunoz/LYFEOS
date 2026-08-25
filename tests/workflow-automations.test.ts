@@ -58,9 +58,37 @@ describe("workflow automations", () => {
   it("claims each event run idempotently and stores bounded outcome receipts", () => {
     const engine = source("server/automation-engine.ts");
     expect(engine).toContain(".onConflictDoNothing().returning()");
-    expect(engine).toContain('errorCode: failures ? "ACTION_FAILED" : null');
+    expect(engine).toContain("definitionSnapshot: definition");
+    expect(engine).toContain("workflowAutomationActionReceipts");
+    expect(engine).toContain("FAILURE_PAUSE_THRESHOLD = 3");
+    expect(engine).toContain("repairAutomationRun");
+    expect(engine).toContain("lifecycleKey = `automation:${input.runId}:${input.actionIndex}`");
     expect(engine).not.toContain("action.description,");
     expect(engine).not.toContain("quest.description,");
+  });
+
+  it("replays manual requests by caller mutation identity and exposes owner-scoped repair", () => {
+    const contracts = source("shared/automations.ts");
+    const routes = source("server/routes/automations.ts");
+    expect(contracts).toContain("automationRunRequestSchema");
+    expect(contracts).toContain("mutationId: z.string().uuid()");
+    expect(routes).toContain("manual:${request.mutationId}");
+    expect(routes).toContain('app.post("/api/automations/:id/runs/:runId/repair", isAuthenticated');
+    expect(routes).toContain("ownedRun(runId, id, req.session.userId!)");
+    expect(routes).toContain("definitionSnapshot");
+  });
+
+  it("migrates immutable snapshots, per-action recovery receipts, and bounded failure pausing", () => {
+    const migration = source("migrations/0114_workflow_automation_recovery.sql");
+    const release = source("server/release-migrate.ts");
+    const profile = source("server/routes/profile.ts");
+    for (const field of ["consecutive_failures", "paused_at", "pause_reason", "definition_snapshot"]) {
+      expect(migration).toContain(`"${field}"`);
+    }
+    expect(migration).toContain('CREATE TABLE IF NOT EXISTS "workflow_automation_action_receipts"');
+    expect(migration).toContain('UNIQUE INDEX IF NOT EXISTS "workflow_automation_action_receipts_run_action_unique_idx"');
+    expect(release).toContain('id: "0114_workflow_automation_recovery"');
+    expect(profile).toContain('"workflow_automation_action_receipts"');
   });
 
   it("ships owner-scoped private routes and starts every new automation disabled", () => {
@@ -70,6 +98,7 @@ describe("workflow automations", () => {
     expect(routes).toContain('app.post("/api/automations/:id/run", isAuthenticated');
     expect(routes).toContain("eq(workflowAutomations.userId, req.session.userId!)");
     expect(routes).toContain("enabled: false");
+    expect(routes).toContain("consecutiveFailures: 0");
     expect(routes).toContain('res.setHeader("Cache-Control", "private, no-store, max-age=0")');
     expect(routes).not.toContain("userId: req.body");
   });

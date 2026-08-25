@@ -1718,6 +1718,9 @@ export const workflowAutomations = pgTable("workflow_automations", {
   description: text("description"),
   definition: jsonb("definition").notNull(),
   enabled: boolean("enabled").notNull().default(false),
+  consecutiveFailures: integer("consecutive_failures").notNull().default(0),
+  pausedAt: timestamp("paused_at"),
+  pauseReason: text("pause_reason"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => [index("workflow_automations_user_updated_idx").on(table.userId, table.updatedAt), index("workflow_automations_user_enabled_idx").on(table.userId, table.enabled)]);
@@ -1733,6 +1736,7 @@ export const workflowAutomationRuns = pgTable("workflow_automation_runs", {
   triggerType: text("trigger_type").notNull(),
   triggerQuestId: integer("trigger_quest_id").references(() => quests.id, { onDelete: "set null" }),
   idempotencyKey: text("idempotency_key").notNull(),
+  definitionSnapshot: jsonb("definition_snapshot"),
   status: text("status").notNull().default("running"),
   actionResults: jsonb("action_results").notNull().default([]),
   errorCode: text("error_code"),
@@ -1742,6 +1746,29 @@ export const workflowAutomationRuns = pgTable("workflow_automation_runs", {
   uniqueIndex("workflow_automation_runs_user_automation_key_unique_idx").on(table.userId, table.automationId, table.idempotencyKey),
   index("workflow_automation_runs_user_created_idx").on(table.userId, table.createdAt),
   index("workflow_automation_runs_automation_created_idx").on(table.automationId, table.createdAt),
+]);
+
+// One mutable recovery receipt per action keeps already-succeeded effects from
+// being replayed. Follow-up creation additionally uses a mission lifecycle key,
+// so a worker crash after the write but before this receipt update converges on
+// the same mission when the user explicitly repairs the run.
+export const workflowAutomationActionReceipts = pgTable("workflow_automation_action_receipts", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  runId: integer("run_id").notNull().references(() => workflowAutomationRuns.id, { onDelete: "cascade" }),
+  actionIndex: integer("action_index").notNull(),
+  actionType: text("action_type").notNull(),
+  status: text("status").notNull().default("running"),
+  expectedQuestRevision: integer("expected_quest_revision"),
+  targetQuestId: integer("target_quest_id").references(() => quests.id, { onDelete: "set null" }),
+  attemptCount: integer("attempt_count").notNull().default(1),
+  lastErrorCode: text("last_error_code"),
+  claimedAt: timestamp("claimed_at").notNull().defaultNow(),
+  completedAt: timestamp("completed_at"),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("workflow_automation_action_receipts_run_action_unique_idx").on(table.runId, table.actionIndex),
+  index("workflow_automation_action_receipts_user_status_idx").on(table.userId, table.status, table.updatedAt),
 ]);
 
 export const healthConnections = pgTable("health_connections", {

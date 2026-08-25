@@ -1,11 +1,10 @@
-import { randomUUID } from "node:crypto";
 import type { Express, Response } from "express";
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { ZodError } from "zod";
-import { automationDefinitionSchema, createAutomationSchema, updateAutomationSchema } from "@shared/automations";
+import { automationDefinitionSchema, automationRunRequestSchema, createAutomationSchema, updateAutomationSchema } from "@shared/automations";
 import { quests, workflowAutomationRuns, workflowAutomations } from "@shared/schema";
 import { db } from "../db";
-import { executeAutomation, getAutomationPreview } from "../automation-engine";
+import { executeAutomation, getAutomationPreview, repairAutomationRun } from "../automation-engine";
 import { logger } from "../utils";
 import { isAuthenticated } from "./middleware";
 
@@ -30,6 +29,16 @@ async function ownedQuest(id: number, userId: number) {
   const [quest] = await db.select().from(quests)
     .where(and(eq(quests.id, id), eq(quests.userId, userId), isNull(quests.deletedAt))).limit(1);
   return quest;
+}
+
+async function ownedRun(id: number, automationId: number, userId: number) {
+  const [run] = await db.select().from(workflowAutomationRuns)
+    .where(and(
+      eq(workflowAutomationRuns.id, id),
+      eq(workflowAutomationRuns.automationId, automationId),
+      eq(workflowAutomationRuns.userId, userId),
+    )).limit(1);
+  return run;
 }
 
 export function registerAutomationRoutes(app: Express): void {
@@ -73,7 +82,16 @@ export function registerAutomationRoutes(app: Express): void {
   app.get("/api/automations/:id", isAuthenticated, async (req, res) => {
     const id = idParam(req.params.id); if (!id) return res.status(400).json({ error: "Invalid automation ID" });
     const automation = await ownedAutomation(id, req.session.userId!); if (!automation) return res.status(404).json({ error: "Automation not found" });
-    const runs = await db.select().from(workflowAutomationRuns)
+    const runs = await db.select({
+      id: workflowAutomationRuns.id,
+      status: workflowAutomationRuns.status,
+      triggerType: workflowAutomationRuns.triggerType,
+      triggerQuestId: workflowAutomationRuns.triggerQuestId,
+      actionResults: workflowAutomationRuns.actionResults,
+      errorCode: workflowAutomationRuns.errorCode,
+      createdAt: workflowAutomationRuns.createdAt,
+      completedAt: workflowAutomationRuns.completedAt,
+    }).from(workflowAutomationRuns)
       .where(and(eq(workflowAutomationRuns.automationId, id), eq(workflowAutomationRuns.userId, req.session.userId!)))
       .orderBy(desc(workflowAutomationRuns.createdAt)).limit(50);
     res.json({ automation, runs });
@@ -85,7 +103,10 @@ export function registerAutomationRoutes(app: Express): void {
       const existing = await ownedAutomation(id, req.session.userId!); if (!existing) return res.status(404).json({ error: "Automation not found" });
       const input = updateAutomationSchema.parse(req.body);
       automationDefinitionSchema.parse(input.definition || existing.definition);
-      const [automation] = await db.update(workflowAutomations).set({ ...input, updatedAt: new Date() })
+      const recoveryReset = input.enabled === true
+        ? { consecutiveFailures: 0, pausedAt: null, pauseReason: null }
+        : {};
+      const [automation] = await db.update(workflowAutomations).set({ ...input, ...recoveryReset, updatedAt: new Date() })
         .where(and(eq(workflowAutomations.id, id), eq(workflowAutomations.userId, req.session.userId!))).returning();
       res.json({ automation });
     } catch (error) { return requestError(res, error); }
@@ -113,16 +134,36 @@ export function registerAutomationRoutes(app: Express): void {
 
   app.post("/api/automations/:id/run", isAuthenticated, async (req, res) => {
     try {
-      const id = idParam(req.params.id), questId = idParam(String(req.body?.questId || ""));
-      if (!id || !questId) return res.status(400).json({ error: "A valid automation and mission are required." });
+      const id = idParam(req.params.id);
+      if (!id) return res.status(400).json({ error: "A valid automation is required." });
+      const request = automationRunRequestSchema.parse(req.body);
+      const questId = request.questId;
       const [automation, quest] = await Promise.all([ownedAutomation(id, req.session.userId!), ownedQuest(questId, req.session.userId!)]);
       if (!automation) return res.status(404).json({ error: "Automation not found" });
       if (!quest) return res.status(404).json({ error: "Mission not found" });
       const definition = automationDefinitionSchema.parse(automation.definition);
       if (definition.trigger.type !== "manual") return res.status(409).json({ error: "Event automations run only from their selected mission event. Use Preview to test this rule." });
       if (!automation.enabled) return res.status(409).json({ error: "Enable this automation before running it." });
-      const result = await executeAutomation({ automation, quest, triggerType: "manual", idempotencyKey: `manual:${randomUUID()}` });
+      const result = await executeAutomation({ automation, quest, triggerType: "manual", idempotencyKey: `manual:${request.mutationId}` });
       res.json({ result });
+    } catch (error) { return requestError(res, error); }
+  });
+
+  app.post("/api/automations/:id/runs/:runId/repair", isAuthenticated, async (req, res) => {
+    try {
+      const id = idParam(req.params.id), runId = idParam(req.params.runId);
+      if (!id || !runId) return res.status(400).json({ error: "A valid automation run is required." });
+      const [automation, run] = await Promise.all([
+        ownedAutomation(id, req.session.userId!),
+        ownedRun(runId, id, req.session.userId!),
+      ]);
+      if (!automation || !run) return res.status(404).json({ error: "Automation run not found" });
+      if (!run.triggerQuestId) return res.status(409).json({ error: "The trigger mission no longer exists, so this run cannot be repaired safely." });
+      const quest = await ownedQuest(run.triggerQuestId, req.session.userId!);
+      if (!quest) return res.status(409).json({ error: "The trigger mission is unavailable, so this run cannot be repaired safely." });
+      if (!run.definitionSnapshot) return res.status(409).json({ error: "This legacy run has no immutable rule snapshot and cannot be repaired safely." });
+      const result = await repairAutomationRun({ automation, run, quest });
+      res.status(result.status === "running" ? 202 : 200).json({ result });
     } catch (error) { return requestError(res, error); }
   });
 }

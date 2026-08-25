@@ -45,6 +45,11 @@ export const updateAutomationSchema = createAutomationSchema.partial().extend({
   enabled: z.boolean().optional(),
 }).strict().refine((input) => Object.keys(input).length > 0, "At least one field is required.");
 
+export const automationRunRequestSchema = z.object({
+  questId: z.number().int().positive(),
+  mutationId: z.string().uuid(),
+}).strict();
+
 export type AutomationTriggerType = z.infer<typeof automationTriggerSchema>;
 export type AutomationAction = z.infer<typeof automationActionSchema>;
 export type AutomationDefinition = z.infer<typeof automationDefinitionSchema>;
