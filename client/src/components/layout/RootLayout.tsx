@@ -13,7 +13,7 @@ interface RootLayoutProps {
 
 export default function RootLayout({ children }: RootLayoutProps) {
   const { displayName, activeTimerQuest, timerStartedAt, timerPausedElapsed, timerIsPaused, isOnBreak, breakStartedAt, breakElapsed, endMissionTimer, pauseResumeTimer } = useLYFEOS();
-  const [location] = useLocation();
+  const [location, navigate] = useLocation();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -21,6 +21,18 @@ export default function RootLayout({ children }: RootLayoutProps) {
       scrollContainerRef.current.scrollTop = 0;
     }
   }, [location]);
+
+  useEffect(() => {
+    const openSearch = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const editing = target?.isContentEditable || target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement;
+      if (editing || event.altKey || (!event.ctrlKey && !event.metaKey) || event.key.toLowerCase() !== "k") return;
+      event.preventDefault();
+      navigate("/search");
+    };
+    window.addEventListener("keydown", openSearch);
+    return () => window.removeEventListener("keydown", openSearch);
+  }, [navigate]);
 
   
   const rawPage = location.split('/')[1] || 'dashboard';

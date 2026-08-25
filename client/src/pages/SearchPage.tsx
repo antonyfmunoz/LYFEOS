@@ -55,7 +55,8 @@ export default function SearchPage() {
     </div>
     <div className="relative">
       <Search className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
-      <Input autoFocus aria-label="Search LyfeOS" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search your LyfeOS workspace" className="h-11 pl-11 text-base" />
+      <Input autoFocus aria-label="Search LyfeOS" aria-keyshortcuts="Control+K Meta+K" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search your LyfeOS workspace" className="h-11 pl-11 pr-3 text-base sm:pr-28" />
+      <span className="pointer-events-none absolute right-3 top-3 hidden rounded border border-primary/15 px-2 py-0.5 text-[10px] text-muted-foreground sm:block" aria-hidden="true">Ctrl / Cmd K</span>
     </div>
     {search.data && <div className="flex flex-wrap gap-2" aria-label="Search result filters">
       <button type="button" onClick={() => setKind("all")} className={`rounded-full border px-3 py-1 text-xs ${kind === "all" ? "border-primary bg-primary/20 text-primary" : "border-primary/15 text-muted-foreground"}`}>All {search.data.results.length}</button>

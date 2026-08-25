@@ -54,4 +54,34 @@ describe("private workspace search", () => {
     expect(route).toContain("/rolodex?contact=${row.id}");
     expect(rolodex).toContain("get('contact')");
   });
+
+  it("installs indexed full-text and typo-tolerant ranking through both migration paths", () => {
+    const migration = source("migrations/0108_workspace_search_indexes.sql");
+    const release = source("server/release-migrate.ts");
+    const route = source("server/routes/search.ts");
+    for (const contract of [migration, release]) {
+      expect(contract).toContain("CREATE EXTENSION IF NOT EXISTS pg_trgm");
+      expect(contract.match(/workspace_search_fts_idx/g)?.length).toBe(6);
+      expect(contract.match(/_trgm_idx/g)?.length).toBe(6);
+      expect(contract).not.toContain('COALESCE("email"');
+      expect(contract).not.toContain('COALESCE("phone"');
+      expect(contract).not.toContain('COALESCE("notes"');
+    }
+    expect(release).toContain('id: "0108_workspace_search_indexes"');
+    expect(route).toContain("websearch_to_tsquery('simple'");
+    expect(route).toContain("ts_rank_cd");
+    expect(route).toContain("word_similarity");
+    expect(route).toContain(".slice(0, input.limit)");
+  });
+
+  it("opens Search globally by keyboard without hijacking active editors", () => {
+    const layout = source("client/src/components/layout/RootLayout.tsx");
+    const page = source("client/src/pages/SearchPage.tsx");
+    expect(layout).toContain('event.key.toLowerCase() !== "k"');
+    expect(layout).toContain("target?.isContentEditable");
+    expect(layout).toContain("target instanceof HTMLInputElement");
+    expect(layout).toContain('navigate("/search")');
+    expect(page).toContain('aria-keyshortcuts="Control+K Meta+K"');
+    expect(page).toContain("Ctrl / Cmd K");
+  });
 });
