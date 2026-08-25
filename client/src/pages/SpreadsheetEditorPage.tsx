@@ -6,6 +6,7 @@ import type { SpreadsheetColorToken, SpreadsheetDocument, SpreadsheetNumberForma
 import { createEmptySpreadsheetDocument, nextSpreadsheetSheetName, normalizeSpreadsheetDocument, removeSpreadsheetSheet, renameSpreadsheetSheet, uniqueSpreadsheetSheetName } from "@shared/spreadsheets";
 import { columnLabel, evaluateSpreadsheetCell, formatSpreadsheetDisplayValue, insertSpreadsheetAxis, parseCellAddress } from "@/lib/spreadsheetFormula";
 import { createSpreadsheetSheetFromDelimited, formatSpreadsheetRange, pasteSpreadsheetRange, serializeSpreadsheetRange, spreadsheetRangeBounds } from "@/lib/spreadsheetRange";
+import { calculateSpreadsheetViewportWindow, moveSpreadsheetAddress, SPREADSHEET_COLUMN_HEADER_HEIGHT, SPREADSHEET_COLUMN_WIDTH, SPREADSHEET_ROW_HEADER_WIDTH, SPREADSHEET_ROW_HEIGHT, type SpreadsheetNavigationDirection } from "@/lib/spreadsheetViewport";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,7 +67,10 @@ export default function SpreadsheetEditorPage() {
   const [pendingImport, setPendingImport] = useState<{ sheet: SpreadsheetSheet; sourceRows: number; sourceColumns: number; populatedCellCount: number; formulaCount: number; fileName: string } | null>(null);
   const [dirty, setDirty] = useState(isNew);
   const [localHistoryState, setLocalHistoryState] = useState({ canUndo: false, canRedo: false });
+  const [gridViewport, setGridViewport] = useState({ scrollLeft: 0, scrollTop: 0, viewportWidth: 1200, viewportHeight: 600 });
   const importInput = useRef<HTMLInputElement>(null);
+  const gridViewportRef = useRef<HTMLDivElement>(null);
+  const pendingCellFocus = useRef<string | null>(null);
   const undoStack = useRef<SpreadsheetDocument[]>([]);
   const redoStack = useRef<SpreadsheetDocument[]>([]);
   usePageTitle(title || "Sheet");
@@ -127,6 +131,17 @@ export default function SpreadsheetEditorPage() {
   });
   const activeSheet = document.sheets.find((sheet) => sheet.id === document.activeSheetId) || document.sheets[0];
   useEffect(() => setSheetNameDraft(activeSheet.name), [activeSheet.id, activeSheet.name]);
+  useEffect(() => {
+    const viewport = gridViewportRef.current;
+    if (!viewport) return;
+    viewport.scrollLeft = 0;
+    viewport.scrollTop = 0;
+    const synchronize = () => setGridViewport({ scrollLeft: viewport.scrollLeft, scrollTop: viewport.scrollTop, viewportWidth: viewport.clientWidth || 1200, viewportHeight: viewport.clientHeight || 600 });
+    synchronize();
+    const observer = new ResizeObserver(synchronize);
+    observer.observe(viewport);
+    return () => observer.disconnect();
+  }, [activeSheet.id, query.isError, query.isLoading]);
   const selectedInput = activeSheet.cells[selectedAddress]?.input || "";
   const updateDocument = (next: SpreadsheetDocument) => {
     undoStack.current = [...undoStack.current.slice(-19), document];
@@ -182,6 +197,9 @@ export default function SpreadsheetEditorPage() {
   const selectedRange = useMemo(() => spreadsheetRangeBounds(rangeAnchor, rangeEnd), [rangeAnchor, rangeEnd]);
   const columns = useMemo(() => Array.from({ length: activeSheet.columnCount }, (_, index) => columnLabel(index)), [activeSheet.columnCount]);
   const rows = useMemo(() => Array.from({ length: activeSheet.rowCount }, (_, index) => index + 1), [activeSheet.rowCount]);
+  const viewportWindow = useMemo(() => calculateSpreadsheetViewportWindow({ rowCount: activeSheet.rowCount, columnCount: activeSheet.columnCount, ...gridViewport }), [activeSheet.columnCount, activeSheet.rowCount, gridViewport]);
+  const visibleColumnIndexes = useMemo(() => Array.from({ length: viewportWindow.renderedColumnCount }, (_, index) => viewportWindow.startColumn + index), [viewportWindow]);
+  const visibleRowIndexes = useMemo(() => Array.from({ length: viewportWindow.renderedRowCount }, (_, index) => viewportWindow.startRow + index), [viewportWindow]);
   const insertAxis = (axis: "row" | "column") => {
     try {
       const shifted = insertSpreadsheetAxis(activeSheet, axis, axis === "row" ? selectedPosition.row : selectedPosition.column);
@@ -196,6 +214,38 @@ export default function SpreadsheetEditorPage() {
     if (extendRange || extendSelection) { setRangeEnd(address); setExtendSelection(false); }
     else { setRangeAnchor(address); setRangeEnd(address); }
   };
+  const ensureCellVisible = (address: string) => {
+    const viewport = gridViewportRef.current;
+    const position = parseCellAddress(address);
+    if (!viewport || !position) return;
+    const left = SPREADSHEET_ROW_HEADER_WIDTH + position.column * SPREADSHEET_COLUMN_WIDTH;
+    const right = left + SPREADSHEET_COLUMN_WIDTH;
+    const top = SPREADSHEET_COLUMN_HEADER_HEIGHT + position.row * SPREADSHEET_ROW_HEIGHT;
+    const bottom = top + SPREADSHEET_ROW_HEIGHT;
+    if (left < viewport.scrollLeft + SPREADSHEET_ROW_HEADER_WIDTH) viewport.scrollLeft = Math.max(0, left - SPREADSHEET_ROW_HEADER_WIDTH);
+    else if (right > viewport.scrollLeft + viewport.clientWidth) viewport.scrollLeft = right - viewport.clientWidth;
+    if (top < viewport.scrollTop + SPREADSHEET_COLUMN_HEADER_HEIGHT) viewport.scrollTop = Math.max(0, top - SPREADSHEET_COLUMN_HEADER_HEIGHT);
+    else if (bottom > viewport.scrollTop + viewport.clientHeight) viewport.scrollTop = bottom - viewport.clientHeight;
+  };
+  const navigateCellWithKeyboard = (event: React.KeyboardEvent<HTMLButtonElement>, address: string) => {
+    const position = parseCellAddress(address);
+    if (!position) return;
+    const direction: SpreadsheetNavigationDirection | null = event.key === "ArrowLeft" ? "left" : event.key === "ArrowRight" ? "right" : event.key === "ArrowUp" ? "up" : event.key === "ArrowDown" ? "down" : null;
+    if (!direction) return;
+    event.preventDefault();
+    const nextAddress = moveSpreadsheetAddress(address, direction, activeSheet.rowCount, activeSheet.columnCount);
+    selectCell(nextAddress, event.shiftKey);
+    pendingCellFocus.current = nextAddress;
+    ensureCellVisible(nextAddress);
+  };
+  useEffect(() => {
+    const address = pendingCellFocus.current;
+    if (!address) return;
+    const cell = gridViewportRef.current?.querySelector<HTMLButtonElement>(`[data-sheet-address="${address}"]`);
+    if (!cell) return;
+    cell.focus();
+    pendingCellFocus.current = null;
+  }, [gridViewport.scrollLeft, gridViewport.scrollTop, selectedAddress]);
   const copyRange = async () => {
     try {
       if (!navigator.clipboard?.writeText) throw new Error("Clipboard writing is unavailable in this browser.");
@@ -334,24 +384,24 @@ export default function SpreadsheetEditorPage() {
         </Select>
         <Button type="button" size="icon" variant="outline" className="h-8 w-8 shrink-0" aria-label="Clear formatting from selected populated cells" onClick={() => applyRangeFormat(null)}><Eraser className="h-3.5 w-3.5" /></Button>
       </div>
-      <div className="overflow-auto max-h-[65vh]">
-        <div className="grid w-max" style={{ gridTemplateColumns: `48px repeat(${columns.length}, 120px)` }}>
-          <div className="sticky left-0 top-0 z-30 h-8 border-b border-r border-primary/15 bg-background" />
-          {columns.map((column) => <div key={column} className="sticky top-0 z-20 flex h-8 items-center justify-center border-b border-r border-primary/15 bg-background font-mono text-xs text-muted-foreground">{column}</div>)}
-          {rows.flatMap((row) => [
-            <div key={`row-${row}`} className="sticky left-0 z-10 flex h-9 items-center justify-center border-b border-r border-primary/15 bg-background font-mono text-xs text-muted-foreground">{row}</div>,
-            ...columns.map((column) => {
-              const address = `${column}${row}`;
+      <div ref={gridViewportRef} className="overflow-auto max-h-[65vh]" role="region" aria-label={`${activeSheet.name} spreadsheet grid`} onScroll={(event) => setGridViewport({ scrollLeft: event.currentTarget.scrollLeft, scrollTop: event.currentTarget.scrollTop, viewportWidth: event.currentTarget.clientWidth || 1200, viewportHeight: event.currentTarget.clientHeight || 600 })}>
+        <div className="relative" style={{ width: viewportWindow.totalWidth, height: viewportWindow.totalHeight }}>
+          <div className="absolute z-30 border-b border-r border-primary/15 bg-background" style={{ left: gridViewport.scrollLeft, top: gridViewport.scrollTop, width: SPREADSHEET_ROW_HEADER_WIDTH, height: SPREADSHEET_COLUMN_HEADER_HEIGHT }} />
+          {visibleColumnIndexes.map((columnIndex) => <div key={`column-${columnIndex}`} className="absolute z-20 flex items-center justify-center border-b border-r border-primary/15 bg-background font-mono text-xs text-muted-foreground" style={{ left: SPREADSHEET_ROW_HEADER_WIDTH + columnIndex * SPREADSHEET_COLUMN_WIDTH, top: gridViewport.scrollTop, width: SPREADSHEET_COLUMN_WIDTH, height: SPREADSHEET_COLUMN_HEADER_HEIGHT }}>{columnLabel(columnIndex)}</div>)}
+          {visibleRowIndexes.flatMap((rowIndex) => [
+            <div key={`row-${rowIndex}`} className="absolute z-10 flex items-center justify-center border-b border-r border-primary/15 bg-background font-mono text-xs text-muted-foreground" style={{ left: gridViewport.scrollLeft, top: SPREADSHEET_COLUMN_HEADER_HEIGHT + rowIndex * SPREADSHEET_ROW_HEIGHT, width: SPREADSHEET_ROW_HEADER_WIDTH, height: SPREADSHEET_ROW_HEIGHT }}>{rowIndex + 1}</div>,
+            ...visibleColumnIndexes.map((columnIndex) => {
+              const address = `${columnLabel(columnIndex)}${rowIndex + 1}`;
               const raw = activeSheet.cells[address]?.input || "";
               const format = activeSheet.cells[address]?.format;
               const display = formatSpreadsheetDisplayValue(raw.startsWith("=") ? evaluateSpreadsheetCell(document, activeSheet.id, address) : raw, format?.numberFormat);
-              const position = { row: row - 1, column: parseCellAddress(address)!.column };
+              const position = { row: rowIndex, column: columnIndex };
               const inRange = position.row >= selectedRange.startRow && position.row <= selectedRange.endRow && position.column >= selectedRange.startColumn && position.column <= selectedRange.endColumn;
               const alignment = format?.align === "center" ? "text-center" : format?.align === "right" ? "text-right" : "text-left";
               const textColor = format?.textColor ? spreadsheetTextColorClasses[format.textColor] : "";
               const backgroundColor = format?.backgroundColor ? spreadsheetBackgroundColorClasses[format.backgroundColor] : "";
               const selection = selectedAddress === address ? `border-primary ring-1 ring-inset ring-primary ${backgroundColor ? "" : "bg-primary/15"}` : inRange ? `border-primary/20 ${backgroundColor ? "" : "bg-primary/5"}` : `border-primary/10 ${backgroundColor ? "" : "hover:bg-primary/5"}`;
-              return <button key={address} type="button" title={raw || address} onClick={(event) => selectCell(address, event.shiftKey)} className={`h-9 overflow-hidden border-b border-r px-2 text-xs ${alignment} ${backgroundColor} ${selection}`}><span className={`${display.startsWith("#") ? "text-destructive" : textColor} ${format?.bold ? "font-semibold" : ""} ${format?.italic ? "italic" : ""}`}>{display}</span></button>;
+              return <button key={address} type="button" data-sheet-address={address} aria-label={`${address}: ${display || "empty"}`} aria-selected={selectedAddress === address} title={raw || address} onClick={(event) => selectCell(address, event.shiftKey)} onKeyDown={(event) => navigateCellWithKeyboard(event, address)} className={`absolute overflow-hidden border-b border-r px-2 text-xs ${alignment} ${backgroundColor} ${selection}`} style={{ left: SPREADSHEET_ROW_HEADER_WIDTH + columnIndex * SPREADSHEET_COLUMN_WIDTH, top: SPREADSHEET_COLUMN_HEADER_HEIGHT + rowIndex * SPREADSHEET_ROW_HEIGHT, width: SPREADSHEET_COLUMN_WIDTH, height: SPREADSHEET_ROW_HEIGHT }}><span className={`${display.startsWith("#") ? "text-destructive" : textColor} ${format?.bold ? "font-semibold" : ""} ${format?.italic ? "italic" : ""}`}>{display}</span></button>;
             }),
           ])}
         </div>
@@ -366,7 +416,7 @@ export default function SpreadsheetEditorPage() {
         </div>
       </div>
     </div>
-    <p className="text-[11px] leading-relaxed text-muted-foreground">Undo and Redo retain up to 20 unsaved grid and tab changes on this device and reset after save, reload, or restore. Shift-click, or choose Extend and then a cell on touch devices, to select a rectangular range for copy or formatting. Number, percent, USD currency, text-color, and fill-color formats change display only; raw values and formula inputs remain authoritative. Formatting applies only to populated cells; clipboard and CSV/TSV transfer values and formulas, not presentation, while plain-text paste preserves existing destination formatting. Paste starts at the active cell and remains unsaved until you review and save. Insertions preserve populated cells, formatting, and affected formula references. Formulas support cell references, +, −, ×, ÷, parentheses, and SUM, AVERAGE, MIN, or MAX. CSV export writes unformatted calculated formula results and protects text beginning with spreadsheet-executable prefixes.</p>
+    <p className="text-[11px] leading-relaxed text-muted-foreground">The grid renders only the visible rows and columns plus a small safety margin, even at the 500-row × 100-column limit. Use arrow keys to move one cell at a time and Shift+Arrow to extend a selection; choose Extend and then a cell on touch devices. Undo and Redo retain up to 20 unsaved grid and tab changes on this device and reset after save, reload, or restore. Shift-click also selects a rectangular range for copy or formatting. Number, percent, USD currency, text-color, and fill-color formats change display only; raw values and formula inputs remain authoritative. Formatting applies only to populated cells; clipboard and CSV/TSV transfer values and formulas, not presentation, while plain-text paste preserves existing destination formatting. Paste starts at the active cell and remains unsaved until you review and save. Insertions preserve populated cells, formatting, and affected formula references. Formulas support cell references, +, −, ×, ÷, parentheses, and SUM, AVERAGE, MIN, or MAX. CSV export writes unformatted calculated formula results and protects text beginning with spreadsheet-executable prefixes.</p>
     {!isNew && <details className="rounded-xl border border-primary/15 bg-card/30 p-4">
       <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-medium"><History className="h-4 w-4" />Saved version history</summary>
       <p className="mt-2 text-xs text-muted-foreground">Saved versions are immutable. Restoring copies the selected snapshot into a new version; it never deletes or rewrites history. The 100 most recent versions are shown.</p>

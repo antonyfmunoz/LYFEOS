@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { createEmptySpreadsheetDocument, nextSpreadsheetSheetName, removeSpreadsheetSheet, renameSpreadsheetSheet, spreadsheetDocumentSchema, spreadsheetRevisionSnapshotSchema, uniqueSpreadsheetSheetName } from "../shared/spreadsheets";
 import { columnLabel, evaluateSpreadsheetCell, formatSpreadsheetDisplayValue, insertSpreadsheetAxis, parseCellAddress } from "../client/src/lib/spreadsheetFormula";
 import { createSpreadsheetSheetFromDelimited, formatSpreadsheetRange, parseSpreadsheetClipboard, parseSpreadsheetCsv, pasteSpreadsheetRange, serializeSpreadsheetRange, spreadsheetRangeBounds } from "../client/src/lib/spreadsheetRange";
+import { calculateSpreadsheetViewportWindow, moveSpreadsheetAddress } from "../client/src/lib/spreadsheetViewport";
 
 const source = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8");
 
@@ -43,6 +44,35 @@ describe("Sheets instrument", () => {
     const document = createEmptySpreadsheetDocument();
     document.sheets[0].cells["not-a-cell"] = { input: "x" };
     expect(spreadsheetDocumentSchema.safeParse(document).success).toBe(false);
+  });
+
+  it("bounds maximum-grid rendering to the visible viewport plus overscan", () => {
+    const top = calculateSpreadsheetViewportWindow({ rowCount: 500, columnCount: 100, scrollLeft: 0, scrollTop: 0, viewportWidth: 1280, viewportHeight: 720 });
+    expect(top).toMatchObject({ startColumn: 0, startRow: 0, totalWidth: 12_048, totalHeight: 18_032 });
+    expect(top.renderedCellCount).toBeLessThanOrEqual(400);
+    const bottom = calculateSpreadsheetViewportWindow({ rowCount: 500, columnCount: 100, scrollLeft: 12_048 - 1280, scrollTop: 18_032 - 720, viewportWidth: 1280, viewportHeight: 720 });
+    expect(bottom).toMatchObject({ endColumn: 99, endRow: 499 });
+    expect(bottom.renderedCellCount).toBeLessThanOrEqual(400);
+  });
+
+  it("normalizes invalid viewport measurements and clamps overscan", () => {
+    const viewport = calculateSpreadsheetViewportWindow({ rowCount: 0, columnCount: 1_000, scrollLeft: Number.NaN, scrollTop: -100, viewportWidth: 0, viewportHeight: 0, overscanRows: 99, overscanColumns: -2 });
+    expect(viewport).toMatchObject({ startColumn: 0, startRow: 0, endRow: 0, renderedRowCount: 1 });
+    expect(viewport.endColumn).toBeLessThan(100);
+  });
+
+  it("accounts for row and column headers when deriving the first visible cell", () => {
+    const viewport = calculateSpreadsheetViewportWindow({ rowCount: 500, columnCount: 100, scrollLeft: 48 + 5 * 120, scrollTop: 32 + 10 * 36, viewportWidth: 120, viewportHeight: 36, overscanRows: 0, overscanColumns: 0 });
+    expect(viewport).toMatchObject({ startColumn: 5, startRow: 10 });
+  });
+
+  it("moves keyboard selection within sheet boundaries", () => {
+    expect(moveSpreadsheetAddress("B2", "left", 40, 10)).toBe("A2");
+    expect(moveSpreadsheetAddress("B2", "up", 40, 10)).toBe("B1");
+    expect(moveSpreadsheetAddress("A1", "left", 40, 10)).toBe("A1");
+    expect(moveSpreadsheetAddress("J40", "right", 40, 10)).toBe("J40");
+    expect(moveSpreadsheetAddress("J40", "down", 40, 10)).toBe("J40");
+    expect(() => moveSpreadsheetAddress("bad", "down", 40, 10)).toThrow("valid spreadsheet cell");
   });
 
   it("formats numeric display deterministically without converting authoritative values", () => {
@@ -313,6 +343,19 @@ describe("Sheets instrument", () => {
     expect(editor).toContain("raw values and formula inputs remain authoritative");
     expect(editor).toContain("plain-text paste preserves existing destination formatting");
     expect(editor).toContain("clipboard and CSV/TSV transfer values and formulas, not presentation");
+  });
+
+  it("virtualizes the bounded grid and supports keyboard cell movement", () => {
+    const editor = source("client/src/pages/SpreadsheetEditorPage.tsx");
+    expect(editor).toContain("calculateSpreadsheetViewportWindow");
+    expect(editor).toContain("visibleColumnIndexes");
+    expect(editor).toContain("visibleRowIndexes");
+    expect(editor).toContain("navigateCellWithKeyboard");
+    expect(editor).toContain('event.key === "ArrowLeft"');
+    expect(editor).toContain("event.shiftKey");
+    expect(editor).toContain("ensureCellVisible(nextAddress)");
+    expect(editor).toContain('aria-selected={selectedAddress === address}');
+    expect(editor).toContain("renders only the visible rows and columns");
   });
 
   it("offers bounded unsaved undo and immutable saved-version restoration", () => {
