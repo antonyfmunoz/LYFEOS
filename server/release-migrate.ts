@@ -2278,6 +2278,14 @@ const migrations = [
       CREATE INDEX IF NOT EXISTS "workspace_form_submission_receipts_user_form_idx" ON "workspace_form_submission_receipts" ("user_id", "form_id");
     `,
   },
+  {
+    id: "0112_quests_calendar_window",
+    sql: `
+      CREATE INDEX IF NOT EXISTS "quests_user_calendar_window_idx"
+        ON "quests" ("user_id", "start_date", "id")
+        WHERE "deleted_at" IS NULL AND "start_date" IS NOT NULL;
+    `,
+  },
 ];
 
 async function run(): Promise<void> {

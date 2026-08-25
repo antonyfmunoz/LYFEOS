@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { buildCalendarMissionWindow, isCalendarDate, parseCalendarDurationMinutes, shiftCalendarDate } from "../shared/calendar";
+import { buildCalendarMissionWindow, calendarDateDistance, calendarVisibleRange, isCalendarDate, parseCalendarDurationMinutes, shiftCalendarDate } from "../shared/calendar";
 
 const source = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8");
 
@@ -35,7 +35,7 @@ describe("canonical mission Calendar", () => {
 
   it("renders Calendar directly from canonical mission records and discloses that authority", () => {
     const quests = source("client/src/pages/QuestsPage.tsx");
-    expect(quests).toContain("const allQuests = applySearchAndFilters((quests || []).filter(q => !q.deletedAt))");
+    expect(quests).toContain("const allQuests = applySearchAndFilters(calendarQuests.filter(q => !q.deletedAt))");
     expect(quests).toContain("if (q.startDate)");
     expect(quests).toContain("Calendar is a scheduling view of your canonical Missions");
     expect(quests).not.toContain("/api/calendar-events");
@@ -60,6 +60,15 @@ describe("canonical mission Calendar", () => {
     expect(google).toContain("shiftCalendarDate(endDate, 1)");
   });
 
+  it("derives bounded visible ranges for every Calendar zoom", () => {
+    expect(calendarVisibleRange("day", "2026-08-25")).toEqual({ from: "2026-08-25", to: "2026-08-25", days: 1 });
+    expect(calendarVisibleRange("week", "2026-08-23")).toEqual({ from: "2026-08-23", to: "2026-08-29", days: 7 });
+    expect(calendarVisibleRange("month", "2026-08-25")).toEqual({ from: "2026-07-26", to: "2026-09-05", days: 42 });
+    expect(calendarVisibleRange("year", "2028-06-01")).toEqual({ from: "2028-01-01", to: "2028-12-31", days: 366 });
+    expect(calendarDateDistance("2026-08-26", "2026-08-25")).toBeNull();
+    expect(calendarVisibleRange("month", "2026-02-30")).toBeNull();
+  });
+
   it("reconciles provider cancellation and keeps imported missions after credential revocation", () => {
     const google = source("server/routes/google.ts");
     const profile = source("client/src/pages/ProfilePage.tsx");
@@ -74,6 +83,34 @@ describe("canonical mission Calendar", () => {
     expect(profile).toContain("Disconnected — imported LyfeOS missions retained");
     expect(profile).toContain("description: result.message");
     expect(source("client/src/pages/QuestsPage.tsx")).not.toContain("const result = await res.json()");
+  });
+
+  it("loads Calendar from an owner-scoped, indexed, cursor-paginated mission window", () => {
+    const routes = source("server/routes/quests.ts");
+    const page = source("client/src/pages/QuestsPage.tsx");
+    const context = source("client/src/lib/context.tsx");
+    const migration = source("migrations/0112_quests_calendar_window.sql");
+    const release = source("server/release-migrate.ts");
+    const workflow = source(".github/workflows/verify.yml");
+    expect(routes).toContain('app.get("/api/users/:userId/calendar-missions", isOwner');
+    expect(routes).toContain("days !== null && days <= 370");
+    expect(routes).toContain("parsed.data.limit + 1");
+    expect(routes).toContain("if (!cursor)");
+    expect(routes).toContain("convertTodoIdeasToMissions");
+    expect(routes).toContain("encodeCalendarCursor");
+    expect(routes).toContain("(${questsTable.startDate}, ${questsTable.id}) > (${cursor.startDate}, ${cursor.id})");
+    expect(routes).toContain("eq(questsTable.userId, userId)");
+    expect(routes).toContain("isNull(questsTable.deletedAt)");
+    expect(routes).toContain('res.setHeader("Cache-Control", "private, no-store")');
+    expect(page).toContain('queryKey: ["calendar-missions"');
+    expect(page).toContain("calendarVisibleRange(calendarZoom, anchor)");
+    expect(page).toContain("calendarMissionQuery.fetchNextPage()");
+    expect(page).toContain("applySearchAndFilters(calendarQuests.filter");
+    expect(context).toContain('window.location.pathname === "/calendar"');
+    expect(context).toContain('queryKey: ["calendar-missions"]');
+    expect(migration).toContain('WHERE "deleted_at" IS NULL AND "start_date" IS NOT NULL');
+    expect(release).toContain('id: "0112_quests_calendar_window"');
+    expect(workflow).toContain("tests/api-calendar-window.test.ts");
   });
 
   it("provides keyboard-operable calendar navigation, scheduling, and mission editing", () => {

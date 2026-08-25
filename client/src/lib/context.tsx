@@ -260,7 +260,7 @@ interface LYFEOSContextType {
   addEvent: (event: { title: string; description?: string; startTime?: string; duration?: string; category?: string; date?: string }) => Promise<Quest>;
   updateEvent: (id: string, event: Partial<Quest>) => Promise<Quest>;
   deleteQuest: (id: string) => Promise<void>;
-  refetchQuests: (overrideUserId?: number) => Promise<void>;
+  refetchQuests: (overrideUserId?: number, forceFull?: boolean) => Promise<void>;
   sendMessage: (content: string, imageIds?: number[]) => void;
   sendMessageInSession: (sessionId: string, content: string, imageIds?: number[]) => void;
   displayName: string;
@@ -613,9 +613,13 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
   }, [isAuthenticated, user]);
   
   // Refetch quests from the server
-  const refetchQuests = async (overrideUserId?: number) => {
+  const refetchQuests = async (overrideUserId?: number, forceFull = false) => {
     const uid = overrideUserId || user?.id;
     if (!uid) return;
+    if (!forceFull && window.location.pathname === "/calendar") {
+      await queryClient.invalidateQueries({ queryKey: ["calendar-missions"] });
+      return;
+    }
     try {
       console.log("Refetching quests for user:", uid);
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -771,22 +775,20 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
   // Toggle quest completion
   const toggleQuestCompletion = async (id: string) => {
     const currentQuest = quests.find(quest => quest.id === id);
-    if (!currentQuest) return;
-    
-    const completed = !currentQuest.completed;
+    const completed = currentQuest ? !currentQuest.completed : undefined;
     
     // Optimistically update local state
     const updatedQuests = quests.map((quest) => {
       if (quest.id === id) {
         return { 
           ...quest, 
-          completed,
-          completedAt: completed ? new Date().toISOString() : null
+          completed: completed ?? quest.completed,
+          completedAt: completed === undefined ? quest.completedAt : completed ? new Date().toISOString() : null
         };
       }
       return quest;
     });
-    setQuests(updatedQuests);
+    if (currentQuest) setQuests(updatedQuests);
     
     // Persist before celebrating so failed writes never create fictional progress.
     try {
@@ -866,21 +868,22 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         }
       }
       
-      if (currentQuest.isRitualized) {
+      if (currentQuest?.isRitualized) {
         await refetchQuests();
       }
 
-      if (currentQuest.visionGoalId) {
+      if (currentQuest?.visionGoalId) {
         queryClient.refetchQueries({ queryKey: ['/api/quests/linked-by-vision-goal'] });
       }
 
       // Thread-linked missions can update the private Growth Map. Invalidate it
       // here so every mission surface stays in sync with the dashboard.
-      if (currentQuest.transformationThreadId) {
+      if (currentQuest?.transformationThreadId) {
         queryClient.invalidateQueries({ queryKey: ["/api/transformation-thread"] });
       }
       queryClient.invalidateQueries({ queryKey: ["/api/progression"] });
       queryClient.invalidateQueries({ queryKey: ["/api/streaks"] });
+      queryClient.invalidateQueries({ queryKey: ["calendar-missions"] });
     } catch (error) {
       setQuests(quests);
       console.error("Error toggling quest completion:", error);
@@ -982,6 +985,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
     };
     
     setQuests((prev) => [...prev, newQuest]);
+    queryClient.invalidateQueries({ queryKey: ["calendar-missions"] });
 
     if (newQuest.visionGoalId) {
       queryClient.invalidateQueries({ queryKey: ['/api/quests/linked-by-vision-goal'] });
@@ -1049,6 +1053,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
     };
     
     setQuests((prev) => prev.map((q) => (q.id === id ? updatedQuest : q)));
+    queryClient.invalidateQueries({ queryKey: ["calendar-missions"] });
 
     queryClient.invalidateQueries({ queryKey: ['/api/quests/linked-by-vision-goal'] });
     queryClient.invalidateQueries({ queryKey: ['/api/vision-goals/all'] });
@@ -1090,6 +1095,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
     }
     
     setQuests((prev) => prev.filter((q) => q.id !== id));
+    queryClient.invalidateQueries({ queryKey: ["calendar-missions"] });
   };
 
   // Send a message to AI companion

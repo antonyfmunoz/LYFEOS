@@ -4,7 +4,7 @@ import { useTutorialStatus } from '@/hooks/use-tutorial';
 import { useWidgetState } from "@/hooks/use-widget-state";
 import { useLYFEOS } from "../lib/context";
 import { useAuth } from "@/lib/authContext";
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useDrag, useDrop } from 'react-dnd';
@@ -42,11 +42,13 @@ import {
 import { Plus, Zap, Star, Bell, BellOff, BellRing, Edit3, Trash2, X, ChevronDown, ChevronRight, ChevronLeft, Target, Calendar, CalendarDays, LayoutList, Clock, CheckCircle2, GraduationCap, Inbox, Info, Archive, Undo2, Repeat, Loader2, FileText, FolderOpen, Link2, GripVertical, Download, MapPin, Users, Columns3, Search, SlidersHorizontal, ArrowUpDown, Check, MoreVertical, Eye } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import type { MissionView } from "@shared/schema";
+import { calendarVisibleRange } from "@shared/calendar";
 import { Badge } from "@/components/ui/badge";
 import { ObsidianMarkdown } from "@/components/ui/obsidian-markdown";
 import { StatInfoDialog } from "@/components/ui/stat-info-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { achievementToast } from "@/lib/gamified-toast";
+import { getBrowserTimeZone } from "@/lib/utils";
 import { Quest, QuestNotification } from "@/lib/types";
 import {
   Popover,
@@ -143,6 +145,12 @@ interface VisionGoalOption {
   id: number;
   category: string;
   title: string;
+}
+
+interface CalendarMissionPage {
+  quests: Array<Record<string, unknown> & { id: number; startDate: string | null }>;
+  range: { from: string; to: string };
+  nextCursor: string | null;
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -698,6 +706,44 @@ export default function QuestsPage() {
     if (!activeCustomViewId) return null;
     return customViews.find(v => v.id === activeCustomViewId) || null;
   }, [activeCustomViewId, customViews]);
+
+  const calendarRange = useMemo(() => {
+    const anchor = calendarZoom === 'year'
+      ? `${calendarYear}-01-01`
+      : calendarZoom === 'month'
+        ? formatDateStr(calendarMonth)
+        : calendarZoom === 'week'
+          ? formatDateStr(calendarWeekStart)
+          : formatDateStr(calendarDay);
+    return calendarVisibleRange(calendarZoom, anchor);
+  }, [calendarDay, calendarMonth, calendarWeekStart, calendarYear, calendarZoom]);
+
+  const calendarMissionQuery = useInfiniteQuery<CalendarMissionPage>({
+    queryKey: ["calendar-missions", user?.id, calendarRange?.from, calendarRange?.to],
+    enabled: !!user && viewMode === 'calendar' && !activeCustomView && !!calendarRange,
+    initialPageParam: null as string | null,
+    queryFn: ({ pageParam }) => {
+      const cursor = typeof pageParam === 'string' ? `&cursor=${encodeURIComponent(pageParam)}` : '';
+      const timeZone = getBrowserTimeZone();
+      return apiRequest<CalendarMissionPage>(`/api/users/${user!.id}/calendar-missions?from=${calendarRange!.from}&to=${calendarRange!.to}&limit=250&tz=${encodeURIComponent(timeZone)}${cursor}`);
+    },
+    getNextPageParam: (lastPage) => lastPage.nextCursor || undefined,
+    staleTime: 0,
+  });
+
+  const calendarQuests = useMemo<Quest[]>(() => (
+    calendarMissionQuery.data?.pages.flatMap((page) => page.quests).map((quest) => ({
+      ...quest,
+      id: String(quest.id),
+      description: typeof quest.description === 'string' ? quest.description : '',
+      category: typeof quest.category === 'string' ? quest.category : 'general',
+      completed: quest.completed === true,
+      notifications: Array.isArray(quest.notifications) ? quest.notifications : [],
+      linkedItems: Array.isArray(quest.linkedItems) ? quest.linkedItems : [],
+      date: quest.startDate,
+      duration: typeof quest.timeCost === 'number' && quest.timeCost > 0 ? `${quest.timeCost} mins` : null,
+    } as unknown as Quest)) || []
+  ), [calendarMissionQuery.data]);
 
   const handleCreateView = async () => {
     if (!createViewName.trim() || !user) return;
@@ -2984,7 +3030,8 @@ export default function QuestsPage() {
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-1 p-1 rounded-lg bg-background/30 border border-primary/20">
             <button
-              onClick={() => { setViewMode('board'); setActiveCustomViewId(null); if (window.location.pathname === '/calendar') navigate('/missions'); }}
+              type="button"
+              onClick={() => { setViewMode('board'); setActiveCustomViewId(null); if (window.location.pathname === '/calendar') navigate('/missions'); void refetchQuests(undefined, true); }}
               aria-pressed={viewMode === 'board' && !activeCustomViewId}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-mono transition-colors ${
                 viewMode === 'board' && !activeCustomViewId
@@ -2996,7 +3043,8 @@ export default function QuestsPage() {
               Board
             </button>
             <button
-              onClick={() => { setViewMode('list'); setActiveCustomViewId(null); if (window.location.pathname === '/calendar') navigate('/missions'); }}
+              type="button"
+              onClick={() => { setViewMode('list'); setActiveCustomViewId(null); if (window.location.pathname === '/calendar') navigate('/missions'); void refetchQuests(undefined, true); }}
               aria-pressed={viewMode === 'list' && !activeCustomViewId}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-mono transition-colors ${
                 viewMode === 'list' && !activeCustomViewId
@@ -3877,7 +3925,7 @@ export default function QuestsPage() {
 
       {/* Calendar View */}
       {!activeCustomView && viewMode === 'calendar' && (() => {
-        const allQuests = applySearchAndFilters((quests || []).filter(q => !q.deletedAt));
+        const allQuests = applySearchAndFilters(calendarQuests.filter(q => !q.deletedAt));
         const questsByDate = new Map<string, Quest[]>();
         for (const q of allQuests) {
           if (q.startDate) {
@@ -3886,6 +3934,9 @@ export default function QuestsPage() {
             questsByDate.set(q.startDate, existing);
           }
         }
+        questsByDate.forEach((dayQuests: Quest[]) => {
+          dayQuests.sort((a, b) => (a.startTime || '').localeCompare(b.startTime || '') || a.title.localeCompare(b.title));
+        });
 
         const nowDate = new Date();
         const todayStr = formatDateStr(nowDate);
@@ -3964,6 +4015,23 @@ export default function QuestsPage() {
             <p className="border-b border-primary/10 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">
               Calendar is a scheduling view of your canonical Missions. Creating or editing here updates the same mission record and lifecycle.
             </p>
+            {calendarMissionQuery.isPending && (
+              <p role="status" className="border-b border-primary/10 px-3 py-2 text-xs text-muted-foreground">Loading this Calendar range…</p>
+            )}
+            {calendarMissionQuery.isError && (
+              <div role="alert" className="flex items-center justify-between gap-3 border-b border-destructive/20 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+                <span>This Calendar range could not be loaded.</span>
+                <button type="button" className="rounded border border-destructive/30 px-2 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive" onClick={() => calendarMissionQuery.refetch()}>Retry</button>
+              </div>
+            )}
+            {calendarMissionQuery.hasNextPage && (
+              <div className="flex items-center justify-between gap-3 border-b border-primary/10 px-3 py-2 text-xs text-muted-foreground">
+                <span>{calendarQuests.length} missions loaded for this range. More are available.</span>
+                <button type="button" className="rounded border border-primary/30 px-2 py-1 text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50" disabled={calendarMissionQuery.isFetchingNextPage} onClick={() => calendarMissionQuery.fetchNextPage()}>
+                  {calendarMissionQuery.isFetchingNextPage ? 'Loading…' : 'Load more'}
+                </button>
+              </div>
+            )}
             <div className="p-3 flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-1">
                 <button type="button" aria-label={`Previous ${calendarZoom}`} onClick={calNavPrev} className="h-8 w-8 inline-flex items-center justify-center rounded hover:bg-primary/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">

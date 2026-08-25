@@ -1,4 +1,6 @@
 export type CalendarMissionWindow = { startDate: string; startTime: string; endDate: string; endTime: string; durationMinutes: number };
+export type CalendarZoom = "year" | "month" | "week" | "day";
+export type CalendarVisibleRange = { from: string; to: string; days: number };
 
 export function isCalendarDate(value: string): boolean {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
@@ -12,6 +14,35 @@ export function shiftCalendarDate(value: string, days: number): string | null {
   const [year, month, day] = value.split("-").map(Number);
   const shifted = new Date(Date.UTC(year, month - 1, day + days));
   return `${shifted.getUTCFullYear()}-${String(shifted.getUTCMonth() + 1).padStart(2, "0")}-${String(shifted.getUTCDate()).padStart(2, "0")}`;
+}
+
+export function calendarDateDistance(from: string, to: string): number | null {
+  if (!isCalendarDate(from) || !isCalendarDate(to) || from > to) return null;
+  const [fromYear, fromMonth, fromDay] = from.split("-").map(Number);
+  const [toYear, toMonth, toDay] = to.split("-").map(Number);
+  return Math.round((Date.UTC(toYear, toMonth - 1, toDay) - Date.UTC(fromYear, fromMonth - 1, fromDay)) / 86_400_000) + 1;
+}
+
+export function calendarVisibleRange(zoom: CalendarZoom, anchor: string): CalendarVisibleRange | null {
+  if (!isCalendarDate(anchor)) return null;
+  const [year, month, day] = anchor.split("-").map(Number);
+  if (zoom === "year") {
+    const from = `${year}-01-01`;
+    const to = `${year}-12-31`;
+    return { from, to, days: calendarDateDistance(from, to)! };
+  }
+  if (zoom === "month") {
+    const first = new Date(Date.UTC(year, month - 1, 1));
+    const last = new Date(Date.UTC(year, month, 0));
+    const from = shiftCalendarDate(anchor.slice(0, 7) + "-01", -first.getUTCDay())!;
+    const to = shiftCalendarDate(`${last.getUTCFullYear()}-${String(last.getUTCMonth() + 1).padStart(2, "0")}-${String(last.getUTCDate()).padStart(2, "0")}`, 6 - last.getUTCDay())!;
+    return { from, to, days: calendarDateDistance(from, to)! };
+  }
+  if (zoom === "week") {
+    const to = shiftCalendarDate(anchor, 6)!;
+    return { from: anchor, to, days: 7 };
+  }
+  return { from: anchor, to: anchor, days: 1 };
 }
 
 export function parseCalendarDurationMinutes(value: unknown): number | null {

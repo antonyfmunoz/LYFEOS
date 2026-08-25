@@ -623,6 +623,7 @@ export const quests = pgTable("quests", {
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
   uniqueIndex("quests_user_lifecycle_key_unique_idx").on(table.userId, table.lifecycleKey),
+  index("quests_user_calendar_window_idx").on(table.userId, table.startDate, table.id).where(sql`${table.deletedAt} IS NULL AND ${table.startDate} IS NOT NULL`),
 ]);
 
 // A mission contract keeps purpose, expected proof, review mode, and safety

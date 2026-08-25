@@ -1,6 +1,6 @@
 import type { Express, Request, Response } from "express";
 import { z } from "zod";
-import { eq, desc, and, gte, asc, sql, inArray, isNotNull } from "drizzle-orm";
+import { eq, desc, and, gte, lte, asc, sql, inArray, isNotNull, isNull } from "drizzle-orm";
 import { storage } from "../storage";
 import { db } from "../db";
 import { logger, formatLocalDate, classifyMission } from "../utils";
@@ -12,6 +12,7 @@ import { createMissionLifecycle, deferMissionLifecycle, MissionLifecycleError, t
 import { convertTodoIdeasToMissions } from "../todo-idea-conversion";
 import { localMidnight } from "../todo-idea-parsing";
 import { refreshProgressionState } from "../progression";
+import { calendarDateDistance, isCalendarDate } from "@shared/calendar";
 
 declare module "express-session" {
   interface SessionData {
@@ -26,6 +27,30 @@ export function registerQuestRoutes(app: Express): void {
     targetDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
     reason: z.string().trim().min(2).max(280).optional(),
   });
+  const calendarMissionPageSchema = z.object({
+    from: z.string().refine(isCalendarDate),
+    to: z.string().refine(isCalendarDate),
+    limit: z.coerce.number().int().min(1).max(250).default(100),
+    cursor: z.string().max(160).optional(),
+    tz: z.string().trim().min(1).max(100).default("UTC"),
+  }).refine((value) => {
+    const days = calendarDateDistance(value.from, value.to);
+    return days !== null && days <= 370;
+  }, { message: "Calendar range must be ordered and no longer than 370 days." });
+
+  const decodeCalendarCursor = (value: string | undefined): { startDate: string; id: number } | null => {
+    if (!value) return null;
+    try {
+      const decoded = JSON.parse(Buffer.from(value, "base64url").toString("utf8"));
+      if (!decoded || !isCalendarDate(decoded.startDate) || !Number.isInteger(decoded.id) || decoded.id <= 0) return null;
+      return { startDate: decoded.startDate, id: decoded.id };
+    } catch {
+      return null;
+    }
+  };
+
+  const encodeCalendarCursor = (value: { startDate: string; id: number }): string =>
+    Buffer.from(JSON.stringify(value), "utf8").toString("base64url");
 
   const assignSkillContributions = async (input: {
     userId: number;
@@ -133,6 +158,63 @@ export function registerQuestRoutes(app: Express): void {
   };
 
   // QUEST ROUTES
+  app.get("/api/users/:userId/calendar-missions", isOwner, async (req: Request, res: Response) => {
+    const userId = Number(req.params.userId);
+    if (!Number.isInteger(userId) || userId <= 0) return res.status(400).json({ error: "Invalid user ID." });
+    const parsed = calendarMissionPageSchema.safeParse(req.query);
+    if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message || "Choose a valid Calendar range." });
+    const cursor = decodeCalendarCursor(parsed.data.cursor);
+    if (parsed.data.cursor && !cursor) return res.status(400).json({ error: "Invalid Calendar cursor." });
+    if (cursor && (cursor.startDate < parsed.data.from || cursor.startDate > parsed.data.to)) {
+      return res.status(400).json({ error: "Calendar cursor is outside the requested range." });
+    }
+    try {
+      if (!cursor) {
+        try {
+          const nowInTz = new Date(new Date().toLocaleString("en-US", { timeZone: parsed.data.tz }));
+          const todayStr = formatLocalDate(nowInTz);
+          await convertTodoIdeasToMissions({
+            userId,
+            includeLog: (date) => date < todayStr,
+            createdAtForLog: (date) => {
+              const createdAt = localMidnight(date);
+              createdAt.setDate(createdAt.getDate() + 1);
+              return createdAt;
+            },
+          });
+        } catch (todoError) {
+          logger.error("Error auto-converting todoIdeas before Calendar read", { userId, error: todoError instanceof Error ? todoError.message : "unknown" });
+        }
+      }
+      const conditions = [
+        eq(questsTable.userId, userId),
+        isNull(questsTable.deletedAt),
+        isNotNull(questsTable.startDate),
+        gte(questsTable.startDate, parsed.data.from),
+        lte(questsTable.startDate, parsed.data.to),
+      ];
+      if (cursor) {
+        conditions.push(sql`(${questsTable.startDate}, ${questsTable.id}) > (${cursor.startDate}, ${cursor.id})`);
+      }
+      const rows = await db.select().from(questsTable)
+        .where(and(...conditions))
+        .orderBy(asc(questsTable.startDate), asc(questsTable.id))
+        .limit(parsed.data.limit + 1);
+      const hasMore = rows.length > parsed.data.limit;
+      const page = rows.slice(0, parsed.data.limit);
+      const last = page.at(-1);
+      res.setHeader("Cache-Control", "private, no-store");
+      return res.json({
+        quests: page,
+        range: { from: parsed.data.from, to: parsed.data.to },
+        nextCursor: hasMore && last?.startDate ? encodeCalendarCursor({ startDate: last.startDate, id: last.id }) : null,
+      });
+    } catch (error) {
+      logger.error("Could not load Calendar mission window", { userId, error: error instanceof Error ? error.message : "unknown" });
+      return res.status(500).json({ error: "Could not load this Calendar range." });
+    }
+  });
+
   app.post("/api/quests/:questId/defer", isAuthenticated, async (req: Request, res: Response) => {
     const questId = Number(req.params.questId);
     if (!Number.isInteger(questId)) return res.status(400).json({ error: "Invalid mission." });
