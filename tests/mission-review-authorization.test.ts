@@ -89,4 +89,16 @@ describe("mission review authorization", () => {
     expect(migration).toContain('CREATE TABLE IF NOT EXISTS "mission_review_appeals"');
     expect(release).toContain('id: "0100_transformation_intelligence"');
   });
+
+  it("ships bounded Mission method and tool packs through both migration paths", () => {
+    const migration = source("migrations/0116_mission_contract_method_pack.sql");
+    const release = source("server/release-migrate.ts");
+    const schema = source("shared/schema.ts");
+    expect(migration).toContain('"method_steps" jsonb NOT NULL');
+    expect(migration).toContain('jsonb_array_length("method_steps") <= 12');
+    expect(migration).toContain('"tool_requirements" jsonb NOT NULL');
+    expect(release).toContain('id: "0116_mission_contract_method_pack"');
+    expect(schema).toContain('methodSteps: jsonb("method_steps")');
+    expect(schema).toContain('toolRequirements: jsonb("tool_requirements")');
+  });
 });

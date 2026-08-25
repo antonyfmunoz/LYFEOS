@@ -60,6 +60,9 @@ describeApi("Transformation intelligence API", () => {
     const primary = thread.data.thread.skills.find((skill: any) => skill.key === "primary");
     primarySkillId = primary.id;
     initialPrimaryExperience = primary.recordedExperience;
+    expect(thread.data.thread.skillGraph.nextPractice.contract.methodSteps).toHaveLength(3);
+    expect(thread.data.thread.skillGraph.nextPractice.contract.toolRequirements).toEqual([]);
+    expect(thread.data.thread.skillGraph.nextPractice.advancement.disclosure).toContain("not certification");
   });
 
   it("stores explainable creation context and calibration for a canonical mission", async () => {
@@ -87,6 +90,8 @@ describeApi("Transformation intelligence API", () => {
     const contract = await request("PUT", `/api/quests/${questId}/contract`, {
       purpose: "Practice an observable discovery conversation.",
       expectedOutput: "A concise observation of the questions asked and what was learned.",
+      methodSteps: ["Prepare three open questions.", "Run one bounded conversation.", "Record what changed after the response."],
+      toolRequirements: ["Conversation notes"],
       capabilityTargets: ["Discovery"],
       prerequisites: [],
       requiredEvidence: ["Conversation observation"],
@@ -102,6 +107,8 @@ describeApi("Transformation intelligence API", () => {
     // rubric with the owner's weighted definition produces the immutable v2.
     expect(contract.data.contract.rubricVersion).toBe(2);
     expect(contract.data.contract.rubricDefinition[0].weight).toBe(3);
+    expect(contract.data.contract.methodSteps).toEqual(["Prepare three open questions.", "Run one bounded conversation.", "Record what changed after the response."]);
+    expect(contract.data.contract.toolRequirements).toEqual(["Conversation notes"]);
     expect(contract.data.contract.acceptanceContextSnapshot.capturedAt).toBeTruthy();
     expect((await request("POST", `/api/quests/${questId}/evidence`, { sourceType: "observation", summary: "Recorded the questions, response, and next correction.", confidence: "self_reported" }, ownerCookie)).status).toBe(201);
     expect((await request("POST", `/api/quests/${questId}/toggle`, undefined, ownerCookie)).status).toBe(200);
@@ -153,5 +160,13 @@ describeApi("Transformation intelligence API", () => {
     expect(reopened.status).toBe(200);
     const thread = await request("GET", "/api/transformation-thread", undefined, ownerCookie);
     expect(thread.data.thread.skills.find((skill: any) => skill.id === primarySkillId).recordedExperience).toBe(initialPrimaryExperience);
+  });
+
+  it("keeps the Mission method pack in the owner's portable export", async () => {
+    const exported = await request("GET", "/api/account/export", undefined, ownerCookie);
+    expect(exported.status).toBe(200);
+    const contract = exported.data.data.mission_contracts.find((row: any) => row.quest_id === questId);
+    expect(contract.method_steps).toEqual(["Prepare three open questions.", "Run one bounded conversation.", "Record what changed after the response."]);
+    expect(contract.tool_requirements).toEqual(["Conversation notes"]);
   });
 });

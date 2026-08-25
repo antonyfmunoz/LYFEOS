@@ -177,6 +177,12 @@ export function registerQuestRoutes(app: Express): void {
       questId: quest.id,
       purpose: `Practice ${selectedSkills.map((skill) => skill.name).join(", ")}.`,
       expectedOutput: `Record what happened while completing ${quest.title}.`,
+      methodSteps: [
+        "Complete one bounded real-world attempt of the mission.",
+        "Record what happened and attach the declared observation or artifact.",
+        "Review the result against the proof plan before claiming capability progress.",
+      ],
+      toolRequirements: [],
       capabilityTargets: selectedSkills.map((skill) => skill.name),
       prerequisites: [],
       requiredEvidence: ["A short observation or artifact showing what happened."],

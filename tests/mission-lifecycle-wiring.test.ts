@@ -149,6 +149,19 @@ describe("mission lifecycle wiring", () => {
     expect(panel).toContain("Update inputs");
   });
 
+  it("projects the smallest sufficient first-time path without adding another dashboard authority", () => {
+    const threads = readSource("server/routes/transformation-threads.ts");
+    const panel = readSource("client/src/components/dashboard/TransformationThreadPanel.tsx");
+    expect(threads).toContain("contract: recommendedMission ? contractByQuest.get(recommendedMission.id) || null : null");
+    expect(threads).toContain("Advancement reflects reviewed LyfeOS practice evidence");
+    expect(panel).toContain("Current path");
+    expect(panel).toContain("Method and tools");
+    expect(panel).toContain("Proof standard");
+    expect(panel).toContain("Support and review");
+    expect(panel).toContain("Advancement");
+    expect(panel).toContain("You own this private plan");
+  });
+
   it("captures decision context for assistant proposals and every canonical mission creation", () => {
     const lifecycle = readSource("server/mission-lifecycle.ts");
     const chat = readSource("server/replit_integrations/chat/routes.ts");

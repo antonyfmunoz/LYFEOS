@@ -11,6 +11,7 @@ import { storage } from "../storage";
 import { buildPlanningContextSnapshot } from "../context-snapshot";
 
 const textList = z.array(z.string().trim().min(1).max(280)).max(8);
+const methodList = z.array(z.string().trim().min(1).max(280)).max(12);
 const rubricCriterionSchema = z.object({
   id: z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/),
   requirement: z.string().trim().min(1).max(280),
@@ -21,6 +22,8 @@ const rubricCriterionSchema = z.object({
 const contractSchema = z.object({
   purpose: z.string().trim().min(3).max(800),
   expectedOutput: z.string().trim().min(3).max(1200),
+  methodSteps: methodList.default([]),
+  toolRequirements: methodList.default([]),
   capabilityTargets: textList.default([]),
   prerequisites: textList.default([]),
   requiredEvidence: textList.default([]),

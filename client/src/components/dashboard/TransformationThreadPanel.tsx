@@ -72,6 +72,28 @@ type TransformationThread = {
         actions: Array<{ type: string; label: string; explanation: string }>;
         disclosure: string;
       };
+      contract: null | {
+        purpose: string;
+        expectedOutput: string;
+        methodSteps: string[];
+        toolRequirements: string[];
+        requiredEvidence: string[];
+        rubricDefinition: Array<{ id: string; requirement: string; guidance: string; weight: number; required: boolean }>;
+        reviewMode: "self" | "human";
+        escalationPath: string | null;
+        stopConditions: string[];
+      };
+      advancement: {
+        currentStatus: "locked" | "unlocked" | "mastered";
+        unmetRequirements: string[];
+        completedMissionCount: number;
+        requiredMissionCount: number;
+        reviewCount: number;
+        requiredReviewCount: number;
+        reviewedExperience: number;
+        requiredExperience: number;
+        disclosure: string;
+      };
     };
   };
   progression?: { level: number; rank: { name: string; color: string }; badges: Array<{ key: string; name: string; description: string }>; competenceSignals: { practicingSkills: number; evidenceBackedSkills: number; note: string } };
@@ -382,7 +404,8 @@ export function TransformationThreadPanel() {
             </div>
             {nextPractice && (
               <div className="mt-3 rounded-md border border-primary/20 bg-primary/5 p-3">
-                <p className="text-[10px] font-mono uppercase tracking-[0.12em] text-primary">Recommended next practice · {nextPractice.skillName}</p>
+                <p className="text-[10px] font-mono uppercase tracking-[0.12em] text-primary">Current path · {nextPractice.skillName}</p>
+                <p className="mt-1 text-[11px] text-muted-foreground"><span className="text-foreground">Objective:</span> {thread.focus}</p>
                 <p className="mt-1 text-sm text-foreground">{nextPractice.title}</p>
                 <p className={`mt-1 text-xs ${nextPractice.fitsCurrentCapacity ? "text-muted-foreground" : "text-amber-200"}`}>{nextPractice.description}</p>
                 <div className="mt-2 flex flex-wrap gap-2 text-[10px] text-muted-foreground">
@@ -390,6 +413,37 @@ export function TransformationThreadPanel() {
                   <span className="rounded-full border border-primary/20 px-2 py-1">Evidence confidence: {nextPractice.difficultyCalibration.confidence}</span>
                   <span className="rounded-full border border-primary/20 px-2 py-1">Current capacity: {nextPractice.planningContext.capacity.availability}</span>
                 </div>
+                <dl className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                  <div className="rounded-md border border-primary/15 bg-background/25 p-2">
+                    <dt className="text-[10px] font-mono uppercase tracking-[0.1em] text-primary/80">Method and tools</dt>
+                    <dd className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                      {nextPractice.contract?.methodSteps.length ? nextPractice.contract.methodSteps.slice(0, 2).join(" → ") : "Declare the method in Mission Detail before beginning."}
+                      {nextPractice.contract?.toolRequirements.length ? ` Tools: ${nextPractice.contract.toolRequirements.join(" · ")}.` : " No additional tool is declared."}
+                    </dd>
+                  </div>
+                  <div className="rounded-md border border-primary/15 bg-background/25 p-2">
+                    <dt className="text-[10px] font-mono uppercase tracking-[0.1em] text-primary/80">Proof standard</dt>
+                    <dd className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                      {nextPractice.contract?.expectedOutput || "Define an observable output before practice."}
+                      {nextPractice.contract?.requiredEvidence[0] ? ` Evidence: ${nextPractice.contract.requiredEvidence[0]}` : ""}
+                      {nextPractice.contract?.rubricDefinition[0]?.requirement ? ` Required: ${nextPractice.contract.rubricDefinition[0].requirement}` : ""}
+                    </dd>
+                  </div>
+                  <div className="rounded-md border border-primary/15 bg-background/25 p-2">
+                    <dt className="text-[10px] font-mono uppercase tracking-[0.1em] text-primary/80">Support and review</dt>
+                    <dd className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                      {nextPractice.contract?.escalationPath || nextPractice.supportPlan?.actions[0]?.explanation || "Pause, defer, or right-size the mission if blocked."}
+                      {nextPractice.contract ? ` Review: ${nextPractice.contract.reviewMode === "human" ? "authorized human" : "self-review"}.` : " Review mode is not declared yet."}
+                    </dd>
+                  </div>
+                  <div className="rounded-md border border-primary/15 bg-background/25 p-2">
+                    <dt className="text-[10px] font-mono uppercase tracking-[0.1em] text-primary/80">Advancement</dt>
+                    <dd className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                      {nextPractice.advancement.completedMissionCount}/{nextPractice.advancement.requiredMissionCount} reviewed missions · {nextPractice.advancement.reviewCount}/{nextPractice.advancement.requiredReviewCount} reviews · {nextPractice.advancement.reviewedExperience}/{nextPractice.advancement.requiredExperience} reviewed XP.
+                    </dd>
+                  </div>
+                </dl>
+                <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground/80">You own this private plan and may pause, defer, or revise it. {nextPractice.advancement.disclosure}</p>
                 <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">{nextPractice.selectionBasis}</p>
                 {nextPractice.difficultyCalibration.rationale.slice(0, 2).map((reason) => <p key={reason} className="mt-1 text-[10px] leading-relaxed text-muted-foreground">• {reason}</p>)}
                 {nextPractice.deferralCount >= 2 && <p className="mt-2 text-[11px] leading-relaxed text-amber-200">This mission has been deferred {nextPractice.deferralCount} times. That is a scheduling signal, not a failure—consider reducing its scope, changing its timing, or asking for support.</p>}

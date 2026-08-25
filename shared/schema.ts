@@ -657,6 +657,8 @@ export const missionContracts = pgTable("mission_contracts", {
   questId: integer("quest_id").notNull().references(() => quests.id, { onDelete: "cascade" }),
   purpose: text("purpose").notNull(),
   expectedOutput: text("expected_output").notNull(),
+  methodSteps: jsonb("method_steps").notNull().default([]),
+  toolRequirements: jsonb("tool_requirements").notNull().default([]),
   capabilityTargets: jsonb("capability_targets").notNull().default([]),
   prerequisites: jsonb("prerequisites").notNull().default([]),
   requiredEvidence: jsonb("required_evidence").notNull().default([]),

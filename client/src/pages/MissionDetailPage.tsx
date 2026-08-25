@@ -18,6 +18,8 @@ type MissionContractBundle = {
     id: number;
     purpose: string;
     expectedOutput: string;
+    methodSteps: string[];
+    toolRequirements: string[];
     requiredEvidence: string[];
     rubricDefinition: Array<{ id: string; requirement: string; guidance: string; weight: 1 | 2 | 3; required: boolean }>;
     rubricVersion: number;
@@ -96,6 +98,8 @@ export default function MissionDetailPage() {
   });
   const [purpose, setPurpose] = useState("");
   const [expectedOutput, setExpectedOutput] = useState("");
+  const [methodStepsText, setMethodStepsText] = useState("");
+  const [toolRequirementsText, setToolRequirementsText] = useState("");
   const [evidenceRequirement, setEvidenceRequirement] = useState("");
   const [riskLevel, setRiskLevel] = useState<"low" | "medium" | "high">("low");
   const [reviewMode, setReviewMode] = useState<"self" | "human">("self");
@@ -123,6 +127,8 @@ export default function MissionDetailPage() {
       body: JSON.stringify({
         purpose,
         expectedOutput,
+        methodSteps: methodStepsText.split(/\r?\n/).map((step) => step.trim()).filter(Boolean).slice(0, 12),
+        toolRequirements: toolRequirementsText.split(/\r?\n/).map((tool) => tool.trim()).filter(Boolean).slice(0, 12),
         requiredEvidence: evidenceRequirement ? [evidenceRequirement] : [],
         reviewMode,
         riskLevel,
@@ -511,6 +517,8 @@ export default function MissionDetailPage() {
                 <div className="grid gap-2">
                   <Input value={purpose} onChange={(event) => setPurpose(event.target.value)} placeholder="Why does this mission matter?" />
                   <Input value={expectedOutput} onChange={(event) => setExpectedOutput(event.target.value)} placeholder="What observable output will show progress?" />
+                  <Textarea value={methodStepsText} onChange={(event) => setMethodStepsText(event.target.value)} placeholder={"Method steps, one per line (optional)\nExample: Complete one bounded attempt"} className="min-h-20" maxLength={3400} />
+                  <Textarea value={toolRequirementsText} onChange={(event) => setToolRequirementsText(event.target.value)} placeholder={"Tools or references, one per line (optional)"} className="min-h-16" maxLength={3400} />
                   <Input value={evidenceRequirement} onChange={(event) => setEvidenceRequirement(event.target.value)} placeholder="What proof will you attach? (optional)" />
                   <div className="grid gap-2 sm:grid-cols-2">
                     <select aria-label="Mission risk level" value={riskLevel} onChange={(event) => setRiskLevel(event.target.value as typeof riskLevel)} className="h-9 rounded-md border border-primary/20 bg-background/40 px-2 text-sm text-foreground">
@@ -532,6 +540,8 @@ export default function MissionDetailPage() {
               ) : (
                 <div className="space-y-3 text-sm">
                   <p><span className="text-muted-foreground">Purpose:</span> {contractQuery.data.contract.purpose}</p>
+                  {contractQuery.data.contract.methodSteps.length ? <div><p><span className="text-muted-foreground">Method:</span></p><ol className="mt-1 list-decimal space-y-1 pl-5 text-xs text-muted-foreground">{contractQuery.data.contract.methodSteps.map((step, index) => <li key={`${index}-${step}`}>{step}</li>)}</ol></div> : null}
+                  {contractQuery.data.contract.toolRequirements.length ? <p><span className="text-muted-foreground">Tools:</span> {contractQuery.data.contract.toolRequirements.join(" · ")}</p> : null}
                   <p><span className="text-muted-foreground">Expected proof:</span> {contractQuery.data.contract.expectedOutput}</p>
                   {contractQuery.data.contract.acceptanceContextSnapshot?.capturedAt ? <p className="text-xs text-muted-foreground">Accepted with capacity recorded as {contractQuery.data.contract.acceptanceContextSnapshot.capacity?.availability || "unknown"} on {new Date(contractQuery.data.contract.acceptanceContextSnapshot.capturedAt).toLocaleString()}. This context can explain later right-sizing; it does not lock the plan.</p> : null}
                   {contractQuery.data.contract.requiredEvidence.length ? <div>

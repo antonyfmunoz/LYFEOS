@@ -314,7 +314,18 @@ export function registerTransformationThreadRoutes(app: Express): void {
           .from(missionEvidence)
           .innerJoin(missionContracts, eq(missionContracts.id, missionEvidence.missionContractId))
           .where(and(eq(missionEvidence.userId, userId), inArray(missionContracts.questId, unfinishedIds))),
-        db.select({ questId: missionContracts.questId, requiredEvidence: missionContracts.requiredEvidence })
+        db.select({
+          questId: missionContracts.questId,
+          purpose: missionContracts.purpose,
+          expectedOutput: missionContracts.expectedOutput,
+          methodSteps: missionContracts.methodSteps,
+          toolRequirements: missionContracts.toolRequirements,
+          requiredEvidence: missionContracts.requiredEvidence,
+          rubricDefinition: missionContracts.rubricDefinition,
+          reviewMode: missionContracts.reviewMode,
+          escalationPath: missionContracts.escalationPath,
+          stopConditions: missionContracts.stopConditions,
+        })
           .from(missionContracts)
           .where(and(eq(missionContracts.userId, userId), inArray(missionContracts.questId, unfinishedIds))),
       ])
@@ -331,6 +342,17 @@ export function registerTransformationThreadRoutes(app: Express): void {
       contract.questId,
       Array.isArray(contract.requiredEvidence) ? contract.requiredEvidence.length : 0,
     ]));
+    const contractByQuest = new Map(candidateContracts.map((contract) => [contract.questId, {
+      purpose: contract.purpose,
+      expectedOutput: contract.expectedOutput,
+      methodSteps: Array.isArray(contract.methodSteps) ? contract.methodSteps : [],
+      toolRequirements: Array.isArray(contract.toolRequirements) ? contract.toolRequirements : [],
+      requiredEvidence: Array.isArray(contract.requiredEvidence) ? contract.requiredEvidence : [],
+      rubricDefinition: Array.isArray(contract.rubricDefinition) ? contract.rubricDefinition : [],
+      reviewMode: contract.reviewMode,
+      escalationPath: contract.escalationPath,
+      stopConditions: Array.isArray(contract.stopConditions) ? contract.stopConditions : [],
+    }]));
     const candidates: PracticeMissionCandidate[] = unfinishedMissions.map((mission) => ({
       ...mission,
       skillNodeIds: skillsByQuest.get(mission.id) || [],
@@ -399,6 +421,18 @@ export function registerTransformationThreadRoutes(app: Express): void {
             planningContext: currentPlanningContext,
             difficultyCalibration,
             supportPlan,
+            contract: recommendedMission ? contractByQuest.get(recommendedMission.id) || null : null,
+            advancement: {
+              currentStatus: recommendedSkill.status,
+              unmetRequirements: recommendedSkill.unmetRequirements,
+              completedMissionCount: recommendedSkill.completedMissionCount,
+              requiredMissionCount: recommendedSkill.masteryRequirements.minCompletedMissions,
+              reviewCount,
+              requiredReviewCount: recommendedSkill.masteryRequirements.minReviews,
+              reviewedExperience: recommendedSkill.experience,
+              requiredExperience: recommendedSkill.masteryRequirements.minExperience,
+              disclosure: "Advancement reflects reviewed LyfeOS practice evidence. It is not certification, authority, or a measure of personal worth.",
+            },
             selectionBasis: recommendedMission
               ? "This mission is explicitly linked to the recommended capability and is the closest available fit to the evidence-calibrated scope."
               : "No unfinished mission is explicitly linked to this capability. Create one and declare its proof before practice begins.",
@@ -669,6 +703,12 @@ export function registerTransformationThreadRoutes(app: Express): void {
             questId: quest.id,
             purpose: starterMissions[index]?.rationale || `Practice within ${thread.title}.`,
             expectedOutput: starterMissions[index]?.description || `Record what happened while completing ${quest.title}.`,
+            methodSteps: [
+              "Complete one bounded real-world attempt of the mission.",
+              "Record what happened and attach the declared observation or artifact.",
+              "Review the result against the proof plan before claiming capability progress.",
+            ],
+            toolRequirements: [],
             capabilityTargets: (starterMissions[index]?.skillContributions || []).map((contribution) => contribution.key),
             prerequisites: [],
             requiredEvidence: ["A short observation or artifact showing what happened."],
