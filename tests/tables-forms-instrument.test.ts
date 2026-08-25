@@ -232,20 +232,59 @@ describe("Tables and Forms instruments", () => {
     expect(editor).toContain("serializeWorkspaceTableCsv(definition, query.data!.rows)");
   });
 
-  it("evaluates bounded numeric formulas deterministically and rejects unsafe or circular definitions", () => {
+  it("preserves bounded numeric formulas and defaults legacy definitions to numeric results", () => {
     const computedDefinition = workspaceDatabaseDefinitionSchema.parse({ version: 1, columns: [
       { id: "weight", name: "Weight", type: "number", required: false, options: [] },
       { id: "reps", name: "Reps", type: "number", required: false, options: [] },
       { id: "volume", name: "Volume", type: "formula", required: false, options: [], formula: { expression: "[weight] * [reps]" } },
       { id: "double", name: "Double", type: "formula", required: false, options: [], formula: { expression: "([volume] + 2) * 2" } },
     ] });
+    expect(computedDefinition.columns[2].formula?.resultType).toBe("number");
     expect(workspaceFormulaReferences("([weight] + [reps]) / [weight]")).toEqual(["weight", "reps"]);
     expect(evaluateWorkspaceFormulas(computedDefinition, { weight: 10, reps: 4 })).toEqual({ volume: 40, double: 84 });
     expect(evaluateWorkspaceFormulas(computedDefinition, { weight: 10 })).toEqual({ volume: null, double: null });
-    expect(() => workspaceFormulaReferences("process.exit()")).toThrow("numbers");
+  });
+
+  it("evaluates typed scalar formulas with deterministic functions, comparisons, and lazy branches", () => {
+    const typedDefinition = workspaceDatabaseDefinitionSchema.parse({ version: 1, columns: [
+      { id: "first", name: "First", type: "text", required: false, options: [] },
+      { id: "last", name: "Last", type: "text", required: false, options: [] },
+      { id: "score", name: "Score", type: "number", required: false, options: [] },
+      { id: "adjustment", name: "Adjustment", type: "number", required: false, options: [] },
+      { id: "start", name: "Start", type: "date", required: false, options: [] },
+      { id: "end", name: "End", type: "date", required: false, options: [] },
+      { id: "ready", name: "Ready", type: "boolean", required: false, options: [] },
+      { id: "full", name: "Full name", type: "formula", required: false, options: [], formula: { expression: 'CONCAT([first], " ", UPPER([last]))', resultType: "text" } },
+      { id: "elapsed", name: "Elapsed", type: "formula", required: false, options: [], formula: { expression: "DAYS_BETWEEN([start], [end])", resultType: "number" } },
+      { id: "review", name: "Review", type: "formula", required: false, options: [], formula: { expression: "ADD_DAYS([end], 7)", resultType: "date" } },
+      { id: "qualified", name: "Qualified", type: "formula", required: false, options: [], formula: { expression: "AND([ready], [score] >= 10)", resultType: "boolean" } },
+      { id: "status", name: "Status", type: "formula", required: false, options: [], formula: { expression: 'IF([qualified], "Ready", "Not ready")', resultType: "text" } },
+      { id: "rounded", name: "Rounded", type: "formula", required: false, options: [], formula: { expression: "MAX(ROUND(ABS([adjustment]), 1), MIN([score], 20))", resultType: "number" } },
+      { id: "fallback", name: "Fallback", type: "formula", required: false, options: [], formula: { expression: 'COALESCE([first], "Unknown")', resultType: "text" } },
+      { id: "last_length", name: "Last length", type: "formula", required: false, options: [], formula: { expression: "LENGTH(LOWER([last]))", resultType: "number" } },
+      { id: "last_empty", name: "Last empty", type: "formula", required: false, options: [], formula: { expression: "OR(IS_EMPTY([last]), NOT([ready]))", resultType: "boolean" } },
+      { id: "lazy", name: "Lazy", type: "formula", required: false, options: [], formula: { expression: "IF(TRUE, 1, 1 / 0)", resultType: "number" } },
+      { id: "mismatch", name: "Mismatch", type: "formula", required: false, options: [], formula: { expression: "1", resultType: "boolean" } },
+      { id: "invalid_date", name: "Invalid date", type: "formula", required: false, options: [], formula: { expression: '"2026-02-31"', resultType: "date" } },
+    ] });
+    expect(workspaceFormulaReferences('IF([ready], CONCAT([first], [last]), "")')).toEqual(["ready", "first", "last"]);
+    expect(evaluateWorkspaceFormulas(typedDefinition, { first: "Ada", last: "Lovelace", score: 12, adjustment: -12.34, start: "2026-08-01", end: "2026-08-11", ready: true })).toEqual({
+      full: "Ada LOVELACE", elapsed: 10, review: "2026-08-18", qualified: true, status: "Ready", rounded: 12.3, fallback: "Ada", last_length: 8, last_empty: false, lazy: 1, mismatch: "#TYPE!", invalid_date: "#DATE!",
+    });
+    expect(evaluateWorkspaceFormulas(typedDefinition, { score: 3, ready: false })).toMatchObject({ fallback: "Unknown", qualified: false, status: "Not ready", last_empty: true, lazy: 1 });
+  });
+
+  it("rejects unsafe, malformed, circular, and non-scalar formula definitions", () => {
+    expect(() => workspaceFormulaReferences("process.exit()")).toThrow("supported functions");
+    expect(() => workspaceFormulaReferences("IF(TRUE, 1")).toThrow("comma separated");
     expect(workspaceDatabaseDefinitionSchema.safeParse({ version: 1, columns: [
       { id: "a", name: "A", type: "formula", required: false, options: [], formula: { expression: "[b]" } },
       { id: "b", name: "B", type: "formula", required: false, options: [], formula: { expression: "[a]" } },
+    ] }).success).toBe(false);
+    expect(workspaceDatabaseDefinitionSchema.safeParse({ version: 1, columns: [
+      { id: "name", name: "Name", type: "text", required: false, options: [] },
+      { id: "links", name: "Links", type: "relation", required: false, options: [], relation: { databaseId: 9, displayColumnId: "name" } },
+      { id: "bad", name: "Bad", type: "formula", required: false, options: [], formula: { expression: "[links]", resultType: "number" } },
     ] }).success).toBe(false);
   });
 
@@ -325,7 +364,9 @@ describe("Tables and Forms instruments", () => {
     const form = source("client/src/pages/FormPage.tsx");
     expect(columnEditor).toContain('["text", "number", "boolean", "date", "select", "url", "relation", "formula", "rollup"]');
     expect(columnEditor).toContain("Target Table");
-    expect(columnEditor).toContain("[weight] * [reps]");
+    expect(columnEditor).toContain("formula result type");
+    expect(columnEditor).toContain("ROUND([weight] * [reps], 1)");
+    expect(columnEditor).toContain("DAYS_BETWEEN");
     expect(columnEditor).toContain("Aggregation");
     expect(editor).toContain("Relations store owned row IDs; formulas and rollups are calculated read-only.");
     expect(editor).toContain("!isWorkspaceComputedColumn(column)");

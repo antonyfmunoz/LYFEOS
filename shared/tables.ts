@@ -5,7 +5,8 @@ export const workspaceRelationConfigSchema = z.object({
   databaseId: z.number().int().positive(),
   displayColumnId: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/),
 }).strict();
-export const workspaceFormulaConfigSchema = z.object({ expression: z.string().trim().min(1).max(300) }).strict();
+export const workspaceFormulaResultTypeSchema = z.enum(["number", "text", "boolean", "date"]);
+export const workspaceFormulaConfigSchema = z.object({ expression: z.string().trim().min(1).max(300), resultType: workspaceFormulaResultTypeSchema.default("number") }).strict();
 export const workspaceRollupConfigSchema = z.object({
   relationColumnId: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/),
   targetColumnId: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/),
@@ -52,7 +53,7 @@ export const workspaceDatabaseDefinitionSchema = z.object({
       for (const reference of references(column)) {
         const dependency = columns.get(reference);
         if (!dependency) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["columns", index, "formula"], message: `Formula reference ${reference} does not exist.` });
-        else if (dependency.type !== "number" && dependency.type !== "formula") ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["columns", index, "formula"], message: `Formula reference ${reference} must be a number or formula column.` });
+        else if (!["text", "number", "boolean", "date", "select", "url", "formula"].includes(dependency.type)) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["columns", index, "formula"], message: `Formula reference ${reference} must be a stored scalar or formula column.` });
       }
     }
     if (column.type === "rollup" && column.rollup && columns.get(column.rollup.relationColumnId)?.type !== "relation") {
@@ -238,81 +239,125 @@ export function validateWorkspaceFormSubmission(database: WorkspaceDatabaseDefin
   return validateWorkspaceRow(database, values, visibleWorkspaceFormFieldIds(definition, values));
 }
 
-type WorkspaceFormulaOperator = "+" | "-" | "*" | "/" | "(" | ")";
-type WorkspaceFormulaToken = { kind: "number"; value: number } | { kind: "reference"; value: string } | { kind: "operator"; value: WorkspaceFormulaOperator };
+type WorkspaceFormulaValue = number | string | boolean | null;
+type WorkspaceFormulaToken = { kind: "number"; value: number } | { kind: "string" | "reference" | "identifier" | "operator"; value: string };
+type WorkspaceFormulaNode = { kind: "literal"; value: WorkspaceFormulaValue } | { kind: "reference"; value: string } | { kind: "unary"; operator: "+" | "-"; value: WorkspaceFormulaNode } | { kind: "binary"; operator: string; left: WorkspaceFormulaNode; right: WorkspaceFormulaNode } | { kind: "call"; name: string; arguments: WorkspaceFormulaNode[] };
+const workspaceFormulaFunctions = new Set(["ABS", "ROUND", "MIN", "MAX", "CONCAT", "LOWER", "UPPER", "LENGTH", "IF", "DAYS_BETWEEN", "ADD_DAYS", "IS_EMPTY", "AND", "OR", "NOT", "COALESCE"]);
+
+function isWorkspaceIsoDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
 
 function tokenizeWorkspaceFormula(expression: string): WorkspaceFormulaToken[] {
-  const tokens: WorkspaceFormulaToken[] = [];
-  let index = 0;
+  const tokens: WorkspaceFormulaToken[] = []; let index = 0;
   while (index < expression.length) {
-    const rest = expression.slice(index);
-    const whitespace = rest.match(/^\s+/); if (whitespace) { index += whitespace[0].length; continue; }
-    const reference = rest.match(/^\[([A-Za-z0-9_-]{1,64})\]/);
-    if (reference) { tokens.push({ kind: "reference", value: reference[1] }); index += reference[0].length; continue; }
-    const number = rest.match(/^(?:\d+(?:\.\d*)?|\.\d+)/);
-    if (number) { tokens.push({ kind: "number", value: Number(number[0]) }); index += number[0].length; continue; }
-    const operator = rest[0];
-    if (["+", "-", "*", "/", "(", ")"].includes(operator)) { tokens.push({ kind: "operator", value: operator as WorkspaceFormulaOperator }); index += 1; continue; }
-    throw new Error("Use numbers, [column_id] references, parentheses, and + − × ÷ only.");
+    const rest = expression.slice(index); const whitespace = rest.match(/^\s+/); if (whitespace) { index += whitespace[0].length; continue; }
+    const reference = rest.match(/^\[([A-Za-z0-9_-]{1,64})\]/); if (reference) { tokens.push({ kind: "reference", value: reference[1] }); index += reference[0].length; continue; }
+    if (rest[0] === '"') {
+      let end = 1; let escaped = false;
+      for (; end < rest.length; end += 1) { const character = rest[end]; if (!escaped && character === '"') break; if (!escaped && character === "\\") escaped = true; else escaped = false; }
+      if (end >= rest.length) throw new Error("A formula text literal is not closed.");
+      let value: string; try { value = JSON.parse(rest.slice(0, end + 1)); } catch { throw new Error("Formula text literals use JSON-style quotes and escapes."); }
+      tokens.push({ kind: "string", value }); index += end + 1; continue;
+    }
+    const number = rest.match(/^(?:\d+(?:\.\d*)?|\.\d+)/); if (number) { tokens.push({ kind: "number", value: Number(number[0]) }); index += number[0].length; continue; }
+    const identifier = rest.match(/^[A-Za-z_][A-Za-z0-9_]*/); if (identifier) { tokens.push({ kind: "identifier", value: identifier[0].toUpperCase() }); index += identifier[0].length; continue; }
+    const comparison = rest.match(/^(?:>=|<=|!=|=|>|<)/); if (comparison) { tokens.push({ kind: "operator", value: comparison[0] }); index += comparison[0].length; continue; }
+    if (["+", "-", "*", "/", "(", ")", ","].includes(rest[0])) { tokens.push({ kind: "operator", value: rest[0] }); index += 1; continue; }
+    throw new Error("Use literals, [column_id] references, supported functions, comparisons, parentheses, and + − × ÷ only.");
   }
   if (!tokens.length || tokens.length > 100) throw new Error("A formula must contain 1 to 100 tokens.");
   return tokens;
 }
 
-export function workspaceFormulaReferences(expression: string): string[] {
-  return Array.from(new Set(tokenizeWorkspaceFormula(expression).filter((token): token is Extract<WorkspaceFormulaToken, { kind: "reference" }> => token.kind === "reference").map((token) => token.value)));
+function parseWorkspaceFormula(expression: string): WorkspaceFormulaNode {
+  const tokens = tokenizeWorkspaceFormula(expression); let position = 0;
+  const match = (value: string) => tokens[position]?.kind === "operator" && tokens[position]?.value === value;
+  const primary = (): WorkspaceFormulaNode => {
+    const token = tokens[position]; if (!token) throw new Error("The formula ends before a value.");
+    if (token.kind === "operator" && (token.value === "+" || token.value === "-")) { position += 1; return { kind: "unary", operator: token.value, value: primary() }; }
+    if (match("(")) { position += 1; const value = comparison(); if (!match(")")) throw new Error("The formula has an unmatched parenthesis."); position += 1; return value; }
+    if (token.kind === "number" || token.kind === "string") { position += 1; return { kind: "literal", value: token.value }; }
+    if (token.kind === "reference") { position += 1; return { kind: "reference", value: token.value }; }
+    if (token.kind === "identifier") {
+      position += 1;
+      if (token.value === "TRUE" || token.value === "FALSE") return { kind: "literal", value: token.value === "TRUE" };
+      if (!workspaceFormulaFunctions.has(token.value)) throw new Error(`Unsupported formula function: ${token.value}.`);
+      if (!match("(")) throw new Error(`${token.value} must be followed by parentheses.`); position += 1;
+      const argumentsList: WorkspaceFormulaNode[] = [];
+      if (!match(")")) { while (true) { argumentsList.push(comparison()); if (argumentsList.length > 20) throw new Error("A formula function can contain at most 20 arguments."); if (match(")")) break; if (!match(",")) throw new Error(`${token.value} arguments must be comma separated.`); position += 1; } }
+      position += 1; return { kind: "call", name: token.value, arguments: argumentsList };
+    }
+    throw new Error("The formula expected a literal, function, column reference, or parenthesis.");
+  };
+  const multiplication = (): WorkspaceFormulaNode => { let value = primary(); while (match("*") || match("/")) { const operator = String(tokens[position].value); position += 1; value = { kind: "binary", operator, left: value, right: primary() }; } return value; };
+  const addition = (): WorkspaceFormulaNode => { let value = multiplication(); while (match("+") || match("-")) { const operator = String(tokens[position].value); position += 1; value = { kind: "binary", operator, left: value, right: multiplication() }; } return value; };
+  const comparison = (): WorkspaceFormulaNode => { let value = addition(); if (["=", "!=", ">", ">=", "<", "<="].some(match)) { const operator = String(tokens[position].value); position += 1; value = { kind: "binary", operator, left: value, right: addition() }; } return value; };
+  const tree = comparison(); if (position !== tokens.length) throw new Error("The formula contains an unexpected token."); return tree;
 }
 
-function calculateWorkspaceFormula(expression: string, resolve: (columnId: string) => number | null): number | null {
-  const tokens = tokenizeWorkspaceFormula(expression); let position = 0;
-  const primary = (): number | null => {
-    const token = tokens[position]; if (!token) throw new Error("The formula ends before a value.");
-    if (token.kind === "operator" && (token.value === "+" || token.value === "-")) { position += 1; const value = primary(); return value === null ? null : token.value === "-" ? -value : value; }
-    if (token.kind === "operator" && token.value === "(") { position += 1; const value = addition(); if (tokens[position]?.kind !== "operator" || tokens[position]?.value !== ")") throw new Error("The formula has an unmatched parenthesis."); position += 1; return value; }
-    position += 1;
-    if (token.kind === "number") return token.value;
-    if (token.kind === "reference") return resolve(token.value);
-    throw new Error("The formula expected a number or column reference.");
-  };
-  const multiplication = (): number | null => {
-    let value = primary();
-    while (tokens[position]?.kind === "operator" && (tokens[position]?.value === "*" || tokens[position]?.value === "/")) {
-      const operator = tokens[position].value; position += 1; const right = primary();
-      if (value === null || right === null) value = null;
-      else if (operator === "/" && right === 0) throw new Error("#DIV/0!");
-      else value = operator === "*" ? value * right : value / right;
+export function workspaceFormulaReferences(expression: string): string[] {
+  const references: string[] = []; const visit = (node: WorkspaceFormulaNode) => { if (node.kind === "reference") references.push(node.value); else if (node.kind === "unary") visit(node.value); else if (node.kind === "binary") { visit(node.left); visit(node.right); } else if (node.kind === "call") node.arguments.forEach(visit); };
+  visit(parseWorkspaceFormula(expression)); return Array.from(new Set(references));
+}
+
+function calculateWorkspaceFormula(expression: string, resolve: (columnId: string) => WorkspaceFormulaValue): WorkspaceFormulaValue {
+  const numberValue = (value: WorkspaceFormulaValue): number | null => { if (value === null) return null; if (typeof value !== "number" || !Number.isFinite(value)) throw new Error("#TYPE!"); return value; };
+  const textValue = (value: WorkspaceFormulaValue): string | null => { if (value === null) return null; if (typeof value !== "string") throw new Error("#TYPE!"); return value; };
+  const booleanValue = (value: WorkspaceFormulaValue): boolean | null => { if (value === null) return null; if (typeof value !== "boolean") throw new Error("#TYPE!"); return value; };
+  const dateValue = (value: WorkspaceFormulaValue): string | null => { const text = textValue(value); if (text === null) return null; if (!isWorkspaceIsoDate(text)) throw new Error("#DATE!"); return text; };
+  const boundedText = (value: string) => { if (value.length > 5_000) throw new Error("#LIMIT!"); return value; };
+  const evaluate = (node: WorkspaceFormulaNode): WorkspaceFormulaValue => {
+    if (node.kind === "literal") return node.value; if (node.kind === "reference") return resolve(node.value);
+    if (node.kind === "unary") { const value = numberValue(evaluate(node.value)); return value === null ? null : node.operator === "-" ? -value : value; }
+    if (node.kind === "binary") {
+      const left = evaluate(node.left); const right = evaluate(node.right);
+      if (["+", "-", "*", "/"].includes(node.operator)) { const a = numberValue(left), b = numberValue(right); if (a === null || b === null) return null; if (node.operator === "/" && b === 0) throw new Error("#DIV/0!"); return node.operator === "+" ? a + b : node.operator === "-" ? a - b : node.operator === "*" ? a * b : a / b; }
+      if (left === null || right === null) return false;
+      if (node.operator === "=" || node.operator === "!=") { const equal = typeof left === typeof right && left === right; return node.operator === "=" ? equal : !equal; }
+      if (typeof left !== typeof right || (typeof left !== "number" && typeof left !== "string")) throw new Error("#TYPE!");
+      return node.operator === ">" ? left > right : node.operator === ">=" ? left >= right : node.operator === "<" ? left < right : left <= right;
     }
-    return value;
+    const args = node.arguments;
+    const exact = (count: number) => { if (args.length !== count) throw new Error("#ARGS!"); };
+    const range = (min: number, max: number) => { if (args.length < min || args.length > max) throw new Error("#ARGS!"); };
+    if (node.name === "IF") { exact(3); const condition = booleanValue(evaluate(args[0])); return condition === null ? null : evaluate(condition ? args[1] : args[2]); }
+    if (node.name === "AND" || node.name === "OR") { range(1, 20); const values = args.map((argument) => booleanValue(evaluate(argument))); if (values.some((value) => value === null)) return null; return node.name === "AND" ? values.every(Boolean) : values.some(Boolean); }
+    if (node.name === "NOT") { exact(1); const value = booleanValue(evaluate(args[0])); return value === null ? null : !value; }
+    if (node.name === "IS_EMPTY") { exact(1); const value = evaluate(args[0]); return value === null || value === ""; }
+    if (node.name === "COALESCE") { range(1, 20); for (const argument of args) { const value = evaluate(argument); if (value !== null && value !== "") return value; } return null; }
+    if (node.name === "CONCAT") { range(1, 20); return boundedText(args.map((argument) => { const value = evaluate(argument); return value === null ? "" : String(value); }).join("")); }
+    if (node.name === "LOWER" || node.name === "UPPER") { exact(1); const value = textValue(evaluate(args[0])); return value === null ? null : boundedText(node.name === "LOWER" ? value.toLowerCase() : value.toUpperCase()); }
+    if (node.name === "LENGTH") { exact(1); const value = textValue(evaluate(args[0])); return value === null ? null : Array.from(value).length; }
+    if (node.name === "ABS") { exact(1); const value = numberValue(evaluate(args[0])); return value === null ? null : Math.abs(value); }
+    if (node.name === "ROUND") { range(1, 2); const value = numberValue(evaluate(args[0])); const digits = args.length === 2 ? numberValue(evaluate(args[1])) : 0; if (value === null || digits === null) return null; if (!Number.isInteger(digits) || digits < -10 || digits > 10) throw new Error("#NUM!"); const factor = 10 ** digits; return Math.round((value + Number.EPSILON) * factor) / factor; }
+    if (node.name === "MIN" || node.name === "MAX") { range(1, 20); const values = args.map((argument) => numberValue(evaluate(argument))); if (values.some((value) => value === null)) return null; return node.name === "MIN" ? Math.min(...values as number[]) : Math.max(...values as number[]); }
+    if (node.name === "DAYS_BETWEEN") { exact(2); const start = dateValue(evaluate(args[0])), end = dateValue(evaluate(args[1])); return start === null || end === null ? null : Math.round((Date.parse(`${end}T00:00:00Z`) - Date.parse(`${start}T00:00:00Z`)) / 86_400_000); }
+    if (node.name === "ADD_DAYS") { exact(2); const date = dateValue(evaluate(args[0])), days = numberValue(evaluate(args[1])); if (date === null || days === null) return null; if (!Number.isInteger(days) || Math.abs(days) > 3_650_000) throw new Error("#NUM!"); const result = new Date(`${date}T00:00:00Z`); result.setUTCDate(result.getUTCDate() + days); const output = result.toISOString().slice(0, 10); if (!isWorkspaceIsoDate(output)) throw new Error("#DATE!"); return output; }
+    throw new Error("#FUNCTION!");
   };
-  const addition = (): number | null => {
-    let value = multiplication();
-    while (tokens[position]?.kind === "operator" && (tokens[position]?.value === "+" || tokens[position]?.value === "-")) {
-      const operator = tokens[position].value; position += 1; const right = multiplication();
-      value = value === null || right === null ? null : operator === "+" ? value + right : value - right;
-    }
-    return value;
-  };
-  const value = addition();
-  if (position !== tokens.length) throw new Error("The formula contains an unexpected token.");
-  if (value !== null && !Number.isFinite(value)) throw new Error("#NUM!");
-  return value;
+  const result = evaluate(parseWorkspaceFormula(expression)); if (typeof result === "number" && !Number.isFinite(result)) throw new Error("#NUM!"); return result;
 }
 
 export function evaluateWorkspaceFormulas(definition: WorkspaceDatabaseDefinition, values: WorkspaceRowValues): WorkspaceRowValues {
-  const columns = new Map(definition.columns.map((column) => [column.id, column])); const results: WorkspaceRowValues = {}; const evaluating = new Set<string>();
-  const resolve = (columnId: string): number | null => {
+  const columns = new Map(definition.columns.map((column) => [column.id, column])); const results: WorkspaceRowValues = {}; const evaluating = new Set<string>(); const errors = new Set<string>();
+  const resolve = (columnId: string): WorkspaceFormulaValue => {
     const column = columns.get(columnId); if (!column) return null;
-    if (column.type === "number") return typeof values[columnId] === "number" && Number.isFinite(values[columnId]) ? values[columnId] as number : null;
-    if (column.type !== "formula" || !column.formula) return null;
-    if (Object.prototype.hasOwnProperty.call(results, columnId)) return typeof results[columnId] === "number" ? results[columnId] as number : null;
-    if (evaluating.has(columnId)) { results[columnId] = "#CYCLE!"; return null; }
+    if (column.type !== "formula") { const value = values[columnId]; return typeof value === "number" || typeof value === "string" || typeof value === "boolean" ? value : null; }
+    if (!column.formula) return null; if (errors.has(columnId)) throw new Error(String(results[columnId])); if (Object.prototype.hasOwnProperty.call(results, columnId)) return results[columnId] as WorkspaceFormulaValue;
+    if (evaluating.has(columnId)) { results[columnId] = "#CYCLE!"; errors.add(columnId); throw new Error("#CYCLE!"); }
     evaluating.add(columnId);
-    try { results[columnId] = calculateWorkspaceFormula(column.formula.expression, resolve); }
-    catch (error) { results[columnId] = error instanceof Error && error.message.startsWith("#") ? error.message : "#ERROR!"; }
-    evaluating.delete(columnId);
-    return typeof results[columnId] === "number" ? results[columnId] as number : null;
+    try {
+      const result = calculateWorkspaceFormula(column.formula.expression, resolve); const expected = column.formula.resultType;
+      if (result !== null && ((expected === "number" && typeof result !== "number") || (expected === "text" && typeof result !== "string") || (expected === "boolean" && typeof result !== "boolean") || (expected === "date" && typeof result !== "string"))) throw new Error("#TYPE!");
+      if (expected === "date" && typeof result === "string" && !isWorkspaceIsoDate(result)) throw new Error("#DATE!");
+      results[columnId] = result;
+    } catch (error) { results[columnId] = error instanceof Error && error.message.startsWith("#") ? error.message : "#ERROR!"; errors.add(columnId); }
+    evaluating.delete(columnId); if (errors.has(columnId)) throw new Error(String(results[columnId])); return results[columnId] as WorkspaceFormulaValue;
   };
-  definition.columns.filter((column) => column.type === "formula").forEach((column) => resolve(column.id));
+  definition.columns.filter((column) => column.type === "formula").forEach((column) => { try { resolve(column.id); } catch { /* the visible result already contains the bounded error */ } });
   return results;
 }
 
@@ -320,7 +365,7 @@ export function isWorkspaceComputedColumn(column: WorkspaceColumn): boolean { re
 
 export function createWorkspaceColumn(type: WorkspaceColumn["type"] = "text", name = "Name"): WorkspaceColumn {
   const column: WorkspaceColumn = { id: `field_${Math.random().toString(36).slice(2, 12)}`, name, type, required: false, options: type === "select" ? ["Option 1"] : [] };
-  if (type === "formula") column.formula = { expression: "0" };
+  if (type === "formula") column.formula = { expression: "0", resultType: "number" };
   return column;
 }
 
@@ -343,7 +388,7 @@ export function validateWorkspaceRow(definition: WorkspaceDatabaseDefinition, va
     if (column.type === "text" && (typeof value !== "string" || value.length > 5_000)) throw new Error(`${column.name} must be text under 5,000 characters.`);
     if (column.type === "number" && (typeof value !== "number" || !Number.isFinite(value))) throw new Error(`${column.name} must be a finite number.`);
     if (column.type === "boolean" && typeof value !== "boolean") throw new Error(`${column.name} must be true or false.`);
-    if (column.type === "date" && (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value) || Number.isNaN(new Date(`${value}T00:00:00Z`).getTime()))) throw new Error(`${column.name} must be a valid date.`);
+    if (column.type === "date" && (typeof value !== "string" || !isWorkspaceIsoDate(value))) throw new Error(`${column.name} must be a valid date.`);
     if (column.type === "select" && (typeof value !== "string" || !column.options.includes(value))) throw new Error(`${column.name} must use an allowed option.`);
     if (column.type === "relation" && (!Array.isArray(value) || value.length > 50 || value.some((item) => !Number.isInteger(item) || item <= 0) || new Set(value).size !== value.length)) throw new Error(`${column.name} must contain up to 50 unique related row IDs.`);
     if (column.type === "url") {
