@@ -23,6 +23,7 @@ describeApi("Transformation intelligence API", () => {
   let ownerCookie = "";
   let reviewerCookie = "";
   let ownerId = 0;
+  let reviewerId = 0;
   let threadId = 0;
   let primarySkillId = 0;
   let initialPrimaryExperience = 0;
@@ -31,7 +32,9 @@ describeApi("Transformation intelligence API", () => {
   let appealId = 0;
 
   afterAll(async () => {
-    for (const account of [{ ...owner, cookie: ownerCookie }, { ...reviewer, cookie: reviewerCookie }]) {
+    // Delete the reviewer first to prove delivery evidence can retain a
+    // redacted reviewer reference without blocking either user's erasure.
+    for (const account of [{ ...reviewer, cookie: reviewerCookie }, { ...owner, cookie: ownerCookie }]) {
       let cookie = account.cookie;
       if (!cookie) cookie = (await request("POST", "/api/auth/login", { identifier: account.displayName, password: account.password })).cookie;
       if (cookie) await request("DELETE", "/api/account", { confirmation: "DELETE MY ACCOUNT" }, cookie);
@@ -46,6 +49,7 @@ describeApi("Transformation intelligence API", () => {
     ownerCookie = ownerRegistration.cookie;
     reviewerCookie = reviewerRegistration.cookie;
     ownerId = ownerRegistration.data.user.id;
+    reviewerId = reviewerRegistration.data.user.id;
     expect((await request("PATCH", "/api/profile", {
       completedOnboardingMissions: [0, 1, 2, 3, 4, 5, 6, 7],
       primaryCraft: "Discovery conversations",
@@ -136,11 +140,41 @@ describeApi("Transformation intelligence API", () => {
     expect((await request("POST", `/api/quests/${questId}/toggle`, undefined, ownerCookie)).status).toBe(200);
   });
 
-  it("binds a revision review to its exact rubric snapshot", async () => {
+  it("keeps the hash-only capability link available without claiming delivery", async () => {
     const invitation = await request("POST", `/api/quests/${questId}/review-invitations`, { expiresInDays: 7 }, ownerCookie);
     expect(invitation.status).toBe(201);
+    expect(invitation.data.delivery).toBeNull();
+    expect(invitation.data.reviewPath).toMatch(/^\/review-mission#token=/);
     reviewToken = new URL(`https://lyfeos.test${invitation.data.reviewPath}`).hash.replace(/^#token=/, "");
-    const reviewHeaders = { "x-lyfeos-review-token": reviewToken };
+    expect((await request("GET", "/api/mission-review-invitations/resolve", undefined, reviewerCookie, { "x-lyfeos-review-token": reviewToken })).status).toBe(200);
+  });
+
+  it("delivers a reviewer-bound native request and binds the decision to its exact rubric snapshot", async () => {
+    const direct = await request("POST", "/api/message-hub/conversations", { participantUserIds: [reviewerId], title: null }, ownerCookie);
+    expect(direct.status).toBe(201);
+    const directId = direct.data.conversation.id;
+    expect((await request("POST", `/api/message-hub/conversations/${directId}/block`, { blocked: true }, reviewerCookie)).status).toBe(200);
+    const blockedDelivery = await request("POST", `/api/quests/${questId}/review-invitations`, { expiresInDays: 7, reviewerUserId: reviewerId }, ownerCookie);
+    expect(blockedDelivery.status).toBe(409);
+    const invitationsAfterRollback = await request("GET", `/api/quests/${questId}/review-invitations`, undefined, ownerCookie);
+    expect(invitationsAfterRollback.data.invitations[0]).toMatchObject({ status: "pending", deliveryStatus: null });
+    expect((await request("POST", `/api/message-hub/conversations/${directId}/block`, { blocked: false }, reviewerCookie)).status).toBe(200);
+    const invitation = await request("POST", `/api/quests/${questId}/review-invitations`, { expiresInDays: 7, reviewerUserId: reviewerId }, ownerCookie);
+    expect(invitation.status).toBe(201);
+    expect(invitation.data.delivery).toMatchObject({ channel: "native_inbox", status: "delivered" });
+    expect(invitation.data.reviewPath).toMatch(/^\/review-mission#invitation=\d+$/);
+    expect(invitation.data.reviewPath).not.toContain("token");
+    const invitationId = invitation.data.invitation.id;
+    const reviewHeaders = { "x-lyfeos-review-invitation-id": String(invitationId) };
+    expect((await request("GET", "/api/mission-review-invitations/resolve", undefined, ownerCookie, reviewHeaders)).status).toBe(404);
+    const conversations = await request("GET", "/api/message-hub/conversations", undefined, reviewerCookie);
+    expect(conversations.status).toBe(200);
+    const deliveredConversation = conversations.data.conversations.find((item: any) => item.latestMessage?.body.includes("invited you to review"));
+    expect(deliveredConversation).toBeTruthy();
+    const conversation = await request("GET", `/api/message-hub/conversations/${deliveredConversation.id}`, undefined, reviewerCookie);
+    const deliveredMessage = conversation.data.conversation.messages.find((item: any) => item.extension?.invitationId === invitationId);
+    expect(deliveredMessage.extension).toMatchObject({ kind: "mission_review_invitation", reviewPath: invitation.data.reviewPath });
+    expect(deliveredMessage.body).not.toContain("#token=");
     expect((await request("GET", "/api/mission-review-invitations/resolve", undefined, reviewerCookie, reviewHeaders)).status).toBe(200);
     expect((await request("POST", "/api/mission-review-invitations/accept", undefined, reviewerCookie, reviewHeaders)).status).toBe(200);
     const reviewed = await request("POST", "/api/mission-review-invitations/review", {
@@ -193,5 +227,12 @@ describeApi("Transformation intelligence API", () => {
     const contract = exported.data.data.mission_contracts.find((row: any) => row.quest_id === questId);
     expect(contract.method_steps).toEqual(["Prepare three open questions.", "Run one bounded conversation.", "Record what changed after the response."]);
     expect(contract.tool_requirements).toEqual(["Conversation notes"]);
+    const nativeInvitation = exported.data.data.mission_review_invitations.find((row: any) => row.delivery_channel === "native_inbox");
+    expect(nativeInvitation).toMatchObject({ delivery_status: "delivered", reviewer_user_id: reviewerId });
+    expect(nativeInvitation.token_hash).toBeUndefined();
+    const reviewerExport = await request("GET", "/api/account/export", undefined, reviewerCookie);
+    expect(reviewerExport.status).toBe(200);
+    expect(reviewerExport.data.data.mission_review_invitations.some((row: any) => row.id === nativeInvitation.id)).toBe(true);
+    expect(JSON.stringify(reviewerExport.data.data.mission_review_invitations)).not.toContain("token_hash");
   });
 });

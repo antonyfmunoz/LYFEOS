@@ -1,5 +1,5 @@
 import type { Express, Request, Response } from "express";
-import { and, desc, eq, gt, inArray, isNull } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, isNull, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../db";
 import {
@@ -7,6 +7,12 @@ import {
   missionEvidence,
   missionReviewInvitations,
   missionReviews,
+  conversationMessages,
+  messageAuditEvents,
+  messageChannelBindings,
+  messageConversationParticipants,
+  messageConversations,
+  messageDeliveryReceipts,
   quests,
   users,
 } from "@shared/schema";
@@ -19,7 +25,10 @@ import {
   validateEvidenceChecks,
 } from "../mission-review-authorization";
 
-const invitationSchema = z.object({ expiresInDays: z.number().int().min(1).max(30).default(7) });
+const invitationSchema = z.object({
+  expiresInDays: z.number().int().min(1).max(30).default(7),
+  reviewerUserId: z.number().int().positive().optional(),
+}).strict();
 const reviewSchema = z.object({
   decision: z.enum(["meets_evidence", "revisions_needed"]),
   rubric: z.object({
@@ -33,6 +42,7 @@ const reviewSchema = z.object({
   summary: z.string().trim().min(3).max(2000),
 });
 const reviewTokenSchema = z.string().min(32).max(200).regex(/^[A-Za-z0-9_-]+$/);
+const assignedInvitationIdSchema = z.coerce.number().int().positive();
 
 function reviewToken(req: Request): string | null {
   const parsed = reviewTokenSchema.safeParse(req.get("x-lyfeos-review-token"));
@@ -66,6 +76,140 @@ async function invitationForToken(token: string) {
   return row;
 }
 
+async function invitationForAssignedReviewer(invitationId: number, reviewerUserId: number) {
+  const [row] = await db.select({
+    invitation: missionReviewInvitations,
+    contract: missionContracts,
+    quest: { id: quests.id, title: quests.title, completed: quests.completed },
+    ownerName: users.displayName,
+  }).from(missionReviewInvitations)
+    .innerJoin(missionContracts, eq(missionContracts.id, missionReviewInvitations.missionContractId))
+    .innerJoin(quests, eq(quests.id, missionContracts.questId))
+    .innerJoin(users, eq(users.id, missionReviewInvitations.ownerUserId))
+    .where(and(
+      eq(missionReviewInvitations.id, invitationId),
+      eq(missionReviewInvitations.reviewerUserId, reviewerUserId),
+    ))
+    .limit(1);
+  if (!row) return null;
+  if (row.invitation.expiresAt.getTime() <= Date.now() && ["pending", "accepted"].includes(row.invitation.status)) {
+    const [expired] = await db.update(missionReviewInvitations)
+      .set({ status: "expired" })
+      .where(and(
+        eq(missionReviewInvitations.id, row.invitation.id),
+        inArray(missionReviewInvitations.status, ["pending", "accepted"]),
+      ))
+      .returning();
+    if (expired) row.invitation = expired;
+  }
+  return row;
+}
+
+async function invitationForRequest(req: Request) {
+  const token = reviewToken(req);
+  if (token) return invitationForToken(token);
+  const assignedId = assignedInvitationIdSchema.safeParse(req.get("x-lyfeos-review-invitation-id"));
+  if (assignedId.success && req.session.userId) return invitationForAssignedReviewer(assignedId.data, req.session.userId);
+  return null;
+}
+
+type ReviewTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+async function deliverNativeReviewInvitation(tx: ReviewTransaction, input: {
+  invitationId: number;
+  ownerUserId: number;
+  ownerDisplayName: string;
+  reviewerUserId: number;
+  reviewerDisplayName: string;
+  missionTitle: string;
+}) {
+  const participantIds = [input.ownerUserId, input.reviewerUserId].sort((a, b) => a - b);
+  await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`lyfeos-native-message:${participantIds.join(":")}`}, 0))`);
+  const existingResult = await tx.execute(sql`
+    SELECT c."id" FROM "message_conversations" c
+    JOIN "message_conversation_participants" p ON p."conversation_id" = c."id" AND p."status" IN ('active', 'blocked')
+    WHERE c."kind" = 'direct'
+    GROUP BY c."id"
+    HAVING count(*) = 2 AND array_agg(p."user_id" ORDER BY p."user_id") = ARRAY[${participantIds[0]}, ${participantIds[1]}]::integer[]
+    LIMIT 1
+  `);
+  let conversationId = (existingResult as unknown as { rows?: Array<{ id: string }> }).rows?.[0]?.id;
+  if (conversationId) {
+    const [participants, bindings] = await Promise.all([
+      tx.select().from(messageConversationParticipants).where(eq(messageConversationParticipants.conversationId, conversationId)),
+      tx.select({ id: messageChannelBindings.id }).from(messageChannelBindings).where(and(
+        eq(messageChannelBindings.conversationId, conversationId),
+        eq(messageChannelBindings.provider, "native"),
+        eq(messageChannelBindings.status, "active"),
+      )).limit(1),
+    ]);
+    if (participants.some((participant) => participant.status !== "active" || !["open", "pending"].includes(participant.inboxStatus))) {
+      throw new Error("NATIVE_REVIEW_DELIVERY_UNAVAILABLE");
+    }
+    if (!bindings.length) throw new Error("NATIVE_REVIEW_DELIVERY_UNAVAILABLE");
+  } else {
+    const [conversation] = await tx.insert(messageConversations).values({
+      createdByUserId: input.ownerUserId,
+      title: input.reviewerDisplayName,
+      kind: "direct",
+      status: "open",
+      aiMode: "observe",
+    }).returning({ id: messageConversations.id });
+    conversationId = conversation.id;
+    await tx.insert(messageConversationParticipants).values([
+      { conversationId, userId: input.ownerUserId, role: "admin" },
+      { conversationId, userId: input.reviewerUserId, role: "member" },
+    ]);
+    await tx.insert(messageChannelBindings).values({ conversationId, provider: "native", channelKind: "native", status: "active" });
+    await tx.insert(messageAuditEvents).values({
+      conversationId,
+      actorUserId: input.ownerUserId,
+      eventType: "ConversationCreated.v1",
+      aggregateVersion: 1,
+      metadata: { participantCount: 2, channel: "native", purpose: "mission_review_invitation" },
+    });
+  }
+  const [ownerParticipant] = await tx.select({ id: messageConversationParticipants.id })
+    .from(messageConversationParticipants)
+    .where(and(
+      eq(messageConversationParticipants.conversationId, conversationId),
+      eq(messageConversationParticipants.userId, input.ownerUserId),
+      eq(messageConversationParticipants.status, "active"),
+    )).limit(1);
+  if (!ownerParticipant) throw new Error("NATIVE_REVIEW_DELIVERY_UNAVAILABLE");
+  const now = new Date();
+  const [conversation] = await tx.update(messageConversations).set({
+    lastMessageAt: now,
+    updatedAt: now,
+    version: sql`${messageConversations.version} + 1`,
+  }).where(eq(messageConversations.id, conversationId)).returning({ version: messageConversations.version });
+  const reviewPath = `/review-mission#invitation=${input.invitationId}`;
+  const [message] = await tx.insert(conversationMessages).values({
+    conversationId,
+    senderUserId: input.ownerUserId,
+    senderParticipantRef: ownerParticipant.id,
+    body: `${input.ownerDisplayName} invited you to review “${input.missionTitle}” in LyfeOS.`,
+    idempotencyKey: `mission-review-invitation:${input.invitationId}`,
+    status: "delivered",
+    provider: "native",
+    direction: "outbound",
+    sentAt: now,
+    receivedAt: now,
+    extension: { kind: "mission_review_invitation", invitationId: input.invitationId, reviewPath },
+  }).returning({ id: conversationMessages.id });
+  await tx.insert(messageDeliveryReceipts).values([
+    { messageId: message.id, recipientUserId: input.reviewerUserId, provider: "native", state: "accepted", occurredAt: now, evidence: { assertion: "local_transaction_commit" } },
+    { messageId: message.id, recipientUserId: input.reviewerUserId, provider: "native", state: "sent", occurredAt: now, evidence: { assertion: "local_transaction_commit" } },
+    { messageId: message.id, recipientUserId: input.reviewerUserId, provider: "native", state: "delivered", occurredAt: now, evidence: { assertion: "recipient_inbox_committed" } },
+  ]);
+  await tx.insert(messageAuditEvents).values([
+    { conversationId, messageId: message.id, actorUserId: input.ownerUserId, eventType: "MessageQueued.v1", aggregateVersion: conversation.version, metadata: { provider: "native", purpose: "mission_review_invitation" } },
+    { conversationId, messageId: message.id, actorUserId: input.ownerUserId, eventType: "MessageSent.v1", aggregateVersion: conversation.version, metadata: { provider: "native", purpose: "mission_review_invitation" } },
+    { conversationId, messageId: message.id, actorUserId: input.ownerUserId, eventType: "MessageDelivered.v1", aggregateVersion: conversation.version, metadata: { provider: "native", recipientCount: 1, purpose: "mission_review_invitation" } },
+  ]);
+  return { messageId: message.id, deliveredAt: now, reviewPath };
+}
+
 function invitationStatusError(status: string): string {
   if (status === "revoked") return "The mission owner revoked this review invitation.";
   if (status === "expired") return "This review invitation expired. Ask the mission owner for a new link.";
@@ -90,6 +234,9 @@ export function registerMissionReviewRoutes(app: Express): void {
       id: missionReviewInvitations.id,
       status: missionReviewInvitations.status,
       reviewerUserId: missionReviewInvitations.reviewerUserId,
+      deliveryChannel: missionReviewInvitations.deliveryChannel,
+      deliveryStatus: missionReviewInvitations.deliveryStatus,
+      deliveredAt: missionReviewInvitations.deliveredAt,
       expiresAt: missionReviewInvitations.expiresAt,
       acceptedAt: missionReviewInvitations.acceptedAt,
       completedAt: missionReviewInvitations.completedAt,
@@ -120,17 +267,53 @@ export function registerMissionReviewRoutes(app: Express): void {
     if (!contract) return res.status(404).json({ error: "Mission proof plan not found." });
     if (contract.reviewMode !== "human") return res.status(409).json({ error: "Set this proof plan to human review before inviting a reviewer." });
     if (contract.progressionAppliedAt) return res.status(409).json({ error: "Reopen this reviewed mission before creating another review invitation." });
-    await db.update(missionReviewInvitations).set({ status: "revoked" }).where(and(
-      eq(missionReviewInvitations.ownerUserId, req.session.userId!),
-      eq(missionReviewInvitations.missionContractId, contract.id),
-      inArray(missionReviewInvitations.status, ["pending", "accepted"]),
-    ));
+    const [owner] = await db.select({ displayName: users.displayName }).from(users).where(eq(users.id, req.session.userId!)).limit(1);
+    const [reviewer] = parsed.data.reviewerUserId
+      ? await db.select({ id: users.id, displayName: users.displayName }).from(users).where(eq(users.id, parsed.data.reviewerUserId)).limit(1)
+      : [];
+    if (parsed.data.reviewerUserId === req.session.userId) return res.status(409).json({ error: "Choose another LyfeOS user as the reviewer." });
+    if (parsed.data.reviewerUserId && !reviewer) return res.status(404).json({ error: "That LyfeOS reviewer is unavailable." });
     const { token, tokenHash } = createMissionReviewToken();
     const expiresAt = new Date(Date.now() + parsed.data.expiresInDays * 24 * 60 * 60 * 1000);
-    const [invitation] = await db.insert(missionReviewInvitations).values({
-      ownerUserId: req.session.userId!, missionContractId: contract.id, tokenHash, expiresAt,
-    }).returning({ id: missionReviewInvitations.id, status: missionReviewInvitations.status, expiresAt: missionReviewInvitations.expiresAt });
-    return res.status(201).json({ invitation, reviewPath: `/review-mission#token=${token}` });
+    try {
+      const result = await db.transaction(async (tx) => {
+        await tx.execute(sql`SELECT pg_advisory_xact_lock(129104, ${contract.id})`);
+        await tx.update(missionReviewInvitations).set({ status: "revoked" }).where(and(
+          eq(missionReviewInvitations.ownerUserId, req.session.userId!),
+          eq(missionReviewInvitations.missionContractId, contract.id),
+          inArray(missionReviewInvitations.status, ["pending", "accepted"]),
+        ));
+        const [invitation] = await tx.insert(missionReviewInvitations).values({
+          ownerUserId: req.session.userId!,
+          missionContractId: contract.id,
+          reviewerUserId: reviewer?.id,
+          tokenHash,
+          expiresAt,
+        }).returning({ id: missionReviewInvitations.id, status: missionReviewInvitations.status, expiresAt: missionReviewInvitations.expiresAt });
+        if (!reviewer) return { invitation, reviewPath: `/review-mission#token=${token}`, delivery: null };
+        const delivery = await deliverNativeReviewInvitation(tx, {
+          invitationId: invitation.id,
+          ownerUserId: req.session.userId!,
+          ownerDisplayName: owner?.displayName || "A LyfeOS user",
+          reviewerUserId: reviewer.id,
+          reviewerDisplayName: reviewer.displayName || "LyfeOS reviewer",
+          missionTitle: (await tx.select({ title: quests.title }).from(quests).where(eq(quests.id, questId)).limit(1))[0]?.title || "Mission",
+        });
+        await tx.update(missionReviewInvitations).set({
+          deliveryChannel: "native_inbox",
+          deliveryStatus: "delivered",
+          deliveryMessageId: delivery.messageId,
+          deliveredAt: delivery.deliveredAt,
+        }).where(eq(missionReviewInvitations.id, invitation.id));
+        return { invitation, reviewPath: delivery.reviewPath, delivery: { channel: "native_inbox", status: "delivered", deliveredAt: delivery.deliveredAt } };
+      });
+      return res.status(201).json(result);
+    } catch (error) {
+      if (error instanceof Error && error.message === "NATIVE_REVIEW_DELIVERY_UNAVAILABLE") {
+        return res.status(409).json({ error: "Native delivery is unavailable for this reviewer. Respect their inbox state or create a private review link instead." });
+      }
+      throw error;
+    }
   });
 
   app.delete("/api/quests/:questId/review-invitations/:invitationId", isAuthenticated, async (req: Request, res: Response) => {
@@ -152,8 +335,9 @@ export function registerMissionReviewRoutes(app: Express): void {
 
   app.get("/api/mission-review-invitations/resolve", isAuthenticated, async (req: Request, res: Response) => {
     const token = reviewToken(req);
-    if (!token) return res.status(400).json({ error: "A valid review invitation token is required." });
-    const row = await invitationForToken(token);
+    const assignedId = assignedInvitationIdSchema.safeParse(req.get("x-lyfeos-review-invitation-id"));
+    if (!token && !assignedId.success) return res.status(400).json({ error: "A valid review invitation is required." });
+    const row = await invitationForRequest(req);
     if (!row) return res.status(404).json({ error: "Review invitation not found." });
     if (["revoked", "expired", "completed"].includes(row.invitation.status)) {
       return res.status(410).json({ error: invitationStatusError(row.invitation.status), status: row.invitation.status });
@@ -191,10 +375,12 @@ export function registerMissionReviewRoutes(app: Express): void {
 
   app.post("/api/mission-review-invitations/accept", isAuthenticated, async (req: Request, res: Response) => {
     const token = reviewToken(req);
-    if (!token) return res.status(400).json({ error: "A valid review invitation token is required." });
-    const row = await invitationForToken(token);
+    const assignedId = assignedInvitationIdSchema.safeParse(req.get("x-lyfeos-review-invitation-id"));
+    if (!token && !assignedId.success) return res.status(400).json({ error: "A valid review invitation is required." });
+    const row = await invitationForRequest(req);
     if (!row) return res.status(404).json({ error: "Review invitation not found." });
     if (row.invitation.ownerUserId === req.session.userId) return res.status(409).json({ error: "A mission owner cannot review their own human-review mission." });
+    if (row.invitation.reviewerUserId && row.invitation.reviewerUserId !== req.session.userId) return res.status(403).json({ error: "This review invitation is bound to another reviewer." });
     if (row.invitation.status === "accepted" && row.invitation.reviewerUserId === req.session.userId) return res.json({ accepted: true });
     if (row.invitation.status !== "pending") return res.status(410).json({ error: invitationStatusError(row.invitation.status) });
     const [accepted] = await db.update(missionReviewInvitations).set({
@@ -202,7 +388,7 @@ export function registerMissionReviewRoutes(app: Express): void {
     }).where(and(
       eq(missionReviewInvitations.id, row.invitation.id),
       eq(missionReviewInvitations.status, "pending"),
-      isNull(missionReviewInvitations.reviewerUserId),
+      or(isNull(missionReviewInvitations.reviewerUserId), eq(missionReviewInvitations.reviewerUserId, req.session.userId!)),
       gt(missionReviewInvitations.expiresAt, new Date()),
     )).returning({ id: missionReviewInvitations.id });
     if (!accepted) return res.status(409).json({ error: "This invitation was accepted or changed before your request completed." });
@@ -211,10 +397,11 @@ export function registerMissionReviewRoutes(app: Express): void {
 
   app.post("/api/mission-review-invitations/review", isAuthenticated, async (req: Request, res: Response) => {
     const token = reviewToken(req);
-    if (!token) return res.status(400).json({ error: "A valid review invitation token is required." });
+    const assignedId = assignedInvitationIdSchema.safeParse(req.get("x-lyfeos-review-invitation-id"));
+    if (!token && !assignedId.success) return res.status(400).json({ error: "A valid review invitation is required." });
     const parsed = reviewSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: "Invalid review.", details: parsed.error.flatten() });
-    const row = await invitationForToken(token);
+    const row = await invitationForRequest(req);
     if (!row) return res.status(404).json({ error: "Review invitation not found." });
     if (row.invitation.status !== "accepted" || row.invitation.reviewerUserId !== req.session.userId) {
       return res.status(403).json({ error: "Accept this active invitation before submitting a review." });

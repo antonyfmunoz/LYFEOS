@@ -62,7 +62,19 @@ describe("mission review authorization", () => {
     expect(routes).toContain('reviewerUserId: req.session.userId!');
     expect(routes).toContain('eq(missionReviewInvitations.reviewerUserId, req.session.userId!)');
     expect(routes).toContain('req.get("x-lyfeos-review-token")');
+    expect(routes).toContain('req.get("x-lyfeos-review-invitation-id")');
     expect(routes).not.toContain("token: token");
+  });
+
+  it("commits bound native delivery evidence without storing the capability token", () => {
+    const routes = source("server/routes/mission-reviews.ts");
+    const messages = source("client/src/pages/MessagesPage.tsx");
+    expect(routes).toContain('deliveryChannel: "native_inbox"');
+    expect(routes).toContain('assertion: "recipient_inbox_committed"');
+    expect(routes).toContain('extension: { kind: "mission_review_invitation", invitationId: input.invitationId, reviewPath }');
+    expect(routes).toContain('throw new Error("NATIVE_REVIEW_DELIVERY_UNAVAILABLE")');
+    expect(messages).toContain('message.extension?.kind === "mission_review_invitation"');
+    expect(messages).toContain("Open scoped review");
   });
 
   it("keeps the invitation token in a URL fragment and clears it from the address bar", () => {
@@ -70,7 +82,7 @@ describe("mission review authorization", () => {
     const page = source("client/src/pages/MissionReviewPage.tsx");
     expect(routes).toContain('reviewPath: `/review-mission#token=${token}`');
     expect(page).toContain('window.history.replaceState({}, "", "/review-mission")');
-    expect(page).toContain('"x-lyfeos-review-token": token');
+    expect(page).toContain('headers["x-lyfeos-review-token"] = token');
   });
 
   it("ships the schema change through both migration paths", () => {
@@ -100,5 +112,16 @@ describe("mission review authorization", () => {
     expect(release).toContain('id: "0116_mission_contract_method_pack"');
     expect(schema).toContain('methodSteps: jsonb("method_steps")');
     expect(schema).toContain('toolRequirements: jsonb("tool_requirements")');
+  });
+
+  it("ships auditable native review delivery through both migration paths", () => {
+    const migration = source("migrations/0117_mission_review_native_delivery.sql");
+    const release = source("server/release-migrate.ts");
+    const schema = source("shared/schema.ts");
+    expect(migration).toContain('"delivery_channel" text');
+    expect(migration).toContain('"delivery_status" = \'delivered\'');
+    expect(migration).toContain('"delivery_message_id" IS NOT NULL');
+    expect(release).toContain('id: "0117_mission_review_native_delivery"');
+    expect(schema).toContain('deliveryMessageId: uuid("delivery_message_id")');
   });
 });

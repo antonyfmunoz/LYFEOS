@@ -2390,6 +2390,34 @@ const migrations = [
       END $$;
     `,
   },
+  {
+    id: "0117_mission_review_native_delivery",
+    sql: `
+      ALTER TABLE "mission_review_invitations" ADD COLUMN IF NOT EXISTS "delivery_channel" text;
+      ALTER TABLE "mission_review_invitations" ADD COLUMN IF NOT EXISTS "delivery_status" text;
+      ALTER TABLE "mission_review_invitations" ADD COLUMN IF NOT EXISTS "delivery_message_id" uuid;
+      ALTER TABLE "mission_review_invitations" ADD COLUMN IF NOT EXISTS "delivered_at" timestamp;
+      DO $$ BEGIN
+        ALTER TABLE "mission_review_invitations" ADD CONSTRAINT "mission_review_invitations_delivery_channel_valid"
+          CHECK ("delivery_channel" IS NULL OR "delivery_channel" = 'native_inbox');
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$;
+      DO $$ BEGIN
+        ALTER TABLE "mission_review_invitations" ADD CONSTRAINT "mission_review_invitations_delivery_status_valid"
+          CHECK ("delivery_status" IS NULL OR "delivery_status" = 'delivered');
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$;
+      DO $$ BEGIN
+        ALTER TABLE "mission_review_invitations" ADD CONSTRAINT "mission_review_invitations_delivery_evidence_complete"
+          CHECK (
+            ("delivery_channel" IS NULL AND "delivery_status" IS NULL AND "delivery_message_id" IS NULL AND "delivered_at" IS NULL)
+            OR
+            ("delivery_channel" = 'native_inbox' AND "delivery_status" = 'delivered' AND "delivery_message_id" IS NOT NULL AND "delivered_at" IS NOT NULL)
+          );
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$;
+    `,
+  },
 ];
 
 async function run(): Promise<void> {

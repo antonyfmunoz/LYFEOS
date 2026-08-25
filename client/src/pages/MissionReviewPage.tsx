@@ -31,6 +31,7 @@ type AssignedAppeal = {
 };
 
 const tokenStorageKey = "lyfeos-pending-review-token";
+const invitationStorageKey = "lyfeos-pending-review-invitation-id";
 
 function safeSourceUrl(value: string | null): string | null {
   if (!value) return null;
@@ -47,26 +48,40 @@ export default function MissionReviewPage() {
   const { isAuthenticated, isLoading } = useAuth();
   const { toast } = useToast();
   const [token, setToken] = useState("");
+  const [assignedInvitationId, setAssignedInvitationId] = useState("");
   const [summary, setSummary] = useState("");
   const [checks, setChecks] = useState<Record<string, boolean>>({});
   const [appealSummaries, setAppealSummaries] = useState<Record<number, string>>({});
   const [appealChecks, setAppealChecks] = useState<Record<number, Record<string, boolean>>>({});
 
   useEffect(() => {
-    const hashToken = new URLSearchParams(window.location.hash.replace(/^#/, "")).get("token");
+    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    const hashToken = hash.get("token");
+    const hashInvitationId = hash.get("invitation");
     const resolved = hashToken || sessionStorage.getItem(tokenStorageKey) || "";
+    const resolvedInvitationId = /^\d+$/.test(hashInvitationId || "") ? hashInvitationId! : sessionStorage.getItem(invitationStorageKey) || "";
     if (resolved) {
       sessionStorage.setItem(tokenStorageKey, resolved);
       setToken(resolved);
-      if (window.location.hash) window.history.replaceState({}, "", "/review-mission");
     }
+    if (resolvedInvitationId) {
+      sessionStorage.setItem(invitationStorageKey, resolvedInvitationId);
+      setAssignedInvitationId(resolvedInvitationId);
+    }
+    if (window.location.hash) window.history.replaceState({}, "", "/review-mission");
   }, []);
 
-  const request = useMemo(() => ({ headers: { "x-lyfeos-review-token": token } }), [token]);
+  const request = useMemo<RequestInit>(() => {
+    const headers: Record<string, string> = {};
+    if (token) headers["x-lyfeos-review-token"] = token;
+    else headers["x-lyfeos-review-invitation-id"] = assignedInvitationId;
+    return { headers };
+  }, [token, assignedInvitationId]);
+  const invitationLocator = token || assignedInvitationId;
   const reviewQuery = useQuery<ReviewBundle>({
-    queryKey: ["/api/mission-review-invitations/resolve", token],
+    queryKey: ["/api/mission-review-invitations/resolve", invitationLocator],
     queryFn: () => apiRequest("/api/mission-review-invitations/resolve", request),
-    enabled: isAuthenticated && token.length > 0,
+    enabled: isAuthenticated && invitationLocator.length > 0,
     retry: false,
   });
   const assignedAppeals = useQuery<{ appeals: AssignedAppeal[] }>({
@@ -81,7 +96,7 @@ export default function MissionReviewPage() {
 
   const accept = useMutation({
     mutationFn: () => apiRequest("/api/mission-review-invitations/accept", { method: "POST", ...request }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/mission-review-invitations/resolve", token] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/mission-review-invitations/resolve", invitationLocator] }),
   });
   const submit = useMutation({
     mutationFn: (decision: "meets_evidence" | "revisions_needed") => apiRequest("/api/mission-review-invitations/review", {
@@ -95,7 +110,8 @@ export default function MissionReviewPage() {
     }),
     onSuccess: (_result, decision) => {
       sessionStorage.removeItem(tokenStorageKey);
-      queryClient.removeQueries({ queryKey: ["/api/mission-review-invitations/resolve", token] });
+      sessionStorage.removeItem(invitationStorageKey);
+      queryClient.removeQueries({ queryKey: ["/api/mission-review-invitations/resolve", invitationLocator] });
       toast({ title: decision === "meets_evidence" ? "Review recorded" : "Revision requested", description: "Your decision is now part of this mission's evidence history." });
     },
   });
@@ -115,7 +131,7 @@ export default function MissionReviewPage() {
   });
 
   if (isLoading) return <div className="min-h-[100dvh] bg-background" />;
-  if (!token && isAuthenticated) return <ReviewShell>
+  if (!invitationLocator && isAuthenticated) return <ReviewShell>
     <div><p className="text-xs uppercase tracking-[0.12em] text-primary">Assigned reconsiderations</p><p className="mt-1 text-sm text-muted-foreground">Resolve only reviews you previously issued. The original decision remains preserved.</p></div>
     {assignedAppeals.isLoading ? <p className="text-sm text-muted-foreground">Loading assigned appeals…</p> : assignedAppeals.data?.appeals.length ? assignedAppeals.data.appeals.map((appeal) => {
       const checked = appealChecks[appeal.id] || {};
@@ -133,7 +149,7 @@ export default function MissionReviewPage() {
     }) : <p className="text-sm text-muted-foreground">No open review appeals are assigned to you.</p>}
     <Link href="/dashboard"><Button variant="outline">Return to LyfeOS</Button></Link>
   </ReviewShell>;
-  if (!token) return <ReviewShell><p className="text-sm text-muted-foreground">This review link is incomplete. Ask the mission owner to create a new link.</p></ReviewShell>;
+  if (!invitationLocator) return <ReviewShell><p className="text-sm text-muted-foreground">This review link is incomplete. Ask the mission owner to create a new link.</p></ReviewShell>;
   if (!isAuthenticated) return <ReviewShell>
     <p className="text-sm text-muted-foreground">Sign in to bind this private review invitation to your LyfeOS account. The mission owner cannot use their own link.</p>
     <Link href="/login"><Button onClick={() => sessionStorage.setItem("lyfeos-return-after-login", "/review-mission")}>Sign in to review</Button></Link>

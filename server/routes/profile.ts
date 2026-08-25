@@ -123,6 +123,17 @@ async function selectSafeHealthConnectionRows(userId: number): Promise<Record<st
   return { health_connections: rows[0], health_sync_cursors: rows[1], health_source_records: rows[2], health_source_suppressions: rows[3], health_import_failures: rows[4], health_import_runs: rows[5], health_source_preferences: rows[6], health_connection_audits: rows[7] };
 }
 
+async function selectSafeMissionReviewInvitationRows(userId: number): Promise<unknown[]> {
+  const result = await db.execute(sql`
+    SELECT "id", "owner_user_id", "mission_contract_id", "reviewer_user_id", "status", "expires_at",
+      "accepted_at", "completed_at", "delivery_channel", "delivery_status", "delivery_message_id", "delivered_at", "created_at"
+    FROM "mission_review_invitations"
+    WHERE "owner_user_id" = ${userId} OR "reviewer_user_id" = ${userId}
+    ORDER BY "created_at", "id"
+  `);
+  return (result as { rows?: unknown[] }).rows || [];
+}
+
 async function selectSafeWorkspaceFormAccessRows(userId: number): Promise<Record<string, unknown[]>> {
   const [grants, receipts] = await Promise.all([
     db.execute(sql`SELECT "id", "public_id", "user_id", "form_id", "label", "active", "expires_at", "max_submissions", "submission_count", "last_used_at", "revoked_at", "created_at" FROM "workspace_form_access_grants" WHERE "user_id" = ${userId}`),
@@ -490,7 +501,7 @@ export function registerProfileRoutes(app: Express): void {
       const userId = req.session.userId!;
       const user = await storage.getUser(userId);
       if (!user) return res.status(404).json({ error: "User not found" });
-      const [rows, federationAudit, healthConnectionRows, workspaceFormAccessRows, nutritionNutrients, nutritionRecipeIngredients, workoutExerciseRows, workoutSetRows, messageHubRows] = await Promise.all([
+      const [rows, federationAudit, healthConnectionRows, workspaceFormAccessRows, nutritionNutrients, nutritionRecipeIngredients, workoutExerciseRows, workoutSetRows, messageHubRows, missionReviewInvitationRows] = await Promise.all([
         Promise.all(accountExportTables.map(async (table) => [table, await selectAccountRows(table, userId)] as const)),
         selectFederationAuditRows(userId, user.clerkId),
         selectSafeHealthConnectionRows(userId),
@@ -500,6 +511,7 @@ export function registerProfileRoutes(app: Express): void {
         selectWorkoutExerciseRows(userId),
         selectWorkoutSetRows(userId),
         selectMessageHubRows(userId),
+        selectSafeMissionReviewInvitationRows(userId),
       ]);
       const data = Object.fromEntries(rows) as Record<string, unknown[]>;
       Object.assign(data, federationAudit);
@@ -510,6 +522,7 @@ export function registerProfileRoutes(app: Express): void {
       data.workout_exercises = workoutExerciseRows;
       data.workout_sets = workoutSetRows;
       Object.assign(data, messageHubRows);
+      data.mission_review_invitations = missionReviewInvitationRows;
       const safeUser = { ...user, password: undefined, passwordResetToken: undefined, passwordResetExpiry: undefined, emailVerificationToken: undefined, emailVerificationExpiry: undefined, twoFactorEmailCode: undefined, twoFactorEmailExpiry: undefined, twoFactorPhoneCode: undefined, twoFactorPhoneExpiry: undefined };
       data.integrations = data.integrations.map((entry: any) => {
         const { access_token, refresh_token, accessToken, refreshToken, ...safe } = entry;

@@ -55,12 +55,17 @@ type MissionReviewInvitationBundle = {
     id: number;
     status: "pending" | "accepted" | "revoked" | "completed" | "expired";
     reviewerDisplayName: string | null;
+    deliveryChannel: "native_inbox" | null;
+    deliveryStatus: "delivered" | null;
+    deliveredAt: string | null;
     expiresAt: string;
     acceptedAt: string | null;
     completedAt: string | null;
     createdAt: string;
   }>;
 };
+
+type ReviewerOption = { id: number; displayName: string | null };
 
 type MissionDependencyBundle = {
   dependencies: Array<{ id: number; prerequisiteQuestId: number; title: string; completed: boolean }>;
@@ -123,6 +128,8 @@ export default function MissionDetailPage() {
   const [evidenceChecks, setEvidenceChecks] = useState<Record<string, boolean>>({});
   const [prerequisiteQuestId, setPrerequisiteQuestId] = useState("");
   const [latestReviewUrl, setLatestReviewUrl] = useState("");
+  const [reviewerSearch, setReviewerSearch] = useState("");
+  const [selectedReviewer, setSelectedReviewer] = useState<ReviewerOption | null>(null);
   const [appealReason, setAppealReason] = useState("");
   const invitationQuery = useQuery<MissionReviewInvitationBundle>({
     queryKey: ["/api/quests", questId, "review-invitations"],
@@ -184,6 +191,21 @@ export default function MissionDetailPage() {
     },
     onError: (error: Error) => toast({ title: "Review link not created", description: error.message, variant: "destructive" }),
   });
+  const deliverReviewInvitation = useMutation({
+    mutationFn: () => apiRequest(`/api/quests/${questId}/review-invitations`, {
+      method: "POST",
+      body: JSON.stringify({ expiresInDays: 7, reviewerUserId: selectedReviewer?.id }),
+    }) as Promise<{ delivery: { channel: "native_inbox"; status: "delivered"; deliveredAt: string } }>,
+    onSuccess: () => {
+      const reviewerName = selectedReviewer?.displayName || "reviewer";
+      setReviewerSearch("");
+      setSelectedReviewer(null);
+      setLatestReviewUrl("");
+      queryClient.invalidateQueries({ queryKey: ["/api/quests", questId, "review-invitations"] });
+      toast({ title: "Review request delivered", description: `${reviewerName} received it in their LyfeOS inbox. This is native inbox evidence, not an email or push-provider claim.` });
+    },
+    onError: (error: Error) => toast({ title: "Review request not delivered", description: error.message, variant: "destructive" }),
+  });
   const revokeReviewInvitation = useMutation({
     mutationFn: (invitationId: number) => apiRequest(`/api/quests/${questId}/review-invitations/${invitationId}`, { method: "DELETE" }),
     onSuccess: () => {
@@ -214,6 +236,11 @@ export default function MissionDetailPage() {
         description: decision === "meets_evidence" ? "LyfeOS recorded the reviewed practice evidence; it is not external certification." : "Progression remains withheld until the declared evidence is met and reviewed.",
       });
     },
+  });
+  const reviewerQuery = useQuery<{ users: ReviewerOption[] }>({
+    queryKey: ["/api/message-hub/users", "mission-review", reviewerSearch],
+    queryFn: () => apiRequest(`/api/message-hub/users?q=${encodeURIComponent(reviewerSearch.trim())}`),
+    enabled: reviewerSearch.trim().length >= 2 && !selectedReviewer,
   });
   const createAppeal = useMutation({
     mutationFn: () => apiRequest(`/api/quests/${questId}/review-appeals`, { method: "POST", body: JSON.stringify({ reason: appealReason }) }),
@@ -601,16 +628,24 @@ export default function MissionDetailPage() {
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div>
                         <p className="text-xs font-medium">Authorized human review</p>
-                        <p className="text-[11px] leading-relaxed text-muted-foreground">Create a private, revocable link for one authenticated reviewer. They receive access only to this proof plan and its evidence.</p>
+                        <p className="text-[11px] leading-relaxed text-muted-foreground">Send a bound request to one LyfeOS user, or create a private capability link. Either route grants access only to this proof plan and its evidence.</p>
                       </div>
                       <Button size="sm" variant="outline" disabled={createReviewInvitation.isPending} onClick={() => createReviewInvitation.mutate()}>{createReviewInvitation.isPending ? "Creating…" : "Copy review link"}</Button>
+                    </div>
+                    <div className="rounded-md border border-primary/10 bg-background/25 p-2 space-y-2">
+                      <div className="flex flex-wrap gap-2">
+                        <Input value={selectedReviewer?.displayName || reviewerSearch} onChange={(event) => { setSelectedReviewer(null); setReviewerSearch(event.target.value); }} placeholder="Find a LyfeOS username…" className="min-w-52 flex-1" />
+                        <Button size="sm" disabled={!selectedReviewer || deliverReviewInvitation.isPending} onClick={() => deliverReviewInvitation.mutate()}>{deliverReviewInvitation.isPending ? "Delivering…" : "Send review request"}</Button>
+                      </div>
+                      {!selectedReviewer && reviewerSearch.trim().length >= 2 && (reviewerQuery.data?.users || []).length > 0 ? <div className="flex flex-wrap gap-1">{reviewerQuery.data!.users.map((reviewer) => <button type="button" key={reviewer.id} onClick={() => setSelectedReviewer(reviewer)} className="rounded border border-primary/15 px-2 py-1 text-xs hover:bg-primary/10">{reviewer.displayName || "LyfeOS user"}</button>)}</div> : null}
+                      <p className="text-[10px] leading-relaxed text-muted-foreground">Native delivery is recorded only when the recipient inbox commits. If their inbox state blocks delivery, LyfeOS leaves no invitation behind.</p>
                     </div>
                     {latestReviewUrl && <div className="flex gap-2">
                       <Input readOnly aria-label="New review invitation link" value={latestReviewUrl} className="h-8 text-xs" onFocus={(event) => event.currentTarget.select()} />
                       <Button size="sm" variant="ghost" className="h-8" disabled={!navigator.clipboard} onClick={async () => { await navigator.clipboard.writeText(latestReviewUrl); toast({ title: "Review link copied" }); }}>Copy</Button>
                     </div>}
                     {(invitationQuery.data?.invitations || []).map((invitation) => <div key={invitation.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-primary/10 bg-background/30 p-2 text-xs">
-                      <span>{invitation.status.replaceAll("_", " ")}{invitation.reviewerDisplayName ? ` · ${invitation.reviewerDisplayName}` : ""} · expires {new Date(invitation.expiresAt).toLocaleDateString()}</span>
+                      <span>{invitation.status.replaceAll("_", " ")}{invitation.reviewerDisplayName ? ` · ${invitation.reviewerDisplayName}` : ""}{invitation.deliveryStatus === "delivered" ? " · native inbox delivered" : " · private link"} · expires {new Date(invitation.expiresAt).toLocaleDateString()}</span>
                       {["pending", "accepted"].includes(invitation.status) && <button type="button" className="text-primary hover:text-destructive" onClick={() => revokeReviewInvitation.mutate(invitation.id)} disabled={revokeReviewInvitation.isPending}>revoke</button>}
                     </div>)}
                     {mission.completed ? <p className="text-xs leading-relaxed text-muted-foreground">Self-review cannot advance this mission. Progression remains withheld until the invited reviewer accepts the link and records a decision.</p> : null}

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { Link } from "wouter";
 import { Check, CheckCheck, Clock3, FileText, Inbox, LockKeyhole, MessageCircle, Paperclip, Pencil, Plus, Reply, Search, Send, ShieldBan, StickyNote, Trash2, UserRound, Users, X } from "lucide-react";
 import { messageConversationStatuses, nativeMessageReactions, type MessageConversationStatus } from "@shared/messages";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -13,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 type Person = { id: number; participantId?: string; userId?: number; displayName: string | null; avatarUrl?: string | null; avatarColor?: string | null; status?: string; role?: string };
 type Attachment = { id: string; attachmentKind: string; filename: string | null; mimeType: string | null; sizeBytes: number | null };
 type MessageReaction = { id: string; messageId: string; userId: number; reaction: string };
-type Message = { id: string; senderUserId: number | null; direction: "inbound" | "outbound"; body: string; status: string; version: number; replyToMessageId?: string | null; createdAt: string; editedAt?: string | null; deletedAt?: string | null; attachments?: Attachment[]; reactions?: MessageReaction[] };
+type Message = { id: string; senderUserId: number | null; direction: "inbound" | "outbound"; body: string; status: string; version: number; replyToMessageId?: string | null; createdAt: string; editedAt?: string | null; deletedAt?: string | null; extension?: { kind?: string; invitationId?: number; reviewPath?: string }; attachments?: Attachment[]; reactions?: MessageReaction[] };
 type Note = { id: string; body: string; createdAt: string };
 type DocumentOption = { id: number; title: string; fileType: string | null; mimeType: string | null; fileSize: number | null; format: string };
 type Conversation = {
@@ -46,6 +47,11 @@ function relativeTime(value?: string | null) {
   if (delta < 3_600_000) return `${Math.max(1, Math.floor(delta / 60_000))}m`;
   if (delta < 86_400_000) return `${Math.floor(delta / 3_600_000)}h`;
   return new Date(value).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function conversationLabel(conversation: Conversation, currentUserId?: number) {
+  if (conversation.kind === "group") return conversation.title;
+  return conversation.participants.find((participant) => participant.id !== currentUserId)?.displayName || conversation.title;
 }
 
 export default function MessagesPage() {
@@ -209,13 +215,13 @@ export default function MessagesPage() {
           {list.data?.conversations.length ? list.data.conversations.map((item) => {
             const others = item.participants.filter((participant) => participant.id !== user?.id);
             return <button key={item.id} onClick={() => setSelectedId(item.id)} className={`mb-1 w-full rounded-lg border p-3 text-left ${selectedId === item.id ? "border-primary/40 bg-primary/10" : "border-transparent hover:bg-primary/5"}`}>
-              <div className="flex items-start gap-3"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-primary/25 bg-primary/10 text-xs text-primary">{item.kind === "group" ? <Users className="h-4 w-4" /> : initials(others[0]?.displayName || item.title)}</div><div className="min-w-0 flex-1"><div className="flex items-center justify-between gap-2"><strong className="truncate text-sm">{item.title}</strong><span className="text-[10px] text-muted-foreground">{relativeTime(item.latestMessage?.createdAt || item.lastMessageAt)}</span></div><p className="truncate text-xs text-muted-foreground">{item.latestMessage ? `${item.latestMessage.direction === "outbound" ? "You: " : ""}${item.latestMessage.body}` : others.map((person) => person.displayName).join(", ")}</p></div>{item.unreadCount > 0 && <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] text-primary-foreground">{item.unreadCount}</span>}</div>
+              <div className="flex items-start gap-3"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-primary/25 bg-primary/10 text-xs text-primary">{item.kind === "group" ? <Users className="h-4 w-4" /> : initials(others[0]?.displayName || item.title)}</div><div className="min-w-0 flex-1"><div className="flex items-center justify-between gap-2"><strong className="truncate text-sm">{conversationLabel(item, user?.id)}</strong><span className="text-[10px] text-muted-foreground">{relativeTime(item.latestMessage?.createdAt || item.lastMessageAt)}</span></div><p className="truncate text-xs text-muted-foreground">{item.latestMessage ? `${item.latestMessage.direction === "outbound" ? "You: " : ""}${item.latestMessage.body}` : others.map((person) => person.displayName).join(", ")}</p></div>{item.unreadCount > 0 && <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] text-primary-foreground">{item.unreadCount}</span>}</div>
             </button>;
           }) : <div className="p-8 text-center text-sm text-muted-foreground"><Inbox className="mx-auto mb-2 h-7 w-7 text-primary/60" />No {labels[status].toLowerCase()} conversations.</div>}
         </aside>
 
         {conversation ? <main className="flex min-h-[560px] flex-col">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-primary/15 p-4"><div><div className="flex items-center gap-2"><MessageCircle className="h-4 w-4 text-primary" /><strong>{conversation.title}</strong></div><p className="mt-1 text-xs text-muted-foreground">{conversation.participants.map((person) => person.displayName).join(", ")} · {labels[conversation.status]} · revision {conversation.version}</p></div><div className="flex flex-wrap gap-1">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-primary/15 p-4"><div><div className="flex items-center gap-2"><MessageCircle className="h-4 w-4 text-primary" /><strong>{conversationLabel(conversation, user?.id)}</strong></div><p className="mt-1 text-xs text-muted-foreground">{conversation.participants.map((person) => person.displayName).join(", ")} · {labels[conversation.status]} · revision {conversation.version}</p></div><div className="flex flex-wrap gap-1">
             {conversation.participantStatus === "blocked" ? <Button size="sm" variant="outline" onClick={() => changeBlock.mutate(false)}>Unblock</Button> : <>
               {conversation.status !== "open" && <Button size="sm" variant="outline" onClick={() => changeState.mutate({ next: "open" })}>Reopen</Button>}
               {conversation.status === "open" && <><Button size="sm" variant="outline" onClick={() => changeState.mutate({ next: "pending" })}><Clock3 className="mr-1 h-3.5 w-3.5" />Wait</Button><Button size="sm" variant="outline" onClick={() => changeState.mutate({ next: "snoozed", snoozedUntil: new Date(Date.now() + 60 * 60 * 1000).toISOString() })}>Snooze 1h</Button><Button size="sm" variant="outline" onClick={() => changeState.mutate({ next: "closed" })}>Close</Button><Button size="sm" variant="ghost" onClick={() => changeState.mutate({ next: "spam" })}>Spam</Button></>}
@@ -245,6 +251,7 @@ export default function MessagesPage() {
                   <div className="mb-1 flex items-center justify-between gap-4 text-[10px] text-muted-foreground"><span>{outbound ? "You" : participantNames.get(message.senderUserId || -1) || "Former user"}</span><span>{new Date(message.createdAt).toLocaleString()}</span></div>
                   {message.replyToMessageId && <p className="mb-1 border-l border-primary/40 pl-2 text-[10px] text-muted-foreground">Reply</p>}
                   {editing ? <div className="space-y-2"><Textarea value={editBody} maxLength={10_000} onChange={(event) => setEditBody(event.target.value)} className="min-h-20 resize-none bg-background" /><div className="flex justify-end gap-1"><Button size="sm" variant="ghost" onClick={() => { setEditingMessageId(null); setEditBody(""); }}><X className="mr-1 h-3 w-3" />Cancel</Button><Button size="sm" disabled={!editBody.trim() || editMessage.isPending} onClick={() => editMessage.mutate({ messageId: message.id, body: editBody, expectedVersion: message.version })}><Check className="mr-1 h-3 w-3" />Save</Button></div></div> : <p className={`whitespace-pre-wrap break-words text-sm ${deleted ? "italic text-muted-foreground" : ""}`}>{message.body}</p>}
+                  {!deleted && !outbound && message.extension?.kind === "mission_review_invitation" && message.extension.reviewPath?.startsWith("/review-mission#invitation=") ? <Link href={message.extension.reviewPath}><Button size="sm" variant="outline" className="mt-2">Open scoped review</Button></Link> : null}
                   {message.editedAt && !deleted && <p className="mt-1 text-[9px] text-muted-foreground">edited</p>}
                   {!deleted && message.attachments?.length ? <div className="mt-2 space-y-1">{message.attachments.map((attachment) => <a key={attachment.id} href={`/api/message-hub/attachments/${attachment.id}/file`} className="flex items-center gap-2 rounded-md border border-primary/20 bg-background/30 px-2 py-1.5 text-xs text-primary hover:bg-primary/10"><FileText className="h-3.5 w-3.5" /><span className="min-w-0 flex-1 truncate">{attachment.filename || "Attachment"}</span>{attachment.sizeBytes != null && <span className="text-[10px] text-muted-foreground">{Math.max(1, Math.ceil(attachment.sizeBytes / 1024))} KB</span>}</a>)}</div> : null}
                   {!deleted && groupedReactions.length > 0 && <div className="mt-2 flex flex-wrap gap-1">{groupedReactions.map((item) => <button key={item.reaction} type="button" aria-label={`${item.reaction} reaction, ${item.count}`} onClick={() => reactToMessage.mutate({ messageId: message.id, reaction: item.reaction })} className={`rounded-full border px-1.5 py-0.5 text-[10px] ${item.mine ? "border-primary/50 bg-primary/15" : "border-primary/15 bg-background/30"}`}>{item.reaction} {item.count}</button>)}</div>}

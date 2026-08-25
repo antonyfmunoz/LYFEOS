@@ -738,6 +738,10 @@ export const missionReviewInvitations = pgTable("mission_review_invitations", {
   expiresAt: timestamp("expires_at").notNull(),
   acceptedAt: timestamp("accepted_at"),
   completedAt: timestamp("completed_at"),
+  deliveryChannel: text("delivery_channel"), // native_inbox | null (manual capability link)
+  deliveryStatus: text("delivery_status"), // delivered | null; external/provider claims require separate evidence
+  deliveryMessageId: uuid("delivery_message_id"),
+  deliveredAt: timestamp("delivered_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => [
   uniqueIndex("mission_review_invitations_token_unique_idx").on(table.tokenHash),
