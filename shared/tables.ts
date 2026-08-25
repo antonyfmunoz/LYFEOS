@@ -41,6 +41,22 @@ export const workspaceBulkRowDeleteSchema = z.object({
   rowIds: z.array(z.number().int().positive()).min(1).max(100).refine((ids) => new Set(ids).size === ids.length, "Row IDs must be unique."),
 }).strict();
 
+export const workspaceTableViewDefinitionSchema = z.object({
+  version: z.literal(1),
+  filterQuery: z.string().trim().max(120),
+  sortColumnId: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/).nullable(),
+  sortDirection: z.enum(["asc", "desc"]),
+  groupColumnId: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/).nullable(),
+}).strict();
+export const createWorkspaceTableViewSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  definition: workspaceTableViewDefinitionSchema,
+}).strict();
+export const updateWorkspaceTableViewSchema = z.object({
+  name: z.string().trim().min(1).max(80).optional(),
+  definition: workspaceTableViewDefinitionSchema.optional(),
+}).strict().refine((value) => Object.keys(value).length > 0, "Provide at least one view field.");
+
 const formFields = {
   title: z.string().trim().min(1).max(160),
   description: z.string().trim().max(800).nullable().optional(),
@@ -58,6 +74,7 @@ export type WorkspaceDatabaseDefinition = z.infer<typeof workspaceDatabaseDefini
 export type WorkspaceColumn = z.infer<typeof workspaceColumnSchema>;
 export type WorkspaceRowValues = z.infer<typeof workspaceRowValuesSchema>;
 export type WorkspaceRowSortDirection = "asc" | "desc";
+export type WorkspaceTableViewDefinition = z.infer<typeof workspaceTableViewDefinitionSchema>;
 
 export function createWorkspaceColumn(type: WorkspaceColumn["type"] = "text", name = "Name"): WorkspaceColumn {
   return { id: `field_${Math.random().toString(36).slice(2, 12)}`, name, type, required: false, options: type === "select" ? ["Option 1"] : [] };
@@ -98,6 +115,12 @@ export function validateWorkspaceFormFields(definition: WorkspaceDatabaseDefinit
   if (missingRequired) throw new Error(`Required field ${missingRequired.name} must be included in the form.`);
 }
 
+export function validateWorkspaceTableView(definition: WorkspaceDatabaseDefinition, view: WorkspaceTableViewDefinition): void {
+  const columns = new Set(definition.columns.map((column) => column.id));
+  if (view.sortColumnId && !columns.has(view.sortColumnId)) throw new Error("The view sort column must exist in its table.");
+  if (view.groupColumnId && !columns.has(view.groupColumnId)) throw new Error("The view group column must exist in its table.");
+}
+
 export function filterAndSortWorkspaceRows<T extends { id: number; values: WorkspaceRowValues }>(
   rows: readonly T[],
   definition: WorkspaceDatabaseDefinition,
@@ -124,4 +147,19 @@ export function filterAndSortWorkspaceRows<T extends { id: number; values: Works
     const rightText = String(rightValue).toLowerCase();
     return (leftText < rightText ? -1 : leftText > rightText ? 1 : left.id - right.id) * multiplier;
   });
+}
+
+export function groupWorkspaceRows<T extends { id: number; values: WorkspaceRowValues }>(rows: readonly T[], definition: WorkspaceDatabaseDefinition, groupColumnId: string | null): Array<{ key: string; label: string; rows: T[] }> {
+  if (!groupColumnId) return [{ key: "all", label: "All rows", rows: [...rows] }];
+  if (!definition.columns.some((column) => column.id === groupColumnId)) throw new Error("Choose a group column from this table.");
+  const groups = new Map<string, { key: string; label: string; rows: T[] }>();
+  for (const row of rows) {
+    const value = row.values[groupColumnId];
+    const label = value === undefined || value === null || value === "" ? "Empty" : typeof value === "boolean" ? (value ? "Yes" : "No") : String(value);
+    const key = `${typeof value}:${label}`;
+    const group = groups.get(key) || { key, label, rows: [] };
+    group.rows.push(row);
+    groups.set(key, group);
+  }
+  return Array.from(groups.values());
 }

@@ -1619,6 +1619,16 @@ export const workspaceDatabaseRows = pgTable("workspace_database_rows", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => [index("workspace_database_rows_database_updated_idx").on(table.databaseId, table.updatedAt), index("workspace_database_rows_user_idx").on(table.userId)]);
 
+export const workspaceTableViews = pgTable("workspace_table_views", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  databaseId: integer("database_id").notNull().references(() => workspaceDatabases.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  definition: jsonb("definition").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [index("workspace_table_views_user_database_idx").on(table.userId, table.databaseId), uniqueIndex("workspace_table_views_database_name_unique_idx").on(table.databaseId, sql`lower(${table.name})`)]);
+
 export const workspaceForms = pgTable("workspace_forms", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),

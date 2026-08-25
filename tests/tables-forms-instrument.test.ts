@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { filterAndSortWorkspaceRows, validateWorkspaceFormFields, validateWorkspaceRow, workspaceBulkRowDeleteSchema, workspaceDatabaseDefinitionSchema, type WorkspaceDatabaseDefinition } from "../shared/tables";
+import { createWorkspaceTableViewSchema, filterAndSortWorkspaceRows, groupWorkspaceRows, validateWorkspaceFormFields, validateWorkspaceRow, validateWorkspaceTableView, workspaceBulkRowDeleteSchema, workspaceDatabaseDefinitionSchema, type WorkspaceDatabaseDefinition, type WorkspaceTableViewDefinition } from "../shared/tables";
 
 const source = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8");
 const definition: WorkspaceDatabaseDefinition = { version: 1, columns: [
@@ -95,5 +95,50 @@ describe("Tables and Forms instruments", () => {
     expect(editor).toContain("Delete selected");
     expect(editor).toContain("This cannot be undone.");
     expect(editor).toContain("bulkRemoveRows.mutate(selectedRowIds)");
+  });
+
+  it("validates persisted views against current table columns and groups without copying rows", () => {
+    const view: WorkspaceTableViewDefinition = { version: 1, filterQuery: "open", sortColumnId: "score", sortDirection: "desc", groupColumnId: "state" };
+    expect(createWorkspaceTableViewSchema.safeParse({ name: "Open by state", definition: view }).success).toBe(true);
+    expect(() => validateWorkspaceTableView(definition, view)).not.toThrow();
+    expect(() => validateWorkspaceTableView(definition, { ...view, groupColumnId: "missing" })).toThrow("group column");
+    const rows = [
+      { id: 1, values: { name: "Practice", state: "Open" } },
+      { id: 2, values: { name: "Ship", state: "Done" } },
+      { id: 3, values: { name: "Review", state: "Open" } },
+    ];
+    const groups = groupWorkspaceRows(rows, definition, "state");
+    expect(groups.map((group) => [group.label, group.rows.map((row) => row.id)])).toEqual([["Open", [1, 3]], ["Done", [2]]]);
+    expect(rows).toHaveLength(3);
+  });
+
+  it("persists owner-scoped named views through migration, routes, and account rights", () => {
+    const migration = source("migrations/0109_workspace_table_views.sql");
+    const release = source("server/release-migrate.ts");
+    const schema = source("shared/schema.ts");
+    const routes = source("server/routes/tables.ts");
+    const profile = source("server/routes/profile.ts");
+    for (const contract of [migration, release, schema]) {
+      expect(contract).toContain("workspace_table_views");
+      expect(contract).toContain("workspace_table_views_database_name_unique_idx");
+    }
+    expect(release).toContain('id: "0109_workspace_table_views"');
+    expect(routes).toContain('app.post("/api/databases/:id/views", isAuthenticated');
+    expect(routes).toContain('app.patch("/api/databases/:databaseId/views/:viewId", isAuthenticated');
+    expect(routes).toContain('app.delete("/api/databases/:databaseId/views/:viewId", isAuthenticated');
+    expect(routes).toContain("eq(workspaceTableViews.databaseId, databaseId)");
+    expect(routes).toContain("eq(workspaceTableViews.userId, req.session.userId!)");
+    expect(profile.match(/"workspace_table_views"/g)?.length).toBe(2);
+  });
+
+  it("loads and saves named filter, sort, and group state in the existing editor", () => {
+    const editor = source("client/src/pages/TableEditorPage.tsx");
+    expect(editor).toContain('aria-label="Saved table view"');
+    expect(editor).toContain('aria-label="Group rows by column"');
+    expect(editor).toContain("groupWorkspaceRows");
+    expect(editor).toContain("Rows remain in this table as the single source of truth.");
+    expect(editor).toContain("Save new view");
+    expect(editor).toContain("Update view");
+    expect(editor).toContain("Table rows will not be deleted.");
   });
 });

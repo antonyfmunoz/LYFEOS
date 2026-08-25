@@ -2203,6 +2203,22 @@ const migrations = [
       CREATE INDEX IF NOT EXISTS "contacts_workspace_search_name_trgm_idx" ON "contacts" USING gin ("name" gin_trgm_ops);
     `,
   },
+  {
+    id: "0109_workspace_table_views",
+    sql: `
+      CREATE TABLE IF NOT EXISTS "workspace_table_views" (
+        "id" serial PRIMARY KEY NOT NULL,
+        "user_id" integer NOT NULL REFERENCES "users"("id") ON DELETE cascade,
+        "database_id" integer NOT NULL REFERENCES "workspace_databases"("id") ON DELETE cascade,
+        "name" text NOT NULL,
+        "definition" jsonb NOT NULL,
+        "created_at" timestamp NOT NULL DEFAULT now(),
+        "updated_at" timestamp NOT NULL DEFAULT now()
+      );
+      CREATE INDEX IF NOT EXISTS "workspace_table_views_user_database_idx" ON "workspace_table_views" ("user_id", "database_id");
+      CREATE UNIQUE INDEX IF NOT EXISTS "workspace_table_views_database_name_unique_idx" ON "workspace_table_views" ("database_id", lower("name"));
+    `,
+  },
 ];
 
 async function run(): Promise<void> {

@@ -1,9 +1,9 @@
 import type { Express, Request, Response } from "express";
 import { and, desc, eq, inArray } from "drizzle-orm";
-import { workspaceDatabaseRows, workspaceDatabases, workspaceForms } from "@shared/schema";
+import { workspaceDatabaseRows, workspaceDatabases, workspaceForms, workspaceTableViews } from "@shared/schema";
 import {
-  createWorkspaceDatabaseSchema, createWorkspaceFormSchema, updateWorkspaceDatabaseSchema, updateWorkspaceFormSchema,
-  validateWorkspaceFormFields, validateWorkspaceRow, workspaceBulkRowDeleteSchema, workspaceDatabaseDefinitionSchema, workspaceRowRequestSchema,
+  createWorkspaceDatabaseSchema, createWorkspaceFormSchema, createWorkspaceTableViewSchema, updateWorkspaceDatabaseSchema, updateWorkspaceFormSchema, updateWorkspaceTableViewSchema,
+  validateWorkspaceFormFields, validateWorkspaceRow, validateWorkspaceTableView, workspaceBulkRowDeleteSchema, workspaceDatabaseDefinitionSchema, workspaceRowRequestSchema, workspaceTableViewDefinitionSchema,
   type WorkspaceRowValues,
 } from "@shared/tables";
 import { db } from "../db";
@@ -49,11 +49,12 @@ export function registerTableRoutes(app: Express): void {
   app.get("/api/databases/:id", isAuthenticated, async (req, res) => {
     const id = idParam(req.params.id); if (!id) return res.status(400).json({ error: "Invalid database ID" });
     const database = await ownedDatabase(id, req.session.userId!); if (!database) return res.status(404).json({ error: "Database not found" });
-    const [rows, forms] = await Promise.all([
+    const [rows, forms, views] = await Promise.all([
       db.select().from(workspaceDatabaseRows).where(and(eq(workspaceDatabaseRows.databaseId, id), eq(workspaceDatabaseRows.userId, req.session.userId!))).orderBy(desc(workspaceDatabaseRows.updatedAt)),
       db.select().from(workspaceForms).where(and(eq(workspaceForms.databaseId, id), eq(workspaceForms.userId, req.session.userId!))).orderBy(desc(workspaceForms.updatedAt)),
+      db.select().from(workspaceTableViews).where(and(eq(workspaceTableViews.databaseId, id), eq(workspaceTableViews.userId, req.session.userId!))).orderBy(workspaceTableViews.name),
     ]);
-    res.json({ database, rows, forms });
+    res.json({ database, rows, forms, views });
   });
   app.patch("/api/databases/:id", isAuthenticated, async (req, res) => {
     try {
@@ -65,6 +66,8 @@ export function registerTableRoutes(app: Express): void {
         rows.forEach((row) => validateWorkspaceRow(input.definition!, row.values as WorkspaceRowValues));
         const forms = await db.select({ fieldIds: workspaceForms.fieldIds }).from(workspaceForms).where(and(eq(workspaceForms.databaseId, id), eq(workspaceForms.userId, req.session.userId!)));
         forms.forEach((form) => validateWorkspaceFormFields(input.definition!, form.fieldIds as string[]));
+        const views = await db.select({ definition: workspaceTableViews.definition }).from(workspaceTableViews).where(and(eq(workspaceTableViews.databaseId, id), eq(workspaceTableViews.userId, req.session.userId!)));
+        views.forEach((view) => validateWorkspaceTableView(input.definition!, workspaceTableViewDefinitionSchema.parse(view.definition)));
       }
       const [updated] = await db.update(workspaceDatabases).set({ ...input, updatedAt: new Date() }).where(and(eq(workspaceDatabases.id, id), eq(workspaceDatabases.userId, req.session.userId!))).returning();
       res.json({ database: updated });
@@ -117,6 +120,37 @@ export function registerTableRoutes(app: Express): void {
       )).returning({ id: workspaceDatabaseRows.id });
       res.json({ deletedRowIds: deleted.map((row) => row.id), deletedCount: deleted.length });
     } catch (error) { return badRequest(res, error); }
+  });
+
+  app.post("/api/databases/:id/views", isAuthenticated, async (req, res) => {
+    try {
+      const id = idParam(req.params.id); if (!id) return res.status(400).json({ error: "Invalid database ID" });
+      const database = await ownedDatabase(id, req.session.userId!); if (!database) return res.status(404).json({ error: "Database not found" });
+      const input = createWorkspaceTableViewSchema.parse(req.body);
+      validateWorkspaceTableView(workspaceDatabaseDefinitionSchema.parse(database.definition), input.definition);
+      const [view] = await db.insert(workspaceTableViews).values({ ...input, userId: req.session.userId!, databaseId: id }).returning();
+      res.status(201).json({ view });
+    } catch (error) { return badRequest(res, error); }
+  });
+  app.patch("/api/databases/:databaseId/views/:viewId", isAuthenticated, async (req, res) => {
+    try {
+      const databaseId = idParam(req.params.databaseId), viewId = idParam(req.params.viewId);
+      if (!databaseId || !viewId) return res.status(400).json({ error: "Invalid view ID" });
+      const database = await ownedDatabase(databaseId, req.session.userId!); if (!database) return res.status(404).json({ error: "Database not found" });
+      const [existing] = await db.select().from(workspaceTableViews).where(and(eq(workspaceTableViews.id, viewId), eq(workspaceTableViews.databaseId, databaseId), eq(workspaceTableViews.userId, req.session.userId!))).limit(1);
+      if (!existing) return res.status(404).json({ error: "View not found" });
+      const input = updateWorkspaceTableViewSchema.parse(req.body);
+      validateWorkspaceTableView(workspaceDatabaseDefinitionSchema.parse(database.definition), input.definition || workspaceTableViewDefinitionSchema.parse(existing.definition));
+      const [view] = await db.update(workspaceTableViews).set({ ...input, updatedAt: new Date() }).where(and(eq(workspaceTableViews.id, viewId), eq(workspaceTableViews.databaseId, databaseId), eq(workspaceTableViews.userId, req.session.userId!))).returning();
+      res.json({ view });
+    } catch (error) { return badRequest(res, error); }
+  });
+  app.delete("/api/databases/:databaseId/views/:viewId", isAuthenticated, async (req, res) => {
+    const databaseId = idParam(req.params.databaseId), viewId = idParam(req.params.viewId);
+    if (!databaseId || !viewId) return res.status(400).json({ error: "Invalid view ID" });
+    const [view] = await db.delete(workspaceTableViews).where(and(eq(workspaceTableViews.id, viewId), eq(workspaceTableViews.databaseId, databaseId), eq(workspaceTableViews.userId, req.session.userId!))).returning({ id: workspaceTableViews.id });
+    if (!view) return res.status(404).json({ error: "View not found" });
+    res.status(204).end();
   });
 
   app.post("/api/forms", isAuthenticated, async (req, res) => {
