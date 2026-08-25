@@ -385,19 +385,34 @@ export function registerTableRoutes(app: Express): void {
         const database = await lockedOwnedDatabase(tx, databaseId, req.session.userId!); if (!database) return { kind: "database-missing" } as const;
         const [target] = await tx.select({ id: workspaceDatabaseRows.id }).from(workspaceDatabaseRows).where(and(eq(workspaceDatabaseRows.id, rowId), eq(workspaceDatabaseRows.databaseId, databaseId), eq(workspaceDatabaseRows.userId, req.session.userId!))).limit(1);
         if (!target) return { kind: "missing" } as const;
-        const references = await workspaceRowReferences(tx, databaseId, [rowId], req.session.userId!);
-        if (references.truncated) return { kind: "too-many" } as const;
-        if (references.entries.length !== input.referenceCount) return { kind: "changed", referenceCount: references.entries.length } as const;
-        const rowIds = Array.from(new Set(references.entries.map((entry) => entry.sourceRowId))); const databaseIds = Array.from(new Set(references.entries.map((entry) => entry.sourceDatabaseId)));
+        let entries: WorkspaceRowReference[];
+        if (input.reviewedReferences) entries = input.reviewedReferences.map((reference) => ({ ...reference, targetRowId: rowId, sourceDatabaseTitle: "", relationColumnName: "" }));
+        else {
+          const references = await workspaceRowReferences(tx, databaseId, [rowId], req.session.userId!);
+          if (references.truncated) return { kind: "too-many" } as const;
+          if (references.entries.length !== input.referenceCount) return { kind: "changed", referenceCount: references.entries.length } as const;
+          entries = references.entries;
+        }
+        const rowIds = Array.from(new Set(entries.map((entry) => entry.sourceRowId))); const databaseIds = Array.from(new Set(entries.map((entry) => entry.sourceDatabaseId)));
         const [sourceRows, sourceDatabases] = await Promise.all([
           rowIds.length ? tx.select().from(workspaceDatabaseRows).where(and(eq(workspaceDatabaseRows.userId, req.session.userId!), inArray(workspaceDatabaseRows.id, rowIds))) : [],
           databaseIds.length ? tx.select({ id: workspaceDatabases.id, definition: workspaceDatabases.definition }).from(workspaceDatabases).where(and(eq(workspaceDatabases.userId, req.session.userId!), inArray(workspaceDatabases.id, databaseIds))) : [],
         ]);
         const definitions = new Map(sourceDatabases.map((record) => [record.id, workspaceDatabaseDefinitionSchema.parse(record.definition)]));
+        if (input.reviewedReferences) {
+          const rows = new Map(sourceRows.map((row) => [`${row.databaseId}:${row.id}`, row]));
+          const current = entries.every((entry) => {
+            const sourceRow = rows.get(`${entry.sourceDatabaseId}:${entry.sourceRowId}`); const definition = definitions.get(entry.sourceDatabaseId);
+            const column = definition?.columns.find((candidate) => candidate.id === entry.relationColumnId);
+            const selected = sourceRow && Array.isArray((sourceRow.values as WorkspaceRowValues)[entry.relationColumnId]) ? (sourceRow.values as WorkspaceRowValues)[entry.relationColumnId] as number[] : [];
+            return column?.type === "relation" && column.relation?.databaseId === databaseId && selected.includes(rowId);
+          });
+          if (!current) return { kind: "reviewed-changed" } as const;
+        }
         for (const sourceRow of sourceRows) {
           const definition = definitions.get(sourceRow.databaseId); if (!definition) throw new Error("A referring Table no longer exists.");
           const values = { ...(sourceRow.values as WorkspaceRowValues) };
-          for (const reference of references.entries.filter((entry) => entry.sourceRowId === sourceRow.id && entry.sourceDatabaseId === sourceRow.databaseId)) {
+          for (const reference of entries.filter((entry) => entry.sourceRowId === sourceRow.id && entry.sourceDatabaseId === sourceRow.databaseId)) {
             const selected = Array.isArray(values[reference.relationColumnId]) ? values[reference.relationColumnId] as number[] : [];
             values[reference.relationColumnId] = selected.filter((selectedId) => selectedId !== rowId);
           }
@@ -406,12 +421,13 @@ export function registerTableRoutes(app: Express): void {
           await tx.update(workspaceDatabaseRows).set({ values: validated, revision: nextRevision, updatedAt: new Date() }).where(and(eq(workspaceDatabaseRows.id, sourceRow.id), eq(workspaceDatabaseRows.databaseId, sourceRow.databaseId), eq(workspaceDatabaseRows.userId, req.session.userId!)));
           await tx.insert(workspaceDatabaseRowRevisions).values({ userId: req.session.userId!, databaseId: sourceRow.databaseId, rowId: sourceRow.id, revisionNumber: nextRevision, action: "updated", snapshot: { values: validated } });
         }
-        return { kind: "unlinked", referenceCount: references.entries.length, affectedRowCount: sourceRows.length } as const;
+        return { kind: "unlinked", referenceCount: entries.length, affectedRowCount: sourceRows.length } as const;
       });
       if (outcome.kind === "database-missing") return res.status(404).json({ error: "Database not found" });
       if (outcome.kind === "missing") return res.status(404).json({ error: "Row not found" });
       if (outcome.kind === "too-many") return res.status(409).json({ error: "This row has more than 500 references. Unlink source records in smaller groups." });
       if (outcome.kind === "changed") return res.status(409).json({ error: "References changed after review. Review them again.", referenceCount: outcome.referenceCount });
+      if (outcome.kind === "reviewed-changed") return res.status(409).json({ error: "One or more reviewed references changed. Review this batch again." });
       res.json({ unlinkedReferenceCount: outcome.referenceCount, affectedRowCount: outcome.affectedRowCount });
     } catch (error) { return badRequest(res, error); }
   });

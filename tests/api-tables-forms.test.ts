@@ -40,8 +40,12 @@ describeApi("Tables, relations, and governed Forms API", () => {
   it("derives backlinks and unlinks through a new immutable source revision", async () => {
     const before = await request("GET", `/api/databases/${targetId}`, undefined, ownerCookie);
     expect(before.status).toBe(200); expect(before.data.rows[0].backlinks).toEqual([{ sourceDatabaseId: sourceId, sourceDatabaseTitle: "Projects", sourceRowId, relationColumnId: "people", relationColumnName: "People" }]);
+    const reviewed = await request("GET", `/api/databases/${targetId}/rows/${targetRowId}/references`, undefined, ownerCookie);
+    expect(reviewed.status).toBe(200); expect(reviewed.data).toMatchObject({ referenceCount: 1, truncated: false, references: before.data.rows[0].backlinks });
     expect((await request("DELETE", `/api/databases/${targetId}/rows/${targetRowId}`, undefined, ownerCookie)).status).toBe(409);
-    const unlinked = await request("POST", `/api/databases/${targetId}/rows/${targetRowId}/unlink-references`, { referenceCount: 1, confirmation: "UNLINK 1" }, ownerCookie);
+    const forged = await request("POST", `/api/databases/${targetId}/rows/${targetRowId}/unlink-references`, { referenceCount: 1, confirmation: "UNLINK 1", reviewedReferences: [{ sourceDatabaseId: sourceId, sourceRowId, relationColumnId: "title" }] }, ownerCookie);
+    expect(forged.status).toBe(409); expect(forged.data.error).toContain("reviewed references changed");
+    const unlinked = await request("POST", `/api/databases/${targetId}/rows/${targetRowId}/unlink-references`, { referenceCount: 1, confirmation: "UNLINK 1", reviewedReferences: [{ sourceDatabaseId: sourceId, sourceRowId, relationColumnId: "people" }] }, ownerCookie);
     expect(unlinked.status).toBe(200); expect(unlinked.data).toEqual({ unlinkedReferenceCount: 1, affectedRowCount: 1 });
     const source = await request("GET", `/api/databases/${sourceId}`, undefined, ownerCookie);
     expect(source.data.rows.find((row: any) => row.id === sourceRowId)).toMatchObject({ revision: 2, values: { title: "Launch", people: [] } });

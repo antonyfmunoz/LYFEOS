@@ -340,13 +340,18 @@ describe("Tables and Forms instruments", () => {
 
   it("derives reciprocal backlinks and unlinks them through reviewed immutable source-row updates", () => {
     expect(workspaceUnlinkReferencesSchema.parse({ referenceCount: 3, confirmation: "UNLINK 3" })).toEqual({ referenceCount: 3, confirmation: "UNLINK 3" });
+    expect(workspaceUnlinkReferencesSchema.parse({ referenceCount: 1, confirmation: "UNLINK 1", reviewedReferences: [{ sourceDatabaseId: 4, sourceRowId: 8, relationColumnId: "people" }] }).reviewedReferences).toHaveLength(1);
     expect(workspaceUnlinkReferencesSchema.safeParse({ referenceCount: 3, confirmation: "UNLINK 2" }).success).toBe(false);
+    expect(workspaceUnlinkReferencesSchema.safeParse({ referenceCount: 2, confirmation: "UNLINK 2", reviewedReferences: [{ sourceDatabaseId: 4, sourceRowId: 8, relationColumnId: "people" }] }).success).toBe(false);
+    expect(workspaceUnlinkReferencesSchema.safeParse({ referenceCount: 2, confirmation: "UNLINK 2", reviewedReferences: [{ sourceDatabaseId: 4, sourceRowId: 8, relationColumnId: "people" }, { sourceDatabaseId: 4, sourceRowId: 8, relationColumnId: "people" }] }).success).toBe(false);
     expect(workspaceUnlinkReferencesSchema.safeParse({ referenceCount: 501, confirmation: "UNLINK 501" }).success).toBe(false);
     const routes = source("server/routes/tables.ts"); const editor = source("client/src/pages/TableEditorPage.tsx");
     expect(routes).toContain("async function workspaceRowReferences");
     expect(routes).toContain('app.get("/api/databases/:databaseId/rows/:rowId/references", isAuthenticated');
     expect(routes).toContain('app.post("/api/databases/:databaseId/rows/:rowId/unlink-references", isAuthenticated');
     expect(routes).toContain("references.entries.length !== input.referenceCount");
+    expect(routes).toContain('column.relation?.databaseId === databaseId && selected.includes(rowId)');
+    expect(routes).toContain('kind: "reviewed-changed"');
     expect(routes).toContain("sourceRow.revision + 1");
     expect(routes).toContain("workspaceDatabaseRowRevisions");
     expect(routes).toContain('action: "updated"');
@@ -354,6 +359,10 @@ describe("Tables and Forms instruments", () => {
     expect(editor).toContain("Incoming references to row #");
     expect(editor).toContain("Backlinks are derived from canonical relation IDs.");
     expect(editor).toContain("unlinkReferences.mutate");
+    expect(editor).toContain("Filter incoming references by source");
+    expect(editor).toContain("Only the exact reviewed batch is removed");
+    expect(editor).toContain("Review incoming references to row");
+    expect(editor).toContain("referenceQuery.data?.references");
     expect(editor).toContain("no rows will be deleted");
   });
 

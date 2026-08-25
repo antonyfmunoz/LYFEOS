@@ -94,8 +94,15 @@ export const workspaceBulkRowDeleteSchema = z.object({
 export const workspaceUnlinkReferencesSchema = z.object({
   referenceCount: z.number().int().min(1).max(500),
   confirmation: z.string().max(40),
+  reviewedReferences: z.array(z.object({
+    sourceDatabaseId: z.number().int().positive(),
+    sourceRowId: z.number().int().positive(),
+    relationColumnId: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/),
+  }).strict()).min(1).max(500).optional(),
 }).strict().superRefine((value, ctx) => {
   if (value.confirmation !== `UNLINK ${value.referenceCount}`) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["confirmation"], message: `Type UNLINK ${value.referenceCount} to confirm.` });
+  if (value.reviewedReferences && value.reviewedReferences.length !== value.referenceCount) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["reviewedReferences"], message: "The reviewed references must match the confirmed count." });
+  if (value.reviewedReferences && new Set(value.reviewedReferences.map((reference) => `${reference.sourceDatabaseId}:${reference.sourceRowId}:${reference.relationColumnId}`)).size !== value.reviewedReferences.length) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["reviewedReferences"], message: "Reviewed references must be unique." });
 });
 export const workspaceTableRowImportSchema = z.object({
   rows: z.array(workspaceRowValuesSchema).min(1).max(500),
