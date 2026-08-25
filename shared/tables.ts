@@ -40,6 +40,9 @@ export const workspaceRowRequestSchema = z.object({ values: workspaceRowValuesSc
 export const workspaceBulkRowDeleteSchema = z.object({
   rowIds: z.array(z.number().int().positive()).min(1).max(100).refine((ids) => new Set(ids).size === ids.length, "Row IDs must be unique."),
 }).strict();
+export const workspaceTableRowImportSchema = z.object({
+  rows: z.array(workspaceRowValuesSchema).min(1).max(500),
+}).strict();
 
 export const workspaceTableViewDefinitionSchema = z.object({
   version: z.literal(1),
@@ -83,6 +86,13 @@ export type WorkspaceColumn = z.infer<typeof workspaceColumnSchema>;
 export type WorkspaceRowValues = z.infer<typeof workspaceRowValuesSchema>;
 export type WorkspaceRowSortDirection = "asc" | "desc";
 export type WorkspaceTableViewDefinition = z.infer<typeof workspaceTableViewDefinitionSchema>;
+export type WorkspaceTableCsvPreview = {
+  rows: WorkspaceRowValues[];
+  sourceRowCount: number;
+  importRowCount: number;
+  skippedBlankRowCount: number;
+  mappedColumns: Array<{ columnId: string; columnName: string; sourceHeader: string }>;
+};
 
 export function createWorkspaceColumn(type: WorkspaceColumn["type"] = "text", name = "Name"): WorkspaceColumn {
   return { id: `field_${Math.random().toString(36).slice(2, 12)}`, name, type, required: false, options: type === "select" ? ["Option 1"] : [] };
@@ -113,6 +123,121 @@ export function validateWorkspaceRow(definition: WorkspaceDatabaseDefinition, va
     }
   }
   return parsedValues;
+}
+
+const MAX_TABLE_CSV_CHARACTERS = 2_000_000;
+const MAX_TABLE_CSV_CELL_CHARACTERS = 5_000;
+
+function parseWorkspaceCsvCells(text: string): string[][] {
+  if (!text.length) throw new Error("The CSV file is empty.");
+  if (text.length > MAX_TABLE_CSV_CHARACTERS) throw new Error("Table CSV files can contain at most 2,000,000 characters.");
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = "";
+  let quoted = false;
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index];
+    if (quoted) {
+      if (char === '"' && text[index + 1] === '"') { field += '"'; index += 1; }
+      else if (char === '"') quoted = false;
+      else if (char === "\r") { if (text[index + 1] === "\n") index += 1; field += "\n"; }
+      else field += char;
+    } else if (char === '"' && field.length === 0) quoted = true;
+    else if (char === ",") { row.push(field); field = ""; }
+    else if (char === "\r" || char === "\n") {
+      if (char === "\r" && text[index + 1] === "\n") index += 1;
+      row.push(field); rows.push(row); row = []; field = "";
+    } else field += char;
+    if (field.length > MAX_TABLE_CSV_CELL_CHARACTERS) throw new Error("A CSV cell can contain at most 5,000 characters.");
+  }
+  if (quoted) throw new Error("The CSV file contains an unfinished quoted cell.");
+  row.push(field); rows.push(row);
+  if (rows.length > 1 && rows.at(-1)?.length === 1 && rows.at(-1)?.[0] === "" && /(?:\r\n|\r|\n)$/.test(text)) rows.pop();
+  return rows;
+}
+
+function workspaceCsvValue(column: WorkspaceColumn, raw: string): unknown {
+  if (raw === "") return undefined;
+  if (column.type === "text") return raw;
+  const trimmed = raw.trim();
+  if (!trimmed) return undefined;
+  if (column.type === "number") {
+    const number = Number(trimmed);
+    if (!Number.isFinite(number)) throw new Error(`${column.name} must be a finite number.`);
+    return number;
+  }
+  if (column.type === "boolean") {
+    const normalized = trimmed.toLocaleLowerCase();
+    if (["true", "yes", "1"].includes(normalized)) return true;
+    if (["false", "no", "0"].includes(normalized)) return false;
+    throw new Error(`${column.name} must be true/false, yes/no, or 1/0.`);
+  }
+  return trimmed;
+}
+
+export function parseWorkspaceTableCsv(definition: WorkspaceDatabaseDefinition, text: string): WorkspaceTableCsvPreview {
+  const parsedDefinition = workspaceDatabaseDefinitionSchema.parse(definition);
+  const csvRows = parseWorkspaceCsvCells(text);
+  if (!csvRows.length || csvRows[0].every((cell) => !cell.trim())) throw new Error("The CSV needs a header row.");
+  if (csvRows.length - 1 > 500) throw new Error("A Table CSV can contain at most 500 source rows at once.");
+  const sourceHeaders = csvRows[0].map((header, index) => (index === 0 ? header.replace(/^\uFEFF/, "") : header).trim());
+  if (sourceHeaders.length > 50) throw new Error("A Table CSV can contain at most 50 columns.");
+  const columnsById = new Map(parsedDefinition.columns.map((column) => [column.id, column]));
+  const columnsByName = new Map<string, WorkspaceColumn[]>();
+  parsedDefinition.columns.forEach((column) => {
+    const key = column.name.toLocaleLowerCase();
+    columnsByName.set(key, [...(columnsByName.get(key) || []), column]);
+  });
+  const mappedColumns = sourceHeaders.map((sourceHeader) => {
+    const decoratedId = sourceHeader.includes("::") ? sourceHeader.slice(0, sourceHeader.indexOf("::")) : sourceHeader;
+    const idMatch = columnsById.get(decoratedId);
+    const nameMatches = columnsByName.get(sourceHeader.toLocaleLowerCase()) || [];
+    const column = idMatch || (nameMatches.length === 1 ? nameMatches[0] : undefined);
+    if (!column) {
+      if (nameMatches.length > 1) throw new Error(`CSV header “${sourceHeader}” is ambiguous. Use the stable column ID.`);
+      throw new Error(`CSV header “${sourceHeader || "(blank)"}” does not match this Table.`);
+    }
+    return { column, sourceHeader };
+  });
+  if (new Set(mappedColumns.map(({ column }) => column.id)).size !== mappedColumns.length) throw new Error("Each Table column can appear only once in the CSV header.");
+  const rows: WorkspaceRowValues[] = [];
+  let skippedBlankRowCount = 0;
+  for (let index = 1; index < csvRows.length; index += 1) {
+    const sourceRow = csvRows[index];
+    if (sourceRow.length > sourceHeaders.length) throw new Error(`CSV row ${index + 1} has more values than the header.`);
+    if (sourceRow.every((value) => !value.trim())) { skippedBlankRowCount += 1; continue; }
+    if (rows.length >= 500) throw new Error("A Table CSV can import at most 500 nonblank rows at once.");
+    const values: WorkspaceRowValues = {};
+    mappedColumns.forEach(({ column }, columnIndex) => {
+      const value = workspaceCsvValue(column, sourceRow[columnIndex] || "");
+      if (value !== undefined) values[column.id] = value;
+    });
+    try { rows.push(validateWorkspaceRow(parsedDefinition, values)); }
+    catch (error) { throw new Error(`CSV row ${index + 1}: ${error instanceof Error ? error.message : "invalid values"}`); }
+  }
+  if (!rows.length) throw new Error("The CSV contains no nonblank data rows to import.");
+  return {
+    rows,
+    sourceRowCount: Math.max(0, csvRows.length - 1),
+    importRowCount: rows.length,
+    skippedBlankRowCount,
+    mappedColumns: mappedColumns.map(({ column, sourceHeader }) => ({ columnId: column.id, columnName: column.name, sourceHeader })),
+  };
+}
+
+function encodeWorkspaceCsvCell(value: string): string {
+  const protectedValue = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+  return `"${protectedValue.replaceAll('"', '""')}"`;
+}
+
+export function serializeWorkspaceTableCsv(definition: WorkspaceDatabaseDefinition, rows: Array<{ values: WorkspaceRowValues }>): string {
+  const parsedDefinition = workspaceDatabaseDefinitionSchema.parse(definition);
+  const lines = [parsedDefinition.columns.map((column) => encodeWorkspaceCsvCell(`${column.id}::${column.name}`)).join(",")];
+  rows.forEach((row) => {
+    const values = validateWorkspaceRow(parsedDefinition, row.values);
+    lines.push(parsedDefinition.columns.map((column) => encodeWorkspaceCsvCell(values[column.id] === undefined || values[column.id] === null ? "" : String(values[column.id]))).join(","));
+  });
+  return lines.join("\r\n");
 }
 
 export function validateWorkspaceFormFields(definition: WorkspaceDatabaseDefinition, fieldIds: string[]): void {

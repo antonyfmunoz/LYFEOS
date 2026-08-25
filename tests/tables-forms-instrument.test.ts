@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { createWorkspaceTableViewSchema, filterAndSortWorkspaceRows, groupWorkspaceRows, validateWorkspaceFormFields, validateWorkspaceRow, validateWorkspaceTableView, workspaceBulkRowDeleteSchema, workspaceDatabaseDefinitionSchema, workspaceDatabaseRevisionSnapshotSchema, workspaceRowRevisionSnapshotSchema, type WorkspaceDatabaseDefinition, type WorkspaceTableViewDefinition } from "../shared/tables";
+import { createWorkspaceTableViewSchema, filterAndSortWorkspaceRows, groupWorkspaceRows, parseWorkspaceTableCsv, serializeWorkspaceTableCsv, validateWorkspaceFormFields, validateWorkspaceRow, validateWorkspaceTableView, workspaceBulkRowDeleteSchema, workspaceDatabaseDefinitionSchema, workspaceDatabaseRevisionSnapshotSchema, workspaceRowRevisionSnapshotSchema, workspaceTableRowImportSchema, type WorkspaceDatabaseDefinition, type WorkspaceTableViewDefinition } from "../shared/tables";
 
 const source = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8");
 const definition: WorkspaceDatabaseDefinition = { version: 1, columns: [
@@ -193,5 +193,42 @@ describe("Tables and Forms instruments", () => {
     for (const table of ["workspace_database_revisions", "workspace_database_row_revisions"]) {
       expect(profile.match(new RegExp(`"${table}"`, "g"))?.length).toBe(2);
     }
+  });
+
+  it("reviews quoted CSV against stable columns and typed row truth before import", () => {
+    const preview = parseWorkspaceTableCsv(definition, 'name::Name,score::Score,state::State\r\n"Call, lead",4,Open\r\n"line one\nline two",,Done\r\n,,\r\n');
+    expect(preview.rows).toEqual([
+      { name: "Call, lead", score: 4, state: "Open" },
+      { name: "line one\nline two", state: "Done" },
+    ]);
+    expect(preview.sourceRowCount).toBe(3);
+    expect(preview.importRowCount).toBe(2);
+    expect(preview.skippedBlankRowCount).toBe(1);
+    expect(preview.mappedColumns.map((column) => column.columnId)).toEqual(["name", "score", "state"]);
+    expect(() => parseWorkspaceTableCsv(definition, "unknown\nvalue")).toThrow("does not match this Table");
+    expect(() => parseWorkspaceTableCsv(definition, "score\n4")).toThrow("Name is required");
+    expect(workspaceTableRowImportSchema.safeParse({ rows: Array.from({ length: 501 }, () => ({ name: "x" })) }).success).toBe(false);
+  });
+
+  it("exports all typed rows with reconcilable IDs, RFC quoting, and formula-prefix protection", () => {
+    const csv = serializeWorkspaceTableCsv(definition, [{ values: { name: '=HYPERLINK("bad")', score: 4, state: "Open" } }]);
+    expect(csv).toContain('"name::Name","score::Score","state::State"');
+    expect(csv).toContain('"\'=HYPERLINK(""bad"")","4","Open"');
+    expect(csv.split("\r\n")).toHaveLength(2);
+  });
+
+  it("commits reviewed CSV rows atomically through canonical rows and revision ledgers", () => {
+    const routes = source("server/routes/tables.ts");
+    const editor = source("client/src/pages/TableEditorPage.tsx");
+    expect(routes).toContain('app.post("/api/databases/:id/rows/import", isAuthenticated');
+    expect(routes).toContain("workspaceTableRowImportSchema.parse(req.body)");
+    expect(routes).toContain("validatedRows.map((values)");
+    expect(routes).toContain("tx.insert(workspaceDatabaseRowRevisions).values(rows.map");
+    expect(routes).toContain("Rows were added atomically to this Table; existing rows were not changed.");
+    expect(editor).toContain('accept=".csv,text/csv"');
+    expect(editor).toContain("parseWorkspaceTableCsv(definition, await file.text())");
+    expect(editor).toContain('aria-labelledby="table-import-review-heading"');
+    expect(editor).toContain("Import is additive and atomic; existing rows will not be changed.");
+    expect(editor).toContain("serializeWorkspaceTableCsv(definition, query.data!.rows)");
   });
 });

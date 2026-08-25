@@ -3,7 +3,7 @@ import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { workspaceDatabaseRowRevisions, workspaceDatabaseRevisions, workspaceDatabaseRows, workspaceDatabases, workspaceForms, workspaceTableViews } from "@shared/schema";
 import {
   createWorkspaceDatabaseSchema, createWorkspaceFormSchema, createWorkspaceTableViewSchema, updateWorkspaceDatabaseSchema, updateWorkspaceFormSchema, updateWorkspaceTableViewSchema,
-  validateWorkspaceFormFields, validateWorkspaceRow, validateWorkspaceTableView, workspaceBulkRowDeleteSchema, workspaceDatabaseDefinitionSchema, workspaceDatabaseRevisionSnapshotSchema, workspaceRowRequestSchema, workspaceRowRevisionSnapshotSchema, workspaceTableViewDefinitionSchema,
+  validateWorkspaceFormFields, validateWorkspaceRow, validateWorkspaceTableView, workspaceBulkRowDeleteSchema, workspaceDatabaseDefinitionSchema, workspaceDatabaseRevisionSnapshotSchema, workspaceRowRequestSchema, workspaceRowRevisionSnapshotSchema, workspaceTableRowImportSchema, workspaceTableViewDefinitionSchema,
   type WorkspaceRowValues,
 } from "@shared/tables";
 import { db } from "../db";
@@ -156,6 +156,26 @@ export function registerTableRoutes(app: Express): void {
       });
       if (outcome.kind === "missing") return res.status(404).json({ error: "Database not found" });
       res.status(201).json({ row: outcome.row });
+    } catch (error) { return badRequest(res, error); }
+  });
+  app.post("/api/databases/:id/rows/import", isAuthenticated, async (req, res) => {
+    try {
+      const id = idParam(req.params.id); if (!id) return res.status(400).json({ error: "Invalid database ID" });
+      const input = workspaceTableRowImportSchema.parse(req.body);
+      const expected = expectedRevision(req.header("x-lyfeos-expected-revision"));
+      if (!expected) return res.status(req.header("x-lyfeos-expected-revision") ? 400 : 428).json({ error: "Reload this table before importing rows." });
+      const outcome = await db.transaction(async (tx) => {
+        const database = await lockedOwnedDatabase(tx, id, req.session.userId!); if (!database) return { kind: "missing" } as const;
+        if (database.revision !== expected) return { kind: "conflict", currentRevision: database.revision } as const;
+        const definition = workspaceDatabaseDefinitionSchema.parse(database.definition);
+        const validatedRows = input.rows.map((values) => validateWorkspaceRow(definition, values));
+        const rows = await tx.insert(workspaceDatabaseRows).values(validatedRows.map((values) => ({ userId: req.session.userId!, databaseId: id, values }))).returning();
+        await tx.insert(workspaceDatabaseRowRevisions).values(rows.map((row) => ({ userId: req.session.userId!, databaseId: id, rowId: row.id, revisionNumber: 1, action: "created", snapshot: { values: row.values as WorkspaceRowValues } })));
+        return { kind: "imported", rows } as const;
+      });
+      if (outcome.kind === "missing") return res.status(404).json({ error: "Database not found" });
+      if (outcome.kind === "conflict") return res.status(409).json({ error: "This table definition changed after you reviewed the import. Reload and review the file again.", currentRevision: outcome.currentRevision });
+      res.status(201).json({ importedCount: outcome.rows.length, rowIds: outcome.rows.map((row) => row.id), disclosure: "Rows were added atomically to this Table; existing rows were not changed." });
     } catch (error) { return badRequest(res, error); }
   });
   app.patch("/api/databases/:databaseId/rows/:rowId", isAuthenticated, async (req, res) => {
