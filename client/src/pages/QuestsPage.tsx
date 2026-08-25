@@ -346,14 +346,20 @@ export default function QuestsPage() {
     setIsSyncing(true);
     try {
       if (mode === 'calendar') {
-        const result = await apiRequest<{ imported: number; updated: number; cancelled: number; linkedExisting: number; skipped: number }>('/api/google/calendar/sync', { method: 'POST' });
+        const result = await apiRequest<{ imported: number; updated: number; cancelled: number; linkedExisting: number; skipped: number; complete: boolean; moreAvailable: boolean; resetFromExpiredToken: boolean }>('/api/google/calendar/sync', { method: 'POST' });
         const parts: string[] = [];
         if (result.imported > 0) parts.push(`${result.imported} imported`);
         if (result.updated > 0) parts.push(`${result.updated} updated`);
         if (result.cancelled > 0) parts.push(`${result.cancelled} cancelled`);
         if (result.linkedExisting > 0) parts.push(`${result.linkedExisting} linked`);
         if (result.skipped > 0) parts.push(`${result.skipped} skipped`);
-        toast({ title: "Calendar synced", description: parts.join(", ") || "Everything is up to date." });
+        if (result.resetFromExpiredToken) parts.push("provider history refreshed");
+        toast({
+          title: result.complete ? "Calendar synced" : "Calendar sync progress saved",
+          description: result.moreAvailable
+            ? `${parts.join(", ") || "This page is up to date."} More Google Calendar pages remain; run Sync Calendar again to continue safely.`
+            : parts.join(", ") || "Everything is up to date.",
+        });
         await refetchQuests();
       } else {
         const tasksRes = await fetch('/api/google/tasks', { credentials: 'include' });

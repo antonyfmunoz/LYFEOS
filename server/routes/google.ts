@@ -1,4 +1,5 @@
 import type { Express, Request, Response } from "express";
+import type { PoolClient } from "pg";
 import { google } from "googleapis";
 import crypto from "crypto";
 import { isAuthenticated } from "./middleware";
@@ -6,6 +7,8 @@ import { storage } from "../storage";
 import { logger } from "../utils";
 import { createMissionLifecycle, updateMissionLifecycle } from "../mission-lifecycle";
 import { shiftCalendarDate } from "@shared/calendar";
+import { pool } from "../db";
+import { fetchGoogleCalendarSyncBatch, parseGoogleCalendarDateTime, readGoogleCalendarSyncState, writeGoogleCalendarSyncState } from "../google-calendar-sync";
 
 declare module "express-session" {
   interface SessionData {
@@ -68,24 +71,12 @@ async function getAuthenticatedClient(userId: number) {
     }
   });
 
-  return { oauth2Client, integrationId: googleIntegration.id };
+  return { oauth2Client, integration: googleIntegration };
 }
 
 function normalizeTitle(title: string): string {
   return title.trim().toLowerCase();
 }
-
-function parseGoogleDateTime(dt: string): { date: string; time: string } {
-  if (dt.includes("T")) {
-    const d = new Date(dt);
-    const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    const time = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-    return { date, time };
-  }
-  return { date: dt, time: "00:00" };
-}
-
-
 
 export function registerGoogleRoutes(app: Express): void {
   app.get("/api/google/auth-url", isAuthenticated, (req: Request, res: Response) => {
@@ -140,6 +131,7 @@ export function registerGoogleRoutes(app: Express): void {
           tokenExpiry: tokens.expiry_date ? new Date(tokens.expiry_date) : undefined,
           status: "active",
           scope: SCOPES.join(" "),
+          settings: writeGoogleCalendarSyncState(existingGoogle.settings, null),
         });
       } else {
         await storage.createIntegration({
@@ -209,6 +201,11 @@ export function registerGoogleRoutes(app: Express): void {
   });
 
   app.post("/api/google/calendar/sync", isAuthenticated, async (req: Request, res: Response) => {
+    res.setHeader("Cache-Control", "private, no-store");
+    let lockClient: PoolClient | undefined;
+    let lockHeld = false;
+    let lockedUserId: number | undefined;
+    const lockNamespace = 1280922711;
     try {
       const userId = req.session.userId as number;
       const client = await getAuthenticatedClient(userId);
@@ -217,21 +214,29 @@ export function registerGoogleRoutes(app: Express): void {
         return res.status(401).json({ error: "Google not connected" });
       }
 
+      lockClient = await pool.connect();
+      lockedUserId = userId;
+      const lockResult = await lockClient.query<{ acquired: boolean }>(
+        "SELECT pg_try_advisory_lock($1, $2) AS acquired",
+        [lockNamespace, userId],
+      );
+      lockHeld = lockResult.rows[0]?.acquired === true;
+      if (!lockHeld) return res.status(409).json({ error: "Google Calendar sync is already running." });
+
       const calendar = google.calendar({ version: "v3", auth: client.oauth2Client });
-      const now = new Date();
-      const fourWeeksLater = new Date(now.getTime() + 28 * 24 * 60 * 60 * 1000);
-
-      const response = await calendar.events.list({
-        calendarId: "primary",
-        timeMin: now.toISOString(),
-        timeMax: fourWeeksLater.toISOString(),
-        maxResults: 250,
-        singleEvents: true,
-        showDeleted: true,
-        orderBy: "startTime",
+      const syncBatch = await fetchGoogleCalendarSyncBatch({
+        priorState: readGoogleCalendarSyncState(client.integration.settings),
+        maxPages: 8,
+        listPage: async (request) => {
+          const response = await calendar.events.list(request);
+          return {
+            items: response.data.items || [],
+            nextPageToken: response.data.nextPageToken,
+            nextSyncToken: response.data.nextSyncToken,
+          };
+        },
       });
-
-      const googleEvents = response.data.items || [];
+      const googleEvents = syncBatch.events;
       const existingQuests = await storage.getQuests(userId);
 
       const externalIdMap = new Map<string, number>();
@@ -289,8 +294,12 @@ export function registerGoogleRoutes(app: Express): void {
           responseStatus: a.responseStatus || null,
         }));
 
-        const start = parseGoogleDateTime(startRaw);
-        const end = parseGoogleDateTime(endRaw);
+        const start = parseGoogleCalendarDateTime(startRaw, gEvent.start?.timeZone);
+        const end = parseGoogleCalendarDateTime(endRaw, gEvent.end?.timeZone || gEvent.start?.timeZone);
+        if (!start || !end || (isAllDay && end.date <= start.date)) {
+          skipped++;
+          continue;
+        }
 
         const questFields: any = {
           title: gTitle,
@@ -350,13 +359,49 @@ export function registerGoogleRoutes(app: Express): void {
         imported++;
       }
 
-      return res.json({ imported, updated, cancelled, skipped, linkedExisting, total: googleEvents.length });
+      const latestIntegration = await storage.getIntegration(client.integration.id);
+      if (!latestIntegration || latestIntegration.userId !== userId || latestIntegration.status !== "active") {
+        return res.status(409).json({ error: "Google was disconnected before Calendar sync completed." });
+      }
+      await storage.updateIntegration(latestIntegration.id, {
+        settings: writeGoogleCalendarSyncState(latestIntegration.settings, syncBatch.state),
+        lastSyncedAt: new Date(),
+      });
+
+      return res.json({
+        imported,
+        updated,
+        cancelled,
+        skipped,
+        linkedExisting,
+        total: googleEvents.length,
+        pages: syncBatch.pages,
+        complete: syncBatch.complete,
+        moreAvailable: !syncBatch.complete,
+        resetFromExpiredToken: syncBatch.resetFromExpiredToken,
+      });
     } catch (error: any) {
       if (error?.code === 401 || error?.response?.status === 401) {
         return res.status(401).json({ error: "Google token expired. Please reconnect." });
       }
-      logger.error("Error syncing Google Calendar:", error);
+      const providerStatus = Number(error?.response?.status ?? error?.code);
+      logger.error("Error syncing Google Calendar", {
+        userId: req.session.userId,
+        providerStatus: Number.isInteger(providerStatus) ? providerStatus : undefined,
+        errorType: error instanceof Error ? error.name : "unknown",
+      });
       return res.status(500).json({ error: "Failed to sync calendar" });
+    } finally {
+      if (lockClient) {
+        if (lockHeld) {
+          try {
+            await lockClient.query("SELECT pg_advisory_unlock($1, $2)", [lockNamespace, lockedUserId]);
+          } catch (unlockError) {
+            logger.error("Failed to release Google Calendar sync lock", { userId: lockedUserId, errorType: unlockError instanceof Error ? unlockError.name : "unknown" });
+          }
+        }
+        lockClient.release();
+      }
     }
   });
 
@@ -594,6 +639,7 @@ export function registerGoogleRoutes(app: Express): void {
           refreshToken: null,
           tokenExpiry: null,
           status: "revoked",
+          settings: writeGoogleCalendarSyncState(googleIntegration.settings, null),
         });
       }
 

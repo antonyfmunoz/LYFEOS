@@ -71,8 +71,9 @@ describe("canonical mission Calendar", () => {
 
   it("reconciles provider cancellation and keeps imported missions after credential revocation", () => {
     const google = source("server/routes/google.ts");
+    const syncAdapter = source("server/google-calendar-sync.ts");
     const profile = source("client/src/pages/ProfilePage.tsx");
-    expect((google.match(/showDeleted: true/g) || []).length).toBe(2);
+    expect((google.match(/showDeleted: true/g) || []).length + (syncAdapter.match(/showDeleted: true/g) || []).length).toBeGreaterThanOrEqual(2);
     expect(google).toContain('updates: { missionStatus: "cancelled" }');
     expect(google).toContain("cancelled++");
     expect(google).toContain('status: "revoked"');
@@ -83,6 +84,27 @@ describe("canonical mission Calendar", () => {
     expect(profile).toContain("Disconnected — imported LyfeOS missions retained");
     expect(profile).toContain("description: result.message");
     expect(source("client/src/pages/QuestsPage.tsx")).not.toContain("const result = await res.json()");
+  });
+
+  it("uses bounded resumable Google pagination without exposing provider cursors", () => {
+    const google = source("server/routes/google.ts");
+    const adapter = source("server/google-calendar-sync.ts");
+    const profile = source("server/routes/profile.ts");
+    const client = source("client/src/pages/QuestsPage.tsx");
+    const syncRoute = google.slice(google.indexOf('app.post("/api/google/calendar/sync"'), google.indexOf('app.post("/api/google/calendar/push"'));
+    expect(syncRoute).toContain("fetchGoogleCalendarSyncBatch");
+    expect(syncRoute).toContain("pg_try_advisory_lock");
+    expect(syncRoute).toContain("maxPages: 8");
+    expect(syncRoute).toContain("lastSyncedAt: new Date()");
+    expect(syncRoute).toContain('res.setHeader("Cache-Control", "private, no-store")');
+    expect(syncRoute).not.toContain("fourWeeksLater");
+    expect(syncRoute).not.toContain("timeMax:");
+    expect(adapter).toContain('mode: "incremental"');
+    expect(adapter).toContain("resetFromExpiredToken");
+    expect(adapter).toContain("nextPageToken");
+    expect(adapter).toContain("nextSyncToken");
+    expect(profile).toContain("sanitizeIntegrationSettingsForExport");
+    expect(client).toContain("Calendar sync progress saved");
   });
 
   it("loads Calendar from an owner-scoped, indexed, cursor-paginated mission window", () => {

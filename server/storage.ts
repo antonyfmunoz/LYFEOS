@@ -207,7 +207,7 @@ export interface IStorage {
   getUserIntegrations(userId: number): Promise<Integration[]>;
   getIntegration(id: number): Promise<Integration | undefined>;
   createIntegration(integration: InsertIntegration): Promise<Integration>;
-  updateIntegration(id: number, integration: Partial<InsertIntegration>): Promise<Integration>;
+  updateIntegration(id: number, integration: Partial<InsertIntegration> & { lastSyncedAt?: Date }): Promise<Integration>;
   deleteIntegration(id: number): Promise<void>;
   
   // Progress Tracker methods
@@ -1799,7 +1799,7 @@ export class DatabaseStorage implements IStorage {
     return newIntegration;
   }
 
-  async updateIntegration(id: number, integrationUpdate: Partial<InsertIntegration>): Promise<Integration> {
+  async updateIntegration(id: number, integrationUpdate: Partial<InsertIntegration> & { lastSyncedAt?: Date }): Promise<Integration> {
     const [updatedIntegration] = await db
       .update(integrations)
       .set(integrationUpdate)

@@ -4,6 +4,7 @@ import bcrypt from "bcrypt";
 import Anthropic from "@anthropic-ai/sdk";
 import { clerkClient } from "@clerk/express";
 import { storage } from "../storage";
+import { sanitizeIntegrationSettingsForExport } from "../google-calendar-sync";
 import { db } from "../db";
 import { logger, formatLocalDate } from "../utils";
 import { assessObservedPatternQuality } from "../insight-quality";
@@ -505,7 +506,7 @@ export function registerProfileRoutes(app: Express): void {
       const safeUser = { ...user, password: undefined, passwordResetToken: undefined, passwordResetExpiry: undefined, emailVerificationToken: undefined, emailVerificationExpiry: undefined, twoFactorEmailCode: undefined, twoFactorEmailExpiry: undefined, twoFactorPhoneCode: undefined, twoFactorPhoneExpiry: undefined };
       data.integrations = data.integrations.map((entry: any) => {
         const { access_token, refresh_token, accessToken, refreshToken, ...safe } = entry;
-        return safe;
+        return { ...safe, settings: sanitizeIntegrationSettingsForExport(safe.settings) };
       });
       const exportPayload = { exportedAt: new Date().toISOString(), formatVersion: 1, user: safeUser, data };
       res.setHeader("Content-Type", "application/json; charset=utf-8");
