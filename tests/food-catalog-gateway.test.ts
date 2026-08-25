@@ -51,7 +51,8 @@ describe("food catalog gateway", () => {
     const cursor = createFoodCatalogCursorToken({ query: "oats", territory: "US", locale: "en-US", limit: 10, providerId: provider.id, datasetVersion: provider.datasetVersion, providerCursor: "opaque:page/2" }, secret, 1_000);
     expect(cursor).not.toContain("opaque:page/2");
     expect(verifyFoodCatalogCursorToken(cursor, secret, 1_001)?.providerCursor).toBe("opaque:page/2");
-    expect(verifyFoodCatalogCursorToken(`${cursor.slice(0, -1)}x`, secret, 1_001)).toBeNull();
+    const tamperedCursor = `${cursor.slice(0, -1)}${cursor.endsWith("x") ? "y" : "x"}`;
+    expect(verifyFoodCatalogCursorToken(tamperedCursor, secret, 1_001)).toBeNull();
     expect(verifyFoodCatalogCursorToken(cursor, secret, 1_000 + 10 * 60 * 1000)).toBeNull();
     const activeCursor = createFoodCatalogCursorToken({ query: "oats", territory: "US", locale: "en-US", limit: 10, providerId: provider.id, datasetVersion: provider.datasetVersion, providerCursor: "opaque:page/2" }, secret);
     const fetchMock = vi.fn(async (url: string | URL | Request) => {
@@ -66,7 +67,8 @@ describe("food catalog gateway", () => {
     const secret = env.FOOD_CATALOG_LOOKUP_SIGNING_SECRET!;
     const token = createFoodCatalogLookupToken(provider, item, secret, 1_000);
     expect(verifyFoodCatalogLookupToken(token, secret, 1_001)?.item.externalId).toBe("food-1");
-    expect(verifyFoodCatalogLookupToken(`${token.slice(0, -1)}x`, secret, 1_001)).toBeNull();
+    const tamperedToken = `${token.slice(0, -1)}${token.endsWith("x") ? "y" : "x"}`;
+    expect(verifyFoodCatalogLookupToken(tamperedToken, secret, 1_001)).toBeNull();
     expect(verifyFoodCatalogLookupToken(token, secret, 1_000 + 10 * 60 * 1000)).toBeNull();
   });
 

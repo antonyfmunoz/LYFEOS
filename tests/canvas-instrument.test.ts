@@ -8,6 +8,7 @@ import {
   createEmptyCanvasDocument,
   updateCanvasRequestSchema,
 } from "../shared/canvases";
+import { fitCanvasViewport, panCanvasViewport, zoomCanvasViewport } from "../client/src/lib/canvasViewport";
 
 const source = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8");
 
@@ -66,6 +67,17 @@ describe("Canvas instrument", () => {
     expect(editor).toContain("Start blank v1 canvas");
   });
 
+  it("keeps zoom anchored, bounds panning, and fits node bounds deterministically", () => {
+    expect(zoomCanvasViewport({ x: 0, y: 0, zoom: 1 }, 2, 400, 300)).toEqual({ x: -400, y: -300, zoom: 2 });
+    expect(panCanvasViewport({ x: 9_990, y: -9_990, zoom: 1 }, 100, -100)).toEqual({ x: 10_000, y: -10_000, zoom: 1 });
+    const nodes = [
+      { id: "node_a", type: "note" as const, x: 100, y: 50, width: 200, height: 100, title: "A", body: "", color: "cyan" as const, completed: false, url: null },
+      { id: "node_b", type: "note" as const, x: 500, y: 350, width: 200, height: 100, title: "B", body: "", color: "cyan" as const, completed: false, url: null },
+    ];
+    expect(fitCanvasViewport(nodes, 1_000, 600, 50)).toEqual({ x: 0, y: -12, zoom: 1.25 });
+    expect(fitCanvasViewport([], 1_000, 600)).toEqual({ x: 0, y: 0, zoom: 1 });
+  });
+
   it("persists immutable owner-scoped versions through both migration paths and data rights", () => {
     const migration = source("migrations/0107_canvas_revisions.sql");
     const release = source("server/release-migrate.ts");
@@ -109,7 +121,7 @@ describe("Canvas instrument", () => {
     expect(editor).toContain("const redoDocument");
     expect(editor).toContain("snapshot: document, moved: false");
     expect(editor).toContain("if (drag?.moved)");
-    expect(editor).toContain("Each drag and confirmed JSON import is one reversible change");
+    expect(editor).toContain("each node drag, pan, zoom, fit, bulk action, or confirmed import stored as one reversible change");
   });
 
   it("reviews a bounded local JSON import before replacing the unsaved document", () => {
@@ -121,5 +133,29 @@ describe("Canvas instrument", () => {
     expect(editor).toContain("Replace unsaved canvas");
     expect(editor).toContain("updateDocument(() => pendingImport.document)");
     expect(editor).toContain("persistence still requires Save");
+  });
+
+  it("persists functional viewport controls and moves multi-selected nodes as one group", () => {
+    const editor = source("client/src/pages/CanvasEditorPage.tsx");
+    expect(editor).toContain("zoomCanvasViewport(current.viewport");
+    expect(editor).toContain("fitCanvasViewport(current.nodes");
+    expect(editor).toContain("panCanvasViewport");
+    expect(editor).toContain("translate3d(${document.viewport.x}px, ${document.viewport.y}px, 0) scale(${document.viewport.zoom})");
+    expect(editor).toContain("Shift-click nodes to extend or reduce the selection");
+    expect(editor).toContain("selectedNodeIds.includes(node.id) ? selectedNodeIds");
+    expect(editor).toContain("drag.origins[node.id]");
+    expect(editor).toContain("Group inspector");
+    expect(editor).toContain("Delete selected nodes");
+    expect(editor).toContain("aria-pressed={selectedNodeIds.includes(node.id)}");
+  });
+
+  it("renders and edits directed, labeled connection semantics", () => {
+    const editor = source("client/src/pages/CanvasEditorPage.tsx");
+    expect(editor).toContain('markerEnd="url(#canvas-arrow)"');
+    expect(editor).toContain("{edge.label}</text>");
+    expect(editor).toContain("const updateEdge");
+    expect(editor).toContain("Relationship label");
+    expect(editor).toContain("Directed solid");
+    expect(editor).toContain("Directed dashed");
   });
 });

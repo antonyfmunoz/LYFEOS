@@ -1,17 +1,19 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { Link, useLocation, useParams } from "wouter";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { CheckSquare, Download, ExternalLink, GripHorizontal, Heading, History, Link2, Plus, Redo2, RotateCcw, Save, StickyNote, Trash2, Undo2, Upload } from "lucide-react";
+import { CheckSquare, Download, ExternalLink, GripHorizontal, Heading, History, Link2, Maximize2, Minus, Plus, Redo2, RotateCcw, Save, StickyNote, Trash2, Undo2, Upload } from "lucide-react";
 import {
   canvasDocumentSchema,
   createCanvasId,
   createEmptyCanvasDocument,
   parseCanvasDocument,
   type CanvasDocument,
+  type CanvasEdge,
   type CanvasNode,
   type CanvasNodeType,
 } from "@shared/canvases";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { fitCanvasViewport, panCanvasViewport, zoomCanvasViewport } from "@/lib/canvasViewport";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -68,15 +70,18 @@ export default function CanvasEditorPage() {
   const [category, setCategory] = useState("general");
   const [document, setDocument] = useState<CanvasDocument>(() => createEmptyCanvasDocument());
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
   const [connectionTarget, setConnectionTarget] = useState("");
   const [dirty, setDirty] = useState(isNew);
   const [legacyContent, setLegacyContent] = useState<unknown | null>(null);
   const [pendingImport, setPendingImport] = useState<{ document: CanvasDocument; fileName: string } | null>(null);
   const [localHistoryState, setLocalHistoryState] = useState({ canUndo: false, canRedo: false });
-  const dragRef = useRef<{ id: string; clientX: number; clientY: number; x: number; y: number; snapshot: CanvasDocument; moved: boolean } | null>(null);
+  const dragRef = useRef<{ nodeIds: string[]; clientX: number; clientY: number; origins: Record<string, { x: number; y: number }>; snapshot: CanvasDocument; moved: boolean } | null>(null);
+  const panRef = useRef<{ clientX: number; clientY: number; x: number; y: number; snapshot: CanvasDocument; moved: boolean } | null>(null);
   const undoStack = useRef<CanvasDocument[]>([]);
   const redoStack = useRef<CanvasDocument[]>([]);
   const importInput = useRef<HTMLInputElement>(null);
+  const canvasViewportRef = useRef<HTMLDivElement>(null);
   usePageTitle(title || "Canvas");
 
   const query = useQuery<{ canvas: CanvasRecord }>({
@@ -106,6 +111,7 @@ export default function CanvasEditorPage() {
     }
     setDirty(false);
     setSelectedNodeId(null);
+    setSelectedNodeIds([]);
     setPendingImport(null);
     undoStack.current = [];
     redoStack.current = [];
@@ -155,7 +161,7 @@ export default function CanvasEditorPage() {
       const content = parseCanvasDocument(restored.content);
       if (!content) return;
       setTitle(restored.title); setDescription(restored.description || ""); setCategory(restored.category); setDocument(content);
-      setLegacyContent(null); setDirty(false); setSelectedNodeId(null); setConnectionTarget("");
+      setLegacyContent(null); setDirty(false); setSelectedNodeId(null); setSelectedNodeIds([]); setConnectionTarget("");
       undoStack.current = []; redoStack.current = []; setLocalHistoryState({ canUndo: false, canRedo: false });
       queryClient.setQueryData(["/api/canvases", id], result);
       void queryClient.invalidateQueries({ queryKey: ["/api/canvases", id, "revisions"] });
@@ -175,14 +181,14 @@ export default function CanvasEditorPage() {
     const previous = undoStack.current.pop();
     if (!previous) return;
     redoStack.current = [...redoStack.current.slice(-19), document];
-    setDocument(previous); setDirty(true); setSelectedNodeId(null); setConnectionTarget("");
+    setDocument(previous); setDirty(true); setSelectedNodeId(null); setSelectedNodeIds([]); setConnectionTarget("");
     setLocalHistoryState({ canUndo: undoStack.current.length > 0, canRedo: true });
   };
   const redoDocument = () => {
     const next = redoStack.current.pop();
     if (!next) return;
     undoStack.current = [...undoStack.current.slice(-19), document];
-    setDocument(next); setDirty(true); setSelectedNodeId(null); setConnectionTarget("");
+    setDocument(next); setDirty(true); setSelectedNodeId(null); setSelectedNodeIds([]); setConnectionTarget("");
     setLocalHistoryState({ canUndo: true, canRedo: redoStack.current.length > 0 });
   };
   const stageJsonImport = async (file: File | undefined) => {
@@ -203,13 +209,28 @@ export default function CanvasEditorPage() {
   const confirmJsonImport = () => {
     if (!pendingImport) return;
     updateDocument(() => pendingImport.document);
-    setLegacyContent(null); setSelectedNodeId(null); setConnectionTarget(""); setPendingImport(null);
+    setLegacyContent(null); setSelectedNodeId(null); setSelectedNodeIds([]); setConnectionTarget(""); setPendingImport(null);
     toast({ title: "Canvas import staged", description: "Review the imported workspace, then Save to create a new immutable version." });
   };
   const updateNode = (nodeId: string, changes: Partial<CanvasNode>) => updateDocument((current) => ({
     ...current,
     nodes: current.nodes.map((node) => node.id === nodeId ? { ...node, ...changes } : node),
   }));
+  const updateEdge = (edgeId: string, changes: Partial<CanvasEdge>) => updateDocument((current) => ({
+    ...current,
+    edges: current.edges.map((edge) => edge.id === edgeId ? { ...edge, ...changes } : edge),
+  }));
+  const selectNode = (nodeId: string, extend: boolean) => {
+    if (!extend) {
+      setSelectedNodeIds([nodeId]);
+      setSelectedNodeId(nodeId);
+      return;
+    }
+    const next = selectedNodeIds.includes(nodeId) ? selectedNodeIds.filter((id) => id !== nodeId) : [...selectedNodeIds, nodeId];
+    setSelectedNodeIds(next);
+    setSelectedNodeId(next.includes(nodeId) ? nodeId : next.at(-1) || null);
+  };
+  const clearSelection = () => { setSelectedNodeIds([]); setSelectedNodeId(null); setConnectionTarget(""); };
   const addNode = (type: CanvasNodeType) => {
     const index = document.nodes.length;
     const node: CanvasNode = {
@@ -226,7 +247,7 @@ export default function CanvasEditorPage() {
       url: null,
     };
     updateDocument((current) => ({ ...current, nodes: [...current.nodes, node] }));
-    setSelectedNodeId(node.id);
+    setSelectedNodeId(node.id); setSelectedNodeIds([node.id]);
   };
   const deleteNode = (nodeId: string) => {
     updateDocument((current) => ({
@@ -234,7 +255,21 @@ export default function CanvasEditorPage() {
       nodes: current.nodes.filter((node) => node.id !== nodeId),
       edges: current.edges.filter((edge) => edge.sourceId !== nodeId && edge.targetId !== nodeId),
     }));
-    setSelectedNodeId(null);
+    clearSelection();
+  };
+  const deleteSelectedNodes = () => {
+    const selected = new Set(selectedNodeIds);
+    if (!selected.size) return;
+    updateDocument((current) => ({
+      ...current,
+      nodes: current.nodes.filter((node) => !selected.has(node.id)),
+      edges: current.edges.filter((edge) => !selected.has(edge.sourceId) && !selected.has(edge.targetId)),
+    }));
+    clearSelection();
+  };
+  const updateSelectedNodes = (changes: Partial<CanvasNode>) => {
+    const selected = new Set(selectedNodeIds);
+    updateDocument((current) => ({ ...current, nodes: current.nodes.map((node) => selected.has(node.id) ? { ...node, ...changes } : node) }));
   };
   const addConnection = () => {
     if (!selectedNodeId || !connectionTarget || selectedNodeId === connectionTarget) return;
@@ -248,18 +283,23 @@ export default function CanvasEditorPage() {
   const startDrag = (event: ReactPointerEvent<HTMLDivElement>, node: CanvasNode) => {
     if (event.button !== 0) return;
     event.currentTarget.setPointerCapture(event.pointerId);
-    dragRef.current = { id: node.id, clientX: event.clientX, clientY: event.clientY, x: node.x, y: node.y, snapshot: document, moved: false };
-    setSelectedNodeId(node.id);
+    const nodeIds = selectedNodeIds.includes(node.id) ? selectedNodeIds : event.shiftKey ? [...selectedNodeIds, node.id] : [node.id];
+    const origins = Object.fromEntries(document.nodes.filter((item) => nodeIds.includes(item.id)).map((item) => [item.id, { x: item.x, y: item.y }]));
+    dragRef.current = { nodeIds, clientX: event.clientX, clientY: event.clientY, origins, snapshot: document, moved: false };
+    setSelectedNodeIds(nodeIds); setSelectedNodeId(node.id);
     event.preventDefault();
   };
   const moveDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
     const drag = dragRef.current;
     if (!drag || !event.currentTarget.hasPointerCapture(event.pointerId)) return;
-    const x = Math.max(0, Math.min(10_000, Math.round(drag.x + event.clientX - drag.clientX)));
-    const y = Math.max(0, Math.min(10_000, Math.round(drag.y + event.clientY - drag.clientY)));
-    if (x === drag.x && y === drag.y) return;
+    const deltaX = (event.clientX - drag.clientX) / document.viewport.zoom;
+    const deltaY = (event.clientY - drag.clientY) / document.viewport.zoom;
+    if (!deltaX && !deltaY) return;
     drag.moved = true;
-    setDocument((current) => ({ ...current, nodes: current.nodes.map((node) => node.id === drag.id ? { ...node, x, y } : node) }));
+    setDocument((current) => ({ ...current, nodes: current.nodes.map((node) => {
+      const origin = drag.origins[node.id];
+      return origin ? { ...node, x: Math.max(0, Math.min(10_000, Math.round(origin.x + deltaX))), y: Math.max(0, Math.min(10_000, Math.round(origin.y + deltaY))) } : node;
+    }) }));
     setDirty(true);
   };
   const stopDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -273,7 +313,46 @@ export default function CanvasEditorPage() {
     dragRef.current = null;
   };
 
-  const selectedNode = document.nodes.find((node) => node.id === selectedNodeId) || null;
+  const startPan = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0 || (event.target as HTMLElement).closest("[data-canvas-node]")) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    panRef.current = { clientX: event.clientX, clientY: event.clientY, x: document.viewport.x, y: document.viewport.y, snapshot: document, moved: false };
+    clearSelection();
+    event.preventDefault();
+  };
+  const movePan = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const pan = panRef.current;
+    if (!pan || !event.currentTarget.hasPointerCapture(event.pointerId)) return;
+    const deltaX = event.clientX - pan.clientX;
+    const deltaY = event.clientY - pan.clientY;
+    if (!deltaX && !deltaY) return;
+    pan.moved = true;
+    setDocument((current) => ({ ...current, viewport: panCanvasViewport({ x: pan.x, y: pan.y, zoom: current.viewport.zoom }, deltaX, deltaY) }));
+    setDirty(true);
+  };
+  const stopPan = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+    const pan = panRef.current;
+    if (pan?.moved) {
+      undoStack.current = [...undoStack.current.slice(-19), pan.snapshot];
+      redoStack.current = [];
+      setLocalHistoryState({ canUndo: true, canRedo: false });
+    }
+    panRef.current = null;
+  };
+  const changeZoom = (delta: number) => {
+    const viewport = canvasViewportRef.current;
+    if (!viewport) return;
+    updateDocument((current) => ({ ...current, viewport: zoomCanvasViewport(current.viewport, current.viewport.zoom + delta, viewport.clientWidth / 2, viewport.clientHeight / 2) }));
+  };
+  const fitView = () => {
+    const viewport = canvasViewportRef.current;
+    if (!viewport) return;
+    updateDocument((current) => ({ ...current, viewport: fitCanvasViewport(current.nodes, viewport.clientWidth, viewport.clientHeight) }));
+  };
+  const resetView = () => updateDocument((current) => ({ ...current, viewport: { x: 0, y: 0, zoom: 1 } }));
+
+  const selectedNode = selectedNodeIds.length === 1 ? document.nodes.find((node) => node.id === selectedNodeId) || null : null;
   const selectedEdges = useMemo(() => document.edges.filter((edge) => edge.sourceId === selectedNodeId || edge.targetId === selectedNodeId), [document.edges, selectedNodeId]);
   const filename = `${title.replace(/[^a-z0-9-_]+/gi, "-").replace(/^-|-$/g, "") || "lyfeos-canvas"}.json`;
 
@@ -325,30 +404,44 @@ export default function CanvasEditorPage() {
         <Button size="sm" variant="outline" onClick={() => addNode("heading")}><Heading className="mr-1 h-4 w-4" />Heading</Button>
         <Button size="sm" variant="outline" onClick={() => addNode("task")}><CheckSquare className="mr-1 h-4 w-4" />Task</Button>
         <Button size="sm" variant="outline" onClick={() => addNode("link")}><Link2 className="mr-1 h-4 w-4" />Link</Button>
-        <span className="self-center text-xs text-muted-foreground">Undo and Redo retain up to 20 unsaved canvas document changes on this device and reset after save, reload, or restore. Each drag and confirmed JSON import is one reversible change. Select a node to edit or connect it.</span>
+        <span aria-hidden="true" className="mx-1 w-px self-stretch bg-primary/15" />
+        <Button size="sm" variant="outline" disabled={!document.nodes.length || selectedNodeIds.length === document.nodes.length} onClick={() => { setSelectedNodeIds(document.nodes.map((node) => node.id)); setSelectedNodeId(document.nodes.at(-1)?.id || null); }}>Select all</Button>
+        <Button size="sm" variant="ghost" disabled={!selectedNodeIds.length} onClick={clearSelection}>Clear</Button>
+        <span aria-live="polite" className="self-center text-xs text-muted-foreground">{selectedNodeIds.length} selected</span>
+        <span className="ml-auto flex items-center gap-1">
+          <Button size="icon" variant="outline" className="h-8 w-8" aria-label="Zoom out" disabled={document.viewport.zoom <= 0.25} onClick={() => changeZoom(-0.25)}><Minus className="h-4 w-4" /></Button>
+          <Button size="sm" variant="ghost" className="h-8 min-w-16" onClick={resetView} aria-label="Reset canvas view to 100 percent">{Math.round(document.viewport.zoom * 100)}%</Button>
+          <Button size="icon" variant="outline" className="h-8 w-8" aria-label="Zoom in" disabled={document.viewport.zoom >= 3} onClick={() => changeZoom(0.25)}><Plus className="h-4 w-4" /></Button>
+          <Button size="sm" variant="outline" className="h-8" disabled={!document.nodes.length} onClick={fitView}><Maximize2 className="mr-1 h-4 w-4" />Fit</Button>
+        </span>
       </div>
+      <p className="text-xs text-muted-foreground">Drag empty space to pan. Shift-click nodes to extend or reduce the selection; selected nodes move together. Undo and Redo retain 20 unsaved document changes, with each node drag, pan, zoom, fit, bulk action, or confirmed import stored as one reversible change.</p>
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
-        <div className="max-h-[72vh] overflow-auto rounded-xl border border-primary/15 bg-black/30">
-          <div className="relative h-[850px] w-[1400px]" style={{ backgroundImage: "linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px)", backgroundSize: "24px 24px" }}>
-            <svg aria-hidden="true" className="pointer-events-none absolute inset-0 h-full w-full">
+        <div ref={canvasViewportRef} className="relative h-[72vh] min-h-[500px] touch-none overflow-hidden rounded-xl border border-primary/15 bg-black/30 cursor-grab active:cursor-grabbing" aria-label="Canvas workspace. Drag empty space to pan." onPointerDown={startPan} onPointerMove={movePan} onPointerUp={stopPan} onPointerCancel={stopPan}>
+          <div className="absolute left-0 top-0 h-[10000px] w-[10000px] origin-top-left" style={{ transform: `translate3d(${document.viewport.x}px, ${document.viewport.y}px, 0) scale(${document.viewport.zoom})`, backgroundImage: "linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px)", backgroundSize: "24px 24px" }}>
+            <svg aria-hidden="true" className="pointer-events-none absolute inset-0 h-[10000px] w-[10000px]">
+              <defs><marker id="canvas-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L8,4 L0,8 Z" fill="hsl(var(--primary))" fillOpacity="0.65" /></marker></defs>
               {document.edges.map((edge) => {
                 const source = document.nodes.find((node) => node.id === edge.sourceId);
                 const target = document.nodes.find((node) => node.id === edge.targetId);
                 if (!source || !target) return null;
-                return <line key={edge.id} x1={source.x + source.width / 2} y1={source.y + source.height / 2} x2={target.x + target.width / 2} y2={target.y + target.height / 2} stroke="hsl(var(--primary))" strokeOpacity="0.45" strokeWidth="2" strokeDasharray={edge.style === "dashed" ? "7 6" : undefined} />;
+                const x1 = source.x + source.width / 2; const y1 = source.y + source.height / 2; const x2 = target.x + target.width / 2; const y2 = target.y + target.height / 2;
+                return <g key={edge.id}><line x1={x1} y1={y1} x2={x2} y2={y2} stroke="hsl(var(--primary))" strokeOpacity="0.45" strokeWidth="2" strokeDasharray={edge.style === "dashed" ? "7 6" : undefined} markerEnd="url(#canvas-arrow)" />{edge.label && <text x={(x1 + x2) / 2} y={(y1 + y2) / 2 - 6} textAnchor="middle" fill="hsl(var(--foreground))" fillOpacity="0.75" fontSize="12" paintOrder="stroke" stroke="hsl(var(--background))" strokeWidth="4">{edge.label}</text>}</g>;
               })}
             </svg>
             {document.nodes.map((node) => <div
               key={node.id}
+              data-canvas-node={node.id}
               role="button"
               tabIndex={0}
               aria-label={`${nodeLabels[node.type]}: ${node.title || "Untitled"}`}
-              onClick={() => setSelectedNodeId(node.id)}
-              onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") setSelectedNodeId(node.id); }}
-              className={`absolute overflow-hidden rounded-xl border shadow-xl transition ${nodeColorClasses[node.color]} ${selectedNodeId === node.id ? "ring-2 ring-primary" : "hover:border-primary/60"}`}
+              aria-pressed={selectedNodeIds.includes(node.id)}
+              onClick={(event) => selectNode(node.id, event.shiftKey)}
+              onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); selectNode(node.id, event.shiftKey); } }}
+              className={`absolute cursor-default overflow-hidden rounded-xl border shadow-xl transition ${nodeColorClasses[node.color]} ${selectedNodeIds.includes(node.id) ? "ring-2 ring-primary" : "hover:border-primary/60"}`}
               style={{ left: node.x, top: node.y, width: node.width, height: node.height }}
             >
-              <div className="flex touch-none cursor-grab items-center justify-between border-b border-white/10 px-3 py-2 active:cursor-grabbing" onPointerDown={(event) => startDrag(event, node)} onPointerMove={moveDrag} onPointerUp={stopDrag} onPointerCancel={stopDrag}>
+              <div className="flex touch-none cursor-grab items-center justify-between border-b border-white/10 px-3 py-2 active:cursor-grabbing" onClick={(event) => event.stopPropagation()} onPointerDown={(event) => startDrag(event, node)} onPointerMove={moveDrag} onPointerUp={stopDrag} onPointerCancel={stopDrag}>
                 <span className="truncate text-[10px] font-mono uppercase tracking-wider text-white/55">{nodeLabels[node.type]}</span><GripHorizontal className="h-3.5 w-3.5 text-white/40" />
               </div>
               <div className="p-3">
@@ -390,12 +483,20 @@ export default function CanvasEditorPage() {
                 {selectedEdges.map((edge) => {
                   const otherId = edge.sourceId === selectedNode.id ? edge.targetId : edge.sourceId;
                   const other = document.nodes.find((node) => node.id === otherId);
-                  return <div key={edge.id} className="flex items-center justify-between rounded border border-primary/10 px-2 py-1 text-xs"><span className="truncate">{edge.sourceId === selectedNode.id ? "to" : "from"} {other?.title || "Node"}</span><Button size="icon" variant="ghost" className="h-6 w-6" aria-label="Delete connection" onClick={() => updateDocument((current) => ({ ...current, edges: current.edges.filter((item) => item.id !== edge.id) }))}><Trash2 className="h-3 w-3" /></Button></div>;
+                  return <div key={edge.id} className="space-y-2 rounded border border-primary/10 p-2 text-xs"><div className="flex items-center justify-between"><span className="truncate">{edge.sourceId === selectedNode.id ? "to" : "from"} {other?.title || "Node"}</span><Button size="icon" variant="ghost" className="h-6 w-6" aria-label="Delete connection" onClick={() => updateDocument((current) => ({ ...current, edges: current.edges.filter((item) => item.id !== edge.id) }))}><Trash2 className="h-3 w-3" /></Button></div><Input aria-label={`Connection label ${other?.title || "Node"}`} value={edge.label} maxLength={120} onChange={(event) => updateEdge(edge.id, { label: event.target.value })} className="h-8 text-xs" placeholder="Relationship label" /><select aria-label={`Connection style ${other?.title || "Node"}`} value={edge.style} onChange={(event) => updateEdge(edge.id, { style: event.target.value as CanvasEdge["style"] })} className="h-8 w-full rounded-md border border-primary/20 bg-background px-2 text-xs"><option value="solid">Directed solid</option><option value="dashed">Directed dashed</option></select></div>;
                 })}
                 {!selectedEdges.length && <p className="text-xs text-muted-foreground">No connections yet.</p>}
               </div>
             </div>
-          </div> : <p className="text-sm text-muted-foreground">Select a node to edit its content, position, color, and connections.</p>}
+          </div> : selectedNodeIds.length > 1 ? <div className="space-y-3">
+            <div className="flex items-center justify-between"><div><h2 className="font-medium">Group inspector</h2><p className="text-xs text-muted-foreground">{selectedNodeIds.length} nodes selected</p></div><Button size="icon" variant="ghost" aria-label="Delete selected nodes" onClick={deleteSelectedNodes}><Trash2 className="h-4 w-4" /></Button></div>
+            <p className="text-xs text-muted-foreground">Drag any selected node header to move the group together. Bulk color and deletion are each one reversible change.</p>
+            <select aria-label="Selected node color" defaultValue="" onChange={(event) => { if (event.target.value) updateSelectedNodes({ color: event.target.value as CanvasNode["color"] }); event.currentTarget.value = ""; }} className="h-9 w-full rounded-md border border-primary/20 bg-background px-2 text-sm">
+              <option value="">Apply color…</option>
+              {Object.keys(nodeColorClasses).map((color) => <option key={color} value={color}>{color}</option>)}
+            </select>
+            <Button variant="outline" className="w-full" onClick={clearSelection}>Clear selection</Button>
+          </div> : <p className="text-sm text-muted-foreground">Select a node to edit it. Shift-click to select multiple nodes for grouped movement and bulk actions.</p>}
         </aside>
       </div>
     </>}

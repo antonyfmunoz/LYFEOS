@@ -97,6 +97,7 @@ export const canvasRevisionSnapshotSchema = z.object({
 
 export type CanvasDocument = z.infer<typeof canvasDocumentSchema>;
 export type CanvasNode = z.infer<typeof canvasNodeSchema>;
+export type CanvasEdge = z.infer<typeof canvasEdgeSchema>;
 export type CanvasNodeType = z.infer<typeof canvasNodeTypeSchema>;
 
 export function createCanvasId(prefix: "node" | "edge"): string {
