@@ -1653,11 +1653,37 @@ export const workspaceForms = pgTable("workspace_forms", {
   title: text("title").notNull(),
   description: text("description"),
   fieldIds: jsonb("field_ids").notNull(),
+  definition: jsonb("definition").notNull(),
   confirmationText: text("confirmation_text").notNull().default("Response saved."),
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => [index("workspace_forms_user_updated_idx").on(table.userId, table.updatedAt), index("workspace_forms_database_idx").on(table.databaseId)]);
+
+export const workspaceFormAccessGrants = pgTable("workspace_form_access_grants", {
+  id: serial("id").primaryKey(),
+  publicId: uuid("public_id").notNull().defaultRandom().unique(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  formId: integer("form_id").notNull().references(() => workspaceForms.id, { onDelete: "cascade" }),
+  label: text("label").notNull(),
+  tokenHash: text("token_hash").notNull().unique(),
+  active: boolean("active").notNull().default(true),
+  expiresAt: timestamp("expires_at").notNull(),
+  maxSubmissions: integer("max_submissions").notNull(),
+  submissionCount: integer("submission_count").notNull().default(0),
+  lastUsedAt: timestamp("last_used_at"),
+  revokedAt: timestamp("revoked_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [index("workspace_form_access_grants_user_form_idx").on(table.userId, table.formId), index("workspace_form_access_grants_public_idx").on(table.publicId)]);
+
+export const workspaceFormSubmissionReceipts = pgTable("workspace_form_submission_receipts", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  formId: integer("form_id").notNull().references(() => workspaceForms.id, { onDelete: "cascade" }),
+  grantId: integer("grant_id").notNull().references(() => workspaceFormAccessGrants.id, { onDelete: "cascade" }),
+  rowId: integer("row_id").notNull().references(() => workspaceDatabaseRows.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [index("workspace_form_submission_receipts_user_form_idx").on(table.userId, table.formId), uniqueIndex("workspace_form_submission_receipts_grant_row_unique_idx").on(table.grantId, table.rowId)]);
 
 // User-authored, local-only mission automations. The versioned definition is
 // validated at every write and execution boundary; enabled defaults to false

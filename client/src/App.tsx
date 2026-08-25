@@ -60,6 +60,7 @@ const SearchPage = React.lazy(() => import("./pages/SearchPage"));
 const TablesPage = React.lazy(() => import("./pages/TablesPage"));
 const TableEditorPage = React.lazy(() => import("./pages/TableEditorPage"));
 const FormPage = React.lazy(() => import("./pages/FormPage"));
+const PublicFormPage = React.lazy(() => import("./pages/PublicFormPage"));
 const AutomationsPage = React.lazy(() => import("./pages/AutomationsPage"));
 const ProjectsPage = React.lazy(() => import("./pages/ProjectsPage"));
 const MessagesPage = React.lazy(() => import("./pages/MessagesPage"));
@@ -348,7 +349,7 @@ function Router() {
     }
     
     // Public paths that don't require auth
-    const publicPaths = ['/login', '/register', '/login-success', '/waitlist', '/review-mission'];
+    const publicPaths = ['/login', '/register', '/login-success', '/waitlist', '/review-mission', '/forms/respond'];
     const exactPublicPaths = ['/subscription'];
     if (publicPaths.some(path => currentPath.startsWith(path)) || exactPublicPaths.includes(currentPath)) {
       return;
@@ -685,6 +686,10 @@ function Router() {
 
       <Route path="/forms/:formId">
         <ProtectedRoute><RootLayout><FormPage /></RootLayout></ProtectedRoute>
+      </Route>
+
+      <Route path="/forms/respond/:publicId">
+        <PublicFormPage />
       </Route>
 
       <Route path="/automations">

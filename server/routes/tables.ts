@@ -1,9 +1,10 @@
 import type { Express, Request, Response } from "express";
+import crypto from "node:crypto";
 import { and, desc, eq, inArray, not, sql } from "drizzle-orm";
-import { workspaceDatabaseRowRevisions, workspaceDatabaseRevisions, workspaceDatabaseRows, workspaceDatabases, workspaceForms, workspaceTableViews } from "@shared/schema";
+import { workspaceDatabaseRowRevisions, workspaceDatabaseRevisions, workspaceDatabaseRows, workspaceDatabases, workspaceFormAccessGrants, workspaceForms, workspaceFormSubmissionReceipts, workspaceTableViews } from "@shared/schema";
 import {
-  createWorkspaceDatabaseSchema, createWorkspaceFormSchema, createWorkspaceTableViewSchema, updateWorkspaceDatabaseSchema, updateWorkspaceFormSchema, updateWorkspaceTableViewSchema,
-  evaluateWorkspaceFormulas, validateWorkspaceFormFields, validateWorkspaceRow, validateWorkspaceTableView, workspaceBulkRowDeleteSchema, workspaceDatabaseDefinitionSchema, workspaceDatabaseRevisionSnapshotSchema, workspaceRowRequestSchema, workspaceRowRevisionSnapshotSchema, workspaceTableRowImportSchema, workspaceTableViewDefinitionSchema,
+  createWorkspaceDatabaseSchema, createWorkspaceFormAccessGrantSchema, createWorkspaceFormSchema, createWorkspaceTableViewSchema, defaultWorkspaceFormDefinition, updateWorkspaceDatabaseSchema, updateWorkspaceFormSchema, updateWorkspaceTableViewSchema,
+  evaluateWorkspaceFormulas, validateWorkspaceFormDefinition, validateWorkspaceFormFields, validateWorkspaceFormSubmission, validateWorkspaceRow, validateWorkspaceTableView, workspaceBulkRowDeleteSchema, workspaceDatabaseDefinitionSchema, workspaceDatabaseRevisionSnapshotSchema, workspaceFormDefinitionSchema, workspaceRowRequestSchema, workspaceRowRevisionSnapshotSchema, workspaceTableRowImportSchema, workspaceTableViewDefinitionSchema,
   type WorkspaceColumn, type WorkspaceDatabaseDefinition, type WorkspaceRelationOptions, type WorkspaceRowValues,
 } from "@shared/tables";
 import { db } from "../db";
@@ -30,6 +31,13 @@ function expectedRevision(value: string | undefined): number | null {
   const revision = Number(value);
   return Number.isSafeInteger(revision) && revision > 0 ? revision : null;
 }
+
+function publicIdParam(value: string): string | null { return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value) ? value : null; }
+function formBearerToken(req: Request): string | null {
+  const match = req.header("authorization")?.match(/^Bearer ([A-Za-z0-9_-]{43})$/);
+  return match?.[1] || null;
+}
+function formTokenHash(token: string): string { return crypto.createHash("sha256").update(token).digest("hex"); }
 
 type TableTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 async function lockWorkspaceTableDomain(tx: TableTransaction, userId: number) { await tx.execute(sql`SELECT pg_advisory_xact_lock(128092, ${userId})`); }
@@ -138,18 +146,18 @@ async function validateDefinitionDependents(tx: TableTransaction, databaseId: nu
   const rows = await tx.select({ values: workspaceDatabaseRows.values }).from(workspaceDatabaseRows).where(and(eq(workspaceDatabaseRows.databaseId, databaseId), eq(workspaceDatabaseRows.userId, userId)));
   rows.forEach((row) => validateWorkspaceRow(definition, row.values as WorkspaceRowValues));
   await validateWorkspaceRelationValues(tx, definition, rows.map((row) => row.values as WorkspaceRowValues), userId);
-  const forms = await tx.select({ fieldIds: workspaceForms.fieldIds }).from(workspaceForms).where(and(eq(workspaceForms.databaseId, databaseId), eq(workspaceForms.userId, userId)));
-  forms.forEach((form) => validateWorkspaceFormFields(definition, form.fieldIds as string[]));
+  const forms = await tx.select({ fieldIds: workspaceForms.fieldIds, definition: workspaceForms.definition }).from(workspaceForms).where(and(eq(workspaceForms.databaseId, databaseId), eq(workspaceForms.userId, userId)));
+  forms.forEach((form) => validateWorkspaceFormDefinition(definition, form.fieldIds as string[], workspaceFormDefinitionSchema.parse(form.definition)));
   const views = await tx.select({ definition: workspaceTableViews.definition }).from(workspaceTableViews).where(and(eq(workspaceTableViews.databaseId, databaseId), eq(workspaceTableViews.userId, userId)));
   views.forEach((view) => validateWorkspaceTableView(definition, workspaceTableViewDefinitionSchema.parse(view.definition)));
 }
 
 export function registerTableRoutes(app: Express): void {
   app.use((req, res, next) => {
-    if (req.path.startsWith("/api/databases") || req.path.startsWith("/api/forms")) {
+    if (req.path.startsWith("/api/databases") || req.path.startsWith("/api/forms") || req.path.startsWith("/api/public/forms")) {
       res.setHeader("Cache-Control", "private, no-store, max-age=0");
       res.setHeader("Pragma", "no-cache");
-      res.setHeader("Vary", "Cookie");
+      res.setHeader("Vary", "Cookie, Authorization");
     }
     next();
   });
@@ -436,8 +444,9 @@ export function registerTableRoutes(app: Express): void {
       const input = createWorkspaceFormSchema.parse(req.body);
       const outcome = await db.transaction(async (tx) => {
         const database = await lockedOwnedDatabase(tx, input.databaseId, req.session.userId!); if (!database) return { kind: "missing" } as const;
-        validateWorkspaceFormFields(workspaceDatabaseDefinitionSchema.parse(database.definition), input.fieldIds);
-        const [form] = await tx.insert(workspaceForms).values({ ...input, userId: req.session.userId! }).returning();
+        const tableDefinition = workspaceDatabaseDefinitionSchema.parse(database.definition);
+        const definition = validateWorkspaceFormDefinition(tableDefinition, input.fieldIds, input.definition || defaultWorkspaceFormDefinition(input.fieldIds));
+        const [form] = await tx.insert(workspaceForms).values({ ...input, definition, userId: req.session.userId! }).returning();
         return { kind: "created", form } as const;
       });
       if (outcome.kind === "missing") return res.status(404).json({ error: "Database not found" });
@@ -462,8 +471,10 @@ export function registerTableRoutes(app: Express): void {
         const database = await lockedOwnedDatabase(tx, existing.databaseId, req.session.userId!); if (!database) return { kind: "database-missing" } as const;
         const [current] = await tx.select().from(workspaceForms).where(and(eq(workspaceForms.id, id), eq(workspaceForms.databaseId, existing.databaseId), eq(workspaceForms.userId, req.session.userId!))).limit(1);
         if (!current) return { kind: "missing" } as const;
-        validateWorkspaceFormFields(workspaceDatabaseDefinitionSchema.parse(database.definition), input.fieldIds || current.fieldIds as string[]);
-        const [form] = await tx.update(workspaceForms).set({ ...input, updatedAt: new Date() }).where(and(eq(workspaceForms.id, id), eq(workspaceForms.userId, req.session.userId!))).returning();
+        const fieldIds = input.fieldIds || current.fieldIds as string[];
+        const definition = input.definition || (input.fieldIds ? defaultWorkspaceFormDefinition(fieldIds) : workspaceFormDefinitionSchema.parse(current.definition));
+        validateWorkspaceFormDefinition(workspaceDatabaseDefinitionSchema.parse(database.definition), fieldIds, definition);
+        const [form] = await tx.update(workspaceForms).set({ ...input, definition, updatedAt: new Date() }).where(and(eq(workspaceForms.id, id), eq(workspaceForms.userId, req.session.userId!))).returning();
         return { kind: "updated", form } as const;
       });
       if (outcome.kind === "database-missing") return res.status(404).json({ error: "Database not found" });
@@ -489,7 +500,9 @@ export function registerTableRoutes(app: Express): void {
         if (!locked.rows.length) return { kind: "missing" } as const;
         const [currentForm] = await tx.select().from(workspaceForms).where(and(eq(workspaceForms.id, id), eq(workspaceForms.databaseId, form.databaseId), eq(workspaceForms.userId, req.session.userId!))).limit(1);
         if (!currentForm.active) return { kind: "closed" } as const;
-        const definition = workspaceDatabaseDefinitionSchema.parse(database.definition); const values = validateWorkspaceRow(definition, input.values, currentForm.fieldIds as string[]);
+        const definition = workspaceDatabaseDefinitionSchema.parse(database.definition);
+        const formDefinition = validateWorkspaceFormDefinition(definition, currentForm.fieldIds as string[], workspaceFormDefinitionSchema.parse(currentForm.definition));
+        const values = validateWorkspaceFormSubmission(definition, formDefinition, input.values);
         await validateWorkspaceRelationValues(tx, definition, [values], req.session.userId!);
         const [created] = await tx.insert(workspaceDatabaseRows).values({ userId: req.session.userId!, databaseId: database.id, values }).returning();
         await tx.insert(workspaceDatabaseRowRevisions).values({ userId: req.session.userId!, databaseId: database.id, rowId: created.id, revisionNumber: 1, action: "created", snapshot: { values } });
@@ -501,6 +514,88 @@ export function registerTableRoutes(app: Express): void {
       res.status(201).json({ row: outcome.row, confirmationText: outcome.confirmationText });
     } catch (error) {
       logger.warn("Workspace form submission rejected", { userId: req.session.userId, formId: req.params.id, error: error instanceof Error ? error.message : "invalid" });
+      return badRequest(res, error);
+    }
+  });
+
+  app.get("/api/forms/:id/access-grants", isAuthenticated, async (req, res) => {
+    const id = idParam(req.params.id); if (!id) return res.status(400).json({ error: "Invalid form ID" });
+    const [form] = await db.select({ id: workspaceForms.id }).from(workspaceForms).where(and(eq(workspaceForms.id, id), eq(workspaceForms.userId, req.session.userId!))).limit(1);
+    if (!form) return res.status(404).json({ error: "Form not found" });
+    const grants = await db.select({ id: workspaceFormAccessGrants.id, publicId: workspaceFormAccessGrants.publicId, label: workspaceFormAccessGrants.label, active: workspaceFormAccessGrants.active, expiresAt: workspaceFormAccessGrants.expiresAt, maxSubmissions: workspaceFormAccessGrants.maxSubmissions, submissionCount: workspaceFormAccessGrants.submissionCount, lastUsedAt: workspaceFormAccessGrants.lastUsedAt, revokedAt: workspaceFormAccessGrants.revokedAt, createdAt: workspaceFormAccessGrants.createdAt })
+      .from(workspaceFormAccessGrants).where(and(eq(workspaceFormAccessGrants.formId, id), eq(workspaceFormAccessGrants.userId, req.session.userId!))).orderBy(desc(workspaceFormAccessGrants.createdAt));
+    res.json({ grants });
+  });
+
+  app.post("/api/forms/:id/access-grants", isAuthenticated, async (req, res) => {
+    try {
+      const id = idParam(req.params.id); if (!id) return res.status(400).json({ error: "Invalid form ID" });
+      const input = createWorkspaceFormAccessGrantSchema.parse(req.body); const token = crypto.randomBytes(32).toString("base64url");
+      const outcome = await db.transaction(async (tx) => {
+        const [form] = await tx.select().from(workspaceForms).where(and(eq(workspaceForms.id, id), eq(workspaceForms.userId, req.session.userId!))).limit(1);
+        if (!form) return undefined;
+        const [database] = await tx.select().from(workspaceDatabases).where(and(eq(workspaceDatabases.id, form.databaseId), eq(workspaceDatabases.userId, req.session.userId!))).limit(1);
+        if (!database) return undefined;
+        const definition = workspaceDatabaseDefinitionSchema.parse(database.definition);
+        const selected = new Set(form.fieldIds as string[]);
+        if (definition.columns.some((column) => selected.has(column.id) && column.type === "relation")) throw new Error("External links cannot expose relation fields. Remove them from this form first.");
+        validateWorkspaceFormDefinition(definition, form.fieldIds as string[], workspaceFormDefinitionSchema.parse(form.definition));
+        const [grant] = await tx.insert(workspaceFormAccessGrants).values({ userId: req.session.userId!, formId: id, label: input.label, tokenHash: formTokenHash(token), expiresAt: new Date(input.expiresAt), maxSubmissions: input.maxSubmissions }).returning();
+        return grant;
+      });
+      if (!outcome) return res.status(404).json({ error: "Form not found" });
+      const shareUrl = `/forms/respond/${outcome.publicId}#token=${token}`;
+      res.status(201).json({ shareUrl, disclosure: "This link secret is shown once. Anyone with it can submit until it expires, reaches its limit, or is revoked." });
+    } catch (error) { return badRequest(res, error); }
+  });
+
+  app.post("/api/forms/:formId/access-grants/:grantId/revoke", isAuthenticated, async (req, res) => {
+    const formId = idParam(req.params.formId), grantId = idParam(req.params.grantId); if (!formId || !grantId) return res.status(400).json({ error: "Invalid access link" });
+    const [grant] = await db.update(workspaceFormAccessGrants).set({ active: false, revokedAt: new Date() }).where(and(eq(workspaceFormAccessGrants.id, grantId), eq(workspaceFormAccessGrants.formId, formId), eq(workspaceFormAccessGrants.userId, req.session.userId!))).returning({ id: workspaceFormAccessGrants.id });
+    if (!grant) return res.status(404).json({ error: "Access link not found" });
+    res.status(204).end();
+  });
+
+  app.get("/api/public/forms/:publicId", async (req, res) => {
+    const publicId = publicIdParam(req.params.publicId), token = formBearerToken(req); if (!publicId || !token) return res.status(404).json({ error: "Form unavailable" });
+    const [grant] = await db.select().from(workspaceFormAccessGrants).where(and(eq(workspaceFormAccessGrants.publicId, publicId), eq(workspaceFormAccessGrants.tokenHash, formTokenHash(token)))).limit(1);
+    if (!grant || !grant.active || grant.revokedAt || grant.expiresAt.getTime() <= Date.now() || grant.submissionCount >= grant.maxSubmissions) return res.status(404).json({ error: "Form unavailable" });
+    const [form] = await db.select().from(workspaceForms).where(and(eq(workspaceForms.id, grant.formId), eq(workspaceForms.userId, grant.userId))).limit(1);
+    if (!form || !form.active) return res.status(404).json({ error: "Form unavailable" });
+    const [database] = await db.select().from(workspaceDatabases).where(and(eq(workspaceDatabases.id, form.databaseId), eq(workspaceDatabases.userId, grant.userId))).limit(1);
+    if (!database) return res.status(404).json({ error: "Form unavailable" });
+    const definition = workspaceDatabaseDefinitionSchema.parse(database.definition); const selected = new Set(form.fieldIds as string[]);
+    if (definition.columns.some((column) => selected.has(column.id) && column.type === "relation")) return res.status(404).json({ error: "Form unavailable" });
+    const formDefinition = validateWorkspaceFormDefinition(definition, form.fieldIds as string[], workspaceFormDefinitionSchema.parse(form.definition));
+    res.json({ form: { title: form.title, description: form.description, definition: formDefinition }, columns: definition.columns.filter((column) => selected.has(column.id)), expiresAt: grant.expiresAt, remainingSubmissions: grant.maxSubmissions - grant.submissionCount });
+  });
+
+  app.post("/api/public/forms/:publicId/submissions", async (req, res) => {
+    try {
+      const publicId = publicIdParam(req.params.publicId), token = formBearerToken(req); if (!publicId || !token) return res.status(404).json({ error: "Form unavailable" });
+      const input = workspaceRowRequestSchema.parse(req.body); const hash = formTokenHash(token);
+      const outcome = await db.transaction(async (tx) => {
+        const locked = await tx.execute(sql`SELECT id FROM workspace_form_access_grants WHERE public_id = ${publicId} AND token_hash = ${hash} FOR UPDATE`);
+        if (!locked.rows.length) return { kind: "missing" } as const;
+        const [grant] = await tx.select().from(workspaceFormAccessGrants).where(and(eq(workspaceFormAccessGrants.publicId, publicId), eq(workspaceFormAccessGrants.tokenHash, hash))).limit(1);
+        if (!grant.active || grant.revokedAt || grant.expiresAt.getTime() <= Date.now() || grant.submissionCount >= grant.maxSubmissions) return { kind: "missing" } as const;
+        const [form] = await tx.select().from(workspaceForms).where(and(eq(workspaceForms.id, grant.formId), eq(workspaceForms.userId, grant.userId))).limit(1);
+        if (!form || !form.active) return { kind: "missing" } as const;
+        const database = await lockedOwnedDatabase(tx, form.databaseId, grant.userId); if (!database) return { kind: "missing" } as const;
+        const definition = workspaceDatabaseDefinitionSchema.parse(database.definition); const selected = new Set(form.fieldIds as string[]);
+        if (definition.columns.some((column) => selected.has(column.id) && column.type === "relation")) return { kind: "missing" } as const;
+        const formDefinition = validateWorkspaceFormDefinition(definition, form.fieldIds as string[], workspaceFormDefinitionSchema.parse(form.definition));
+        const values = validateWorkspaceFormSubmission(definition, formDefinition, input.values);
+        const [row] = await tx.insert(workspaceDatabaseRows).values({ userId: grant.userId, databaseId: database.id, values }).returning();
+        await tx.insert(workspaceDatabaseRowRevisions).values({ userId: grant.userId, databaseId: database.id, rowId: row.id, revisionNumber: 1, action: "created", snapshot: { values } });
+        await tx.insert(workspaceFormSubmissionReceipts).values({ userId: grant.userId, formId: form.id, grantId: grant.id, rowId: row.id });
+        await tx.update(workspaceFormAccessGrants).set({ submissionCount: grant.submissionCount + 1, lastUsedAt: new Date() }).where(eq(workspaceFormAccessGrants.id, grant.id));
+        return { kind: "created", confirmationText: form.confirmationText } as const;
+      });
+      if (outcome.kind === "missing") return res.status(404).json({ error: "Form unavailable" });
+      res.status(201).json({ confirmationText: outcome.confirmationText });
+    } catch (error) {
+      logger.warn("Public workspace form submission rejected", { publicId: req.params.publicId, error: error instanceof Error ? error.message : "invalid" });
       return badRequest(res, error);
     }
   });

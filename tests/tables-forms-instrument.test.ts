@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { createWorkspaceTableViewSchema, evaluateWorkspaceFormulas, filterAndSortWorkspaceRows, groupWorkspaceRows, parseWorkspaceTableCsv, serializeWorkspaceTableCsv, validateWorkspaceFormFields, validateWorkspaceRow, validateWorkspaceTableView, workspaceBulkRowDeleteSchema, workspaceDatabaseDefinitionSchema, workspaceDatabaseRevisionSnapshotSchema, workspaceFormulaReferences, workspaceRowRevisionSnapshotSchema, workspaceTableRowImportSchema, type WorkspaceDatabaseDefinition, type WorkspaceTableViewDefinition } from "../shared/tables";
+import { createWorkspaceTableViewSchema, defaultWorkspaceFormDefinition, evaluateWorkspaceFormulas, filterAndSortWorkspaceRows, groupWorkspaceRows, parseWorkspaceTableCsv, serializeWorkspaceTableCsv, validateWorkspaceFormDefinition, validateWorkspaceFormFields, validateWorkspaceFormSubmission, validateWorkspaceRow, validateWorkspaceTableView, visibleWorkspaceFormFieldIds, workspaceBulkRowDeleteSchema, workspaceDatabaseDefinitionSchema, workspaceDatabaseRevisionSnapshotSchema, workspaceFormulaReferences, workspaceRowRevisionSnapshotSchema, workspaceTableRowImportSchema, type WorkspaceDatabaseDefinition, type WorkspaceTableViewDefinition } from "../shared/tables";
 
 const source = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8");
 const definition: WorkspaceDatabaseDefinition = { version: 1, columns: [
@@ -312,6 +312,44 @@ describe("Tables and Forms instruments", () => {
     expect(editor).toContain("!isWorkspaceComputedColumn(column)");
     expect(field).toContain("Calculated after the row is saved");
     expect(field).toContain('role="group"');
-    expect(form).toContain("relationOptions={query.data.relationOptions[column.id]}");
+    expect(form).toContain("relationOptions={query.data.relationOptions}");
+  });
+
+  it("validates sectioned form layouts and evaluates forward-only conditional visibility", () => {
+    const formDefinition = validateWorkspaceFormDefinition(definition, ["name", "state", "score"], { version: 1, sections: [
+      { id: "identity", title: "Identity", description: null, fieldIds: ["name", "state"] },
+      { id: "details", title: "Details", description: "Only when open", fieldIds: ["score"] },
+    ], conditions: [{ id: "open_score", sourceFieldId: "state", targetFieldId: "score", operator: "equals", value: "Open" }] });
+    expect(visibleWorkspaceFormFieldIds(formDefinition, { name: "Practice", state: "Done" })).toEqual(["name", "state"]);
+    expect(visibleWorkspaceFormFieldIds(formDefinition, { name: "Practice", state: "Open" })).toEqual(["name", "state", "score"]);
+    expect(validateWorkspaceFormSubmission(definition, formDefinition, { name: "Practice", state: "Open", score: 5 })).toEqual({ name: "Practice", state: "Open", score: 5 });
+    expect(() => validateWorkspaceFormSubmission(definition, formDefinition, { name: "Practice", state: "Done", score: 5 })).toThrow("not part of this form");
+    expect(() => validateWorkspaceFormDefinition(definition, ["name", "state", "score"], { ...formDefinition, conditions: [{ ...formDefinition.conditions[0], sourceFieldId: "score", targetFieldId: "state" }] })).toThrow("earlier field");
+    expect(defaultWorkspaceFormDefinition(["name"]).sections[0].fieldIds).toEqual(["name"]);
+  });
+
+  it("governs external respondent links without creating a second response authority", () => {
+    const migration = source("migrations/0111_workspace_form_governance.sql"); const release = source("server/release-migrate.ts"); const routes = source("server/routes/tables.ts"); const schema = source("shared/schema.ts"); const profile = source("server/routes/profile.ts"); const app = source("client/src/App.tsx"); const publicPage = source("client/src/pages/PublicFormPage.tsx");
+    for (const contract of [migration, release, schema]) for (const table of ["workspace_form_access_grants", "workspace_form_submission_receipts"]) expect(contract).toContain(table);
+    expect(release).toContain('id: "0111_workspace_form_governance"');
+    expect(routes).toContain('app.get("/api/public/forms/:publicId"');
+    expect(routes).toContain('app.post("/api/public/forms/:publicId/submissions"');
+    expect(routes).toContain('app.post("/api/forms/:formId/access-grants/:grantId/revoke", isAuthenticated');
+    expect(routes).toContain('crypto.randomBytes(32).toString("base64url")');
+    expect(routes).toContain('crypto.createHash("sha256")');
+    expect(routes).toContain('req.header("authorization")');
+    expect(routes).toContain('SELECT id FROM workspace_form_access_grants WHERE public_id = ${publicId} AND token_hash = ${hash} FOR UPDATE');
+    expect(routes).toContain("workspaceDatabaseRows");
+    expect(routes).toContain("workspaceDatabaseRowRevisions");
+    expect(routes).toContain("workspaceFormSubmissionReceipts");
+    expect(routes).toContain("External links cannot expose relation fields");
+    expect(routes).not.toContain('/api/public/forms/:token');
+    expect(profile).toContain('selectSafeWorkspaceFormAccessRows');
+    expect(profile).toContain('"workspace_form_submission_receipts", "workspace_form_access_grants", "workspace_forms"');
+    expect(app).toContain('<Route path="/forms/respond/:publicId">');
+    expect(app).toContain("'/forms/respond'");
+    expect(publicPage).toContain('window.location.hash.slice(1)');
+    expect(publicPage).toContain('Authorization: `Bearer ${token}`');
+    expect(publicPage).toContain('visibleWorkspaceFormFieldIds');
   });
 });

@@ -125,17 +125,52 @@ const formFields = {
   confirmationText: z.string().trim().min(1).max(300).default("Response saved."),
   active: z.boolean().default(true),
 };
-export const createWorkspaceFormSchema = z.object({ databaseId: z.number().int().positive(), ...formFields }).strict();
+export const workspaceFormConditionSchema = z.object({
+  id: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/),
+  sourceFieldId: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/),
+  targetFieldId: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/),
+  operator: z.enum(["equals", "not_equals", "is_empty", "is_not_empty"]),
+  value: z.union([z.string().max(5_000), z.number().finite(), z.boolean()]).optional(),
+}).strict().superRefine((condition, ctx) => {
+  if ((condition.operator === "equals" || condition.operator === "not_equals") && condition.value === undefined) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["value"], message: "Comparison conditions need a value." });
+  if ((condition.operator === "is_empty" || condition.operator === "is_not_empty") && condition.value !== undefined) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["value"], message: "Empty-state conditions cannot define a value." });
+});
+export const workspaceFormDefinitionSchema = z.object({
+  version: z.literal(1),
+  sections: z.array(z.object({
+    id: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/),
+    title: z.string().trim().min(1).max(120),
+    description: z.string().trim().max(500).nullable().optional(),
+    fieldIds: z.array(z.string().regex(/^[A-Za-z0-9_-]{1,64}$/)).min(1).max(50),
+  }).strict()).min(1).max(12),
+  conditions: z.array(workspaceFormConditionSchema).max(50),
+}).strict().superRefine((definition, ctx) => {
+  const sectionIds = definition.sections.map((section) => section.id);
+  if (new Set(sectionIds).size !== sectionIds.length) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["sections"], message: "Section IDs must be unique." });
+  const fields = definition.sections.flatMap((section) => section.fieldIds);
+  if (new Set(fields).size !== fields.length) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["sections"], message: "Each form field must appear in exactly one section." });
+  const conditionIds = definition.conditions.map((condition) => condition.id);
+  if (new Set(conditionIds).size !== conditionIds.length) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["conditions"], message: "Condition IDs must be unique." });
+  const targets = definition.conditions.map((condition) => condition.targetFieldId);
+  if (new Set(targets).size !== targets.length) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["conditions"], message: "A field can have only one visibility condition." });
+});
+export const createWorkspaceFormSchema = z.object({ databaseId: z.number().int().positive(), ...formFields, definition: workspaceFormDefinitionSchema.optional() }).strict();
 export const updateWorkspaceFormSchema = z.object({
   title: formFields.title.optional(), description: formFields.description, fieldIds: formFields.fieldIds.optional(),
-  confirmationText: z.string().trim().min(1).max(300).optional(), active: z.boolean().optional(),
+  confirmationText: z.string().trim().min(1).max(300).optional(), active: z.boolean().optional(), definition: workspaceFormDefinitionSchema.optional(),
 }).strict().refine((value) => Object.keys(value).length > 0, "Provide at least one form field.");
+export const createWorkspaceFormAccessGrantSchema = z.object({
+  label: z.string().trim().min(1).max(120),
+  expiresAt: z.string().datetime({ offset: true }).refine((value) => new Date(value).getTime() > Date.now(), "Expiry must be in the future."),
+  maxSubmissions: z.number().int().min(1).max(10_000),
+}).strict();
 
 export type WorkspaceDatabaseDefinition = z.infer<typeof workspaceDatabaseDefinitionSchema>;
 export type WorkspaceColumn = z.infer<typeof workspaceColumnSchema>;
 export type WorkspaceRowValues = z.infer<typeof workspaceRowValuesSchema>;
 export type WorkspaceRowSortDirection = "asc" | "desc";
 export type WorkspaceTableViewDefinition = z.infer<typeof workspaceTableViewDefinitionSchema>;
+export type WorkspaceFormDefinition = z.infer<typeof workspaceFormDefinitionSchema>;
 export type WorkspaceTableCsvPreview = {
   rows: WorkspaceRowValues[];
   sourceRowCount: number;
@@ -146,6 +181,55 @@ export type WorkspaceTableCsvPreview = {
 };
 export type WorkspaceRelationOption = { id: number; label: string };
 export type WorkspaceRelationOptions = Record<string, WorkspaceRelationOption[]>;
+
+export function defaultWorkspaceFormDefinition(fieldIds: string[], title = "Response details"): WorkspaceFormDefinition {
+  return workspaceFormDefinitionSchema.parse({ version: 1, sections: [{ id: "main", title, description: null, fieldIds }], conditions: [] });
+}
+
+function workspaceFormValueIsEmpty(value: unknown): boolean {
+  return value === undefined || value === null || value === "" || (Array.isArray(value) && value.length === 0);
+}
+
+export function visibleWorkspaceFormFieldIds(definition: WorkspaceFormDefinition, values: WorkspaceRowValues): string[] {
+  const conditions = new Map(definition.conditions.map((condition) => [condition.targetFieldId, condition]));
+  return definition.sections.flatMap((section) => section.fieldIds).filter((fieldId) => {
+    const condition = conditions.get(fieldId); if (!condition) return true;
+    const source = values[condition.sourceFieldId];
+    if (condition.operator === "is_empty") return workspaceFormValueIsEmpty(source);
+    if (condition.operator === "is_not_empty") return !workspaceFormValueIsEmpty(source);
+    const equal = source === condition.value;
+    return condition.operator === "equals" ? equal : !equal;
+  });
+}
+
+export function validateWorkspaceFormDefinition(database: WorkspaceDatabaseDefinition, fieldIds: string[], input: WorkspaceFormDefinition): WorkspaceFormDefinition {
+  validateWorkspaceFormFields(database, fieldIds);
+  const definition = workspaceFormDefinitionSchema.parse(input);
+  const ordered = definition.sections.flatMap((section) => section.fieldIds);
+  if (ordered.length !== fieldIds.length || ordered.some((fieldId) => !fieldIds.includes(fieldId))) throw new Error("Form sections must contain every selected field exactly once.");
+  const positions = new Map(ordered.map((fieldId, index) => [fieldId, index]));
+  const columns = new Map(database.columns.map((column) => [column.id, column]));
+  const conditionalTargets = new Set(definition.conditions.map((condition) => condition.targetFieldId));
+  for (const condition of definition.conditions) {
+    const source = columns.get(condition.sourceFieldId); const target = columns.get(condition.targetFieldId);
+    if (!source || !target || !positions.has(source.id) || !positions.has(target.id)) throw new Error("Form conditions must use selected fields.");
+    if (source.id === target.id || positions.get(source.id)! >= positions.get(target.id)!) throw new Error("A visibility condition must use an earlier field.");
+    if (conditionalTargets.has(source.id)) throw new Error("A condition source must always be visible.");
+    if (target.required) throw new Error("Required fields cannot be conditionally hidden.");
+    if (source.type === "relation" || isWorkspaceComputedColumn(source)) throw new Error("Visibility conditions need a stored scalar source field.");
+    if (condition.value !== undefined) {
+      if (source.type === "number" && typeof condition.value !== "number") throw new Error(`${source.name} conditions need a number value.`);
+      if (source.type === "boolean" && typeof condition.value !== "boolean") throw new Error(`${source.name} conditions need a true or false value.`);
+      if (["text", "date", "select", "url"].includes(source.type) && typeof condition.value !== "string") throw new Error(`${source.name} conditions need a text value.`);
+      if (source.type === "select" && !source.options.includes(condition.value as string)) throw new Error(`${source.name} conditions must use an allowed option.`);
+    }
+  }
+  return definition;
+}
+
+export function validateWorkspaceFormSubmission(database: WorkspaceDatabaseDefinition, definition: WorkspaceFormDefinition, values: WorkspaceRowValues): WorkspaceRowValues {
+  return validateWorkspaceRow(database, values, visibleWorkspaceFormFieldIds(definition, values));
+}
 
 type WorkspaceFormulaOperator = "+" | "-" | "*" | "/" | "(" | ")";
 type WorkspaceFormulaToken = { kind: "number"; value: number } | { kind: "reference"; value: string } | { kind: "operator"; value: WorkspaceFormulaOperator };

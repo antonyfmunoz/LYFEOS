@@ -120,6 +120,14 @@ async function selectSafeHealthConnectionRows(userId: number): Promise<Record<st
   return { health_connections: rows[0], health_sync_cursors: rows[1], health_source_records: rows[2], health_source_suppressions: rows[3], health_import_failures: rows[4], health_import_runs: rows[5], health_source_preferences: rows[6], health_connection_audits: rows[7] };
 }
 
+async function selectSafeWorkspaceFormAccessRows(userId: number): Promise<Record<string, unknown[]>> {
+  const [grants, receipts] = await Promise.all([
+    db.execute(sql`SELECT "id", "public_id", "user_id", "form_id", "label", "active", "expires_at", "max_submissions", "submission_count", "last_used_at", "revoked_at", "created_at" FROM "workspace_form_access_grants" WHERE "user_id" = ${userId}`),
+    db.execute(sql`SELECT * FROM "workspace_form_submission_receipts" WHERE "user_id" = ${userId}`),
+  ]);
+  return { workspace_form_access_grants: (grants as { rows?: unknown[] }).rows || [], workspace_form_submission_receipts: (receipts as { rows?: unknown[] }).rows || [] };
+}
+
 // Federation records use their own ownership columns and aggregate keys rather
 // than the application's conventional user_id column. Keep this export scope
 // deliberately identical to account deletion so a user can retain a portable
@@ -176,7 +184,7 @@ async function deleteLocalAccountData(userId: number): Promise<void> {
     for (const table of [
       "workflow_automation_runs", "workflow_automations", "cross_product_work_links", "cross_product_sharing_preferences", "progression_badge_events", "progression_badge_awards", "activity_progression_events", "skill_progression_events", "quest_skill_contributions", "skill_edges", "skill_nodes", "personal_capabilities", "transformation_thread_evidence", "mission_deferrals", "mission_dependencies", "quests", "transformation_threads", "mission_pages", "calendar_events",
       "relationship_ai_recommendations", "relationship_governance_audit", "relationship_governance_consents", "relationship_assessments", "relationship_commitments", "relationship_interactions", "personal_relationships", "documents", "folders", "media_items", "media_albums", "conversations", "user_stats", "user_profile",
-      "user_daily_logs", "user_integrations", "ai_pending_actions", "ai_action_records", "ai_messages", "contacts", "spreadsheet_revisions", "spreadsheets", "canvas_revisions", "canvases", "graphs", "workspace_forms", "workspace_table_views", "workspace_database_row_revisions", "workspace_database_revisions", "workspace_database_rows", "workspace_databases",
+      "user_daily_logs", "user_integrations", "ai_pending_actions", "ai_action_records", "ai_messages", "contacts", "spreadsheet_revisions", "spreadsheets", "canvas_revisions", "canvases", "graphs", "workspace_form_submission_receipts", "workspace_form_access_grants", "workspace_forms", "workspace_table_views", "workspace_database_row_revisions", "workspace_database_revisions", "workspace_database_rows", "workspace_databases",
       "templates", "integrations", "progress_trackers", "dismissed_knowledge", "vision_goals", "user_categories",
       "ritual_groups", "widget_states", "user_activity_events", "smart_reminders", "mission_views", "push_subscriptions",
       "ingredient_scan_items", "ingredient_scans", "ingredient_preference_rules", "workout_heart_rate_samples", "heart_rate_zone_profiles", "workout_program_sessions", "workout_programs", "workout_template_revisions", "workout_templates", "workout_revisions", "workouts", "exercise_definitions", "nutrition_meal_plan_entries", "nutrition_meal_plans", "nutrition_diary_entries", "nutrition_recipe_revisions", "nutrition_recipes", "nutrition_food_portions", "nutrition_foods", "sleep_naps", "sleep_sessions", "health_observation_calculation_preferences", "health_observations", "health_metric_panels", "health_metric_definitions", "recovery_activities", "recovery_routines", "recovery_tag_policies", "fasting_windows", "supplement_schedule_events", "supplement_schedules", "supplement_entries", "hydration_entries", "body_measurements", "health_planning_draft_events", "health_planning_drafts", "health_ai_drafts", "health_ai_requests", "health_practice_reviews", "health_target_revisions", "health_targets", "health_profiles", "health_deletion_receipts", "health_data_rights_audit", "health_badge_events", "health_progression_events",
@@ -474,10 +482,11 @@ export function registerProfileRoutes(app: Express): void {
       const userId = req.session.userId!;
       const user = await storage.getUser(userId);
       if (!user) return res.status(404).json({ error: "User not found" });
-      const [rows, federationAudit, healthConnectionRows, nutritionNutrients, nutritionRecipeIngredients, workoutExerciseRows, workoutSetRows, messageHubRows] = await Promise.all([
+      const [rows, federationAudit, healthConnectionRows, workspaceFormAccessRows, nutritionNutrients, nutritionRecipeIngredients, workoutExerciseRows, workoutSetRows, messageHubRows] = await Promise.all([
         Promise.all(accountExportTables.map(async (table) => [table, await selectAccountRows(table, userId)] as const)),
         selectFederationAuditRows(userId, user.clerkId),
         selectSafeHealthConnectionRows(userId),
+        selectSafeWorkspaceFormAccessRows(userId),
         selectNutritionNutrientRows(userId),
         selectNutritionRecipeIngredientRows(userId),
         selectWorkoutExerciseRows(userId),
@@ -487,6 +496,7 @@ export function registerProfileRoutes(app: Express): void {
       const data = Object.fromEntries(rows) as Record<string, unknown[]>;
       Object.assign(data, federationAudit);
       Object.assign(data, healthConnectionRows);
+      Object.assign(data, workspaceFormAccessRows);
       data.nutrition_food_nutrients = nutritionNutrients;
       data.nutrition_recipe_ingredients = nutritionRecipeIngredients;
       data.workout_exercises = workoutExerciseRows;
