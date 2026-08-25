@@ -37,6 +37,9 @@ export const updateWorkspaceDatabaseSchema = z.object({
 
 export const workspaceRowValuesSchema = z.record(z.string().regex(/^[A-Za-z0-9_-]{1,64}$/), z.unknown()).refine((value) => Object.keys(value).length <= 50, "A row can contain at most 50 values.");
 export const workspaceRowRequestSchema = z.object({ values: workspaceRowValuesSchema }).strict();
+export const workspaceBulkRowDeleteSchema = z.object({
+  rowIds: z.array(z.number().int().positive()).min(1).max(100).refine((ids) => new Set(ids).size === ids.length, "Row IDs must be unique."),
+}).strict();
 
 const formFields = {
   title: z.string().trim().min(1).max(160),
@@ -54,6 +57,7 @@ export const updateWorkspaceFormSchema = z.object({
 export type WorkspaceDatabaseDefinition = z.infer<typeof workspaceDatabaseDefinitionSchema>;
 export type WorkspaceColumn = z.infer<typeof workspaceColumnSchema>;
 export type WorkspaceRowValues = z.infer<typeof workspaceRowValuesSchema>;
+export type WorkspaceRowSortDirection = "asc" | "desc";
 
 export function createWorkspaceColumn(type: WorkspaceColumn["type"] = "text", name = "Name"): WorkspaceColumn {
   return { id: `field_${Math.random().toString(36).slice(2, 12)}`, name, type, required: false, options: type === "select" ? ["Option 1"] : [] };
@@ -92,4 +96,32 @@ export function validateWorkspaceFormFields(definition: WorkspaceDatabaseDefinit
   if (fieldIds.some((id) => !columns.has(id))) throw new Error("Every form field must exist in its database.");
   const missingRequired = definition.columns.find((column) => column.required && !fields.has(column.id));
   if (missingRequired) throw new Error(`Required field ${missingRequired.name} must be included in the form.`);
+}
+
+export function filterAndSortWorkspaceRows<T extends { id: number; values: WorkspaceRowValues }>(
+  rows: readonly T[],
+  definition: WorkspaceDatabaseDefinition,
+  query: string,
+  sortColumnId: string | null,
+  direction: WorkspaceRowSortDirection,
+): T[] {
+  const needle = query.trim().toLowerCase();
+  const filtered = needle
+    ? rows.filter((row) => definition.columns.some((column) => String(row.values[column.id] ?? "").toLowerCase().includes(needle)))
+    : [...rows];
+  if (!sortColumnId) return filtered;
+  if (!definition.columns.some((column) => column.id === sortColumnId)) throw new Error("Choose a column from this table.");
+  const multiplier = direction === "asc" ? 1 : -1;
+  return filtered.sort((left, right) => {
+    const leftValue = left.values[sortColumnId];
+    const rightValue = right.values[sortColumnId];
+    if (leftValue === rightValue) return left.id - right.id;
+    if (leftValue === undefined || leftValue === null || leftValue === "") return 1;
+    if (rightValue === undefined || rightValue === null || rightValue === "") return -1;
+    if (typeof leftValue === "number" && typeof rightValue === "number") return (leftValue - rightValue) * multiplier;
+    if (typeof leftValue === "boolean" && typeof rightValue === "boolean") return (Number(leftValue) - Number(rightValue)) * multiplier;
+    const leftText = String(leftValue).toLowerCase();
+    const rightText = String(rightValue).toLowerCase();
+    return (leftText < rightText ? -1 : leftText > rightText ? 1 : left.id - right.id) * multiplier;
+  });
 }

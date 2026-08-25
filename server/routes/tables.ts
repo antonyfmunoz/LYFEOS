@@ -1,9 +1,9 @@
 import type { Express, Request, Response } from "express";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { workspaceDatabaseRows, workspaceDatabases, workspaceForms } from "@shared/schema";
 import {
   createWorkspaceDatabaseSchema, createWorkspaceFormSchema, updateWorkspaceDatabaseSchema, updateWorkspaceFormSchema,
-  validateWorkspaceFormFields, validateWorkspaceRow, workspaceDatabaseDefinitionSchema, workspaceRowRequestSchema,
+  validateWorkspaceFormFields, validateWorkspaceRow, workspaceBulkRowDeleteSchema, workspaceDatabaseDefinitionSchema, workspaceRowRequestSchema,
   type WorkspaceRowValues,
 } from "@shared/tables";
 import { db } from "../db";
@@ -104,6 +104,19 @@ export function registerTableRoutes(app: Express): void {
     const [row] = await db.delete(workspaceDatabaseRows).where(and(eq(workspaceDatabaseRows.id, rowId), eq(workspaceDatabaseRows.databaseId, databaseId), eq(workspaceDatabaseRows.userId, req.session.userId!))).returning({ id: workspaceDatabaseRows.id });
     if (!row) return res.status(404).json({ error: "Row not found" });
     res.status(204).end();
+  });
+  app.post("/api/databases/:id/rows/bulk-delete", isAuthenticated, async (req, res) => {
+    try {
+      const id = idParam(req.params.id); if (!id) return res.status(400).json({ error: "Invalid database ID" });
+      const database = await ownedDatabase(id, req.session.userId!); if (!database) return res.status(404).json({ error: "Database not found" });
+      const { rowIds } = workspaceBulkRowDeleteSchema.parse(req.body);
+      const deleted = await db.delete(workspaceDatabaseRows).where(and(
+        eq(workspaceDatabaseRows.databaseId, id),
+        eq(workspaceDatabaseRows.userId, req.session.userId!),
+        inArray(workspaceDatabaseRows.id, rowIds),
+      )).returning({ id: workspaceDatabaseRows.id });
+      res.json({ deletedRowIds: deleted.map((row) => row.id), deletedCount: deleted.length });
+    } catch (error) { return badRequest(res, error); }
   });
 
   app.post("/api/forms", isAuthenticated, async (req, res) => {
