@@ -2,7 +2,7 @@ import { and, desc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import { db } from "./db";
 import { storage } from "./storage";
 import { logger } from "./utils";
-import { kanbanBoards, missionContracts, missionDeferrals, missionDependencies, missionReviews, personalCapabilities, projectEvents, questSkillContributions, quests, skillNodes, skillProgressionEvents, type Quest } from "@shared/schema";
+import { kanbanBoards, missionContracts, missionDeferrals, missionDependencies, missionReviews, personalCapabilities, projectEvents, questSkillContributions, quests, skillNodes, skillProgressionEvents, userActivityEvents, type Quest } from "@shared/schema";
 import { recordTransformationThreadEvidence } from "./transformation-thread-evidence";
 import { refreshProgressionState } from "./progression";
 import { queueLinkedWorkItemState } from "./cross-product";
@@ -13,9 +13,10 @@ import type { InsertQuest } from "@shared/schema";
 import { capabilityLevelForExperience } from "./capabilities";
 import { buildPlanningContextSnapshot } from "./context-snapshot";
 import { calibrateMissionDifficulty } from "./transformation-intelligence";
+import { hashUMHPayload } from "./umh/crypto";
 
 /** The sole completion/reopening path for a LyfeOS mission. */
-export type MissionLifecycleSource = "ui" | "ai" | "onboarding" | "umh" | "system";
+export type MissionLifecycleSource = "ui" | "ai" | "onboarding" | "umh" | "system" | "google" | "inbox" | "automation";
 
 export class MissionLifecycleError extends Error {
   constructor(readonly status: number, message: string, readonly currentQuest?: Quest) {
@@ -146,17 +147,51 @@ async function dispatchMissionAutomations(input: {
   }
 }
 
-export async function createMissionLifecycle(input: InternalMissionCreation & { source: MissionLifecycleSource; suppressAutomations?: boolean }) {
+export async function createMissionLifecycleResult(input: InternalMissionCreation & { source: MissionLifecycleSource; suppressAutomations?: boolean }): Promise<{ quest: Quest; replayed: boolean }> {
   const { source, suppressAutomations = false, ...questInput } = input;
   const shouldComplete = questInput.completed === true;
-  const quest = await storage.createQuest(await prepareMissionCreation(questInput, { source }));
-  storage.logActivityEvent(quest.userId, "mission_created", { questId: quest.id, title: quest.title, source }).catch(() => {});
+  if (Boolean(questInput.lifecycleKey) !== Boolean(questInput.lifecyclePayloadHash)) {
+    if (!questInput.lifecycleKey) throw new MissionLifecycleError(400, "A mission payload hash requires a lifecycle key.");
+    questInput.lifecyclePayloadHash = hashUMHPayload(JSON.parse(JSON.stringify({ ...questInput, lifecycleKey: undefined, lifecyclePayloadHash: undefined })));
+  }
+  const prepared = await prepareMissionCreation(questInput, { source });
+  const creation = await db.transaction(async (tx) => {
+    const [inserted] = questInput.lifecycleKey
+      ? await tx.insert(quests).values(prepared).onConflictDoNothing({
+          target: [quests.userId, quests.lifecycleKey],
+          where: sql`${quests.lifecycleKey} IS NOT NULL`,
+        }).returning()
+      : await tx.insert(quests).values(prepared).returning();
+    if (inserted) {
+      await tx.insert(userActivityEvents).values({
+        userId: inserted.userId,
+        eventType: "mission_created",
+        metadata: { questId: inserted.id, title: inserted.title, source, lifecycleKey: questInput.lifecycleKey || null },
+      });
+      return { quest: inserted, replayed: false };
+    }
+    const [existing] = await tx.select().from(quests).where(and(
+      eq(quests.userId, questInput.userId),
+      eq(quests.lifecycleKey, questInput.lifecycleKey!),
+    )).limit(1);
+    if (!existing) throw new MissionLifecycleError(409, "The keyed mission was accepted but could not be recovered.");
+    if (existing.lifecyclePayloadHash !== questInput.lifecyclePayloadHash) {
+      throw new MissionLifecycleError(409, "This mission identity was already used with different details.", existing);
+    }
+    return { quest: existing, replayed: true };
+  });
+  if (creation.replayed) return creation;
+  const quest = creation.quest;
   if (!suppressAutomations) {
     await dispatchMissionAutomations({ userId: quest.userId, triggerType: "mission_created", quest, idempotencyReference: String(quest.id) });
   }
-  if (!shouldComplete) return (await storage.getQuest(quest.id)) || quest;
-  if (suppressAutomations) return (await toggleMissionLifecycle({ questId: quest.id, userId: quest.userId, source, suppressAutomations: true })).quest;
-  return (await toggleMissionLifecycle({ questId: quest.id, userId: quest.userId, source })).quest;
+  if (!shouldComplete) return { quest: (await storage.getQuest(quest.id)) || quest, replayed: false };
+  if (suppressAutomations) return { quest: (await toggleMissionLifecycle({ questId: quest.id, userId: quest.userId, source, suppressAutomations: true })).quest, replayed: false };
+  return { quest: (await toggleMissionLifecycle({ questId: quest.id, userId: quest.userId, source })).quest, replayed: false };
+}
+
+export async function createMissionLifecycle(input: InternalMissionCreation & { source: MissionLifecycleSource; suppressAutomations?: boolean }): Promise<Quest> {
+  return (await createMissionLifecycleResult(input)).quest;
 }
 
 /** Keeps editing behavior consistent across the mission UI and assistant tools. */

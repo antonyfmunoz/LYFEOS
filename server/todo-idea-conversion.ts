@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { userDailyLogs, quests } from "@shared/schema";
 import { db } from "./db";
-import { createMissionLifecycle } from "./mission-lifecycle";
+import { createMissionLifecycleResult } from "./mission-lifecycle";
 import { todoIdeaLines } from "./todo-idea-parsing";
 
 /**
@@ -29,13 +29,14 @@ export async function convertTodoIdeasToMissions(input: {
 
   for (const log of eligibleLogs) {
     const lines = todoIdeaLines(log.todoIdeas);
-    for (const title of lines) {
+    for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+      const title = lines[lineIndex];
       const normalizedTitle = title.toLowerCase();
       if (existingTitles.has(normalizedTitle)) {
         duplicatesSkipped++;
         continue;
       }
-      await createMissionLifecycle({
+      const result = await createMissionLifecycleResult({
         userId: input.userId,
         title,
         description: `Auto-created from To-Do Ideas on ${log.date}`,
@@ -43,10 +44,12 @@ export async function convertTodoIdeasToMissions(input: {
         completed: false,
         experienceReward: 50,
         createdAt: input.createdAtForLog(log.date),
+        lifecycleKey: `todo-idea:${log.id}:${lineIndex}`,
         source: "system",
       });
       existingTitles.add(normalizedTitle);
-      created++;
+      if (result.replayed) duplicatesSkipped++;
+      else created++;
     }
     await db.update(userDailyLogs)
       .set({ todosConverted: true })

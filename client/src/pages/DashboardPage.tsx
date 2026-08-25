@@ -536,12 +536,14 @@ export default function DashboardPage() {
       });
     }
   });
+  const routeTodoMutationIdRef = useRef(crypto.randomUUID());
   const routeTodoIdeas = useMutation({
     mutationFn: () => apiRequest("/api/inbox/captures/batch", {
       method: "POST",
-      body: JSON.stringify({ text: dataLog.todoIdeas, sourceDate: todayDateStr }),
+      body: JSON.stringify({ text: dataLog.todoIdeas, sourceDate: todayDateStr, mutationId: routeTodoMutationIdRef.current }),
     }),
     onSuccess: (result: { created: unknown[]; skipped: number }) => {
+      routeTodoMutationIdRef.current = crypto.randomUUID();
       queryClient.invalidateQueries({ queryKey: ["/api/quests"] });
       toast({
         title: result.created.length ? "Ideas routed to Missions" : "Ideas already in Missions",

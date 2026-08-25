@@ -8,7 +8,7 @@ import { isAuthenticated, isOwner, calculateMissionCosts } from "./middleware";
 import { insertQuestSchema, insertMissionViewSchema, missionContracts, missionDeferrals, missionMutationReceipts, personalCapabilities, Quest, questSkillContributions, skillNodes, transformationThreadEvidence, transformationThreads, userDailyLogs, quests as questsTable } from "@shared/schema";
 import { allocateSkillExperience, buildSkillGraph } from "../skill-graph";
 import { missionExperience } from "@shared/progression";
-import { createMissionLifecycle, deferMissionLifecycle, MissionLifecycleError, toggleMissionLifecycle, updateMissionLifecycle } from "../mission-lifecycle";
+import { createMissionLifecycleResult, deferMissionLifecycle, MissionLifecycleError, toggleMissionLifecycle, updateMissionLifecycle } from "../mission-lifecycle";
 import { convertTodoIdeasToMissions } from "../todo-idea-conversion";
 import { localMidnight } from "../todo-idea-parsing";
 import { refreshProgressionState } from "../progression";
@@ -482,24 +482,12 @@ export function registerQuestRoutes(app: Express): void {
         }
       }
       
-      let quest: Quest;
-      try {
-        quest = await createMissionLifecycle({
-          ...questData,
-          ...(mutation.id && mutationPayloadHash ? { lifecycleKey: `calendar:${mutation.id}`, lifecyclePayloadHash: mutationPayloadHash } : {}),
-          source: "ui",
-        });
-      } catch (error) {
-        if (!mutation.id || !mutationPayloadHash) throw error;
-        const [existing] = await db.select().from(questsTable)
-          .where(and(eq(questsTable.userId, questData.userId), eq(questsTable.lifecycleKey, `calendar:${mutation.id}`)))
-          .limit(1);
-        if (!existing) throw error;
-        if (existing.lifecyclePayloadHash !== mutationPayloadHash) {
-          return res.status(409).json({ error: "This mutation identity was already used for a different mission change." });
-        }
-        quest = existing;
-      }
+      const creation = await createMissionLifecycleResult({
+        ...questData,
+        ...(mutation.id && mutationPayloadHash ? { lifecycleKey: `calendar:${mutation.id}`, lifecyclePayloadHash: mutationPayloadHash } : {}),
+        source: questData.category === "onboarding" ? "onboarding" : "ui",
+      });
+      const quest = creation.quest;
       if (skillNodeIds.length > 0) {
         await assignSkillContributions({ userId: quest.userId, quest, skillNodeIds });
         await ensurePracticeContract(quest, skillNodeIds);
@@ -510,12 +498,13 @@ export function registerQuestRoutes(app: Express): void {
       if (mutation.id && mutationPayloadHash) {
         await recordMutationReceipt({ userId: questData.userId, mutationId: mutation.id, payloadHash: mutationPayloadHash, operation: "create", questId: quest.id, resultingRevision: quest.revision });
       }
-      return res.status(201).json({ quest: publicMission(quest), replayed: false });
+      return res.status(creation.replayed ? 200 : 201).json({ quest: publicMission(quest), replayed: creation.replayed });
     } catch (error) {
       logger.error("Quest creation error:", error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: error.errors });
       }
+      if (error instanceof MissionLifecycleError) return res.status(error.status).json({ error: error.message });
       return res.status(500).json({ error: "Internal server error" });
     }
   });

@@ -5,7 +5,7 @@ import crypto from "crypto";
 import { isAuthenticated } from "./middleware";
 import { storage } from "../storage";
 import { logger } from "../utils";
-import { createMissionLifecycle, updateMissionLifecycle } from "../mission-lifecycle";
+import { createMissionLifecycleResult, MissionLifecycleError, updateMissionLifecycle } from "../mission-lifecycle";
 import { shiftCalendarDate } from "@shared/calendar";
 import { pool } from "../db";
 import { fetchGoogleCalendarSyncBatch, parseGoogleCalendarDateTime, readGoogleCalendarSyncState, writeGoogleCalendarSyncState } from "../google-calendar-sync";
@@ -273,7 +273,7 @@ export function registerGoogleRoutes(app: Express): void {
             questId: linkedQuestId,
             userId,
             updates: { missionStatus: "cancelled" },
-            source: "system",
+            source: "google",
           });
           cancelled++;
           continue;
@@ -321,7 +321,7 @@ export function registerGoogleRoutes(app: Express): void {
             questId: externalIdMap.get(gEvent.id)!,
             userId,
             updates: questFields,
-            source: "system",
+            source: "google",
           });
           updated++;
           continue;
@@ -339,13 +339,13 @@ export function registerGoogleRoutes(app: Express): void {
               externalId: gEvent.id,
               externalSource: "google_calendar",
             },
-            source: "system",
+            source: "google",
           });
           linkedExisting++;
           continue;
         }
 
-        await createMissionLifecycle({
+        const creation = await createMissionLifecycleResult({
           userId,
           ...questFields,
           category: "general",
@@ -354,9 +354,11 @@ export function registerGoogleRoutes(app: Express): void {
           experienceReward: 25,
           externalId: gEvent.id,
           externalSource: "google_calendar",
-          source: "system",
+          lifecycleKey: `google-calendar:${gEvent.id}`,
+          source: "google",
         });
-        imported++;
+        if (creation.replayed) skipped++;
+        else imported++;
       }
 
       const latestIntegration = await storage.getIntegration(client.integration.id);
@@ -381,6 +383,7 @@ export function registerGoogleRoutes(app: Express): void {
         resetFromExpiredToken: syncBatch.resetFromExpiredToken,
       });
     } catch (error: any) {
+      if (error instanceof MissionLifecycleError) return res.status(error.status).json({ error: error.message });
       if (error?.code === 401 || error?.response?.status === 401) {
         return res.status(401).json({ error: "Google token expired. Please reconnect." });
       }
@@ -480,7 +483,7 @@ export function registerGoogleRoutes(app: Express): void {
               externalId: created.data.id,
               externalSource: "google_calendar",
             },
-            source: "system",
+            source: "google",
           });
         }
         return res.json({ success: true, action: "created", googleEventId: created.data.id });
@@ -593,7 +596,7 @@ export function registerGoogleRoutes(app: Express): void {
           continue;
         }
 
-        await createMissionLifecycle({
+        const creation = await createMissionLifecycleResult({
           userId,
           title: task.title,
           description: task.notes || `Imported from Google Tasks (${task.listName})`,
@@ -604,14 +607,17 @@ export function registerGoogleRoutes(app: Express): void {
           startDate,
           externalId: task.id,
           externalSource: "google_tasks",
-          source: "system",
+          lifecycleKey: `google-task:${task.id}`,
+          source: "google",
         });
 
-        imported++;
+        if (creation.replayed) skipped++;
+        else imported++;
       }
 
       return res.json({ imported, skipped, total: tasksToImport.length });
     } catch (error) {
+      if (error instanceof MissionLifecycleError) return res.status(error.status).json({ error: error.message });
       logger.error("Error importing Google Tasks:", error);
       return res.status(500).json({ error: "Failed to import tasks" });
     }

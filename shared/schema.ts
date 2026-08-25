@@ -627,7 +627,7 @@ export const quests = pgTable("quests", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
-  uniqueIndex("quests_user_lifecycle_key_unique_idx").on(table.userId, table.lifecycleKey),
+  uniqueIndex("quests_user_lifecycle_key_unique_idx").on(table.userId, table.lifecycleKey).where(sql`${table.lifecycleKey} IS NOT NULL`),
   index("quests_user_calendar_window_idx").on(table.userId, table.startDate, table.id).where(sql`${table.deletedAt} IS NULL AND ${table.startDate} IS NOT NULL`),
 ]);
 

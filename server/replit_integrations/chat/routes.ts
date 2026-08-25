@@ -938,7 +938,7 @@ async function executeTool(toolName: string, input: any, userId: number, context
 
   try {
     const repairBefore = await captureRepairState(toolName, input, userId);
-    const result = await executeToolUnsafe(toolName, input, userId);
+    const result = await executeToolUnsafe(toolName, input, userId, recordId ? `ai-action:${recordId}` : undefined);
     if (recordId && !result.includes('"error"')) await persistRepairPlan(recordId, userId, toolName, repairBefore, result);
     if (recordId) {
       const rejected = result.includes('"error"');
@@ -957,7 +957,7 @@ async function executeTool(toolName: string, input: any, userId: number, context
   }
 }
 
-async function executeToolUnsafe(toolName: string, input: any, userId: number): Promise<string> {
+async function executeToolUnsafe(toolName: string, input: any, userId: number, executionKey?: string): Promise<string> {
   try {
     switch (toolName) {
       case "terminate_mission": {
@@ -1002,6 +1002,7 @@ async function executeToolUnsafe(toolName: string, input: any, userId: number): 
           endDate: input.endDate || null,
           dueDate: input.dueDate || null,
           completed: false,
+          ...(executionKey ? { lifecycleKey: `${executionKey}:create-mission` } : {}),
           source: "ai",
         });
         return JSON.stringify({ success: true, action: "create_mission", message: `Mission "${quest.title}" created with ${xpReward} XP reward (Difficulty: ${difficulty}).`, missionId: quest.id });
@@ -1094,6 +1095,7 @@ async function executeToolUnsafe(toolName: string, input: any, userId: number): 
           endTime: window.endTime,
           category: input.category || "personal",
           experienceReward: 10,
+          ...(executionKey ? { lifecycleKey: `${executionKey}:create-calendar-event` } : {}),
           source: "ai",
         });
         return JSON.stringify({ success: true, action: "create_calendar_event", message: `Calendar event "${event.title}" created for ${input.date} at ${input.startTime}.` });
@@ -1405,7 +1407,8 @@ Write a 2-3 paragraph affirmation in second person ("You are..."). Make it power
         const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
         const created: { id: number; title: string; xp: number }[] = [];
         
-        for (const m of input.missions) {
+        for (let missionIndex = 0; missionIndex < input.missions.length; missionIndex++) {
+          const m = input.missions[missionIndex];
           const difficulty = m.difficulty || "D";
           const xpReward = m.experienceReward || difficultyXP[difficulty] || 10;
           const quest = await createMissionLifecycle({
@@ -1422,6 +1425,7 @@ Write a 2-3 paragraph affirmation in second person ("You are..."). Make it power
             endDate: null,
             dueDate: m.dueDate || null,
             completed: false,
+            ...(executionKey ? { lifecycleKey: `${executionKey}:batch-mission:${missionIndex}` } : {}),
             source: "ai",
           });
           if (input.visionGoalId) {
@@ -1501,7 +1505,7 @@ async function executeApprovedPendingAction(actionId: number, userId: number): P
     .where(eq(aiActionRecords.id, pending.actionRecordId));
   try {
     const repairBefore = await captureRepairState(pending.toolName, pending.payload, userId);
-    const result = await executeToolUnsafe(pending.toolName, pending.payload, userId);
+    const result = await executeToolUnsafe(pending.toolName, pending.payload, userId, `ai-action:${pending.actionRecordId}`);
     const rejected = result.includes('"error"');
     const state = rejected ? "rejected" as const : "succeeded" as const;
     await db.transaction(async (tx) => {

@@ -1,5 +1,5 @@
 import { Inbox, Send } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Input } from "@/components/ui/input";
@@ -9,11 +9,13 @@ import { useToast } from "@/hooks/use-toast";
 /** A compact, always-available capture point; the full mission remains editable in Missions. */
 export function UniversalInboxCapture() {
   const [text, setText] = useState("");
+  const mutationIdRef = useRef(crypto.randomUUID());
   const { toast } = useToast();
   const capture = useMutation({
-    mutationFn: () => apiRequest("/api/inbox/captures", { method: "POST", body: JSON.stringify({ text }) }),
+    mutationFn: () => apiRequest("/api/inbox/captures", { method: "POST", body: JSON.stringify({ text, mutationId: mutationIdRef.current }) }),
     onSuccess: () => {
       setText("");
+      mutationIdRef.current = crypto.randomUUID();
       queryClient.invalidateQueries({ queryKey: ["/api/quests"] });
       toast({ title: "Captured to inbox", description: "It is ready for you to review and prioritize in Missions." });
     },
@@ -28,7 +30,7 @@ export function UniversalInboxCapture() {
       <Inbox className="ml-1 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
       <Input
         value={text}
-        onChange={(event) => setText(event.target.value)}
+        onChange={(event) => { setText(event.target.value); if (capture.isError) mutationIdRef.current = crypto.randomUUID(); }}
         placeholder="Capture an idea, task, or follow-up…"
         aria-label="Universal inbox capture"
         maxLength={2000}

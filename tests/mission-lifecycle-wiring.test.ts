@@ -32,7 +32,7 @@ describe("mission lifecycle wiring", () => {
   it("does not allow a newly-created completed mission to bypass lifecycle effects", () => {
     const lifecycle = readSource("server/mission-lifecycle.ts");
     expect(lifecycle).toContain("const shouldComplete = questInput.completed === true;");
-    expect(lifecycle).toContain("return (await toggleMissionLifecycle({ questId: quest.id, userId: quest.userId, source })).quest;");
+    expect(lifecycle).toContain("quest: (await toggleMissionLifecycle({ questId: quest.id, userId: quest.userId, source })).quest");
   });
 
   it("keeps activity completion separate from evidence-backed capability progression", () => {
@@ -78,7 +78,7 @@ describe("mission lifecycle wiring", () => {
     const federation = readSource("server/umh/service.ts");
     expect(threads).toContain("prepareMissionCreation");
     expect(profile).toContain("convertTodoIdeasToMissions");
-    expect(google).toContain('source: "system"');
+    expect(google).toContain('source: "google"');
     expect(federation).toContain("prepareMissionCreation");
   });
 
@@ -94,14 +94,30 @@ describe("mission lifecycle wiring", () => {
   it("keeps imported calendar edits inside the same mission update policy", () => {
     const google = readSource("server/routes/google.ts");
     expect(google).toContain("updateMissionLifecycle");
-    expect(google).toContain('source: "system"');
+    expect(google).toContain('source: "google"');
   });
 
   it("routes universal capture through the lifecycle instead of a side path", () => {
     const inbox = readSource("server/routes/inbox.ts");
-    expect(inbox).toContain("createMissionLifecycle");
+    expect(inbox).toContain("createMissionLifecycleResult");
     expect(inbox).toContain('category: "todo"');
     expect(inbox).toContain('"/api/inbox/captures/batch"');
+  });
+
+  it("makes canonical mission creation atomic, source-aware, and replay safe", () => {
+    const lifecycle = readSource("server/mission-lifecycle.ts");
+    const inbox = readSource("server/routes/inbox.ts");
+    const google = readSource("server/routes/google.ts");
+    const chat = readSource("server/replit_integrations/chat/routes.ts");
+    expect(lifecycle).toContain("await db.transaction(async (tx) =>");
+    expect(lifecycle).toContain("await tx.insert(userActivityEvents).values");
+    expect(lifecycle).toContain("target: [quests.userId, quests.lifecycleKey]");
+    expect(lifecycle).toContain("where: sql`${quests.lifecycleKey} IS NOT NULL`");
+    expect(lifecycle).toContain("existing.lifecyclePayloadHash !== questInput.lifecyclePayloadHash");
+    expect(inbox).toContain("`inbox:${parsed.data.mutationId}`");
+    expect(inbox).toContain("captureRoute(async");
+    expect(google).toContain("`google-calendar:${gEvent.id}`");
+    expect(chat).toContain("`ai-action:${recordId}`");
   });
 
   it("uses one lifecycle-backed conversion path for captured todo ideas", () => {

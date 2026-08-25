@@ -102,7 +102,7 @@ async function executeAction(input: {
       questId: current.id,
       userId: current.userId,
       updates: { category: action.category },
-      source: "system",
+      source: "automation",
       expectedRevision: input.receipt.expectedQuestRevision,
     });
     return { targetQuestId: input.quest.id };
@@ -121,7 +121,7 @@ async function executeAction(input: {
       category: action.category,
       dueDate,
       lifecycleKey,
-      source: "system",
+      source: "automation",
       suppressAutomations: true,
     });
     return { targetQuestId: followUp.id };
