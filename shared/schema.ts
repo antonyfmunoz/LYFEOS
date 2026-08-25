@@ -1606,6 +1606,7 @@ export const workspaceDatabases = pgTable("workspace_databases", {
   category: text("category").notNull().default("general"),
   favorite: boolean("favorite").notNull().default(false),
   definition: jsonb("definition").notNull(),
+  revision: integer("revision").notNull().default(1),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => [index("workspace_databases_user_updated_idx").on(table.userId, table.updatedAt)]);
@@ -1615,9 +1616,25 @@ export const workspaceDatabaseRows = pgTable("workspace_database_rows", {
   userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   databaseId: integer("database_id").notNull().references(() => workspaceDatabases.id, { onDelete: "cascade" }),
   values: jsonb("values").notNull(),
+  revision: integer("revision").notNull().default(1),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => [index("workspace_database_rows_database_updated_idx").on(table.databaseId, table.updatedAt), index("workspace_database_rows_user_idx").on(table.userId)]);
+
+export const workspaceDatabaseRevisions = pgTable("workspace_database_revisions", {
+  id: serial("id").primaryKey(), userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  databaseId: integer("database_id").notNull().references(() => workspaceDatabases.id, { onDelete: "cascade" }),
+  revisionNumber: integer("revision_number").notNull(), action: text("action").notNull(), sourceRevision: integer("source_revision"),
+  snapshot: jsonb("snapshot").notNull(), createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [uniqueIndex("workspace_database_revisions_database_revision_unique_idx").on(table.databaseId, table.revisionNumber), index("workspace_database_revisions_user_database_created_idx").on(table.userId, table.databaseId, table.createdAt)]);
+
+export const workspaceDatabaseRowRevisions = pgTable("workspace_database_row_revisions", {
+  id: serial("id").primaryKey(), userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  databaseId: integer("database_id").notNull().references(() => workspaceDatabases.id, { onDelete: "cascade" }),
+  rowId: integer("row_id").notNull().references(() => workspaceDatabaseRows.id, { onDelete: "cascade" }),
+  revisionNumber: integer("revision_number").notNull(), action: text("action").notNull(), sourceRevision: integer("source_revision"),
+  snapshot: jsonb("snapshot").notNull(), createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [uniqueIndex("workspace_database_row_revisions_row_revision_unique_idx").on(table.rowId, table.revisionNumber), index("workspace_database_row_revisions_user_row_created_idx").on(table.userId, table.rowId, table.createdAt)]);
 
 export const workspaceTableViews = pgTable("workspace_table_views", {
   id: serial("id").primaryKey(),

@@ -48,6 +48,14 @@ export const workspaceTableViewDefinitionSchema = z.object({
   sortDirection: z.enum(["asc", "desc"]),
   groupColumnId: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/).nullable(),
 }).strict();
+export const workspaceDatabaseRevisionSnapshotSchema = z.object({
+  title: z.string().trim().min(1).max(160),
+  description: z.string().trim().max(800).nullable(),
+  category: z.string().trim().min(1).max(80).regex(/^[A-Za-z0-9 _-]+$/),
+  favorite: z.boolean(),
+  definition: workspaceDatabaseDefinitionSchema,
+}).strict();
+export const workspaceRowRevisionSnapshotSchema = z.object({ values: workspaceRowValuesSchema }).strict();
 export const createWorkspaceTableViewSchema = z.object({
   name: z.string().trim().min(1).max(80),
   definition: workspaceTableViewDefinitionSchema,

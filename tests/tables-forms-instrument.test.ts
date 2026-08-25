@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { createWorkspaceTableViewSchema, filterAndSortWorkspaceRows, groupWorkspaceRows, validateWorkspaceFormFields, validateWorkspaceRow, validateWorkspaceTableView, workspaceBulkRowDeleteSchema, workspaceDatabaseDefinitionSchema, type WorkspaceDatabaseDefinition, type WorkspaceTableViewDefinition } from "../shared/tables";
+import { createWorkspaceTableViewSchema, filterAndSortWorkspaceRows, groupWorkspaceRows, validateWorkspaceFormFields, validateWorkspaceRow, validateWorkspaceTableView, workspaceBulkRowDeleteSchema, workspaceDatabaseDefinitionSchema, workspaceDatabaseRevisionSnapshotSchema, workspaceRowRevisionSnapshotSchema, type WorkspaceDatabaseDefinition, type WorkspaceTableViewDefinition } from "../shared/tables";
 
 const source = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8");
 const definition: WorkspaceDatabaseDefinition = { version: 1, columns: [
@@ -91,7 +91,7 @@ describe("Tables and Forms instruments", () => {
     expect(editor).toContain('aria-label="Filter table rows"');
     expect(editor).toContain("filterAndSortWorkspaceRows");
     expect(editor).toContain("toggleSort(column.id)");
-    expect(editor).toContain("updateRow.mutate({ rowId: row.id, values: editingValues })");
+    expect(editor).toContain("updateRow.mutate({ rowId: row.id, rowRevision: row.revision, values: editingValues })");
     expect(editor).toContain("Delete selected");
     expect(editor).toContain("This cannot be undone.");
     expect(editor).toContain("bulkRemoveRows.mutate(selectedRowIds)");
@@ -140,5 +140,58 @@ describe("Tables and Forms instruments", () => {
     expect(editor).toContain("Save new view");
     expect(editor).toContain("Update view");
     expect(editor).toContain("Table rows will not be deleted.");
+  });
+
+  it("strictly validates immutable table and row revision snapshots", () => {
+    const tableSnapshot = { title: "Practice", description: null, category: "general", favorite: false, definition };
+    expect(workspaceDatabaseRevisionSnapshotSchema.parse(tableSnapshot)).toEqual(tableSnapshot);
+    expect(workspaceDatabaseRevisionSnapshotSchema.safeParse({ ...tableSnapshot, hidden: true }).success).toBe(false);
+    expect(workspaceRowRevisionSnapshotSchema.parse({ values: { name: "Practice", score: 4 } })).toEqual({ values: { name: "Practice", score: 4 } });
+    expect(workspaceRowRevisionSnapshotSchema.safeParse({ values: {}, hidden: true }).success).toBe(false);
+  });
+
+  it("ships baseline immutable revision ledgers through schema and release migration", () => {
+    const migration = source("migrations/0110_workspace_table_revisions.sql");
+    const release = source("server/release-migrate.ts");
+    const schema = source("shared/schema.ts");
+    for (const table of ["workspace_database_revisions", "workspace_database_row_revisions"]) {
+      for (const contract of [migration, release, schema]) expect(contract).toContain(table);
+    }
+    expect(migration).toContain('ADD COLUMN IF NOT EXISTS "revision" integer NOT NULL DEFAULT 1');
+    expect(migration).toContain("jsonb_build_object('title'");
+    expect(migration).toContain("jsonb_build_object('values'");
+    expect(migration).toContain("CHECK (\"action\" IN ('created','updated','restored'))");
+    expect(release).toContain('id: "0110_workspace_table_revisions"');
+    expect(schema).toContain("workspace_database_revisions_database_revision_unique_idx");
+    expect(schema).toContain("workspace_database_row_revisions_row_revision_unique_idx");
+  });
+
+  it("serializes schema-dependent writes and restores as new owner-scoped versions", () => {
+    const routes = source("server/routes/tables.ts");
+    expect(routes).toContain("async function lockedOwnedDatabase");
+    expect(routes).toContain("FOR UPDATE");
+    expect(routes).toContain('req.header("x-lyfeos-expected-revision")');
+    expect(routes).toContain('app.get("/api/databases/:id/revisions", isAuthenticated');
+    expect(routes).toContain('app.post("/api/databases/:id/revisions/:revisionNumber/restore", isAuthenticated');
+    expect(routes).toContain('app.get("/api/databases/:databaseId/rows/:rowId/revisions", isAuthenticated');
+    expect(routes).toContain('app.post("/api/databases/:databaseId/rows/:rowId/revisions/:revisionNumber/restore", isAuthenticated');
+    expect(routes).toContain("validateDefinitionDependents(tx");
+    expect(routes).toContain("validateWorkspaceRow(definition, snapshot.values)");
+    expect(routes).toContain('action: "restored", sourceRevision');
+    expect(routes).toContain('disclosure: "History is immutable. Restoring creates a new revision."');
+    expect(routes.match(/tx\.insert\(workspaceDatabaseRowRevisions\)/g)?.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it("exposes conflict-safe history controls and includes both ledgers in account rights", () => {
+    const editor = source("client/src/pages/TableEditorPage.tsx");
+    const profile = source("server/routes/profile.ts");
+    expect(editor).toContain('headers: { "x-lyfeos-expected-revision": String(query.data!.database.revision) }');
+    expect(editor).toContain('headers: { "x-lyfeos-expected-revision": String(rowRevision) }');
+    expect(editor).toContain('aria-label="Table history"');
+    expect(editor).toContain('aria-label="Row history"');
+    expect(editor).toContain("Restoring always creates a new version.");
+    for (const table of ["workspace_database_revisions", "workspace_database_row_revisions"]) {
+      expect(profile.match(new RegExp(`"${table}"`, "g"))?.length).toBe(2);
+    }
   });
 });
