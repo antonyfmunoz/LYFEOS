@@ -50,6 +50,11 @@ function signature(payload: string, secret: string): string {
   return crypto.createHmac("sha256", secret).update(`lyfeos.food-catalog.lookup.v1.${payload}`).digest("base64url");
 }
 
+function canonicalBase64url(value: string): Buffer | null {
+  const decoded = Buffer.from(value, "base64url");
+  return decoded.toString("base64url") === value ? decoded : null;
+}
+
 export function createFoodCatalogLookupToken(provider: FoodCatalogProvider, item: FoodCatalogItem, secret: string, now = Date.now()): string {
   const receipt: FoodCatalogLookupReceipt = { version: 1, expiresAt: now + lookupLifetimeMs, provider, item };
   const payload = Buffer.from(JSON.stringify(receipt), "utf8").toString("base64url");
@@ -83,13 +88,14 @@ export function verifyFoodCatalogCursorToken(token: string, secret: string, now 
   try {
     const [version, encodedIv, encodedCiphertext, encodedTag, extra] = token.split(".");
     if (version !== "v1" || !encodedIv || !encodedCiphertext || !encodedTag || extra) return null;
-    const iv = Buffer.from(encodedIv, "base64url");
-    const tag = Buffer.from(encodedTag, "base64url");
-    if (iv.length !== 12 || tag.length !== 16) return null;
+    const iv = canonicalBase64url(encodedIv);
+    const ciphertext = canonicalBase64url(encodedCiphertext);
+    const tag = canonicalBase64url(encodedTag);
+    if (!iv || !ciphertext || !tag || iv.length !== 12 || tag.length !== 16) return null;
     const decipher = crypto.createDecipheriv("aes-256-gcm", crypto.createHash("sha256").update(secret).digest(), iv);
     decipher.setAAD(Buffer.from("lyfeos.food-catalog.cursor.v1", "utf8"));
     decipher.setAuthTag(tag);
-    const plaintext = Buffer.concat([decipher.update(Buffer.from(encodedCiphertext, "base64url")), decipher.final()]).toString("utf8");
+    const plaintext = Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString("utf8");
     const parsed = foodCatalogCursorReceiptSchema.safeParse(JSON.parse(plaintext));
     return parsed.success && parsed.data.expiresAt > now ? parsed.data : null;
   } catch {
