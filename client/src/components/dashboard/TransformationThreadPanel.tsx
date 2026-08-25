@@ -82,6 +82,13 @@ type TransformationThread = {
         reviewMode: "self" | "human";
         escalationPath: string | null;
         stopConditions: string[];
+        unlockResult: {
+          version: "mission-reviewed-progression.v1";
+          state: "not_configured" | "declared" | "applied";
+          reviewedSkillExperience: Array<{ skillNodeId: number; skillName: string; experienceAmount: number; capabilityId: number | null; capabilityName: string | null }>;
+          totalReviewedSkillExperience: number;
+          disclosure: string;
+        };
       };
       advancement: {
         currentStatus: "locked" | "unlocked" | "mastered";
@@ -440,6 +447,7 @@ export function TransformationThreadPanel() {
                     <dt className="text-[10px] font-mono uppercase tracking-[0.1em] text-primary/80">Advancement</dt>
                     <dd className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
                       {nextPractice.advancement.completedMissionCount}/{nextPractice.advancement.requiredMissionCount} reviewed missions · {nextPractice.advancement.reviewCount}/{nextPractice.advancement.requiredReviewCount} reviews · {nextPractice.advancement.reviewedExperience}/{nextPractice.advancement.requiredExperience} reviewed XP.
+                      {nextPractice.contract?.unlockResult.totalReviewedSkillExperience ? ` This Mission can add ${nextPractice.contract.unlockResult.totalReviewedSkillExperience} reviewed skill XP after its evidence meets the rubric.` : " This Mission has no reviewed skill XP mapping yet."}
                     </dd>
                   </div>
                 </dl>

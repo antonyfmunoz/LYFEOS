@@ -12,6 +12,7 @@ import { ensurePersonalCapability } from "../capabilities";
 import { prepareMissionCreation } from "../mission-lifecycle";
 import { buildPlanningContextSnapshot, type PlanningContextSnapshot } from "../context-snapshot";
 import { buildMissionSupportPlan, calibrateMissionDifficulty, missionFitsResources, selectNextPracticeMission, type PracticeMissionCandidate } from "../transformation-intelligence";
+import { buildMissionUnlockResult } from "../mission-unlock-result";
 
 type StarterMission = {
   title: string;
@@ -257,6 +258,7 @@ export function registerTransformationThreadRoutes(app: Express): void {
         skill: skillNodes,
         recordedExperience: personalCapabilities.experience,
         recordedLevel: personalCapabilities.level,
+        capabilityName: personalCapabilities.name,
       }).from(skillNodes)
         .leftJoin(personalCapabilities, and(
           eq(personalCapabilities.id, skillNodes.capabilityId),
@@ -278,10 +280,11 @@ export function registerTransformationThreadRoutes(app: Express): void {
       storage.getUserProfile(userId),
       storage.getUserDailyLogByDate(userId, new Date()),
     ]);
-    const skillsWithHistory = skills.map(({ skill, recordedExperience, recordedLevel }) => ({
+    const skillsWithHistory = skills.map(({ skill, recordedExperience, recordedLevel, capabilityName }) => ({
       ...skill,
       recordedExperience,
       recordedLevel,
+      capabilityName,
     }));
     const skillIds = skillsWithHistory.map((skill) => skill.id);
     const edges = skillIds.length > 0
@@ -301,7 +304,7 @@ export function registerTransformationThreadRoutes(app: Express): void {
     const unfinishedIds = unfinishedMissions.map((mission) => mission.id);
     const [candidateContributions, candidateDeferrals, candidateReviews, candidateEvidence, candidateContracts] = unfinishedIds.length > 0
       ? await Promise.all([
-        db.select({ questId: questSkillContributions.questId, skillNodeId: questSkillContributions.skillNodeId })
+        db.select({ questId: questSkillContributions.questId, skillNodeId: questSkillContributions.skillNodeId, experienceAmount: questSkillContributions.experienceAmount })
           .from(questSkillContributions)
           .where(and(eq(questSkillContributions.userId, userId), inArray(questSkillContributions.questId, unfinishedIds))),
         db.select({ questId: missionDeferrals.questId }).from(missionDeferrals)
@@ -338,6 +341,11 @@ export function registerTransformationThreadRoutes(app: Express): void {
       map.set(row.questId, [...(map.get(row.questId) || []), row.skillNodeId]);
       return map;
     }, new Map<number, number[]>());
+    const contributionRowsByQuest = candidateContributions.reduce((map, row) => {
+      map.set(row.questId, [...(map.get(row.questId) || []), row]);
+      return map;
+    }, new Map<number, typeof candidateContributions>());
+    const skillDetailsById = new Map(skillsWithHistory.map((skill) => [skill.id, skill]));
     const requiredEvidenceByQuest = new Map(candidateContracts.map((contract) => [
       contract.questId,
       Array.isArray(contract.requiredEvidence) ? contract.requiredEvidence.length : 0,
@@ -352,6 +360,16 @@ export function registerTransformationThreadRoutes(app: Express): void {
       reviewMode: contract.reviewMode,
       escalationPath: contract.escalationPath,
       stopConditions: Array.isArray(contract.stopConditions) ? contract.stopConditions : [],
+      unlockResult: buildMissionUnlockResult((contributionRowsByQuest.get(contract.questId) || []).flatMap((contribution) => {
+        const skill = skillDetailsById.get(contribution.skillNodeId);
+        return skill ? [{
+          skillNodeId: skill.id,
+          skillName: skill.name,
+          experienceAmount: contribution.experienceAmount,
+          capabilityId: skill.capabilityId,
+          capabilityName: skill.capabilityName,
+        }] : [];
+      })),
     }]));
     const candidates: PracticeMissionCandidate[] = unfinishedMissions.map((mission) => ({
       ...mission,

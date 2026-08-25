@@ -62,6 +62,8 @@ describeApi("Transformation intelligence API", () => {
     initialPrimaryExperience = primary.recordedExperience;
     expect(thread.data.thread.skillGraph.nextPractice.contract.methodSteps).toHaveLength(3);
     expect(thread.data.thread.skillGraph.nextPractice.contract.toolRequirements).toEqual([]);
+    expect(thread.data.thread.skillGraph.nextPractice.contract.unlockResult.state).toBe("declared");
+    expect(thread.data.thread.skillGraph.nextPractice.contract.unlockResult.totalReviewedSkillExperience).toBeGreaterThan(0);
     expect(thread.data.thread.skillGraph.nextPractice.advancement.disclosure).toContain("not certification");
   });
 
@@ -84,6 +86,23 @@ describeApi("Transformation intelligence API", () => {
     expect(bundle.data.planningDecision.calibration.version).toBe("transformation-difficulty.v1");
     expect(bundle.data.planningDecision.calibration.confidence).toBe("limited");
     expect((await request("PUT", `/api/quests/${questId}/skill-contributions`, { skillNodeIds: [primarySkillId] }, ownerCookie)).status).toBe(200);
+    const prerequisite = await request("POST", "/api/quests", {
+      userId: ownerId,
+      title: "Prepare the discovery prompt",
+      description: "Write the bounded prompt before the conversation.",
+      category: "learning",
+      experienceReward: 5,
+      completed: false,
+    }, ownerCookie);
+    expect(prerequisite.status).toBe(201);
+    expect((await request("POST", `/api/quests/${questId}/dependencies`, { prerequisiteQuestId: prerequisite.data.quest.id }, reviewerCookie)).status).toBe(404);
+    const dependency = await request("POST", `/api/quests/${questId}/dependencies`, { prerequisiteQuestId: prerequisite.data.quest.id }, ownerCookie);
+    expect(dependency.status).toBe(201);
+    expect(dependency.data.dependencies[0]).toMatchObject({ prerequisiteQuestId: prerequisite.data.quest.id, completed: false });
+    const blockedCompletion = await request("POST", `/api/quests/${questId}/toggle`, undefined, ownerCookie);
+    expect(blockedCompletion.status).toBe(409);
+    expect(blockedCompletion.data.error).toContain("Complete prerequisite mission first");
+    expect((await request("POST", `/api/quests/${prerequisite.data.quest.id}/toggle`, undefined, ownerCookie)).status).toBe(200);
   });
 
   it("accepts a versioned weighted proof rubric with a fresh decision context", async () => {
@@ -110,6 +129,9 @@ describeApi("Transformation intelligence API", () => {
     expect(contract.data.contract.methodSteps).toEqual(["Prepare three open questions.", "Run one bounded conversation.", "Record what changed after the response."]);
     expect(contract.data.contract.toolRequirements).toEqual(["Conversation notes"]);
     expect(contract.data.contract.acceptanceContextSnapshot.capturedAt).toBeTruthy();
+    expect(contract.data.unlockResult.state).toBe("declared");
+    expect(contract.data.unlockResult.certificationGranted).toBe(false);
+    expect(contract.data.unlockResult.authorityGranted).toBe(false);
     expect((await request("POST", `/api/quests/${questId}/evidence`, { sourceType: "observation", summary: "Recorded the questions, response, and next correction.", confidence: "self_reported" }, ownerCookie)).status).toBe(201);
     expect((await request("POST", `/api/quests/${questId}/toggle`, undefined, ownerCookie)).status).toBe(200);
   });
@@ -149,6 +171,7 @@ describeApi("Transformation intelligence API", () => {
     expect(resolved.data.progression.skillExperienceAwarded).toBeGreaterThan(0);
     const bundle = await request("GET", `/api/quests/${questId}/contract`, undefined, ownerCookie);
     expect(bundle.data.contract.state).toBe("reviewed");
+    expect(bundle.data.unlockResult.state).toBe("applied");
     expect(bundle.data.appeals[0].status).toBe("reconsidered");
     expect(bundle.data.reviews.map((item: any) => item.decision)).toEqual(expect.arrayContaining(["revisions_needed", "meets_evidence"]));
     const thread = await request("GET", "/api/transformation-thread", undefined, ownerCookie);
@@ -158,6 +181,8 @@ describeApi("Transformation intelligence API", () => {
   it("reverses reviewed competence when its supporting mission is reopened", async () => {
     const reopened = await request("POST", `/api/quests/${questId}/toggle`, undefined, ownerCookie);
     expect(reopened.status).toBe(200);
+    const bundle = await request("GET", `/api/quests/${questId}/contract`, undefined, ownerCookie);
+    expect(bundle.data.unlockResult.state).toBe("declared");
     const thread = await request("GET", "/api/transformation-thread", undefined, ownerCookie);
     expect(thread.data.thread.skills.find((skill: any) => skill.id === primarySkillId).recordedExperience).toBe(initialPrimaryExperience);
   });

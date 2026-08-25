@@ -38,6 +38,16 @@ type MissionContractBundle = {
     context: { capturedAt: string; capacity: { availability: "low" | "steady" | "high" | "unknown" }; constraints: string[] };
     calibration: { recommendedDifficulty: string; selectedDifficulty: string; selectedBy: string; confidence: string; rationale: string[] };
   };
+  unlockResult: null | {
+    version: "mission-reviewed-progression.v1";
+    state: "not_configured" | "declared" | "applied";
+    reviewedSkillExperience: Array<{ skillNodeId: number; skillName: string; experienceAmount: number; capabilityId: number | null; capabilityName: string | null }>;
+    totalReviewedSkillExperience: number;
+    reversible: true;
+    certificationGranted: false;
+    authorityGranted: false;
+    disclosure: string;
+  };
 };
 
 type MissionReviewInvitationBundle = {
@@ -556,6 +566,13 @@ export default function MissionDetailPage() {
                   </div>
                   {contractQuery.data.contract.stopConditions.length ? <p><span className="text-muted-foreground">Stop condition:</span> {contractQuery.data.contract.stopConditions.join(" · ")}</p> : null}
                   {contractQuery.data.contract.escalationPath ? <p><span className="text-muted-foreground">If blocked:</span> {contractQuery.data.contract.escalationPath}</p> : null}
+                  {contractQuery.data.unlockResult ? <div className="rounded-md border border-primary/15 bg-background/25 p-3">
+                    <p className="text-[10px] font-mono uppercase tracking-[0.1em] text-primary/80">Declared unlock result · {contractQuery.data.unlockResult.state.replaceAll("_", " ")}</p>
+                    {contractQuery.data.unlockResult.reviewedSkillExperience.length ? <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+                      {contractQuery.data.unlockResult.reviewedSkillExperience.map((result) => <li key={result.skillNodeId}><span className="text-foreground">{result.skillName}</span>: +{result.experienceAmount} reviewed skill XP{result.capabilityName ? ` · rolls up to ${result.capabilityName}` : ""}</li>)}
+                    </ul> : null}
+                    <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">{contractQuery.data.unlockResult.disclosure}</p>
+                  </div> : null}
                   <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
                     {contractQuery.data.evidence.map((item) => <span key={item.id} className="rounded border border-primary/20 px-2 py-1">Evidence ({item.sourceType.replaceAll("_", " ")} · {item.confidence.replaceAll("_", " ")}): {item.summary}{item.sourceReference ? " · reference attached" : ""}</span>)}
                     {contractQuery.data.reviews.map((item) => <span key={item.id} className="rounded border border-primary/20 px-2 py-1">{item.reviewerType === "human" ? "Human review" : "Self-review"}: {item.decision.replaceAll("_", " ")}</span>)}

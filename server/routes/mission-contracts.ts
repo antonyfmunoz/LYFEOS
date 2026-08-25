@@ -2,13 +2,14 @@ import type { Express, Request, Response } from "express";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../db";
-import { missionContracts, missionDependencies, missionEvidence, missionReviewAppeals, missionReviewInvitations, missionReviews, quests, users } from "@shared/schema";
+import { missionContracts, missionDependencies, missionEvidence, missionReviewAppeals, missionReviewInvitations, missionReviews, personalCapabilities, questSkillContributions, quests, skillNodes, users } from "@shared/schema";
 import { isAuthenticated } from "./middleware";
 import { applyReviewedMissionProgression, revokeReviewedMissionProgression } from "../mission-lifecycle";
 import { wouldCreateMissionDependencyCycle } from "../mission-dependencies";
 import { normalizeRubricDefinition, validateEvidenceChecks } from "../mission-review-authorization";
 import { storage } from "../storage";
 import { buildPlanningContextSnapshot } from "../context-snapshot";
+import { buildMissionUnlockResult } from "../mission-unlock-result";
 
 const textList = z.array(z.string().trim().min(1).max(280)).max(8);
 const methodList = z.array(z.string().trim().min(1).max(280)).max(12);
@@ -89,13 +90,23 @@ async function contractBundle(questId: number, userId: number) {
     calibration: quest.difficultyCalibration,
     source: quest.planningDecisionSource,
   } : null;
-  if (!contract) return { contract: null, evidence: [], reviews: [], appeals: [], planningDecision };
-  const [evidence, reviews, appeals] = await Promise.all([
+  if (!contract) return { contract: null, evidence: [], reviews: [], appeals: [], planningDecision, unlockResult: null };
+  const [evidence, reviews, appeals, contributions] = await Promise.all([
     db.select().from(missionEvidence).where(and(eq(missionEvidence.missionContractId, contract.id), eq(missionEvidence.userId, userId))).orderBy(desc(missionEvidence.submittedAt)),
     db.select().from(missionReviews).where(and(eq(missionReviews.missionContractId, contract.id), eq(missionReviews.userId, userId))).orderBy(desc(missionReviews.createdAt)),
     db.select().from(missionReviewAppeals).where(and(eq(missionReviewAppeals.missionContractId, contract.id), eq(missionReviewAppeals.userId, userId))).orderBy(desc(missionReviewAppeals.createdAt)),
+    db.select({
+      skillNodeId: questSkillContributions.skillNodeId,
+      skillName: skillNodes.name,
+      experienceAmount: questSkillContributions.experienceAmount,
+      capabilityId: skillNodes.capabilityId,
+      capabilityName: personalCapabilities.name,
+    }).from(questSkillContributions)
+      .innerJoin(skillNodes, and(eq(skillNodes.id, questSkillContributions.skillNodeId), eq(skillNodes.userId, userId)))
+      .leftJoin(personalCapabilities, and(eq(personalCapabilities.id, skillNodes.capabilityId), eq(personalCapabilities.userId, userId)))
+      .where(and(eq(questSkillContributions.questId, questId), eq(questSkillContributions.userId, userId))),
   ]);
-  return { contract, evidence, reviews, appeals, planningDecision };
+  return { contract, evidence, reviews, appeals, planningDecision, unlockResult: buildMissionUnlockResult(contributions, Boolean(contract.progressionAppliedAt)) };
 }
 
 async function dependencyBundle(questId: number, userId: number) {
@@ -332,7 +343,7 @@ export function registerMissionContractRoutes(app: Express): void {
       target: missionContracts.questId,
       set: { ...input, rubricDefinition, rubricVersion, acceptanceContextSnapshot, escalationPath: input.escalationPath || null, updatedAt: new Date() },
     }).returning();
-    return res.json({ contract });
+    return res.json(await contractBundle(contract.questId, req.session.userId!));
   });
 
   app.patch("/api/quests/:questId/contract/review-mode", isAuthenticated, async (req: Request, res: Response) => {

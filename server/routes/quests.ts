@@ -579,6 +579,7 @@ export function registerQuestRoutes(app: Express): void {
       const result = await toggleMissionLifecycle({ questId, userId: req.session.userId!, source: "ui" });
       return res.status(200).json({ ...result, quest: publicMission(result.quest) });
     } catch (error) {
+      if (error instanceof MissionLifecycleError) return res.status(error.status).json({ error: error.message });
       logger.error("Error toggling quest completion:", error);
       return res.status(500).json({ error: "Internal server error" });
     }

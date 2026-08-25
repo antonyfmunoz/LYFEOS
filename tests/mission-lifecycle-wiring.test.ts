@@ -24,6 +24,7 @@ describe("mission lifecycle wiring", () => {
   it("routes mission UI completion through the same lifecycle service", () => {
     const quests = readSource("server/routes/quests.ts");
     expect(quests).toContain('toggleMissionLifecycle({ questId, userId: req.session.userId!, source: "ui" })');
+    expect(quests).toContain("if (error instanceof MissionLifecycleError) return res.status(error.status)");
     expect(quests).toContain('toggleMissionLifecycle({ questId: existingOnboardingQuest.id, userId: questData.userId, source: "onboarding" })');
     expect(quests).toContain('updateMissionLifecycle({');
     expect(quests).toContain('source: "onboarding"');
@@ -160,6 +161,20 @@ describe("mission lifecycle wiring", () => {
     expect(panel).toContain("Support and review");
     expect(panel).toContain("Advancement");
     expect(panel).toContain("You own this private plan");
+    expect(panel).toContain("This Mission can add");
+    expect(panel).toContain("reviewed skill XP after its evidence meets the rubric");
+  });
+
+  it("derives Mission unlock results from canonical skill contributions", () => {
+    const unlocks = readSource("server/mission-unlock-result.ts");
+    const contracts = readSource("server/routes/mission-contracts.ts");
+    const mission = readSource("client/src/pages/MissionDetailPage.tsx");
+    expect(unlocks).toContain('version: "mission-reviewed-progression.v1"');
+    expect(unlocks).toContain("mission_completed_and_evidence_meets_rubric");
+    expect(unlocks).toContain("certificationGranted: false");
+    expect(unlocks).toContain("authorityGranted: false");
+    expect(contracts).toContain("buildMissionUnlockResult(contributions");
+    expect(mission).toContain("Declared unlock result");
   });
 
   it("captures decision context for assistant proposals and every canonical mission creation", () => {
