@@ -5,6 +5,7 @@ import { storage } from "../storage";
 import { logger, formatLocalDate } from "../utils";
 import crypto from "crypto";
 import bcrypt from "bcrypt";
+import { SESSION_COOKIE_NAME } from "../session-config";
 
 declare module "express-session" {
   interface SessionData {
@@ -331,7 +332,7 @@ export function registerAuthRoutes(app: Express): void {
   app.post("/api/auth/logout", (req: Request, res: Response) => {
     try {
       if (!req.session || !req.session.userId) {
-        res.clearCookie("connect.sid");
+        res.clearCookie(SESSION_COOKIE_NAME);
         return res.status(200).json({ message: "Already logged out" });
       }
 
@@ -341,7 +342,7 @@ export function registerAuthRoutes(app: Express): void {
           return res.status(500).json({ error: "Failed to logout" });
         }
 
-        res.clearCookie("connect.sid", {
+        res.clearCookie(SESSION_COOKIE_NAME, {
           httpOnly: true,
           sameSite: 'lax',
           secure: process.env.NODE_ENV === "production",

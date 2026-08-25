@@ -30,6 +30,7 @@ import { startUMHOutboxWorker } from "./umh/outbox";
 import { startHealthDeletionReceiptCleanup } from "./health-deletion-cleanup";
 import { execSync } from "child_process";
 import * as Sentry from "@sentry/node";
+import { SESSION_COOKIE_NAME } from "./session-config";
 
 const sentryDsn = process.env.SENTRY_DSN;
 const sentryEnvironment = process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || "development";
@@ -109,7 +110,7 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   rolling: true,
-  name: "lyfeos.sid",
+  name: SESSION_COOKIE_NAME,
   cookie: { 
     secure: process.env.NODE_ENV === "production",
     httpOnly: true,

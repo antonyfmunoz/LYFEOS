@@ -17,6 +17,8 @@ import { convertTodoIdeasToMissions } from "../todo-idea-conversion";
 import { localMidnight } from "../todo-idea-parsing";
 import { sleepDurationMinutes } from "../health-fitness";
 import { missionExperience } from "@shared/progression";
+import { LYFEOS_DATA_RIGHTS } from "@shared/data-rights";
+import { SESSION_COOKIE_NAME } from "../session-config";
 
 const accountExportTables = [
   "user_stats", "user_profile", "user_daily_logs", "user_integrations", "quests", "ai_messages",
@@ -476,6 +478,11 @@ export function registerProfileRoutes(app: Express): void {
     }
   });
 
+  app.get("/api/account/data-rights", isAuthenticated, (_req: Request, res: Response) => {
+    res.setHeader("Cache-Control", "private, no-store");
+    return res.json(LYFEOS_DATA_RIGHTS);
+  });
+
   // A portable, self-service account export. Provider credentials and password
   // hashes are deliberately excluded even from a user's own browser download.
   app.get("/api/account/export", isAuthenticated, async (req: Request, res: Response) => {
@@ -508,7 +515,7 @@ export function registerProfileRoutes(app: Express): void {
         const { access_token, refresh_token, accessToken, refreshToken, ...safe } = entry;
         return { ...safe, settings: sanitizeIntegrationSettingsForExport(safe.settings) };
       });
-      const exportPayload = { exportedAt: new Date().toISOString(), formatVersion: 1, user: safeUser, data };
+      const exportPayload = { exportedAt: new Date().toISOString(), formatVersion: 1, dataRights: LYFEOS_DATA_RIGHTS, user: safeUser, data };
       res.setHeader("Content-Type", "application/json; charset=utf-8");
       res.setHeader("Content-Disposition", `attachment; filename="lyfeos-data-export-${new Date().toISOString().slice(0, 10)}.json"`);
       return res.status(200).send(JSON.stringify(exportPayload, null, 2));
@@ -590,8 +597,15 @@ export function registerProfileRoutes(app: Express): void {
       if (!user) return res.status(404).json({ error: "User not found" });
       if (user.clerkId) await clerkClient.users.deleteUser(user.clerkId);
       await deleteLocalAccountData(userId);
-      req.session.destroy(() => undefined);
-      res.clearCookie("connect.sid");
+      await new Promise<void>((resolve, reject) => {
+        req.session.destroy((error) => error ? reject(error) : resolve());
+      });
+      res.clearCookie(SESSION_COOKIE_NAME, {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+        path: "/",
+      });
       return res.json({ success: true });
     } catch (error) {
       logger.error("Error deleting account:", error);

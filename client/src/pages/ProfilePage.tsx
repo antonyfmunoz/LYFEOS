@@ -78,6 +78,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { DraggableWidget, type DraggableWidgetProps } from '@/components/ui/draggable-widget';
 import update from 'immutability-helper';
 import type { UserProfile as UserProfileSchema } from "@shared/schema";
+import type { LyfeOSDataClass } from "@shared/data-rights";
 import { startThetaBeats, stopThetaBeats } from '@/lib/theta-beats';
 import { useUser } from "@clerk/clerk-react";
 type ClerkPhoneNumber = {
@@ -750,6 +751,14 @@ export default function ProfilePage() {
   // Fetch account data
   const { data: accountData, isLoading: isAccountLoading } = useQuery<{ email?: string; phoneNumber?: string; authProvider?: string }>({
     queryKey: ["/api/account"],
+    enabled: !!user?.id,
+  });
+  const { data: dataRights } = useQuery<{
+    version: string;
+    legalStatus: string;
+    classes: LyfeOSDataClass[];
+  }>({
+    queryKey: ["/api/account/data-rights"],
     enabled: !!user?.id,
   });
 
@@ -2090,6 +2099,21 @@ export default function ProfilePage() {
                 <Label className="text-sm text-foreground">Your Data</Label>
               </div>
               <p className="text-xs text-muted-foreground mb-3">Download a portable copy of your LyfeOS record, including relationship records, mission proof, planning history, and LyfeOS-side federation audit records. Sensitive provider credentials and password data are never included.</p>
+              {dataRights?.classes?.length ? <details className="mb-3 rounded-md border border-primary/10 bg-card/30 px-3 py-2">
+                <summary className="cursor-pointer text-xs font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">What LyfeOS stores and why</summary>
+                <p className="mt-2 text-[11px] text-muted-foreground">This describes current product behavior, not approved legal terms. External providers control their own retained copies.</p>
+                <div className="mt-2 space-y-2">
+                  {dataRights.classes.map((dataClass) => <div key={dataClass.id} className="rounded-md border border-primary/10 bg-background/40 px-3 py-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-xs font-medium text-foreground">{dataClass.label}</p>
+                      <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{dataClass.sensitivity.replaceAll("_", " ")}</span>
+                    </div>
+                    <p className="mt-1 text-[11px] text-muted-foreground">{dataClass.purpose}</p>
+                    <p className="mt-1 text-[10px] text-muted-foreground">Retention: {dataClass.retentionDetail}</p>
+                    <p className="mt-1 text-[10px] text-primary/80">Rights: {[dataClass.rights.export && "export", dataClass.rights.erase && "erase", dataClass.rights.revoke && "revoke"].filter(Boolean).join(" · ") || "provider or operations managed"}</p>
+                  </div>)}
+                </div>
+              </details> : null}
               <Button size="sm" variant="outline" className="border-primary/30 text-primary hover:bg-primary/10" onClick={() => {
                 toast({ title: "Preparing your export", description: "Your browser will download your LyfeOS record when it is ready." });
                 window.location.assign("/api/account/export");
