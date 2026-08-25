@@ -18,17 +18,22 @@ import { calibrateMissionDifficulty } from "./transformation-intelligence";
 export type MissionLifecycleSource = "ui" | "ai" | "onboarding" | "umh" | "system";
 
 export class MissionLifecycleError extends Error {
-  constructor(readonly status: number, message: string) {
+  constructor(readonly status: number, message: string, readonly currentQuest?: Quest) {
     super(message);
   }
 }
+
+type InternalMissionCreation = InsertQuest & {
+  lifecycleKey?: string | null;
+  lifecyclePayloadHash?: string | null;
+};
 
 /** Creates a normal LyfeOS mission with the same classification, capacity
  * costing, and activity provenance regardless of whether it came from the UI
  * or the assistant. Federation creation stays transactional with its inbound
  * command receipt and has a dedicated adapter. */
 export async function prepareMissionCreation(
-  questInput: InsertQuest,
+  questInput: InternalMissionCreation,
   options: { source?: MissionLifecycleSource } = {},
 ): Promise<typeof quests.$inferInsert> {
   const { attentionCost, timeCost, energyCost } = calculateMissionCosts(
@@ -141,7 +146,7 @@ async function dispatchMissionAutomations(input: {
   }
 }
 
-export async function createMissionLifecycle(input: InsertQuest & { source: MissionLifecycleSource; suppressAutomations?: boolean }) {
+export async function createMissionLifecycle(input: InternalMissionCreation & { source: MissionLifecycleSource; suppressAutomations?: boolean }) {
   const { source, suppressAutomations = false, ...questInput } = input;
   const shouldComplete = questInput.completed === true;
   const quest = await storage.createQuest(await prepareMissionCreation(questInput, { source }));
@@ -160,6 +165,7 @@ export async function updateMissionLifecycle(input: {
   userId: number;
   updates: Partial<InsertQuest>;
   source: MissionLifecycleSource;
+  expectedRevision?: number;
 }) {
   const quest = await storage.getQuest(input.questId);
   if (!quest) throw new MissionLifecycleError(404, "Mission not found.");
@@ -188,14 +194,30 @@ export async function updateMissionLifecycle(input: {
     category = classification.category;
     difficulty = classification.difficulty;
   }
-  const updatedQuest = await storage.updateQuest(quest.id, {
+  const updateValues = {
     ...updates,
     ...(category ? { category } : {}),
     ...(difficulty ? { difficulty } : {}),
     attentionCost,
     timeCost,
     energyCost,
-  });
+  };
+  const updatedQuest = input.expectedRevision === undefined
+    ? await storage.updateQuest(quest.id, updateValues)
+    : (await db.update(quests).set(updateValues)
+      .where(and(
+        eq(quests.id, quest.id),
+        eq(quests.userId, input.userId),
+        eq(quests.revision, input.expectedRevision),
+        isNull(quests.deletedAt),
+      ))
+      .returning())[0];
+  if (!updatedQuest) {
+    const [current] = await db.select().from(quests)
+      .where(and(eq(quests.id, quest.id), eq(quests.userId, input.userId)))
+      .limit(1);
+    throw new MissionLifecycleError(409, "This mission changed elsewhere. Review the current version before applying your queued change.", current);
+  }
   storage.logActivityEvent(quest.userId, "mission_updated", { questId: quest.id, source: input.source }).catch(() => {});
   return updatedQuest;
 }

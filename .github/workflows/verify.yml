@@ -108,7 +108,7 @@ jobs:
           fi
 
           test_status=0
-          npx vitest run tests/api-messages-convergence.test.ts tests/api-transformation-intelligence.test.ts tests/api-gamification-contract.test.ts tests/api-ai-governance.test.ts tests/api-relationship-governance.test.ts tests/api-food-catalog.test.ts tests/api-spreadsheets.test.ts tests/api-tables-forms.test.ts tests/api-calendar-window.test.ts || test_status=$?
+          npx vitest run tests/api-messages-convergence.test.ts tests/api-transformation-intelligence.test.ts tests/api-gamification-contract.test.ts tests/api-ai-governance.test.ts tests/api-relationship-governance.test.ts tests/api-food-catalog.test.ts tests/api-spreadsheets.test.ts tests/api-tables-forms.test.ts tests/api-calendar-window.test.ts tests/api-calendar-offline-concurrency.test.ts || test_status=$?
           if [ "$test_status" -ne 0 ]; then
             echo "Authenticated integration qualification failed. Server log:"
             cat "$server_log"

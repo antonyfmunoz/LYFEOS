@@ -43,6 +43,7 @@ import { Plus, Zap, Star, Bell, BellOff, BellRing, Edit3, Trash2, X, ChevronDown
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import type { MissionView } from "@shared/schema";
 import { calendarVisibleRange } from "@shared/calendar";
+import OfflineCalendarQueueStatus from "@/components/calendar/OfflineCalendarQueueStatus";
 import { Badge } from "@/components/ui/badge";
 import { ObsidianMarkdown } from "@/components/ui/obsidian-markdown";
 import { StatInfoDialog } from "@/components/ui/stat-info-dialog";
@@ -1610,6 +1611,7 @@ export default function QuestsPage() {
     setIsSubmitting(true);
     try {
       await updateQuest(editingQuest.id, {
+        revision: editingQuest.revision,
         title: editFormData.title.trim(),
         description: editFormData.description.trim() || "",
         experienceReward: editFormData.experienceReward,
@@ -4021,6 +4023,7 @@ export default function QuestsPage() {
             <p className="border-b border-primary/10 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">
               Calendar is a scheduling view of your canonical Missions. Creating or editing here updates the same mission record and lifecycle.
             </p>
+            {user?.id ? <OfflineCalendarQueueStatus userId={user.id} /> : null}
             {calendarMissionQuery.isPending && (
               <p role="status" className="border-b border-primary/10 px-3 py-2 text-xs text-muted-foreground">Loading this Calendar range…</p>
             )}

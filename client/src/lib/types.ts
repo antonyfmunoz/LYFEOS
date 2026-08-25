@@ -45,6 +45,8 @@ export interface QuestNotification {
 
 export interface Quest {
   id: string;
+  /** Server-owned optimistic concurrency version; not a gameplay level. */
+  revision?: number;
   title: string;
   description: string;
   category?: string;

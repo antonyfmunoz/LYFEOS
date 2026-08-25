@@ -5,7 +5,7 @@ import { storage } from "../storage";
 import { db } from "../db";
 import { logger, formatLocalDate, classifyMission } from "../utils";
 import { isAuthenticated, isOwner, calculateMissionCosts } from "./middleware";
-import { insertQuestSchema, insertMissionViewSchema, missionContracts, missionDeferrals, personalCapabilities, Quest, questSkillContributions, skillNodes, transformationThreadEvidence, transformationThreads, userDailyLogs, quests as questsTable } from "@shared/schema";
+import { insertQuestSchema, insertMissionViewSchema, missionContracts, missionDeferrals, missionMutationReceipts, personalCapabilities, Quest, questSkillContributions, skillNodes, transformationThreadEvidence, transformationThreads, userDailyLogs, quests as questsTable } from "@shared/schema";
 import { allocateSkillExperience, buildSkillGraph } from "../skill-graph";
 import { missionExperience } from "@shared/progression";
 import { createMissionLifecycle, deferMissionLifecycle, MissionLifecycleError, toggleMissionLifecycle, updateMissionLifecycle } from "../mission-lifecycle";
@@ -13,6 +13,8 @@ import { convertTodoIdeasToMissions } from "../todo-idea-conversion";
 import { localMidnight } from "../todo-idea-parsing";
 import { refreshProgressionState } from "../progression";
 import { calendarDateDistance, isCalendarDate } from "@shared/calendar";
+import { parseExpectedResourceRevision } from "../revision-concurrency";
+import { missionMutationId, missionMutationPayloadHash } from "../mission-mutation-integrity";
 
 declare module "express-session" {
   interface SessionData {
@@ -51,6 +53,37 @@ export function registerQuestRoutes(app: Express): void {
 
   const encodeCalendarCursor = (value: { startDate: string; id: number }): string =>
     Buffer.from(JSON.stringify(value), "utf8").toString("base64url");
+
+  const mutationIdentity = (req: Request): { raw: string | undefined; id: string | null } => {
+    const raw = req.header("x-lyfeos-mutation-id");
+    return { raw, id: missionMutationId(raw) };
+  };
+
+  const findMutationReceipt = async (userId: number, mutationId: string) => {
+    const [receipt] = await db.select().from(missionMutationReceipts)
+      .where(and(eq(missionMutationReceipts.userId, userId), eq(missionMutationReceipts.mutationId, mutationId)))
+      .limit(1);
+    return receipt;
+  };
+
+  const recordMutationReceipt = async (input: { userId: number; mutationId: string; payloadHash: string; operation: string; questId: number; resultingRevision: number }) => {
+    await db.insert(missionMutationReceipts).values(input).onConflictDoNothing();
+  };
+
+  const publicMission = (quest: Quest) => {
+    const { lifecycleKey: _lifecycleKey, lifecyclePayloadHash: _lifecyclePayloadHash, ...publicFields } = quest;
+    return publicFields;
+  };
+
+  const conflictMission = (quest: Quest | undefined) => quest ? {
+    id: quest.id,
+    title: quest.title,
+    revision: quest.revision,
+    startDate: quest.startDate,
+    startTime: quest.startTime,
+    endDate: quest.endDate,
+    endTime: quest.endTime,
+  } : undefined;
 
   const assignSkillContributions = async (input: {
     userId: number;
@@ -205,7 +238,7 @@ export function registerQuestRoutes(app: Express): void {
       const last = page.at(-1);
       res.setHeader("Cache-Control", "private, no-store");
       return res.json({
-        quests: page,
+        quests: page.map(publicMission),
         range: { from: parsed.data.from, to: parsed.data.to },
         nextCursor: hasMore && last?.startDate ? encodeCalendarCursor({ startDate: last.startDate, id: last.id }) : null,
       });
@@ -232,7 +265,7 @@ export function registerQuestRoutes(app: Express): void {
         deferredToDate: targetDate,
         reason: parsed.data.reason || null,
       });
-      return res.json({ quest: updatedQuest, deferredToDate: targetDate });
+      return res.json({ quest: publicMission(updatedQuest), deferredToDate: targetDate });
     } catch (error) {
       if (error instanceof MissionLifecycleError) return res.status(error.status).json({ error: error.message });
       logger.error("Could not defer mission:", error);
@@ -297,7 +330,7 @@ export function registerQuestRoutes(app: Express): void {
       }
       
       const quests = await storage.getQuests(userId);
-      return res.status(200).json({ quests });
+      return res.status(200).json({ quests: quests.map(publicMission) });
     } catch (error) {
       return res.status(500).json({ error: "Internal server error" });
     }
@@ -345,6 +378,8 @@ export function registerQuestRoutes(app: Express): void {
         return res.status(400).json({ error: "Choose up to three skills for a mission." });
       }
       const skillNodeIds = Array.from(new Set(parsedSkillNodeIds.data));
+      const mutation = mutationIdentity(req);
+      if (mutation.raw && !mutation.id) return res.status(400).json({ error: "Invalid mutation identity." });
       
       // Ensure user can only create quests for their own account
       if (questData.userId !== req.session.userId) {
@@ -384,6 +419,35 @@ export function registerQuestRoutes(app: Express): void {
           return res.status(409).json({ error: error instanceof Error ? error.message : "Those skills cannot receive practice evidence yet." });
         }
       }
+
+      const mutationPayloadHash = mutation.id
+        ? missionMutationPayloadHash({ operation: "create", quest: questData, skillNodeIds })
+        : null;
+      if (mutation.id && mutationPayloadHash) {
+        const receipt = await findMutationReceipt(questData.userId, mutation.id);
+        if (receipt) {
+          if (receipt.payloadHash !== mutationPayloadHash || receipt.operation !== "create") {
+            return res.status(409).json({ error: "This mutation identity was already used for a different mission change." });
+          }
+          const [existing] = receipt.questId === null ? [] : await db.select().from(questsTable)
+            .where(and(eq(questsTable.id, receipt.questId), eq(questsTable.userId, questData.userId)))
+            .limit(1);
+          return existing
+            ? res.status(200).json({ quest: publicMission(existing), replayed: true })
+            : res.status(409).json({ error: "That queued mission was already processed but is no longer available." });
+        }
+        const lifecycleKey = `calendar:${mutation.id}`;
+        const [existing] = await db.select().from(questsTable)
+          .where(and(eq(questsTable.userId, questData.userId), eq(questsTable.lifecycleKey, lifecycleKey)))
+          .limit(1);
+        if (existing) {
+          if (existing.lifecyclePayloadHash !== mutationPayloadHash) {
+            return res.status(409).json({ error: "This mutation identity was already used for a different mission change." });
+          }
+          await recordMutationReceipt({ userId: questData.userId, mutationId: mutation.id, payloadHash: mutationPayloadHash, operation: "create", questId: existing.id, resultingRevision: existing.revision });
+          return res.status(200).json({ quest: publicMission(existing), replayed: true });
+        }
+      }
       
       // For onboarding quests, check if one already exists to prevent duplicates
       if (questData.category === "onboarding" && questData.title) {
@@ -411,17 +475,31 @@ export function registerQuestRoutes(app: Express): void {
             const updatedQuest = (await toggleMissionLifecycle({ questId: existingOnboardingQuest.id, userId: questData.userId, source: "onboarding" })).quest;
             logger.debug(`Updated existing onboarding quest to completed for user ${questData.userId}: ${questData.title}`);
             await syncOnboardingProfile(questData.userId, questData.title);
-            return res.status(200).json({ quest: updatedQuest, duplicate: true });
+            return res.status(200).json({ quest: publicMission(updatedQuest), duplicate: true });
           }
           logger.debug(`Onboarding quest already exists for user ${questData.userId}: ${questData.title}`);
-          return res.status(200).json({ quest: existingOnboardingQuest, duplicate: true });
+          return res.status(200).json({ quest: publicMission(existingOnboardingQuest), duplicate: true });
         }
       }
       
-      const quest = await createMissionLifecycle({
-        ...questData,
-        source: "ui",
-      });
+      let quest: Quest;
+      try {
+        quest = await createMissionLifecycle({
+          ...questData,
+          ...(mutation.id && mutationPayloadHash ? { lifecycleKey: `calendar:${mutation.id}`, lifecyclePayloadHash: mutationPayloadHash } : {}),
+          source: "ui",
+        });
+      } catch (error) {
+        if (!mutation.id || !mutationPayloadHash) throw error;
+        const [existing] = await db.select().from(questsTable)
+          .where(and(eq(questsTable.userId, questData.userId), eq(questsTable.lifecycleKey, `calendar:${mutation.id}`)))
+          .limit(1);
+        if (!existing) throw error;
+        if (existing.lifecyclePayloadHash !== mutationPayloadHash) {
+          return res.status(409).json({ error: "This mutation identity was already used for a different mission change." });
+        }
+        quest = existing;
+      }
       if (skillNodeIds.length > 0) {
         await assignSkillContributions({ userId: quest.userId, quest, skillNodeIds });
         await ensurePracticeContract(quest, skillNodeIds);
@@ -429,7 +507,10 @@ export function registerQuestRoutes(app: Express): void {
       if (quest.category === "onboarding" && quest.completed && quest.title) {
         await syncOnboardingProfile(questData.userId, quest.title);
       }
-      return res.status(201).json({ quest });
+      if (mutation.id && mutationPayloadHash) {
+        await recordMutationReceipt({ userId: questData.userId, mutationId: mutation.id, payloadHash: mutationPayloadHash, operation: "create", questId: quest.id, resultingRevision: quest.revision });
+      }
+      return res.status(201).json({ quest: publicMission(quest), replayed: false });
     } catch (error) {
       logger.error("Quest creation error:", error);
       if (error instanceof z.ZodError) {
@@ -500,7 +581,8 @@ export function registerQuestRoutes(app: Express): void {
       if (isNaN(questId)) {
         return res.status(400).json({ error: "Invalid quest ID" });
       }
-      return res.status(200).json(await toggleMissionLifecycle({ questId, userId: req.session.userId!, source: "ui" }));
+      const result = await toggleMissionLifecycle({ questId, userId: req.session.userId!, source: "ui" });
+      return res.status(200).json({ ...result, quest: publicMission(result.quest) });
     } catch (error) {
       logger.error("Error toggling quest completion:", error);
       return res.status(500).json({ error: "Internal server error" });
@@ -538,7 +620,7 @@ export function registerQuestRoutes(app: Express): void {
       const userId = req.session.userId!;
       await storage.purgeExpiredArchivedQuests();
       const archived = await storage.getArchivedQuests(userId);
-      return res.status(200).json(archived);
+      return res.status(200).json(archived.map(publicMission));
     } catch (error) {
       logger.error("Error fetching archived quests:", error);
       return res.status(500).json({ error: "Internal server error" });
@@ -560,7 +642,7 @@ export function registerQuestRoutes(app: Express): void {
       }
       const restored = await storage.restoreQuest(questId);
       await refreshProgressionState(quest.userId, "mission_restored");
-      return res.status(200).json(restored);
+      return res.status(200).json(publicMission(restored));
     } catch (error) {
       logger.error("Error restoring quest:", error);
       return res.status(500).json({ error: "Internal server error" });
@@ -591,6 +673,12 @@ export function registerQuestRoutes(app: Express): void {
     repeatEndDate: true,
     visionGoalId: true,
     linkedItems: true,
+    location: true,
+    allDay: true,
+    timezone: true,
+    url: true,
+    attendees: true,
+    missionStatus: true,
   }).partial();
 
   app.patch("/api/quests/reorder", isAuthenticated, async (req: Request, res: Response) => {
@@ -621,6 +709,42 @@ export function registerQuestRoutes(app: Express): void {
         return res.status(400).json({ error: "Invalid quest ID" });
       }
       
+      const mutation = mutationIdentity(req);
+      if (mutation.raw && !mutation.id) return res.status(400).json({ error: "Invalid mutation identity." });
+      const expectedRevision = parseExpectedResourceRevision(req.header("x-lyfeos-expected-revision"));
+      if (!expectedRevision.ok && expectedRevision.reason === "invalid") {
+        return res.status(400).json({ error: "Invalid mission revision." });
+      }
+      if (mutation.id && !expectedRevision.ok) {
+        return res.status(428).json({ error: "Reload this mission before saving an offline-capable change." });
+      }
+
+      const validatedData = updateQuestSchema.parse(req.body);
+      const mutationPayloadHash = mutation.id
+        ? missionMutationPayloadHash({ operation: "update", questId, expectedRevision: expectedRevision.ok ? expectedRevision.revision : null, updates: validatedData })
+        : null;
+      if (mutation.id && mutationPayloadHash) {
+        const receipt = await findMutationReceipt(req.session.userId!, mutation.id);
+        if (receipt) {
+          if (receipt.payloadHash !== mutationPayloadHash || receipt.operation !== "update") {
+            return res.status(409).json({ error: "This mutation identity was already used for a different mission change." });
+          }
+          const [replayedQuest] = receipt.questId === null ? [] : await db.select().from(questsTable)
+            .where(and(eq(questsTable.id, receipt.questId), eq(questsTable.userId, req.session.userId!)))
+            .limit(1);
+          if (replayedQuest && receipt.resultingRevision !== null && replayedQuest.revision !== receipt.resultingRevision) {
+            res.setHeader("Cache-Control", "private, no-store");
+            return res.status(409).json({
+              error: "This queued edit was accepted earlier, but the mission changed again before confirmation reached this device. Review the current version.",
+              currentQuest: conflictMission(replayedQuest),
+            });
+          }
+          return replayedQuest
+            ? res.status(200).json({ quest: publicMission(replayedQuest), replayed: true })
+            : res.status(409).json({ error: "That queued mission change was already processed but is no longer available." });
+        }
+      }
+
       const quest = await storage.getQuest(questId);
       if (!quest) {
         return res.status(404).json({ error: "Quest not found" });
@@ -630,13 +754,24 @@ export function registerQuestRoutes(app: Express): void {
         return res.status(403).json({ error: "Not authorized to update this quest" });
       }
       
-      const validatedData = updateQuestSchema.parse(req.body);
-      
-      const updatedQuest = await updateMissionLifecycle({ questId, userId: quest.userId, updates: validatedData, source: "ui" });
-      return res.status(200).json({ quest: updatedQuest });
+      const updatedQuest = await updateMissionLifecycle({
+        questId,
+        userId: quest.userId,
+        updates: validatedData,
+        source: "ui",
+        ...(expectedRevision.ok ? { expectedRevision: expectedRevision.revision } : {}),
+      });
+      if (mutation.id && mutationPayloadHash) {
+        await recordMutationReceipt({ userId: quest.userId, mutationId: mutation.id, payloadHash: mutationPayloadHash, operation: "update", questId: updatedQuest.id, resultingRevision: updatedQuest.revision });
+      }
+      return res.status(200).json({ quest: publicMission(updatedQuest), replayed: false });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: "Invalid quest data", details: error.errors });
+      }
+      if (error instanceof MissionLifecycleError) {
+        res.setHeader("Cache-Control", "private, no-store");
+        return res.status(error.status).json({ error: error.message, currentQuest: conflictMission(error.currentQuest) });
       }
       logger.error("Error updating quest:", error);
       return res.status(500).json({ error: "Internal server error" });
@@ -661,7 +796,7 @@ export function registerQuestRoutes(app: Express): void {
         viewId: viewId ?? null,
         viewColumn: viewColumn ?? null,
       });
-      return res.status(200).json({ quest: updatedQuest });
+      return res.status(200).json({ quest: publicMission(updatedQuest) });
     } catch (error) {
       logger.error("Error updating quest view-column:", error);
       return res.status(500).json({ error: "Internal server error" });

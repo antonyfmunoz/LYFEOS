@@ -610,6 +610,11 @@ export const quests = pgTable("quests", {
   // Internal idempotency/provenance key for lifecycle adapters. It is never
   // inferred from user health data and is unique only within the owning user.
   lifecycleKey: text("lifecycle_key"),
+  lifecyclePayloadHash: text("lifecycle_payload_hash"),
+  // Every persisted mission write advances this server-owned version. Calendar
+  // clients use it as an optimistic concurrency precondition; it is never a
+  // client-controlled progression or gameplay value.
+  revision: integer("revision").notNull().default(1),
   // Immutable-at-creation planning inputs and calibration make it possible to
   // explain why a mission received its initial scope. These fields are server
   // controlled and intentionally omitted from insertQuestSchema.
@@ -624,6 +629,23 @@ export const quests = pgTable("quests", {
 }, (table) => [
   uniqueIndex("quests_user_lifecycle_key_unique_idx").on(table.userId, table.lifecycleKey),
   index("quests_user_calendar_window_idx").on(table.userId, table.startDate, table.id).where(sql`${table.deletedAt} IS NULL AND ${table.startDate} IS NOT NULL`),
+]);
+
+// A compact server receipt makes retrying an offline Calendar mutation safe.
+// It contains no mission payload: only the canonical payload hash and the
+// resulting mission version needed to distinguish an exact retry from reuse.
+export const missionMutationReceipts = pgTable("mission_mutation_receipts", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  mutationId: text("mutation_id").notNull(),
+  payloadHash: text("payload_hash").notNull(),
+  operation: text("operation").notNull(),
+  questId: integer("quest_id"),
+  resultingRevision: integer("resulting_revision"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("mission_mutation_receipts_user_mutation_unique_idx").on(table.userId, table.mutationId),
+  index("mission_mutation_receipts_user_created_idx").on(table.userId, table.createdAt),
 ]);
 
 // A mission contract keeps purpose, expected proof, review mode, and safety

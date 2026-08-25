@@ -9,6 +9,7 @@ import { useAuth } from "./authContext";
 import { apiRequest, queryClient } from "./queryClient";
 import { getLocalDateString } from "./utils";
 import { applyPrimaryColor } from "./applyPrimaryColor";
+import { submitCalendarMissionMutation } from "./calendarOfflineQueue";
 
 // Initial stats data
 const initialStats: UserStats = {
@@ -630,6 +631,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
           console.log("Quests refetched successfully:", data.quests.length, "quests");
           const transformedQuests: Quest[] = data.quests.map((quest: any) => ({
             id: String(quest.id),
+            revision: quest.revision,
             title: quest.title,
             description: quest.description || "",
             category: quest.category || "general",
@@ -774,6 +776,10 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
 
   // Toggle quest completion
   const toggleQuestCompletion = async (id: string) => {
+    if (window.location.pathname === "/calendar" && typeof navigator !== "undefined" && !navigator.onLine) {
+      toast({ title: "Completion needs a connection", description: "Mission completion can change XP, progression, and linked products, so LyfeOS will not pretend it succeeded offline.", variant: "destructive" });
+      return;
+    }
     const currentQuest = quests.find(quest => quest.id === id);
     const completed = currentQuest ? !currentQuest.completed : undefined;
     
@@ -902,11 +908,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       throw new Error("User not authenticated");
     }
     
-    const response = await fetch("/api/quests", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({
+    const requestBody = {
         userId: user.id,
         title: questData.title,
         description: questData.description,
@@ -935,16 +937,39 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         url: questData.url || null,
         allDay: questData.allDay || false,
         missionStatus: questData.missionStatus || "confirmed",
-      }),
-    });
-    
-    if (!response.ok) {
-      throw new Error("Failed to create quest");
+      };
+    let quest: any;
+    if (window.location.pathname === "/calendar") {
+      const result = await submitCalendarMissionMutation<{ quest: any }>({
+        userId: user.id,
+        kind: "create",
+        url: "/api/quests",
+        body: requestBody,
+        title: questData.title,
+      });
+      void queryClient.invalidateQueries({ queryKey: ["calendar-offline-queue", user.id] });
+      if (result.queued) {
+        toast({
+          title: result.status === "conflict" ? "Calendar change needs review" : "Mission saved on this device",
+          description: result.status === "conflict" ? "Open the Calendar sync panel to resolve it." : "It will be added to your account when this device reconnects.",
+          variant: result.status === "conflict" ? "destructive" : "default",
+        });
+        return { ...questData, id: `queued-${result.mutationId}`, revision: 0, completed: false } as Quest;
+      }
+      quest = result.data.quest;
+    } else {
+      const response = await fetch("/api/quests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(requestBody),
+      });
+      if (!response.ok) throw new Error("Failed to create quest");
+      ({ quest } = await response.json());
     }
-    
-    const { quest } = await response.json();
     const newQuest: Quest = {
       id: String(quest.id),
+      revision: quest.revision,
       title: quest.title,
       description: quest.description,
       category: quest.category,
@@ -999,20 +1024,44 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
 
   // Update a quest/mission
   const updateQuest = async (id: string, questData: Partial<Quest>): Promise<Quest> => {
-    const response = await fetch(`/api/quests/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(questData),
-    });
-    
-    if (!response.ok) {
-      throw new Error("Failed to update quest");
+    const currentQuest = quests.find((quest) => quest.id === id);
+    const expectedRevision = questData.revision ?? currentQuest?.revision;
+    const { revision: _revision, ...requestBody } = questData;
+    let quest: any;
+    if (window.location.pathname === "/calendar") {
+      if (!expectedRevision) throw new Error("Reload this Calendar mission before saving changes.");
+      const result = await submitCalendarMissionMutation<{ quest: any }>({
+        userId: user!.id,
+        kind: "update",
+        url: `/api/quests/${id}`,
+        body: requestBody,
+        questId: Number(id),
+        expectedRevision,
+        title: questData.title ?? currentQuest?.title ?? "Mission change",
+      });
+      void queryClient.invalidateQueries({ queryKey: ["calendar-offline-queue", user!.id] });
+      if (result.queued) {
+        toast({
+          title: result.status === "conflict" ? "Calendar change needs review" : "Calendar change saved on this device",
+          description: result.status === "conflict" ? "The mission changed elsewhere. Review both versions in the Calendar sync panel." : "It will sync when this device reconnects.",
+          variant: result.status === "conflict" ? "destructive" : "default",
+        });
+        return { ...(currentQuest || questData), ...questData, id, revision: expectedRevision, completed: currentQuest?.completed ?? false } as Quest;
+      }
+      quest = result.data.quest;
+    } else {
+      const response = await fetch(`/api/quests/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", ...(expectedRevision ? { "x-lyfeos-expected-revision": String(expectedRevision) } : {}) },
+        credentials: "include",
+        body: JSON.stringify(requestBody),
+      });
+      if (!response.ok) throw new Error("Failed to update quest");
+      ({ quest } = await response.json());
     }
-    
-    const { quest } = await response.json();
     const updatedQuest: Quest = {
       id: String(quest.id),
+      revision: quest.revision,
       title: quest.title,
       description: quest.description,
       category: quest.category,
@@ -1083,6 +1132,10 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
     if (id.startsWith("quest-calendar-")) {
       setQuests((prev) => prev.filter((q) => q.id !== id));
       return;
+    }
+    if (window.location.pathname === "/calendar" && typeof navigator !== "undefined" && !navigator.onLine) {
+      toast({ title: "Archiving needs a connection", description: "LyfeOS keeps this mission unchanged because the server could not confirm the archive.", variant: "destructive" });
+      throw new Error("Archiving needs a connection.");
     }
     
     const response = await fetch(`/api/quests/${id}`, {
