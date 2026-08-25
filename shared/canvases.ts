@@ -88,6 +88,13 @@ export const updateCanvasRequestSchema = z.object({
   content: canvasDocumentSchema.optional(),
 }).strict().refine((value) => Object.keys(value).length > 0, "Provide at least one canvas field to update.");
 
+export const canvasRevisionSnapshotSchema = z.object({
+  title: canvasMetadataFields.title,
+  description: z.string().trim().max(800).nullable(),
+  category: z.string().trim().min(1).max(80).regex(/^[A-Za-z0-9 _-]+$/),
+  content: canvasDocumentSchema,
+}).strict();
+
 export type CanvasDocument = z.infer<typeof canvasDocumentSchema>;
 export type CanvasNode = z.infer<typeof canvasNodeSchema>;
 export type CanvasNodeType = z.infer<typeof canvasNodeTypeSchema>;

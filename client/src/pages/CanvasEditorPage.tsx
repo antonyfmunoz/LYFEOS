@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { Link, useLocation, useParams } from "wouter";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { CheckSquare, Download, ExternalLink, GripHorizontal, Heading, Link2, Plus, Save, StickyNote, Trash2 } from "lucide-react";
+import { CheckSquare, Download, ExternalLink, GripHorizontal, Heading, History, Link2, Plus, Redo2, RotateCcw, Save, StickyNote, Trash2, Undo2, Upload } from "lucide-react";
 import {
+  canvasDocumentSchema,
   createCanvasId,
   createEmptyCanvasDocument,
   parseCanvasDocument,
@@ -24,6 +25,15 @@ type CanvasRecord = {
   category: string;
   favorite: boolean;
   content: unknown;
+  revision: number;
+};
+
+type CanvasRevisionRecord = {
+  id: number;
+  revisionNumber: number;
+  action: "created" | "updated" | "restored";
+  sourceRevision: number | null;
+  createdAt: string;
 };
 
 const nodeColorClasses: Record<CanvasNode["color"], string> = {
@@ -61,12 +71,22 @@ export default function CanvasEditorPage() {
   const [connectionTarget, setConnectionTarget] = useState("");
   const [dirty, setDirty] = useState(isNew);
   const [legacyContent, setLegacyContent] = useState<unknown | null>(null);
-  const dragRef = useRef<{ id: string; clientX: number; clientY: number; x: number; y: number } | null>(null);
+  const [pendingImport, setPendingImport] = useState<{ document: CanvasDocument; fileName: string } | null>(null);
+  const [localHistoryState, setLocalHistoryState] = useState({ canUndo: false, canRedo: false });
+  const dragRef = useRef<{ id: string; clientX: number; clientY: number; x: number; y: number; snapshot: CanvasDocument; moved: boolean } | null>(null);
+  const undoStack = useRef<CanvasDocument[]>([]);
+  const redoStack = useRef<CanvasDocument[]>([]);
+  const importInput = useRef<HTMLInputElement>(null);
   usePageTitle(title || "Canvas");
 
   const query = useQuery<{ canvas: CanvasRecord }>({
     queryKey: ["/api/canvases", id],
     queryFn: () => apiRequest(`/api/canvases/${id}`),
+    enabled: !isNew && Number.isInteger(id),
+  });
+  const revisions = useQuery<{ revisions: CanvasRevisionRecord[]; disclosure: string }>({
+    queryKey: ["/api/canvases", id, "revisions"],
+    queryFn: () => apiRequest(`/api/canvases/${id}/revisions`),
     enabled: !isNew && Number.isInteger(id),
   });
 
@@ -86,6 +106,10 @@ export default function CanvasEditorPage() {
     }
     setDirty(false);
     setSelectedNodeId(null);
+    setPendingImport(null);
+    undoStack.current = [];
+    redoStack.current = [];
+    setLocalHistoryState({ canUndo: false, canRedo: false });
   }, [query.data?.canvas.id]);
 
   useEffect(() => {
@@ -101,6 +125,7 @@ export default function CanvasEditorPage() {
   const save = useMutation({
     mutationFn: () => apiRequest<{ canvas: CanvasRecord }>(isNew ? "/api/canvases" : `/api/canvases/${id}`, {
       method: isNew ? "POST" : "PATCH",
+      headers: !isNew && query.data?.canvas.revision ? { "x-lyfeos-expected-revision": String(query.data.canvas.revision) } : undefined,
       body: JSON.stringify({
         title,
         description: description || null,
@@ -111,16 +136,75 @@ export default function CanvasEditorPage() {
     }),
     onSuccess: (result) => {
       setDirty(false);
+      undoStack.current = []; redoStack.current = []; setLocalHistoryState({ canUndo: false, canRedo: false });
+      if (!isNew) queryClient.setQueryData(["/api/canvases", id], result);
+      void queryClient.invalidateQueries({ queryKey: ["/api/canvases", id, "revisions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       toast({ title: "Canvas saved", description: "Your visual workspace is stored in your private LyfeOS account." });
       if (isNew) navigate(`/canvases/${result.canvas.id}`, { replace: true });
     },
     onError: (error) => toast({ title: "Canvas could not be saved", description: error instanceof Error ? error.message : "Please try again.", variant: "destructive" }),
   });
+  const restoreRevision = useMutation({
+    mutationFn: (revisionNumber: number) => apiRequest<{ canvas: CanvasRecord }>(`/api/canvases/${id}/revisions/${revisionNumber}/restore`, {
+      method: "POST",
+      headers: { "x-lyfeos-expected-revision": String(query.data!.canvas.revision) },
+    }),
+    onSuccess: (result) => {
+      const restored = result.canvas;
+      const content = parseCanvasDocument(restored.content);
+      if (!content) return;
+      setTitle(restored.title); setDescription(restored.description || ""); setCategory(restored.category); setDocument(content);
+      setLegacyContent(null); setDirty(false); setSelectedNodeId(null); setConnectionTarget("");
+      undoStack.current = []; redoStack.current = []; setLocalHistoryState({ canUndo: false, canRedo: false });
+      queryClient.setQueryData(["/api/canvases", id], result);
+      void queryClient.invalidateQueries({ queryKey: ["/api/canvases", id, "revisions"] });
+      void queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      toast({ title: `Restored as version ${restored.revision}`, description: "The historical canvas was copied into a new immutable version." });
+    },
+  });
 
   const updateDocument = (updater: (current: CanvasDocument) => CanvasDocument) => {
-    setDocument((current) => updater(current));
+    undoStack.current = [...undoStack.current.slice(-19), document];
+    redoStack.current = [];
+    setDocument(updater(document));
     setDirty(true);
+    setLocalHistoryState({ canUndo: true, canRedo: false });
+  };
+  const undoDocument = () => {
+    const previous = undoStack.current.pop();
+    if (!previous) return;
+    redoStack.current = [...redoStack.current.slice(-19), document];
+    setDocument(previous); setDirty(true); setSelectedNodeId(null); setConnectionTarget("");
+    setLocalHistoryState({ canUndo: undoStack.current.length > 0, canRedo: true });
+  };
+  const redoDocument = () => {
+    const next = redoStack.current.pop();
+    if (!next) return;
+    undoStack.current = [...undoStack.current.slice(-19), document];
+    setDocument(next); setDirty(true); setSelectedNodeId(null); setConnectionTarget("");
+    setLocalHistoryState({ canUndo: true, canRedo: redoStack.current.length > 0 });
+  };
+  const stageJsonImport = async (file: File | undefined) => {
+    if (!file) return;
+    try {
+      if (file.size > 16 * 1024 * 1024) throw new Error("Choose a JSON file no larger than 16 MB.");
+      const parsedJson = JSON.parse(await file.text()) as unknown;
+      const parsed = canvasDocumentSchema.safeParse(parsedJson);
+      if (!parsed.success) throw new Error("This file is not a supported LyfeOS Canvas v1 document.");
+      setPendingImport({ document: parsed.data, fileName: file.name });
+    } catch (error) {
+      setPendingImport(null);
+      toast({ title: "Canvas import could not be reviewed", description: error instanceof Error ? error.message : "Choose a valid LyfeOS Canvas JSON file.", variant: "destructive" });
+    } finally {
+      if (importInput.current) importInput.current.value = "";
+    }
+  };
+  const confirmJsonImport = () => {
+    if (!pendingImport) return;
+    updateDocument(() => pendingImport.document);
+    setLegacyContent(null); setSelectedNodeId(null); setConnectionTarget(""); setPendingImport(null);
+    toast({ title: "Canvas import staged", description: "Review the imported workspace, then Save to create a new immutable version." });
   };
   const updateNode = (nodeId: string, changes: Partial<CanvasNode>) => updateDocument((current) => ({
     ...current,
@@ -164,7 +248,7 @@ export default function CanvasEditorPage() {
   const startDrag = (event: ReactPointerEvent<HTMLDivElement>, node: CanvasNode) => {
     if (event.button !== 0) return;
     event.currentTarget.setPointerCapture(event.pointerId);
-    dragRef.current = { id: node.id, clientX: event.clientX, clientY: event.clientY, x: node.x, y: node.y };
+    dragRef.current = { id: node.id, clientX: event.clientX, clientY: event.clientY, x: node.x, y: node.y, snapshot: document, moved: false };
     setSelectedNodeId(node.id);
     event.preventDefault();
   };
@@ -173,10 +257,19 @@ export default function CanvasEditorPage() {
     if (!drag || !event.currentTarget.hasPointerCapture(event.pointerId)) return;
     const x = Math.max(0, Math.min(10_000, Math.round(drag.x + event.clientX - drag.clientX)));
     const y = Math.max(0, Math.min(10_000, Math.round(drag.y + event.clientY - drag.clientY)));
-    updateNode(drag.id, { x, y });
+    if (x === drag.x && y === drag.y) return;
+    drag.moved = true;
+    setDocument((current) => ({ ...current, nodes: current.nodes.map((node) => node.id === drag.id ? { ...node, x, y } : node) }));
+    setDirty(true);
   };
   const stopDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+    const drag = dragRef.current;
+    if (drag?.moved) {
+      undoStack.current = [...undoStack.current.slice(-19), drag.snapshot];
+      redoStack.current = [];
+      setLocalHistoryState({ canUndo: true, canRedo: false });
+    }
     dragRef.current = null;
   };
 
@@ -195,6 +288,8 @@ export default function CanvasEditorPage() {
         {dirty && <span className="text-xs text-amber-400">unsaved</span>}
       </div>
       <div className="flex gap-2">
+        <input ref={importInput} type="file" accept="application/json,.json" className="hidden" aria-label="Import LyfeOS Canvas JSON" onChange={(event) => void stageJsonImport(event.target.files?.[0])} />
+        <Button variant="outline" onClick={() => importInput.current?.click()}><Upload className="mr-1 h-4 w-4" />Import</Button>
         <Button variant="outline" onClick={() => downloadJson(filename, legacyContent ?? document)}><Download className="mr-1 h-4 w-4" />JSON</Button>
         <Button disabled={!dirty || !title.trim() || save.isPending || legacyContent !== null} onClick={() => save.mutate()}><Save className="mr-1 h-4 w-4" />{save.isPending ? "Saving…" : "Save"}</Button>
       </div>
@@ -203,6 +298,14 @@ export default function CanvasEditorPage() {
       <Input aria-label="Canvas category" value={category} maxLength={80} onChange={(event) => { setCategory(event.target.value); setDirty(true); }} placeholder="Category" />
       <Textarea aria-label="Canvas description" value={description} maxLength={800} onChange={(event) => { setDescription(event.target.value); setDirty(true); }} placeholder="What is this canvas for?" className="min-h-9 resize-y py-2" />
     </div>
+
+    {pendingImport && <section className="rounded-xl border border-primary/25 bg-primary/5 p-4" aria-label="Canvas import review">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div><h2 className="font-medium">Review JSON import</h2><p className="mt-1 text-xs text-muted-foreground">{pendingImport.fileName} · {pendingImport.document.nodes.length} nodes · {pendingImport.document.edges.length} connections · viewport {Math.round(pendingImport.document.viewport.zoom * 100)}%</p></div>
+        <div className="flex gap-2"><Button size="sm" variant="ghost" onClick={() => setPendingImport(null)}>Cancel</Button><Button size="sm" onClick={confirmJsonImport}>Replace unsaved canvas</Button></div>
+      </div>
+      <p className="mt-2 text-xs text-muted-foreground">The file was parsed locally and has not been uploaded or saved. Confirming replaces the current unsaved document only; Undo remains available, and persistence still requires Save.</p>
+    </section>}
 
     {legacyContent !== null ? <div className="rounded-xl border border-amber-400/35 bg-amber-500/10 p-4 text-sm">
       <p className="font-medium text-amber-200">Legacy canvas preserved</p>
@@ -215,11 +318,14 @@ export default function CanvasEditorPage() {
       }}>Start blank v1 canvas</Button>
     </div> : <>
       <div className="flex flex-wrap gap-2 rounded-xl border border-primary/15 bg-card/30 p-2">
+        <Button size="sm" variant="outline" disabled={!localHistoryState.canUndo} onClick={undoDocument}><Undo2 className="mr-1 h-4 w-4" />Undo</Button>
+        <Button size="sm" variant="outline" disabled={!localHistoryState.canRedo} onClick={redoDocument}><Redo2 className="mr-1 h-4 w-4" />Redo</Button>
+        <span aria-hidden="true" className="mx-1 w-px self-stretch bg-primary/15" />
         <Button size="sm" variant="outline" onClick={() => addNode("note")}><StickyNote className="mr-1 h-4 w-4" />Note</Button>
         <Button size="sm" variant="outline" onClick={() => addNode("heading")}><Heading className="mr-1 h-4 w-4" />Heading</Button>
         <Button size="sm" variant="outline" onClick={() => addNode("task")}><CheckSquare className="mr-1 h-4 w-4" />Task</Button>
         <Button size="sm" variant="outline" onClick={() => addNode("link")}><Link2 className="mr-1 h-4 w-4" />Link</Button>
-        <span className="self-center text-xs text-muted-foreground">Drag node headers to arrange. Select a node to edit or connect it.</span>
+        <span className="self-center text-xs text-muted-foreground">Undo and Redo retain up to 20 unsaved canvas document changes on this device and reset after save, reload, or restore. Each drag and confirmed JSON import is one reversible change. Select a node to edit or connect it.</span>
       </div>
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
         <div className="max-h-[72vh] overflow-auto rounded-xl border border-primary/15 bg-black/30">
@@ -293,5 +399,23 @@ export default function CanvasEditorPage() {
         </aside>
       </div>
     </>}
+    {!isNew && <details className="rounded-xl border border-primary/15 bg-card/30 p-4">
+      <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-medium"><History className="h-4 w-4" />Saved version history</summary>
+      <p className="mt-2 text-xs text-muted-foreground">Saved versions are immutable. Restoring copies the selected canvas into a new version; it never deletes or rewrites history. The 100 most recent versions are shown.</p>
+      {revisions.isLoading && <p className="mt-3 text-sm text-muted-foreground">Loading saved versions…</p>}
+      {revisions.isError && <p role="alert" className="mt-3 text-sm text-destructive">{revisions.error instanceof Error ? revisions.error.message : "Saved versions are unavailable."}</p>}
+      {restoreRevision.isError && <p role="alert" className="mt-3 text-sm text-destructive">{restoreRevision.error instanceof Error ? restoreRevision.error.message : "That version could not be restored."} Reload the canvas if another session saved a newer version.</p>}
+      {revisions.data?.revisions && <ol className="mt-3 divide-y divide-primary/10">
+        {revisions.data.revisions.map((revision) => {
+          const isCurrent = revision.revisionNumber === query.data?.canvas.revision;
+          const action = revision.action === "restored" ? `restored from version ${revision.sourceRevision}` : revision.action;
+          return <li key={revision.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+            <div><p className="text-sm font-medium">Version {revision.revisionNumber}{isCurrent ? " · current" : ""}</p><p className="text-xs text-muted-foreground">{action} · {new Date(revision.createdAt).toLocaleString()}</p></div>
+            <Button type="button" size="sm" variant="outline" disabled={isCurrent || restoreRevision.isPending || dirty} onClick={() => { if (window.confirm(`Restore version ${revision.revisionNumber} as a new saved version? Your existing history will remain available.`)) restoreRevision.mutate(revision.revisionNumber); }}><RotateCcw className="mr-1 h-3.5 w-3.5" />Restore</Button>
+          </li>;
+        })}
+      </ol>}
+      {dirty && <p className="mt-2 text-xs text-amber-400">Save or discard your current unsaved changes before restoring a saved version.</p>}
+    </details>}
   </div>;
 }

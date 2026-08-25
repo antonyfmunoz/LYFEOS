@@ -20,9 +20,11 @@ import {
   InsertMediaItem,
   spreadsheets,
   spreadsheetRevisions,
+  canvases,
+  canvasRevisions,
 } from "@shared/schema";
 import { createSpreadsheetRequestSchema, spreadsheetRevisionSnapshotSchema, updateSpreadsheetRequestSchema } from "@shared/spreadsheets";
-import { createCanvasRequestSchema, updateCanvasRequestSchema } from "@shared/canvases";
+import { canvasRevisionSnapshotSchema, createCanvasRequestSchema, updateCanvasRequestSchema } from "@shared/canvases";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { parseExpectedResourceRevision } from "../revision-concurrency";
 
@@ -704,13 +706,19 @@ export function registerContentRoutes(app: Express): void {
   
   app.post("/api/canvases", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const validateData = createCanvasRequestSchema.parse(req.body);
-      
-      const canvas = await storage.createCanvas({
-        ...validateData,
-        userId: req.session.userId!,
+      const input = createCanvasRequestSchema.parse(req.body);
+      const canvas = await db.transaction(async (tx) => {
+        const [created] = await tx.insert(canvases).values({
+          ...input,
+          description: input.description || null,
+          userId: req.session.userId!,
+        }).returning();
+        await tx.insert(canvasRevisions).values({
+          userId: req.session.userId!, canvasId: created.id, revisionNumber: 1, action: "created",
+          snapshot: { title: created.title, description: created.description, category: created.category, content: created.content },
+        });
+        return created;
       });
-      
       return res.status(201).json({ canvas });
     } catch (error) {
       logger.error("Error creating canvas:", error);
@@ -728,26 +736,89 @@ export function registerContentRoutes(app: Express): void {
         return res.status(400).json({ error: "Invalid canvas ID" });
       }
       
-      // Get the canvas to check ownership
-      const canvas = await storage.getCanvas(canvasId);
-      if (!canvas) {
-        return res.status(404).json({ error: "Canvas not found" });
-      }
-      
-      // Verify ownership
-      if (canvas.userId !== req.session.userId) {
-        return res.status(403).json({ error: "Not authorized to update this canvas" });
-      }
-      
-      const validateData = updateCanvasRequestSchema.parse(req.body);
-      const updatedCanvas = await storage.updateCanvas(canvasId, validateData);
-      
-      return res.status(200).json({ canvas: updatedCanvas });
+      const input = updateCanvasRequestSchema.parse(req.body);
+      const expectedRevision = parseExpectedResourceRevision(req.header("x-lyfeos-expected-revision"));
+      if (!expectedRevision.ok) return res.status(expectedRevision.reason === "missing" ? 428 : 400).json({ error: expectedRevision.reason === "missing" ? "Reload this canvas before saving changes." : "Invalid expected canvas revision." });
+      const outcome = await db.transaction(async (tx) => {
+        const locked = await tx.execute(sql`SELECT id FROM canvases WHERE id = ${canvasId} AND user_id = ${req.session.userId!} FOR UPDATE`);
+        if (!locked.rows.length) return { kind: "missing" } as const;
+        const [current] = await tx.select().from(canvases).where(and(eq(canvases.id, canvasId), eq(canvases.userId, req.session.userId!))).limit(1);
+        if (current.revision !== expectedRevision.revision) return { kind: "conflict", currentRevision: current.revision } as const;
+        const nextRevision = current.revision + 1;
+        const [updated] = await tx.update(canvases).set({
+          ...input,
+          ...(input.description !== undefined ? { description: input.description || null } : {}),
+          revision: nextRevision,
+          updatedAt: new Date(),
+        }).where(and(eq(canvases.id, canvasId), eq(canvases.userId, req.session.userId!))).returning();
+        await tx.insert(canvasRevisions).values({
+          userId: req.session.userId!, canvasId, revisionNumber: nextRevision, action: "updated",
+          snapshot: { title: updated.title, description: updated.description, category: updated.category, content: updated.content },
+        });
+        return { kind: "updated", canvas: updated } as const;
+      });
+      if (outcome.kind === "missing") return res.status(404).json({ error: "Canvas not found" });
+      if (outcome.kind === "conflict") return res.status(409).json({ error: "This canvas changed after you opened it. Reload it before saving another version.", currentRevision: outcome.currentRevision });
+      return res.status(200).json({ canvas: outcome.canvas });
     } catch (error) {
       logger.error("Error updating canvas:", error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: error.errors });
       }
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/canvases/:id/revisions", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const canvasId = Number(req.params.id);
+      if (!Number.isInteger(canvasId)) return res.status(400).json({ error: "Invalid canvas ID" });
+      const revisions = await db.select({
+        id: canvasRevisions.id,
+        revisionNumber: canvasRevisions.revisionNumber,
+        action: canvasRevisions.action,
+        sourceRevision: canvasRevisions.sourceRevision,
+        createdAt: canvasRevisions.createdAt,
+      }).from(canvasRevisions).where(and(eq(canvasRevisions.canvasId, canvasId), eq(canvasRevisions.userId, req.session.userId!))).orderBy(desc(canvasRevisions.revisionNumber)).limit(100);
+      if (!revisions.length) return res.status(404).json({ error: "Canvas not found" });
+      return res.status(200).json({ revisions, disclosure: revisions.length === 100 ? "Showing the 100 most recent saved versions." : "Every saved version is immutable; restoring creates a new version." });
+    } catch (error) {
+      logger.error("Error getting canvas revisions:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/canvases/:id/revisions/:revisionNumber/restore", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const canvasId = Number(req.params.id);
+      const revisionNumber = Number(req.params.revisionNumber);
+      if (!Number.isInteger(canvasId) || !Number.isInteger(revisionNumber) || revisionNumber < 1) return res.status(400).json({ error: "Invalid canvas revision" });
+      const expectedRevision = parseExpectedResourceRevision(req.header("x-lyfeos-expected-revision"));
+      if (!expectedRevision.ok) return res.status(expectedRevision.reason === "missing" ? 428 : 400).json({ error: expectedRevision.reason === "missing" ? "Reload this canvas before restoring a version." : "Invalid expected canvas revision." });
+      const outcome = await db.transaction(async (tx) => {
+        const locked = await tx.execute(sql`SELECT id FROM canvases WHERE id = ${canvasId} AND user_id = ${req.session.userId!} FOR UPDATE`);
+        if (!locked.rows.length) return { kind: "missing" } as const;
+        const [current] = await tx.select().from(canvases).where(and(eq(canvases.id, canvasId), eq(canvases.userId, req.session.userId!))).limit(1);
+        if (current.revision !== expectedRevision.revision) return { kind: "conflict", currentRevision: current.revision } as const;
+        const [source] = await tx.select().from(canvasRevisions).where(and(eq(canvasRevisions.canvasId, canvasId), eq(canvasRevisions.userId, req.session.userId!), eq(canvasRevisions.revisionNumber, revisionNumber))).limit(1);
+        if (!source) return { kind: "missing_revision" } as const;
+        const parsed = canvasRevisionSnapshotSchema.safeParse(source.snapshot);
+        if (!parsed.success) return { kind: "invalid_revision" } as const;
+        const nextRevision = current.revision + 1;
+        const [updated] = await tx.update(canvases).set({ ...parsed.data, revision: nextRevision, updatedAt: new Date() }).where(and(eq(canvases.id, canvasId), eq(canvases.userId, req.session.userId!))).returning();
+        await tx.insert(canvasRevisions).values({
+          userId: req.session.userId!, canvasId, revisionNumber: nextRevision, action: "restored", sourceRevision: revisionNumber,
+          snapshot: parsed.data,
+        });
+        return { kind: "restored", canvas: updated } as const;
+      });
+      if (outcome.kind === "missing") return res.status(404).json({ error: "Canvas not found" });
+      if (outcome.kind === "missing_revision") return res.status(404).json({ error: "Canvas revision not found" });
+      if (outcome.kind === "invalid_revision") return res.status(409).json({ error: "This historical version uses an unsupported canvas format and cannot be restored safely." });
+      if (outcome.kind === "conflict") return res.status(409).json({ error: "This canvas changed after you opened it. Reload it before restoring a version.", currentRevision: outcome.currentRevision });
+      return res.status(200).json({ canvas: outcome.canvas });
+    } catch (error) {
+      logger.error("Error restoring canvas revision:", error);
       return res.status(500).json({ error: "Internal server error" });
     }
   });

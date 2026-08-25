@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   canvasDocumentSchema,
+  canvasRevisionSnapshotSchema,
   createCanvasRequestSchema,
   createEmptyCanvasDocument,
   updateCanvasRequestSchema,
@@ -63,5 +64,62 @@ describe("Canvas instrument", () => {
     expect(editor).toContain("Legacy canvas preserved");
     expect(editor).toContain("legacyContent !== null");
     expect(editor).toContain("Start blank v1 canvas");
+  });
+
+  it("persists immutable owner-scoped versions through both migration paths and data rights", () => {
+    const migration = source("migrations/0107_canvas_revisions.sql");
+    const release = source("server/release-migrate.ts");
+    const schema = source("shared/schema.ts");
+    const profile = source("server/routes/profile.ts");
+    for (const contract of [migration, release, schema]) {
+      expect(contract).toContain("canvas_revisions");
+      expect(contract).toContain("revision_number");
+      expect(contract).toContain("source_revision");
+      expect(contract).toContain("canvas_revisions_canvas_revision_unique_idx");
+    }
+    expect(release).toContain('id: "0107_canvas_revisions"');
+    expect(profile).toContain('"canvas_revisions", "canvases"');
+    expect(canvasRevisionSnapshotSchema.safeParse({ title: "Map", description: null, category: "planning", content: createEmptyCanvasDocument() }).success).toBe(true);
+  });
+
+  it("serializes canvas saves and restores historical snapshots only as new versions", () => {
+    const routes = source("server/routes/content.ts");
+    expect(routes).toContain('req.header("x-lyfeos-expected-revision")');
+    expect(routes).toContain("SELECT id FROM canvases");
+    expect(routes).toContain("FOR UPDATE");
+    expect(routes).toContain('action: "restored"');
+    expect(routes).toContain("canvasRevisionSnapshotSchema.safeParse(source.snapshot)");
+    expect(routes).toContain("currentRevision: outcome.currentRevision");
+    expect(routes).toContain("revisionNumber: canvasRevisions.revisionNumber");
+  });
+
+  it("exposes immutable history and concurrency protection in the existing editor", () => {
+    const editor = source("client/src/pages/CanvasEditorPage.tsx");
+    expect(editor).toContain('"x-lyfeos-expected-revision"');
+    expect(editor).toContain("Saved version history");
+    expect(editor).toContain("Saved versions are immutable");
+    expect(editor).toContain("restoreRevision.mutate(revision.revisionNumber)");
+    expect(editor).toContain("disabled={isCurrent || restoreRevision.isPending || dirty}");
+  });
+
+  it("bounds local undo and groups a drag gesture into one reversible document change", () => {
+    const editor = source("client/src/pages/CanvasEditorPage.tsx");
+    expect(editor).toContain("undoStack.current.slice(-19)");
+    expect(editor).toContain("const undoDocument");
+    expect(editor).toContain("const redoDocument");
+    expect(editor).toContain("snapshot: document, moved: false");
+    expect(editor).toContain("if (drag?.moved)");
+    expect(editor).toContain("Each drag and confirmed JSON import is one reversible change");
+  });
+
+  it("reviews a bounded local JSON import before replacing the unsaved document", () => {
+    const editor = source("client/src/pages/CanvasEditorPage.tsx");
+    expect(editor).toContain("file.size > 16 * 1024 * 1024");
+    expect(editor).toContain("canvasDocumentSchema.safeParse(parsedJson)");
+    expect(editor).toContain("Review JSON import");
+    expect(editor).toContain("has not been uploaded or saved");
+    expect(editor).toContain("Replace unsaved canvas");
+    expect(editor).toContain("updateDocument(() => pendingImport.document)");
+    expect(editor).toContain("persistence still requires Save");
   });
 });

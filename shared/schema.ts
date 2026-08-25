@@ -1310,6 +1310,7 @@ export const canvases = pgTable("canvases", {
   content: jsonb("content").notNull().default({}), // Stores canvas elements like shapes, connections, text
   favorite: boolean("favorite").default(false).notNull(),
   category: text("category").default("general").notNull(),
+  revision: integer("revision").notNull().default(1),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -1322,9 +1323,24 @@ export const canvasRelations = relations(canvases, ({ one }) => ({
   }),
 }));
 
+export const canvasRevisions = pgTable("canvas_revisions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  canvasId: integer("canvas_id").notNull().references(() => canvases.id, { onDelete: "cascade" }),
+  revisionNumber: integer("revision_number").notNull(),
+  action: text("action").notNull(),
+  sourceRevision: integer("source_revision"),
+  snapshot: jsonb("snapshot").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("canvas_revisions_canvas_revision_unique_idx").on(table.canvasId, table.revisionNumber),
+  index("canvas_revisions_user_canvas_created_idx").on(table.userId, table.canvasId, table.createdAt),
+]);
+
 // Insert schema for Canvas
 export const insertCanvasSchema = createInsertSchema(canvases).omit({
   id: true,
+  revision: true,
   createdAt: true,
   updatedAt: true,
 });
@@ -1443,6 +1459,7 @@ export const insertDocumentSchema = createInsertSchema(documents).omit({
 
 export type Canvas = typeof canvases.$inferSelect;
 export type InsertCanvas = z.infer<typeof insertCanvasSchema>;
+export type CanvasRevision = typeof canvasRevisions.$inferSelect;
 
 export type Graph = typeof graphs.$inferSelect;
 export type InsertGraph = z.infer<typeof insertGraphSchema>;
