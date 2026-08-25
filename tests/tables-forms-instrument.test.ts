@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { createWorkspaceTableViewSchema, filterAndSortWorkspaceRows, groupWorkspaceRows, parseWorkspaceTableCsv, serializeWorkspaceTableCsv, validateWorkspaceFormFields, validateWorkspaceRow, validateWorkspaceTableView, workspaceBulkRowDeleteSchema, workspaceDatabaseDefinitionSchema, workspaceDatabaseRevisionSnapshotSchema, workspaceRowRevisionSnapshotSchema, workspaceTableRowImportSchema, type WorkspaceDatabaseDefinition, type WorkspaceTableViewDefinition } from "../shared/tables";
+import { createWorkspaceTableViewSchema, evaluateWorkspaceFormulas, filterAndSortWorkspaceRows, groupWorkspaceRows, parseWorkspaceTableCsv, serializeWorkspaceTableCsv, validateWorkspaceFormFields, validateWorkspaceRow, validateWorkspaceTableView, workspaceBulkRowDeleteSchema, workspaceDatabaseDefinitionSchema, workspaceDatabaseRevisionSnapshotSchema, workspaceFormulaReferences, workspaceRowRevisionSnapshotSchema, workspaceTableRowImportSchema, type WorkspaceDatabaseDefinition, type WorkspaceTableViewDefinition } from "../shared/tables";
 
 const source = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8");
 const definition: WorkspaceDatabaseDefinition = { version: 1, columns: [
@@ -230,5 +230,88 @@ describe("Tables and Forms instruments", () => {
     expect(editor).toContain('aria-labelledby="table-import-review-heading"');
     expect(editor).toContain("Import is additive and atomic; existing rows will not be changed.");
     expect(editor).toContain("serializeWorkspaceTableCsv(definition, query.data!.rows)");
+  });
+
+  it("evaluates bounded numeric formulas deterministically and rejects unsafe or circular definitions", () => {
+    const computedDefinition = workspaceDatabaseDefinitionSchema.parse({ version: 1, columns: [
+      { id: "weight", name: "Weight", type: "number", required: false, options: [] },
+      { id: "reps", name: "Reps", type: "number", required: false, options: [] },
+      { id: "volume", name: "Volume", type: "formula", required: false, options: [], formula: { expression: "[weight] * [reps]" } },
+      { id: "double", name: "Double", type: "formula", required: false, options: [], formula: { expression: "([volume] + 2) * 2" } },
+    ] });
+    expect(workspaceFormulaReferences("([weight] + [reps]) / [weight]")).toEqual(["weight", "reps"]);
+    expect(evaluateWorkspaceFormulas(computedDefinition, { weight: 10, reps: 4 })).toEqual({ volume: 40, double: 84 });
+    expect(evaluateWorkspaceFormulas(computedDefinition, { weight: 10 })).toEqual({ volume: null, double: null });
+    expect(() => workspaceFormulaReferences("process.exit()")).toThrow("numbers");
+    expect(workspaceDatabaseDefinitionSchema.safeParse({ version: 1, columns: [
+      { id: "a", name: "A", type: "formula", required: false, options: [], formula: { expression: "[b]" } },
+      { id: "b", name: "B", type: "formula", required: false, options: [], formula: { expression: "[a]" } },
+    ] }).success).toBe(false);
+  });
+
+  it("keeps relations bounded and formula/rollup fields outside stored row and form authority", () => {
+    const relational = workspaceDatabaseDefinitionSchema.parse({ version: 1, columns: [
+      { id: "name", name: "Name", type: "text", required: true, options: [] },
+      { id: "sessions", name: "Sessions", type: "relation", required: false, options: [], relation: { databaseId: 9, displayColumnId: "title" } },
+      { id: "score", name: "Score", type: "formula", required: false, options: [], formula: { expression: "0" } },
+      { id: "total", name: "Total", type: "rollup", required: false, options: [], rollup: { relationColumnId: "sessions", targetColumnId: "load", aggregation: "sum" } },
+    ] });
+    expect(validateWorkspaceRow(relational, { name: "Week", sessions: [3, 7] })).toEqual({ name: "Week", sessions: [3, 7] });
+    expect(() => validateWorkspaceRow(relational, { name: "Week", sessions: [3, 3] })).toThrow("unique related row IDs");
+    expect(() => validateWorkspaceRow(relational, { name: "Week", score: 10 })).toThrow("computed");
+    expect(() => validateWorkspaceFormFields(relational, ["name", "score"])).toThrow("cannot write formula or rollup");
+    expect(() => validateWorkspaceFormFields(relational, ["name", "total"])).toThrow("cannot write formula or rollup");
+  });
+
+  it("filters, sorts, groups, and exports derived projections without persisting them", () => {
+    const computedDefinition = workspaceDatabaseDefinitionSchema.parse({ version: 1, columns: [
+      { id: "name", name: "Name", type: "text", required: true, options: [] },
+      { id: "links", name: "Links", type: "relation", required: false, options: [], relation: { databaseId: 9, displayColumnId: "title" } },
+      { id: "total", name: "Total", type: "rollup", required: false, options: [], rollup: { relationColumnId: "links", targetColumnId: "load", aggregation: "sum" } },
+    ] });
+    const rows = [
+      { id: 1, values: { name: "First", links: [4] }, computedValues: { links: "Deadlift", total: 90 } },
+      { id: 2, values: { name: "Second", links: [5] }, computedValues: { links: "Squat", total: 120 } },
+    ];
+    expect(filterAndSortWorkspaceRows(rows, computedDefinition, "squat", null, "asc").map((row) => row.id)).toEqual([2]);
+    expect(filterAndSortWorkspaceRows(rows, computedDefinition, "", "total", "desc").map((row) => row.id)).toEqual([2, 1]);
+    expect(groupWorkspaceRows(rows, computedDefinition, "links").map((group) => group.label)).toEqual(["Deadlift", "Squat"]);
+    const csv = serializeWorkspaceTableCsv(computedDefinition, rows);
+    expect(csv).toContain('"4","90"');
+    const preview = parseWorkspaceTableCsv(computedDefinition, 'name::Name,links::Links,total::Total\r\nWeek,4;5,999');
+    expect(preview.rows).toEqual([{ name: "Week", links: [4, 5] }]);
+    expect(preview.ignoredComputedColumnCount).toBe(1);
+  });
+
+  it("owner-validates the relation graph and prevents destructive dangling references", () => {
+    const routes = source("server/routes/tables.ts");
+    expect(routes).toContain("async function validateOwnedTableDefinitions");
+    expect(routes).toContain("must target one of your Tables");
+    expect(routes).toContain("async function validateWorkspaceRelationValues");
+    expect(routes).toContain("eq(workspaceDatabaseRows.userId, userId)");
+    expect(routes).toContain("async function lockWorkspaceTableDomain");
+    expect(routes).toContain("pg_advisory_xact_lock");
+    expect(routes).toContain("async function relatedRowReferenceExists");
+    expect(routes).toContain("jsonb_path_exists");
+    expect(routes).toContain("Remove this row from related records before deleting it.");
+    expect(routes).toContain("Remove relations from");
+    expect(routes).toContain("evaluateWorkspaceFormulas(definition, values)");
+    expect(routes).toContain("relationOptions");
+  });
+
+  it("exposes relation, formula, and rollup controls without making computed fields editable", () => {
+    const editor = source("client/src/pages/TableEditorPage.tsx");
+    const columnEditor = source("client/src/components/tables/WorkspaceColumnEditor.tsx");
+    const field = source("client/src/components/tables/WorkspaceFieldInput.tsx");
+    const form = source("client/src/pages/FormPage.tsx");
+    expect(columnEditor).toContain('["text", "number", "boolean", "date", "select", "url", "relation", "formula", "rollup"]');
+    expect(columnEditor).toContain("Target Table");
+    expect(columnEditor).toContain("[weight] * [reps]");
+    expect(columnEditor).toContain("Aggregation");
+    expect(editor).toContain("Relations store owned row IDs; formulas and rollups are calculated read-only.");
+    expect(editor).toContain("!isWorkspaceComputedColumn(column)");
+    expect(field).toContain("Calculated after the row is saved");
+    expect(field).toContain('role="group"');
+    expect(form).toContain("relationOptions={query.data.relationOptions[column.id]}");
   });
 });

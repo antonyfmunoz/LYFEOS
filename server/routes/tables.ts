@@ -1,10 +1,10 @@
 import type { Express, Request, Response } from "express";
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, not, sql } from "drizzle-orm";
 import { workspaceDatabaseRowRevisions, workspaceDatabaseRevisions, workspaceDatabaseRows, workspaceDatabases, workspaceForms, workspaceTableViews } from "@shared/schema";
 import {
   createWorkspaceDatabaseSchema, createWorkspaceFormSchema, createWorkspaceTableViewSchema, updateWorkspaceDatabaseSchema, updateWorkspaceFormSchema, updateWorkspaceTableViewSchema,
-  validateWorkspaceFormFields, validateWorkspaceRow, validateWorkspaceTableView, workspaceBulkRowDeleteSchema, workspaceDatabaseDefinitionSchema, workspaceDatabaseRevisionSnapshotSchema, workspaceRowRequestSchema, workspaceRowRevisionSnapshotSchema, workspaceTableRowImportSchema, workspaceTableViewDefinitionSchema,
-  type WorkspaceRowValues,
+  evaluateWorkspaceFormulas, validateWorkspaceFormFields, validateWorkspaceRow, validateWorkspaceTableView, workspaceBulkRowDeleteSchema, workspaceDatabaseDefinitionSchema, workspaceDatabaseRevisionSnapshotSchema, workspaceRowRequestSchema, workspaceRowRevisionSnapshotSchema, workspaceTableRowImportSchema, workspaceTableViewDefinitionSchema,
+  type WorkspaceColumn, type WorkspaceDatabaseDefinition, type WorkspaceRelationOptions, type WorkspaceRowValues,
 } from "@shared/tables";
 import { db } from "../db";
 import { logger } from "../utils";
@@ -32,15 +32,112 @@ function expectedRevision(value: string | undefined): number | null {
 }
 
 type TableTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+async function lockWorkspaceTableDomain(tx: TableTransaction, userId: number) { await tx.execute(sql`SELECT pg_advisory_xact_lock(128092, ${userId})`); }
 async function lockedOwnedDatabase(tx: TableTransaction, databaseId: number, userId: number) {
+  await lockWorkspaceTableDomain(tx, userId);
   const locked = await tx.execute(sql`SELECT id FROM workspace_databases WHERE id = ${databaseId} AND user_id = ${userId} FOR UPDATE`);
   if (!locked.rows.length) return undefined;
   const [database] = await tx.select().from(workspaceDatabases).where(and(eq(workspaceDatabases.id, databaseId), eq(workspaceDatabases.userId, userId))).limit(1);
   return database;
 }
+const scalarDisplayTypes = new Set<WorkspaceColumn["type"]>(["text", "number", "boolean", "date", "select", "url"]);
+async function validateOwnedTableDefinitions(tx: TableTransaction, userId: number, candidate?: { id: number; definition: WorkspaceDatabaseDefinition }) {
+  const records = await tx.select({ id: workspaceDatabases.id, definition: workspaceDatabases.definition }).from(workspaceDatabases).where(eq(workspaceDatabases.userId, userId));
+  const definitions = new Map(records.map((record) => [record.id, candidate?.id === record.id ? candidate.definition : workspaceDatabaseDefinitionSchema.parse(record.definition)]));
+  if (candidate && !definitions.has(candidate.id)) definitions.set(candidate.id, candidate.definition);
+  for (const [databaseId, definition] of Array.from(definitions.entries())) {
+    for (const column of definition.columns) {
+      if (column.type === "relation" && column.relation) {
+        const target = definitions.get(column.relation.databaseId);
+        if (!target) throw new Error(`${column.name} must target one of your Tables.`);
+        const display = target.columns.find((candidateColumn) => candidateColumn.id === column.relation!.displayColumnId);
+        if (!display || !scalarDisplayTypes.has(display.type)) throw new Error(`${column.name} must use a stored scalar display column from its target Table.`);
+      }
+      if (column.type === "rollup" && column.rollup) {
+        const relation = definition.columns.find((candidateColumn) => candidateColumn.id === column.rollup!.relationColumnId);
+        const target = relation?.relation ? definitions.get(relation.relation.databaseId) : undefined;
+        const targetColumn = target?.columns.find((candidateColumn) => candidateColumn.id === column.rollup!.targetColumnId);
+        if (!relation || relation.type !== "relation" || !target || !targetColumn) throw new Error(`${column.name} must use a valid relation and target column.`);
+        if (column.rollup.aggregation === "count" && !scalarDisplayTypes.has(targetColumn.type)) throw new Error(`${column.name} must count a stored scalar target column.`);
+        if (column.rollup.aggregation !== "count" && targetColumn.type !== "number") throw new Error(`${column.name} can only ${column.rollup.aggregation} a stored number column.`);
+      }
+    }
+    if (!definitions.has(databaseId)) throw new Error("Table definition validation failed.");
+  }
+}
+
+async function validateWorkspaceRelationValues(tx: TableTransaction, definition: WorkspaceDatabaseDefinition, rows: WorkspaceRowValues[], userId: number) {
+  for (const column of definition.columns.filter((candidate) => candidate.type === "relation" && candidate.relation)) {
+    const ids = Array.from(new Set(rows.flatMap((values) => Array.isArray(values[column.id]) ? values[column.id] as number[] : [])));
+    if (!ids.length) continue;
+    const found = await tx.select({ id: workspaceDatabaseRows.id }).from(workspaceDatabaseRows).where(and(eq(workspaceDatabaseRows.userId, userId), eq(workspaceDatabaseRows.databaseId, column.relation!.databaseId), inArray(workspaceDatabaseRows.id, ids)));
+    if (found.length !== ids.length) throw new Error(`${column.name} contains a related row that no longer exists.`);
+  }
+}
+
+async function workspaceTableProjection(databaseId: number, userId: number, definition: WorkspaceDatabaseDefinition, rows: Array<{ id: number; values: unknown }>) {
+  const relationColumns = definition.columns.filter((column) => column.type === "relation" && column.relation);
+  const targetIds = Array.from(new Set(relationColumns.map((column) => column.relation!.databaseId)));
+  const [targetDatabases, targetRows] = await Promise.all([
+    targetIds.length ? db.select({ id: workspaceDatabases.id, definition: workspaceDatabases.definition }).from(workspaceDatabases).where(and(eq(workspaceDatabases.userId, userId), inArray(workspaceDatabases.id, targetIds))) : [],
+    targetIds.length ? db.select({ id: workspaceDatabaseRows.id, databaseId: workspaceDatabaseRows.databaseId, values: workspaceDatabaseRows.values }).from(workspaceDatabaseRows).where(and(eq(workspaceDatabaseRows.userId, userId), inArray(workspaceDatabaseRows.databaseId, targetIds))) : [],
+  ]);
+  const targetDefinitions = new Map(targetDatabases.map((record) => [record.id, workspaceDatabaseDefinitionSchema.parse(record.definition)]));
+  const rowsByTarget = new Map<number, typeof targetRows>();
+  targetRows.forEach((row) => rowsByTarget.set(row.databaseId, [...(rowsByTarget.get(row.databaseId) || []), row]));
+  const relationOptions: WorkspaceRelationOptions = {};
+  for (const column of relationColumns) {
+    const config = column.relation!; const displayColumn = targetDefinitions.get(config.databaseId)?.columns.find((candidate) => candidate.id === config.displayColumnId);
+    relationOptions[column.id] = (rowsByTarget.get(config.databaseId) || []).map((row) => {
+      const value = (row.values as WorkspaceRowValues)[config.displayColumnId];
+      const label = value === undefined || value === null || value === "" ? `Row #${row.id}` : typeof value === "boolean" ? (value ? "Yes" : "No") : String(value);
+      return { id: row.id, label: displayColumn ? label : `Row #${row.id}` };
+    }).sort((left, right) => left.label.localeCompare(right.label) || left.id - right.id);
+  }
+  const projectedRows = rows.map((row) => {
+    const values = row.values as WorkspaceRowValues; const computedValues = evaluateWorkspaceFormulas(definition, values);
+    for (const column of relationColumns) {
+      const selected = Array.isArray(values[column.id]) ? values[column.id] as number[] : []; const options = new Map((relationOptions[column.id] || []).map((option) => [option.id, option.label]));
+      computedValues[column.id] = selected.map((rowId) => options.get(rowId) || `Missing row #${rowId}`).join(", ");
+    }
+    for (const column of definition.columns.filter((candidate) => candidate.type === "rollup" && candidate.rollup)) {
+      const config = column.rollup!; const relation = definition.columns.find((candidate) => candidate.id === config.relationColumnId)!;
+      const selected = Array.isArray(values[relation.id]) ? values[relation.id] as number[] : []; const selectedSet = new Set(selected);
+      const related = (rowsByTarget.get(relation.relation!.databaseId) || []).filter((targetRow) => selectedSet.has(targetRow.id));
+      if (config.aggregation === "count") computedValues[column.id] = related.length;
+      else {
+        const numbers = related.map((targetRow) => (targetRow.values as WorkspaceRowValues)[config.targetColumnId]).filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+        computedValues[column.id] = !numbers.length ? null : config.aggregation === "sum" ? numbers.reduce((sum, value) => sum + value, 0) : config.aggregation === "average" ? numbers.reduce((sum, value) => sum + value, 0) / numbers.length : config.aggregation === "min" ? Math.min(...numbers) : Math.max(...numbers);
+      }
+    }
+    return { ...row, computedValues };
+  });
+  return { rows: projectedRows, relationOptions, databaseId };
+}
+
+async function tableDefinitionReferrers(tx: TableTransaction, targetDatabaseId: number, userId: number) {
+  const records = await tx.select({ id: workspaceDatabases.id, title: workspaceDatabases.title, definition: workspaceDatabases.definition }).from(workspaceDatabases).where(eq(workspaceDatabases.userId, userId));
+  return records.filter((record) => record.id !== targetDatabaseId && workspaceDatabaseDefinitionSchema.parse(record.definition).columns.some((column) => column.type === "relation" && column.relation?.databaseId === targetDatabaseId));
+}
+
+async function relatedRowReferenceExists(tx: TableTransaction, targetDatabaseId: number, targetRowIds: number[], userId: number): Promise<boolean> {
+  const records = await tx.select({ id: workspaceDatabases.id, definition: workspaceDatabases.definition }).from(workspaceDatabases).where(eq(workspaceDatabases.userId, userId));
+  for (const record of records) {
+    const relationColumns = workspaceDatabaseDefinitionSchema.parse(record.definition).columns.filter((column) => column.type === "relation" && column.relation?.databaseId === targetDatabaseId);
+    for (const column of relationColumns) {
+      const predicate = `$."${column.id}"[*] ? (${targetRowIds.map((rowId) => `@ == ${rowId}`).join(" || ")})`;
+      const conditions = [eq(workspaceDatabaseRows.userId, userId), eq(workspaceDatabaseRows.databaseId, record.id), sql<boolean>`jsonb_path_exists(${workspaceDatabaseRows.values}, ${predicate}::jsonpath)`];
+      if (record.id === targetDatabaseId) conditions.push(not(inArray(workspaceDatabaseRows.id, targetRowIds)));
+      const [match] = await tx.select({ id: workspaceDatabaseRows.id }).from(workspaceDatabaseRows).where(and(...conditions)).limit(1);
+      if (match) return true;
+    }
+  }
+  return false;
+}
 async function validateDefinitionDependents(tx: TableTransaction, databaseId: number, userId: number, definition: ReturnType<typeof workspaceDatabaseDefinitionSchema.parse>) {
   const rows = await tx.select({ values: workspaceDatabaseRows.values }).from(workspaceDatabaseRows).where(and(eq(workspaceDatabaseRows.databaseId, databaseId), eq(workspaceDatabaseRows.userId, userId)));
   rows.forEach((row) => validateWorkspaceRow(definition, row.values as WorkspaceRowValues));
+  await validateWorkspaceRelationValues(tx, definition, rows.map((row) => row.values as WorkspaceRowValues), userId);
   const forms = await tx.select({ fieldIds: workspaceForms.fieldIds }).from(workspaceForms).where(and(eq(workspaceForms.databaseId, databaseId), eq(workspaceForms.userId, userId)));
   forms.forEach((form) => validateWorkspaceFormFields(definition, form.fieldIds as string[]));
   const views = await tx.select({ definition: workspaceTableViews.definition }).from(workspaceTableViews).where(and(eq(workspaceTableViews.databaseId, databaseId), eq(workspaceTableViews.userId, userId)));
@@ -65,7 +162,9 @@ export function registerTableRoutes(app: Express): void {
     try {
       const input = createWorkspaceDatabaseSchema.parse(req.body);
       const database = await db.transaction(async (tx) => {
+        await lockWorkspaceTableDomain(tx, req.session.userId!);
         const [created] = await tx.insert(workspaceDatabases).values({ ...input, userId: req.session.userId! }).returning();
+        await validateOwnedTableDefinitions(tx, req.session.userId!);
         await tx.insert(workspaceDatabaseRevisions).values({ userId: req.session.userId!, databaseId: created.id, revisionNumber: 1, action: "created", snapshot: { title: created.title, description: created.description, category: created.category, favorite: created.favorite, definition: created.definition } });
         return created;
       });
@@ -80,7 +179,8 @@ export function registerTableRoutes(app: Express): void {
       db.select().from(workspaceForms).where(and(eq(workspaceForms.databaseId, id), eq(workspaceForms.userId, req.session.userId!))).orderBy(desc(workspaceForms.updatedAt)),
       db.select().from(workspaceTableViews).where(and(eq(workspaceTableViews.databaseId, id), eq(workspaceTableViews.userId, req.session.userId!))).orderBy(workspaceTableViews.name),
     ]);
-    res.json({ database, rows, forms, views });
+    const projection = await workspaceTableProjection(id, req.session.userId!, workspaceDatabaseDefinitionSchema.parse(database.definition), rows);
+    res.json({ database, rows: projection.rows, relationOptions: projection.relationOptions, forms, views });
   });
   app.patch("/api/databases/:id", isAuthenticated, async (req, res) => {
     try {
@@ -92,7 +192,7 @@ export function registerTableRoutes(app: Express): void {
         const current = await lockedOwnedDatabase(tx, id, req.session.userId!);
         if (!current) return { kind: "missing" } as const;
         if (current.revision !== expected) return { kind: "conflict", currentRevision: current.revision } as const;
-        if (input.definition) await validateDefinitionDependents(tx, id, req.session.userId!, input.definition);
+        if (input.definition) { await validateOwnedTableDefinitions(tx, req.session.userId!, { id, definition: input.definition }); await validateDefinitionDependents(tx, id, req.session.userId!, input.definition); }
         const nextRevision = current.revision + 1;
         const [updated] = await tx.update(workspaceDatabases).set({ ...input, revision: nextRevision, updatedAt: new Date() }).where(and(eq(workspaceDatabases.id, id), eq(workspaceDatabases.userId, req.session.userId!))).returning();
         await tx.insert(workspaceDatabaseRevisions).values({ userId: req.session.userId!, databaseId: id, revisionNumber: nextRevision, action: "updated", snapshot: { title: updated.title, description: updated.description, category: updated.category, favorite: updated.favorite, definition: updated.definition } });
@@ -125,6 +225,7 @@ export function registerTableRoutes(app: Express): void {
         const [source] = await tx.select().from(workspaceDatabaseRevisions).where(and(eq(workspaceDatabaseRevisions.databaseId, id), eq(workspaceDatabaseRevisions.userId, req.session.userId!), eq(workspaceDatabaseRevisions.revisionNumber, sourceRevision))).limit(1);
         if (!source) return { kind: "revision-missing" } as const;
         const snapshot = workspaceDatabaseRevisionSnapshotSchema.parse(source.snapshot);
+        await validateOwnedTableDefinitions(tx, req.session.userId!, { id, definition: snapshot.definition });
         await validateDefinitionDependents(tx, id, req.session.userId!, snapshot.definition);
         const nextRevision = current.revision + 1;
         const [database] = await tx.update(workspaceDatabases).set({ ...snapshot, revision: nextRevision, updatedAt: new Date() }).where(and(eq(workspaceDatabases.id, id), eq(workspaceDatabases.userId, req.session.userId!))).returning();
@@ -138,10 +239,19 @@ export function registerTableRoutes(app: Express): void {
     } catch (error) { return badRequest(res, error); }
   });
   app.delete("/api/databases/:id", isAuthenticated, async (req, res) => {
-    const id = idParam(req.params.id); if (!id) return res.status(400).json({ error: "Invalid database ID" });
-    const [deleted] = await db.delete(workspaceDatabases).where(and(eq(workspaceDatabases.id, id), eq(workspaceDatabases.userId, req.session.userId!))).returning({ id: workspaceDatabases.id });
-    if (!deleted) return res.status(404).json({ error: "Database not found" });
-    res.status(204).end();
+    try {
+      const id = idParam(req.params.id); if (!id) return res.status(400).json({ error: "Invalid database ID" });
+      const outcome = await db.transaction(async (tx) => {
+        const database = await lockedOwnedDatabase(tx, id, req.session.userId!); if (!database) return { kind: "missing" } as const;
+        const referrers = await tableDefinitionReferrers(tx, id, req.session.userId!);
+        if (referrers.length) return { kind: "referenced", titles: referrers.slice(0, 3).map((record) => record.title) } as const;
+        await tx.delete(workspaceDatabases).where(and(eq(workspaceDatabases.id, id), eq(workspaceDatabases.userId, req.session.userId!)));
+        return { kind: "deleted" } as const;
+      });
+      if (outcome.kind === "missing") return res.status(404).json({ error: "Database not found" });
+      if (outcome.kind === "referenced") return res.status(409).json({ error: `Remove relations from ${outcome.titles.join(", ")} before deleting this Table.` });
+      res.status(204).end();
+    } catch (error) { return badRequest(res, error); }
   });
   app.post("/api/databases/:id/rows", isAuthenticated, async (req, res) => {
     try {
@@ -149,7 +259,8 @@ export function registerTableRoutes(app: Express): void {
       const input = workspaceRowRequestSchema.parse(req.body);
       const outcome = await db.transaction(async (tx) => {
         const database = await lockedOwnedDatabase(tx, id, req.session.userId!); if (!database) return { kind: "missing" } as const;
-        const values = validateWorkspaceRow(workspaceDatabaseDefinitionSchema.parse(database.definition), input.values);
+        const definition = workspaceDatabaseDefinitionSchema.parse(database.definition); const values = validateWorkspaceRow(definition, input.values);
+        await validateWorkspaceRelationValues(tx, definition, [values], req.session.userId!);
         const [row] = await tx.insert(workspaceDatabaseRows).values({ userId: req.session.userId!, databaseId: id, values }).returning();
         await tx.insert(workspaceDatabaseRowRevisions).values({ userId: req.session.userId!, databaseId: id, rowId: row.id, revisionNumber: 1, action: "created", snapshot: { values } });
         return { kind: "created", row } as const;
@@ -169,6 +280,7 @@ export function registerTableRoutes(app: Express): void {
         if (database.revision !== expected) return { kind: "conflict", currentRevision: database.revision } as const;
         const definition = workspaceDatabaseDefinitionSchema.parse(database.definition);
         const validatedRows = input.rows.map((values) => validateWorkspaceRow(definition, values));
+        await validateWorkspaceRelationValues(tx, definition, validatedRows, req.session.userId!);
         const rows = await tx.insert(workspaceDatabaseRows).values(validatedRows.map((values) => ({ userId: req.session.userId!, databaseId: id, values }))).returning();
         await tx.insert(workspaceDatabaseRowRevisions).values(rows.map((row) => ({ userId: req.session.userId!, databaseId: id, rowId: row.id, revisionNumber: 1, action: "created", snapshot: { values: row.values as WorkspaceRowValues } })));
         return { kind: "imported", rows } as const;
@@ -186,7 +298,8 @@ export function registerTableRoutes(app: Express): void {
       const expected = expectedRevision(req.header("x-lyfeos-expected-revision")); if (!expected) return res.status(req.header("x-lyfeos-expected-revision") ? 400 : 428).json({ error: "Reload this row before saving changes." });
       const outcome = await db.transaction(async (tx) => {
         const database = await lockedOwnedDatabase(tx, databaseId, req.session.userId!); if (!database) return { kind: "database-missing" } as const;
-        const values = validateWorkspaceRow(workspaceDatabaseDefinitionSchema.parse(database.definition), input.values);
+        const definition = workspaceDatabaseDefinitionSchema.parse(database.definition); const values = validateWorkspaceRow(definition, input.values);
+        await validateWorkspaceRelationValues(tx, definition, [values], req.session.userId!);
         const locked = await tx.execute(sql`SELECT id FROM workspace_database_rows WHERE id = ${rowId} AND database_id = ${databaseId} AND user_id = ${req.session.userId!} FOR UPDATE`);
         if (!locked.rows.length) return { kind: "missing" } as const;
         const [current] = await tx.select().from(workspaceDatabaseRows).where(and(eq(workspaceDatabaseRows.id, rowId), eq(workspaceDatabaseRows.databaseId, databaseId), eq(workspaceDatabaseRows.userId, req.session.userId!))).limit(1);
@@ -203,23 +316,36 @@ export function registerTableRoutes(app: Express): void {
     } catch (error) { return badRequest(res, error); }
   });
   app.delete("/api/databases/:databaseId/rows/:rowId", isAuthenticated, async (req, res) => {
-    const databaseId = idParam(req.params.databaseId), rowId = idParam(req.params.rowId);
-    if (!databaseId || !rowId) return res.status(400).json({ error: "Invalid row ID" });
-    const [row] = await db.delete(workspaceDatabaseRows).where(and(eq(workspaceDatabaseRows.id, rowId), eq(workspaceDatabaseRows.databaseId, databaseId), eq(workspaceDatabaseRows.userId, req.session.userId!))).returning({ id: workspaceDatabaseRows.id });
-    if (!row) return res.status(404).json({ error: "Row not found" });
-    res.status(204).end();
+    try {
+      const databaseId = idParam(req.params.databaseId), rowId = idParam(req.params.rowId);
+      if (!databaseId || !rowId) return res.status(400).json({ error: "Invalid row ID" });
+      const outcome = await db.transaction(async (tx) => {
+        const database = await lockedOwnedDatabase(tx, databaseId, req.session.userId!); if (!database) return { kind: "database-missing" } as const;
+        const [existing] = await tx.select({ id: workspaceDatabaseRows.id }).from(workspaceDatabaseRows).where(and(eq(workspaceDatabaseRows.id, rowId), eq(workspaceDatabaseRows.databaseId, databaseId), eq(workspaceDatabaseRows.userId, req.session.userId!))).limit(1);
+        if (!existing) return { kind: "missing" } as const;
+        if (await relatedRowReferenceExists(tx, databaseId, [rowId], req.session.userId!)) return { kind: "referenced" } as const;
+        await tx.delete(workspaceDatabaseRows).where(and(eq(workspaceDatabaseRows.id, rowId), eq(workspaceDatabaseRows.databaseId, databaseId), eq(workspaceDatabaseRows.userId, req.session.userId!)));
+        return { kind: "deleted" } as const;
+      });
+      if (outcome.kind === "database-missing") return res.status(404).json({ error: "Database not found" });
+      if (outcome.kind === "missing") return res.status(404).json({ error: "Row not found" });
+      if (outcome.kind === "referenced") return res.status(409).json({ error: "Remove this row from related records before deleting it." });
+      res.status(204).end();
+    } catch (error) { return badRequest(res, error); }
   });
   app.post("/api/databases/:id/rows/bulk-delete", isAuthenticated, async (req, res) => {
     try {
       const id = idParam(req.params.id); if (!id) return res.status(400).json({ error: "Invalid database ID" });
-      const database = await ownedDatabase(id, req.session.userId!); if (!database) return res.status(404).json({ error: "Database not found" });
       const { rowIds } = workspaceBulkRowDeleteSchema.parse(req.body);
-      const deleted = await db.delete(workspaceDatabaseRows).where(and(
-        eq(workspaceDatabaseRows.databaseId, id),
-        eq(workspaceDatabaseRows.userId, req.session.userId!),
-        inArray(workspaceDatabaseRows.id, rowIds),
-      )).returning({ id: workspaceDatabaseRows.id });
-      res.json({ deletedRowIds: deleted.map((row) => row.id), deletedCount: deleted.length });
+      const outcome = await db.transaction(async (tx) => {
+        const database = await lockedOwnedDatabase(tx, id, req.session.userId!); if (!database) return { kind: "missing" } as const;
+        if (await relatedRowReferenceExists(tx, id, rowIds, req.session.userId!)) return { kind: "referenced" } as const;
+        const deleted = await tx.delete(workspaceDatabaseRows).where(and(eq(workspaceDatabaseRows.databaseId, id), eq(workspaceDatabaseRows.userId, req.session.userId!), inArray(workspaceDatabaseRows.id, rowIds))).returning({ id: workspaceDatabaseRows.id });
+        return { kind: "deleted", deleted } as const;
+      });
+      if (outcome.kind === "missing") return res.status(404).json({ error: "Database not found" });
+      if (outcome.kind === "referenced") return res.status(409).json({ error: "Remove the selected rows from related records before deleting them." });
+      res.json({ deletedRowIds: outcome.deleted.map((row) => row.id), deletedCount: outcome.deleted.length });
     } catch (error) { return badRequest(res, error); }
   });
   app.get("/api/databases/:databaseId/rows/:rowId/revisions", isAuthenticated, async (req, res) => {
@@ -251,6 +377,7 @@ export function registerTableRoutes(app: Express): void {
         if (!source) return { kind: "revision-missing" } as const;
         const snapshot = workspaceRowRevisionSnapshotSchema.parse(source.snapshot);
         const values = validateWorkspaceRow(definition, snapshot.values);
+        await validateWorkspaceRelationValues(tx, definition, [values], req.session.userId!);
         const nextRevision = current.revision + 1;
         const [row] = await tx.update(workspaceDatabaseRows).set({ values, revision: nextRevision, updatedAt: new Date() }).where(and(eq(workspaceDatabaseRows.id, rowId), eq(workspaceDatabaseRows.databaseId, databaseId), eq(workspaceDatabaseRows.userId, req.session.userId!))).returning();
         await tx.insert(workspaceDatabaseRowRevisions).values({ userId: req.session.userId!, databaseId, rowId, revisionNumber: nextRevision, action: "restored", sourceRevision, snapshot: { values } });
@@ -322,7 +449,8 @@ export function registerTableRoutes(app: Express): void {
     const [form] = await db.select().from(workspaceForms).where(and(eq(workspaceForms.id, id), eq(workspaceForms.userId, req.session.userId!))).limit(1);
     if (!form) return res.status(404).json({ error: "Form not found" });
     const database = await ownedDatabase(form.databaseId, req.session.userId!); if (!database) return res.status(404).json({ error: "Database not found" });
-    res.json({ form, database });
+    const projection = await workspaceTableProjection(database.id, req.session.userId!, workspaceDatabaseDefinitionSchema.parse(database.definition), []);
+    res.json({ form, database, relationOptions: projection.relationOptions });
   });
   app.patch("/api/forms/:id", isAuthenticated, async (req, res) => {
     try {
@@ -361,7 +489,8 @@ export function registerTableRoutes(app: Express): void {
         if (!locked.rows.length) return { kind: "missing" } as const;
         const [currentForm] = await tx.select().from(workspaceForms).where(and(eq(workspaceForms.id, id), eq(workspaceForms.databaseId, form.databaseId), eq(workspaceForms.userId, req.session.userId!))).limit(1);
         if (!currentForm.active) return { kind: "closed" } as const;
-        const values = validateWorkspaceRow(workspaceDatabaseDefinitionSchema.parse(database.definition), input.values, currentForm.fieldIds as string[]);
+        const definition = workspaceDatabaseDefinitionSchema.parse(database.definition); const values = validateWorkspaceRow(definition, input.values, currentForm.fieldIds as string[]);
+        await validateWorkspaceRelationValues(tx, definition, [values], req.session.userId!);
         const [created] = await tx.insert(workspaceDatabaseRows).values({ userId: req.session.userId!, databaseId: database.id, values }).returning();
         await tx.insert(workspaceDatabaseRowRevisions).values({ userId: req.session.userId!, databaseId: database.id, rowId: created.id, revisionNumber: 1, action: "created", snapshot: { values } });
         return { kind: "created", row: created, confirmationText: currentForm.confirmationText } as const;
