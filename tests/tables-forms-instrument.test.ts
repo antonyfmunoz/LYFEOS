@@ -348,7 +348,7 @@ describe("Tables and Forms instruments", () => {
   });
 
   it("governs external respondent links without creating a second response authority", () => {
-    const migration = source("migrations/0111_workspace_form_governance.sql"); const release = source("server/release-migrate.ts"); const routes = source("server/routes/tables.ts"); const schema = source("shared/schema.ts"); const profile = source("server/routes/profile.ts"); const app = source("client/src/App.tsx"); const publicPage = source("client/src/pages/PublicFormPage.tsx");
+    const migration = source("migrations/0111_workspace_form_governance.sql"); const release = source("server/release-migrate.ts"); const routes = source("server/routes/tables.ts"); const schema = source("shared/schema.ts"); const profile = source("server/routes/profile.ts"); const app = source("client/src/App.tsx"); const publicPage = source("client/src/pages/PublicFormPage.tsx"); const workflow = source(".github/workflows/verify.yml");
     for (const contract of [migration, release, schema]) for (const table of ["workspace_form_access_grants", "workspace_form_submission_receipts"]) expect(contract).toContain(table);
     expect(release).toContain('id: "0111_workspace_form_governance"');
     expect(routes).toContain('app.get("/api/public/forms/:publicId"');
@@ -370,5 +370,6 @@ describe("Tables and Forms instruments", () => {
     expect(publicPage).toContain('window.location.hash.slice(1)');
     expect(publicPage).toContain('Authorization: `Bearer ${token}`');
     expect(publicPage).toContain('visibleWorkspaceFormFieldIds');
+    expect(workflow).toContain("tests/api-tables-forms.test.ts");
   });
 });
