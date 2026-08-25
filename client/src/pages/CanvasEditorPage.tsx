@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { Link, useLocation, useParams } from "wouter";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { CheckSquare, Download, ExternalLink, GripHorizontal, Heading, History, Link2, Maximize2, Minus, Plus, Redo2, RotateCcw, Save, StickyNote, Trash2, Undo2, Upload } from "lucide-react";
+import { CheckSquare, Download, ExternalLink, GripHorizontal, Heading, History, LayoutTemplate, Link2, Maximize2, Minus, Plus, Redo2, RotateCcw, Save, StickyNote, Trash2, Undo2, Upload } from "lucide-react";
 import {
   canvasDocumentSchema,
   createCanvasId,
@@ -12,6 +12,7 @@ import {
   type CanvasNode,
   type CanvasNodeType,
 } from "@shared/canvases";
+import { builtInCanvasTemplates, createCanvasDocumentFromTemplate } from "@shared/canvasTemplates";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { fitCanvasViewport, panCanvasViewport, zoomCanvasViewport } from "@/lib/canvasViewport";
 import { Button } from "@/components/ui/button";
@@ -75,6 +76,8 @@ export default function CanvasEditorPage() {
   const [dirty, setDirty] = useState(isNew);
   const [legacyContent, setLegacyContent] = useState<unknown | null>(null);
   const [pendingImport, setPendingImport] = useState<{ document: CanvasDocument; fileName: string } | null>(null);
+  const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
+  const [pendingTemplateId, setPendingTemplateId] = useState<string | null>(null);
   const [localHistoryState, setLocalHistoryState] = useState({ canUndo: false, canRedo: false });
   const dragRef = useRef<{ nodeIds: string[]; clientX: number; clientY: number; origins: Record<string, { x: number; y: number }>; snapshot: CanvasDocument; moved: boolean } | null>(null);
   const panRef = useRef<{ clientX: number; clientY: number; x: number; y: number; snapshot: CanvasDocument; moved: boolean } | null>(null);
@@ -113,6 +116,8 @@ export default function CanvasEditorPage() {
     setSelectedNodeId(null);
     setSelectedNodeIds([]);
     setPendingImport(null);
+    setPendingTemplateId(null);
+    setTemplatePickerOpen(false);
     undoStack.current = [];
     redoStack.current = [];
     setLocalHistoryState({ canUndo: false, canRedo: false });
@@ -162,6 +167,7 @@ export default function CanvasEditorPage() {
       if (!content) return;
       setTitle(restored.title); setDescription(restored.description || ""); setCategory(restored.category); setDocument(content);
       setLegacyContent(null); setDirty(false); setSelectedNodeId(null); setSelectedNodeIds([]); setConnectionTarget("");
+      setPendingImport(null); setPendingTemplateId(null); setTemplatePickerOpen(false);
       undoStack.current = []; redoStack.current = []; setLocalHistoryState({ canUndo: false, canRedo: false });
       queryClient.setQueryData(["/api/canvases", id], result);
       void queryClient.invalidateQueries({ queryKey: ["/api/canvases", id, "revisions"] });
@@ -198,6 +204,8 @@ export default function CanvasEditorPage() {
       const parsedJson = JSON.parse(await file.text()) as unknown;
       const parsed = canvasDocumentSchema.safeParse(parsedJson);
       if (!parsed.success) throw new Error("This file is not a supported LyfeOS Canvas v1 document.");
+      setPendingTemplateId(null);
+      setTemplatePickerOpen(false);
       setPendingImport({ document: parsed.data, fileName: file.name });
     } catch (error) {
       setPendingImport(null);
@@ -209,8 +217,15 @@ export default function CanvasEditorPage() {
   const confirmJsonImport = () => {
     if (!pendingImport) return;
     updateDocument(() => pendingImport.document);
-    setLegacyContent(null); setSelectedNodeId(null); setSelectedNodeIds([]); setConnectionTarget(""); setPendingImport(null);
+    setLegacyContent(null); setSelectedNodeId(null); setSelectedNodeIds([]); setConnectionTarget(""); setPendingImport(null); setPendingTemplateId(null); setTemplatePickerOpen(false);
     toast({ title: "Canvas import staged", description: "Review the imported workspace, then Save to create a new immutable version." });
+  };
+  const pendingTemplate = builtInCanvasTemplates.find((template) => template.id === pendingTemplateId) || null;
+  const applyTemplate = () => {
+    if (!pendingTemplate) return;
+    updateDocument(() => createCanvasDocumentFromTemplate(pendingTemplate.id));
+    setLegacyContent(null); setPendingImport(null); setPendingTemplateId(null); setTemplatePickerOpen(false); setSelectedNodeId(null); setSelectedNodeIds([]); setConnectionTarget("");
+    toast({ title: `${pendingTemplate.name} applied`, description: "The template is an unsaved, reversible Canvas change. Review it before saving." });
   };
   const updateNode = (nodeId: string, changes: Partial<CanvasNode>) => updateDocument((current) => ({
     ...current,
@@ -366,7 +381,8 @@ export default function CanvasEditorPage() {
         <Input aria-label="Canvas title" value={title} maxLength={160} onChange={(event) => { setTitle(event.target.value); setDirty(true); }} className="max-w-md font-medium" />
         {dirty && <span className="text-xs text-amber-400">unsaved</span>}
       </div>
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
+        <Button variant="outline" aria-expanded={templatePickerOpen} onClick={() => { setTemplatePickerOpen((open) => !open); setPendingTemplateId(null); }}><LayoutTemplate className="mr-1 h-4 w-4" />Templates</Button>
         <input ref={importInput} type="file" accept="application/json,.json" className="hidden" aria-label="Import LyfeOS Canvas JSON" onChange={(event) => void stageJsonImport(event.target.files?.[0])} />
         <Button variant="outline" onClick={() => importInput.current?.click()}><Upload className="mr-1 h-4 w-4" />Import</Button>
         <Button variant="outline" onClick={() => downloadJson(filename, legacyContent ?? document)}><Download className="mr-1 h-4 w-4" />JSON</Button>
@@ -377,6 +393,12 @@ export default function CanvasEditorPage() {
       <Input aria-label="Canvas category" value={category} maxLength={80} onChange={(event) => { setCategory(event.target.value); setDirty(true); }} placeholder="Category" />
       <Textarea aria-label="Canvas description" value={description} maxLength={800} onChange={(event) => { setDescription(event.target.value); setDirty(true); }} placeholder="What is this canvas for?" className="min-h-9 resize-y py-2" />
     </div>
+
+    {templatePickerOpen && <section className="rounded-xl border border-primary/20 bg-card/30 p-4" aria-label="Canvas template library">
+      <div><h2 className="font-medium">Canvas templates</h2><p className="mt-1 text-xs text-muted-foreground">Choose a governed starting structure. Selection is only a preview; Apply replaces the unsaved Canvas document, remains reversible with Undo, and still requires Save.</p></div>
+      <div className="mt-3 grid gap-2 md:grid-cols-3">{builtInCanvasTemplates.map((template) => <button key={template.id} type="button" aria-pressed={pendingTemplateId === template.id} onClick={() => setPendingTemplateId(template.id)} className={`rounded-lg border p-3 text-left transition ${pendingTemplateId === template.id ? "border-primary bg-primary/10" : "border-primary/10 bg-background/20 hover:border-primary/35"}`}><span className="text-[10px] font-mono uppercase tracking-wider text-primary">{template.category}</span><span className="mt-1 block text-sm font-medium">{template.name}</span><span className="mt-1 block text-xs leading-relaxed text-muted-foreground">{template.description}</span><span className="mt-2 block text-[10px] text-muted-foreground">{template.document.nodes.length} nodes · {template.document.edges.length} connections</span></button>)}</div>
+      {pendingTemplate && <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/20 bg-primary/5 p-3"><p className="text-xs text-muted-foreground"><span className="font-medium text-foreground">Review {pendingTemplate.name}:</span> applying replaces {document.nodes.length} current nodes and {document.edges.length} connections only in the unsaved editor.</p><div className="flex gap-2"><Button size="sm" variant="ghost" onClick={() => setPendingTemplateId(null)}>Cancel</Button><Button size="sm" onClick={applyTemplate}>Apply template</Button></div></div>}
+    </section>}
 
     {pendingImport && <section className="rounded-xl border border-primary/25 bg-primary/5 p-4" aria-label="Canvas import review">
       <div className="flex flex-wrap items-start justify-between gap-3">

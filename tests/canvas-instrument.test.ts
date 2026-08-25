@@ -8,6 +8,7 @@ import {
   createEmptyCanvasDocument,
   updateCanvasRequestSchema,
 } from "../shared/canvases";
+import { builtInCanvasTemplates, canvasTemplateSchema, createCanvasDocumentFromTemplate } from "../shared/canvasTemplates";
 import { fitCanvasViewport, panCanvasViewport, zoomCanvasViewport } from "../client/src/lib/canvasViewport";
 
 const source = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8");
@@ -157,5 +158,28 @@ describe("Canvas instrument", () => {
     expect(editor).toContain("Relationship label");
     expect(editor).toContain("Directed solid");
     expect(editor).toContain("Directed dashed");
+  });
+
+  it("ships unique schema-governed templates and returns isolated documents", () => {
+    expect(builtInCanvasTemplates.map((template) => template.id)).toEqual(["project-map", "decision-map", "reflection-loop"]);
+    expect(new Set(builtInCanvasTemplates.map((template) => template.id)).size).toBe(builtInCanvasTemplates.length);
+    for (const template of builtInCanvasTemplates) expect(canvasTemplateSchema.safeParse(template).success).toBe(true);
+
+    const first = createCanvasDocumentFromTemplate("project-map");
+    const second = createCanvasDocumentFromTemplate("project-map");
+    first.nodes[0].title = "Changed locally";
+    expect(second.nodes[0].title).toBe("Outcome");
+    expect(() => createCanvasDocumentFromTemplate("unknown-template")).toThrow("Choose a supported Canvas template.");
+  });
+
+  it("reviews a template before one reversible unsaved replacement", () => {
+    const editor = source("client/src/pages/CanvasEditorPage.tsx");
+    expect(editor).toContain('aria-label="Canvas template library"');
+    expect(editor).toContain("aria-pressed={pendingTemplateId === template.id}");
+    expect(editor).toContain("Apply replaces the unsaved Canvas document");
+    expect(editor).toContain("updateDocument(() => createCanvasDocumentFromTemplate(pendingTemplate.id))");
+    expect(editor).toContain("only in the unsaved editor");
+    expect(editor).toContain("still requires Save");
+    expect(editor).toContain("unsaved, reversible Canvas change");
   });
 });
