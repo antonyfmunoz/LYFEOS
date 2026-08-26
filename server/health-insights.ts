@@ -162,6 +162,14 @@ export function associationFromDailySeries(
   const coefficient = Math.max(-1, Math.min(1, numerator / Math.sqrt(leftSquares * rightSquares)));
   const magnitude = Math.abs(coefficient) < 0.3 ? "small" : Math.abs(coefficient) < 0.5 ? "moderate" : "large";
   const direction = coefficient < 0 ? "inverse" : "same-direction";
+  // Fisher's z interval estimates sampling uncertainty for the mathematical
+  // association under strong assumptions. It cannot establish causation,
+  // clinical meaning, prediction quality, or source accuracy.
+  const boundedCoefficient = Math.max(-0.999999999999, Math.min(0.999999999999, coefficient));
+  const fisherZ = Math.atanh(boundedCoefficient);
+  const fisherStandardError = 1 / Math.sqrt(aligned.length - 3);
+  const uncertaintyLower = Math.tanh(fisherZ - 1.96 * fisherStandardError);
+  const uncertaintyUpper = Math.tanh(fisherZ + 1.96 * fisherStandardError);
   return {
     status: "available" as const,
     pairedSamples: aligned.length,
@@ -169,6 +177,14 @@ export function associationFromDailySeries(
     coefficient: Math.round(coefficient * 1000) / 1000,
     magnitude,
     direction,
+    uncertainty: {
+      method: "fisher_z_approximation" as const,
+      confidenceLevel: 0.95,
+      lower: Math.round(uncertaintyLower * 1000) / 1000,
+      upper: Math.round(uncertaintyUpper * 1000) / 1000,
+      assumptions: ["paired daily values are independent", "the relationship is approximately linear", "the selected recorded days are representative"],
+      disclosure: "This interval quantifies sampling uncertainty only under its stated assumptions. It does not account for confounding, measurement error, missing-not-at-random data, repeated comparisons, or causation.",
+    },
     aligned,
     diagnostics,
     disclosure: "This is a Pearson association for the one user-selected day alignment. It is exploratory, user-specific, sensitive to missing data, repeated testing, and confounders, and is not proof that either series caused the other.",

@@ -2504,6 +2504,41 @@ const migrations = [
         ON "mission_consequence_preflights" ("user_id", "created_at");
     `,
   },
+  {
+    id: "0121_health_insight_interpretations",
+    sql: `
+      CREATE TABLE IF NOT EXISTS "health_insight_interpretations" (
+        "id" serial PRIMARY KEY,
+        "user_id" integer NOT NULL REFERENCES "users"("id") ON DELETE cascade,
+        "insight_kind" text NOT NULL DEFAULT 'association',
+        "left_series_id" text NOT NULL,
+        "left_series_label" text NOT NULL,
+        "right_series_id" text NOT NULL,
+        "right_series_label" text NOT NULL,
+        "period_days" integer NOT NULL,
+        "lag_days" integer NOT NULL DEFAULT 0,
+        "evidence_start" date NOT NULL,
+        "evidence_end" date NOT NULL,
+        "association_snapshot" jsonb NOT NULL,
+        "interpretation" text NOT NULL,
+        "note" text,
+        "acknowledged_exploratory" boolean NOT NULL DEFAULT false,
+        "client_mutation_id" text NOT NULL,
+        "mutation_payload_hash" text NOT NULL,
+        "created_at" timestamp NOT NULL DEFAULT now(),
+        CONSTRAINT "health_insight_interpretations_kind_valid" CHECK ("insight_kind" = 'association'),
+        CONSTRAINT "health_insight_interpretations_period_valid" CHECK ("period_days" BETWEEN 7 AND 3650),
+        CONSTRAINT "health_insight_interpretations_lag_valid" CHECK ("lag_days" BETWEEN -30 AND 30),
+        CONSTRAINT "health_insight_interpretations_window_valid" CHECK ("evidence_end" >= "evidence_start"),
+        CONSTRAINT "health_insight_interpretations_choice_valid" CHECK ("interpretation" IN ('worth_revisiting', 'needs_more_context', 'not_meaningful_to_me')),
+        CONSTRAINT "health_insight_interpretations_note_valid" CHECK ("note" IS NULL OR char_length("note") <= 2000),
+        CONSTRAINT "health_insight_interpretations_ack_valid" CHECK ("acknowledged_exploratory" = true),
+        CONSTRAINT "health_insight_interpretations_user_mutation_unique_idx" UNIQUE ("user_id", "client_mutation_id")
+      );
+      CREATE INDEX IF NOT EXISTS "health_insight_interpretations_user_created_idx"
+        ON "health_insight_interpretations" ("user_id", "created_at" DESC);
+    `,
+  },
 ];
 
 async function run(): Promise<void> {

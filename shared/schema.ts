@@ -3499,6 +3499,33 @@ export const healthPracticeReviews = pgTable("health_practice_reviews", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => [uniqueIndex("health_practice_reviews_user_date_unique_idx").on(table.userId, table.reviewDate), index("health_practice_reviews_user_date_idx").on(table.userId, table.reviewDate)]);
 
+// A private user-authored interpretation of one explicitly requested
+// association snapshot. It preserves metadata and the calculated summary, not
+// the underlying daily values, and never becomes a verified health fact.
+export const healthInsightInterpretations = pgTable("health_insight_interpretations", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  insightKind: text("insight_kind").notNull().default("association"),
+  leftSeriesId: text("left_series_id").notNull(),
+  leftSeriesLabel: text("left_series_label").notNull(),
+  rightSeriesId: text("right_series_id").notNull(),
+  rightSeriesLabel: text("right_series_label").notNull(),
+  periodDays: integer("period_days").notNull(),
+  lagDays: integer("lag_days").notNull().default(0),
+  evidenceStart: date("evidence_start").notNull(),
+  evidenceEnd: date("evidence_end").notNull(),
+  associationSnapshot: jsonb("association_snapshot").notNull(),
+  interpretation: text("interpretation").notNull(),
+  note: text("note"),
+  acknowledgedExploratory: boolean("acknowledged_exploratory").notNull().default(false),
+  clientMutationId: text("client_mutation_id").notNull(),
+  mutationPayloadHash: text("mutation_payload_hash").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("health_insight_interpretations_user_mutation_unique_idx").on(table.userId, table.clientMutationId),
+  index("health_insight_interpretations_user_created_idx").on(table.userId, table.createdAt),
+]);
+
 // Metadata-only model receipts intentionally omit the private question, source
 // values, and model output. Those values live only in the originating response.
 export const healthAiRequests = pgTable("health_ai_requests", {

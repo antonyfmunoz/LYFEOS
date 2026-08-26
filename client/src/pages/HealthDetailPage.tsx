@@ -104,6 +104,7 @@ export default function HealthDetailPage() {
   const categoryStats = data?.categoryStats ?? {};
   const avgMoodScore = data?.summary?.avgMoodScore ?? 0;
   const completionRate = data?.summary?.completionRate ?? 0;
+  const sleepWellnessDataQuality = data?.sleepWellnessDataQuality ?? { observations: 0, availableDays: days, coveragePercent: 0, level: "insufficient", readyToExplore: false, note: "At least five complete daily records are needed before LyfeOS shows an observed pattern." };
 
   const activityScore = Math.min(Math.round((completedMissions / 10) * 100), 100);
   const consistencyScore = Math.min(Math.round((currentStreak / 30) * 100), 100);
@@ -491,7 +492,8 @@ export default function HealthDetailPage() {
             </div>
           )}
 
-          {data?.sleepWellnessCorrelation && data.sleepWellnessCorrelation.length > 0 && (
+          {sleepWellnessDataQuality.observations > 0 && !sleepWellnessDataQuality.readyToExplore ? <div className="glassmorphic rounded-2xl p-6 mb-8 border border-primary/30" role="status"><h2 className="font-orbitron text-lg text-primary flex items-center gap-2"><Heart className="h-5 w-5" />Sleep & daily-state observations</h2><p className="mt-2 text-sm text-muted-foreground">{sleepWellnessDataQuality.note}</p><p className="mt-1 text-xs text-muted-foreground">{sleepWellnessDataQuality.observations}/{sleepWellnessDataQuality.availableDays} complete days · {sleepWellnessDataQuality.coveragePercent}% coverage. Missing days remain missing.</p></div> : null}
+          {data?.sleepWellnessCorrelation && sleepWellnessDataQuality.readyToExplore && data.sleepWellnessCorrelation.length > 0 && (
             <div className="glassmorphic rounded-2xl p-6 mb-8 border border-primary/30">
               <h2 className="font-orbitron text-lg mb-4 text-primary flex items-center gap-2">
                 <Heart className="h-5 w-5" />
@@ -533,7 +535,8 @@ export default function HealthDetailPage() {
                   <Scatter data={data.sleepWellnessCorrelation} fill="hsl(var(--primary))" fillOpacity={0.7} />
                 </ScatterChart>
               </ResponsiveContainer>
-              <p className="mt-3 text-xs leading-relaxed text-muted-foreground">These are self-reported observations in your LyfeOS record, not a medical conclusion or evidence that sleep caused a change in mood.</p>
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground"><span className="rounded-full border border-primary/20 bg-primary/5 px-2 py-1 font-mono uppercase tracking-[0.08em] text-primary">{sleepWellnessDataQuality.level} data</span><span>{sleepWellnessDataQuality.observations}/{sleepWellnessDataQuality.availableDays} complete days · {sleepWellnessDataQuality.coveragePercent}% coverage</span></div>
+              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{sleepWellnessDataQuality.note} These are self-reported observations in your LyfeOS record, not a medical conclusion or evidence that sleep caused a change in mood. Use the private Trend Workbench below when you want a bounded association and uncertainty calculation.</p>
             </div>
           )}
 

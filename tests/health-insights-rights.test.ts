@@ -67,6 +67,10 @@ describe("health trends, associations, and data rights", () => {
       expect(result.coefficient).toBe(1);
       expect(result.disclosure).toContain("not proof");
       expect(result.pairedSamples).toBe(10);
+      expect(result.uncertainty).toMatchObject({ method: "fisher_z_approximation", confidenceLevel: 0.95 });
+      expect(result.uncertainty.lower).toBeLessThanOrEqual(result.coefficient);
+      expect(result.uncertainty.upper).toBeGreaterThanOrEqual(result.coefficient);
+      expect(result.uncertainty.disclosure).toContain("does not account for confounding");
     }
   });
 

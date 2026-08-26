@@ -1,8 +1,9 @@
 import type { Express, Request, Response } from "express";
+import { createHash } from "node:crypto";
 import { and, desc, eq, gte, lt, lte, sql } from "drizzle-orm";
 import { z } from "zod";
 import {
-  bodyMeasurements, healthAiDrafts, healthAiRequests, healthConnections, healthDataRightsAudit, healthMetricPanels, healthObservationCalculationPreferences, healthObservations, healthPlanningDraftEvents, healthPlanningDrafts, healthPracticeReviews, healthProfiles, healthSyncCursors, hydrationEntries,
+  bodyMeasurements, healthAiDrafts, healthAiRequests, healthConnections, healthDataRightsAudit, healthInsightInterpretations, healthMetricPanels, healthObservationCalculationPreferences, healthObservations, healthPlanningDraftEvents, healthPlanningDrafts, healthPracticeReviews, healthProfiles, healthSyncCursors, hydrationEntries,
   nutritionDiaryEntries, quests, recoveryActivities, sleepSessions, userActivityEvents, userDailyLogs, workouts,
 } from "@shared/schema";
 import { db } from "../db";
@@ -21,6 +22,12 @@ const insightQuery = z.object({
   days: z.coerce.number().int().min(7).max(3650).default(30), format: z.enum(["json", "csv"]).default("json"),
 });
 const associationInput = z.object({ left: z.string().min(1).max(300), right: z.string().min(1).max(300), days: z.number().int().min(7).max(3650), lagDays: z.number().int().min(-30).max(30).default(0), confirmed: z.literal(true) });
+const insightInterpretationInput = associationInput.extend({
+  interpretation: z.enum(["worth_revisiting", "needs_more_context", "not_meaningful_to_me"]),
+  note: z.string().trim().max(2000).nullable().optional(),
+  acknowledgedExploratory: z.literal(true),
+  clientMutationId: z.string().uuid(),
+}).strict();
 const preferenceInput = z.object({ aiContextEnabled: z.boolean(), planningContextEnabled: z.boolean() });
 const deletionInput = z.object({ confirmation: z.literal("DELETE MY HEALTH DATA") });
 const planningDraftInput = z.object({
@@ -72,7 +79,7 @@ const healthDirectTables = [
   "health_profiles", "health_targets", "health_target_revisions", "body_measurements", "health_observation_calculation_preferences", "health_observations", "health_metric_definitions", "health_metric_panels",
   "hydration_entries", "supplement_entries", "supplement_schedules", "supplement_schedule_events", "fasting_windows",
   "recovery_activities", "recovery_routines", "recovery_tag_policies", "sleep_naps", "sleep_sessions", "nutrition_foods", "nutrition_food_portions",
-  "nutrition_diary_entries", "nutrition_recipes", "nutrition_recipe_revisions", "nutrition_meal_plans", "health_practice_reviews",
+  "nutrition_diary_entries", "nutrition_recipes", "nutrition_recipe_revisions", "nutrition_meal_plans", "health_practice_reviews", "health_insight_interpretations",
   "nutrition_meal_plan_entries", "health_deletion_receipts", "health_data_rights_audit", "health_planning_drafts", "health_planning_draft_events", "health_ai_requests", "health_ai_drafts", "health_progression_events", "health_badge_events", "ingredient_scans",
   "ingredient_scan_items", "ingredient_preference_rules", "exercise_definitions", "workout_programs",
   "workout_program_sessions", "workouts", "workout_revisions", "workout_templates", "workout_template_revisions", "heart_rate_zone_profiles", "workout_heart_rate_samples",
@@ -87,7 +94,7 @@ const healthDeleteOrder = [
   "nutrition_recipe_revisions", "nutrition_recipes", "nutrition_food_portions", "nutrition_foods", "sleep_naps", "sleep_sessions",
   "health_observation_calculation_preferences", "health_observations", "health_metric_panels", "health_metric_definitions", "recovery_activities", "recovery_routines", "recovery_tag_policies", "fasting_windows",
   "supplement_schedule_events", "supplement_schedules", "supplement_entries", "hydration_entries", "body_measurements",
-  "health_planning_draft_events", "health_planning_drafts", "health_ai_drafts", "health_ai_requests", "health_practice_reviews", "health_target_revisions", "health_targets", "health_profiles", "health_deletion_receipts", "health_badge_events", "health_progression_events",
+  "health_planning_draft_events", "health_planning_drafts", "health_ai_drafts", "health_ai_requests", "health_insight_interpretations", "health_practice_reviews", "health_target_revisions", "health_targets", "health_profiles", "health_deletion_receipts", "health_badge_events", "health_progression_events",
 ] as const;
 
 const healthRetentionBehavior = {
@@ -222,6 +229,38 @@ async function loadSeries(userId: number, id: string, days: number, timeZone: st
     eq(bodyMeasurements.userId, userId), eq(bodyMeasurements.metric, parsed.key), eq(bodyMeasurements.unit, parsed.unit), gte(bodyMeasurements.observedAt, startDate), lte(bodyMeasurements.observedAt, endDate),
   ));
   return { descriptor: { id, label: parsed.key.replaceAll("_", " "), unit: parsed.unit, aggregation: "average" }, points: aggregateDailyValues(rows.map((row) => ({ date: dateKey(row.observedAt, timeZone), value: row.value })), "average"), quality: completeQuality };
+}
+
+async function associationBundle(userId: number, input: { left: string; right: string; days: number; lagDays: number }, timeZone: string) {
+  const [left, right] = await Promise.all([loadSeries(userId, input.left, input.days, timeZone), loadSeries(userId, input.right, input.days, timeZone)]);
+  if (!left || !right) return null;
+  const lagAlignment = input.lagDays === 0
+    ? "The two series are aligned on the same local-calendar day."
+    : input.lagDays > 0
+      ? `The second series is aligned ${input.lagDays} day${input.lagDays === 1 ? "" : "s"} after the first series.`
+      : `The first series is aligned ${Math.abs(input.lagDays)} day${input.lagDays === -1 ? "" : "s"} after the second series.`;
+  return {
+    left: left.descriptor,
+    right: right.descriptor,
+    result: associationFromDailySeries(left.points, right.points, input.days, input.lagDays),
+    lagDays: input.lagDays,
+    lagAlignment,
+    leftQuality: { ...left.quality, coverage: healthSeriesCoverage(left.points, left.quality.omittedAmbiguousDates, input.days) },
+    rightQuality: { ...right.quality, coverage: healthSeriesCoverage(right.points, right.quality.omittedAmbiguousDates, input.days) },
+    limitations: {
+      adjustmentMethod: "none" as const,
+      multipleLagSearchPerformed: false as const,
+      missingValuesImputed: false as const,
+      unadjustedFactors: ["schedule and day-of-week changes", "travel, illness, medication, and environmental changes", "device, source, or measurement-method changes", "unrecorded behavior and non-random missing data"],
+      disclosure: "LyfeOS did not adjust this calculation for these or other possible confounders. The list is illustrative, not a claim that any factor occurred.",
+    },
+    requestedByUser: true as const,
+    timeZone,
+  };
+}
+
+function interpretationPayloadHash(input: z.infer<typeof insightInterpretationInput>): string {
+  return createHash("sha256").update(JSON.stringify(input)).digest("hex");
 }
 
 async function rowsForUser(table: string, userId: number): Promise<unknown[]> {
@@ -468,28 +507,86 @@ export function registerHealthInsightRoutes(app: Express): void {
     const parsed = associationInput.safeParse(req.body);
     if (!parsed.success || parsed.data.left === parsed.data.right) return res.status(400).json({ error: "Choose two different series and explicitly confirm this private analysis.", details: parsed.success ? undefined : parsed.error.flatten() });
     const { timeZone } = requestTimeContext(req);
-    const [left, right] = await Promise.all([loadSeries(req.session.userId!, parsed.data.left, parsed.data.days, timeZone), loadSeries(req.session.userId!, parsed.data.right, parsed.data.days, timeZone)]);
-    if (!left || !right) return res.status(400).json({ error: "Unknown health series." });
-    const lagAlignment = parsed.data.lagDays === 0
-      ? "The two series are aligned on the same local-calendar day."
-      : parsed.data.lagDays > 0
-        ? `The second series is aligned ${parsed.data.lagDays} day${parsed.data.lagDays === 1 ? "" : "s"} after the first series.`
-        : `The first series is aligned ${Math.abs(parsed.data.lagDays)} day${parsed.data.lagDays === -1 ? "" : "s"} after the second series.`;
+    const bundle = await associationBundle(req.session.userId!, parsed.data, timeZone);
+    return bundle ? res.json(bundle) : res.status(400).json({ error: "Unknown health series." });
+  });
+
+  app.get("/api/health-insights/interpretations", isAuthenticated, async (req: Request, res: Response) => {
+    const interpretations = await db.select().from(healthInsightInterpretations)
+      .where(eq(healthInsightInterpretations.userId, req.session.userId!))
+      .orderBy(desc(healthInsightInterpretations.createdAt), desc(healthInsightInterpretations.id)).limit(50);
+    res.setHeader("Cache-Control", "private, no-store");
     return res.json({
-      left: left.descriptor, right: right.descriptor,
-      result: associationFromDailySeries(left.points, right.points, parsed.data.days, parsed.data.lagDays),
-      lagDays: parsed.data.lagDays, lagAlignment,
-      leftQuality: { ...left.quality, coverage: healthSeriesCoverage(left.points, left.quality.omittedAmbiguousDates, parsed.data.days) },
-      rightQuality: { ...right.quality, coverage: healthSeriesCoverage(right.points, right.quality.omittedAmbiguousDates, parsed.data.days) },
-      limitations: {
-        adjustmentMethod: "none",
-        multipleLagSearchPerformed: false,
-        missingValuesImputed: false,
-        unadjustedFactors: ["schedule and day-of-week changes", "travel, illness, medication, and environmental changes", "device, source, or measurement-method changes", "unrecorded behavior and non-random missing data"],
-        disclosure: "LyfeOS did not adjust this calculation for these or other possible confounders. The list is illustrative, not a claim that any factor occurred.",
-      },
-      requestedByUser: true, timeZone,
+      interpretations,
+      disclosure: "These are private user-authored interpretations of saved calculation snapshots. They are not verified health facts, causal findings, medical records, or instructions from LyfeOS.",
     });
+  });
+
+  app.post("/api/health-insights/interpretations", isAuthenticated, async (req: Request, res: Response) => {
+    const parsed = insightInterpretationInput.safeParse(req.body);
+    if (!parsed.success || parsed.data.left === parsed.data.right) return res.status(400).json({ error: "Review an available association and explicitly acknowledge its exploratory limits before saving your interpretation.", details: parsed.success ? undefined : parsed.error.flatten() });
+    const userId = req.session.userId!;
+    const mutationPayloadHash = interpretationPayloadHash(parsed.data);
+    const [existing] = await db.select().from(healthInsightInterpretations).where(and(
+      eq(healthInsightInterpretations.userId, userId),
+      eq(healthInsightInterpretations.clientMutationId, parsed.data.clientMutationId),
+    )).limit(1);
+    if (existing) {
+      return existing.mutationPayloadHash === mutationPayloadHash
+        ? res.json({ interpretation: existing, replayed: true })
+        : res.status(409).json({ error: "This interpretation identity was already used for different content." });
+    }
+    const { timeZone } = requestTimeContext(req);
+    const bundle = await associationBundle(userId, parsed.data, timeZone);
+    if (!bundle) return res.status(400).json({ error: "Unknown health series." });
+    if (bundle.result.status !== "available") {
+      return res.status(409).json({ error: "There is not enough aligned evidence to save an interpretation snapshot.", reasons: bundle.result.reasons, pairedSamples: bundle.result.pairedSamples, coverage: bundle.result.coverage });
+    }
+    const { startDate, endDate } = dateRange(parsed.data.days, timeZone);
+    const { aligned: _privateAlignedValues, ...safeResult } = bundle.result;
+    const [created] = await db.insert(healthInsightInterpretations).values({
+      userId,
+      leftSeriesId: parsed.data.left,
+      leftSeriesLabel: bundle.left.label,
+      rightSeriesId: parsed.data.right,
+      rightSeriesLabel: bundle.right.label,
+      periodDays: parsed.data.days,
+      lagDays: parsed.data.lagDays,
+      evidenceStart: startDate,
+      evidenceEnd: endDate,
+      associationSnapshot: {
+        result: safeResult,
+        leftQuality: bundle.leftQuality,
+        rightQuality: bundle.rightQuality,
+        limitations: bundle.limitations,
+        lagAlignment: bundle.lagAlignment,
+        timeZone,
+        rawDailyValuesStored: false,
+      },
+      interpretation: parsed.data.interpretation,
+      note: parsed.data.note || null,
+      acknowledgedExploratory: true,
+      clientMutationId: parsed.data.clientMutationId,
+      mutationPayloadHash,
+    }).onConflictDoNothing().returning();
+    if (created) return res.status(201).json({ interpretation: created, replayed: false });
+    const [raced] = await db.select().from(healthInsightInterpretations).where(and(
+      eq(healthInsightInterpretations.userId, userId),
+      eq(healthInsightInterpretations.clientMutationId, parsed.data.clientMutationId),
+    )).limit(1);
+    return raced?.mutationPayloadHash === mutationPayloadHash
+      ? res.json({ interpretation: raced, replayed: true })
+      : res.status(409).json({ error: "This interpretation identity was already used for different content." });
+  });
+
+  app.delete("/api/health-insights/interpretations/:id", isAuthenticated, async (req: Request, res: Response) => {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) return res.status(400).json({ error: "Invalid insight interpretation." });
+    const [removed] = await db.delete(healthInsightInterpretations).where(and(
+      eq(healthInsightInterpretations.id, id),
+      eq(healthInsightInterpretations.userId, req.session.userId!),
+    )).returning({ id: healthInsightInterpretations.id });
+    return removed ? res.status(204).send() : res.status(404).json({ error: "Insight interpretation not found." });
   });
 
   app.get("/api/health-insights/planning-drafts", isAuthenticated, async (req: Request, res: Response) => {
