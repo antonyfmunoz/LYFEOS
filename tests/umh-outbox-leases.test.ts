@@ -10,6 +10,11 @@ describe("UMH outbox leasing contract", () => {
     const release = source("server/release-migrate.ts");
     const schema = source("shared/schema.ts");
     for (const contract of [migration, release]) {
+      expect(contract).toContain('CREATE TABLE IF NOT EXISTS "umh_federation_installations"');
+      expect(contract).toContain('CREATE TABLE IF NOT EXISTS "umh_inbound_commands"');
+      expect(contract).toContain('CREATE TABLE IF NOT EXISTS "umh_approval_requests"');
+      expect(contract).toContain('CREATE TABLE IF NOT EXISTS "umh_audit_records"');
+      expect(contract).toContain('CREATE TABLE IF NOT EXISTS "umh_outbox_events"');
       expect(contract).toContain('"lease_token"');
       expect(contract).toContain('"leased_until"');
       expect(contract).toContain("AT TIME ZONE 'UTC'");
@@ -17,6 +22,7 @@ describe("UMH outbox leasing contract", () => {
       expect(contract).toContain('"umh_outbox_events_delivery_due_idx"');
     }
     expect(release).toContain('id: "0128_umh_outbox_leases"');
+    expect(source(".github/workflows/verify.yml")).toContain("DELETE FROM lyfeos_schema_migrations WHERE id = '0128_umh_outbox_leases'");
     expect(schema).toContain('leaseToken: text("lease_token")');
     expect(schema).toContain('leasedUntil: timestamp("leased_until", { withTimezone: true })');
     expect(schema).toContain('nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true })');
