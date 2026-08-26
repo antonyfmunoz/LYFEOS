@@ -667,6 +667,7 @@ export const missionContracts = pgTable("mission_contracts", {
   requiredEvidence: jsonb("required_evidence").notNull().default([]),
   rubricDefinition: jsonb("rubric_definition").notNull().default([]),
   rubricVersion: integer("rubric_version").notNull().default(1),
+  contractRevision: integer("contract_revision").notNull().default(1),
   acceptanceContextSnapshot: jsonb("acceptance_context_snapshot").notNull().default({}),
   reviewMode: text("review_mode").notNull().default("self"), // self | human
   riskLevel: text("risk_level").notNull().default("low"), // low | medium | high
@@ -682,6 +683,32 @@ export const missionContracts = pgTable("mission_contracts", {
 }, (table) => [
   uniqueIndex("mission_contracts_quest_unique_idx").on(table.questId),
   index("mission_contracts_user_state_idx").on(table.userId, table.state),
+]);
+
+// High-risk Missions require a same-revision consequence preflight before the
+// proof plan can be accepted or completed. These append-only user decisions
+// record scenarios and mitigations; they never predict an outcome or grant
+// external authority.
+export const missionConsequencePreflights = pgTable("mission_consequence_preflights", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  missionContractId: integer("mission_contract_id").notNull().references(() => missionContracts.id, { onDelete: "cascade" }),
+  contractRevision: integer("contract_revision").notNull(),
+  assumptions: jsonb("assumptions").notNull().default([]),
+  affectedParties: jsonb("affected_parties").notNull().default([]),
+  scenarios: jsonb("scenarios").notNull().default([]),
+  reversibility: text("reversibility").notNull(), // reversible | partly_reversible | irreversible
+  mitigationPlan: text("mitigation_plan").notNull(),
+  uncertaintyNote: text("uncertainty_note").notNull(),
+  decision: text("decision").notNull(), // proceed | revise | do_not_proceed
+  decisionRationale: text("decision_rationale").notNull(),
+  status: text("status").notNull(), // ready | revise | stopped
+  stopConditionsSnapshot: jsonb("stop_conditions_snapshot").notNull().default([]),
+  acknowledgedNoAuthority: boolean("acknowledged_no_authority").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("mission_consequence_preflights_contract_revision_idx").on(table.missionContractId, table.contractRevision, table.createdAt),
+  index("mission_consequence_preflights_user_created_idx").on(table.userId, table.createdAt),
 ]);
 
 // A deferral is not a failure or a hidden status change. It is a user-owned,

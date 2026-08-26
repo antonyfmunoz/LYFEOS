@@ -2,7 +2,7 @@ import { and, desc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import { db } from "./db";
 import { storage } from "./storage";
 import { logger } from "./utils";
-import { kanbanBoards, missionContracts, missionDeferrals, missionDependencies, missionReviews, personalCapabilities, projectEvents, questSkillContributions, quests, skillNodes, skillProgressionEvents, userActivityEvents, type Quest } from "@shared/schema";
+import { kanbanBoards, missionConsequencePreflights, missionContracts, missionDeferrals, missionDependencies, missionReviews, personalCapabilities, projectEvents, questSkillContributions, quests, skillNodes, skillProgressionEvents, userActivityEvents, type Quest } from "@shared/schema";
 import { recordTransformationThreadEvidence } from "./transformation-thread-evidence";
 import { refreshProgressionState } from "./progression";
 import { queueLinkedWorkItemState } from "./cross-product";
@@ -544,10 +544,39 @@ function missionXp(quest: Quest): number {
 }
 
 export async function toggleMissionLifecycle(input: { questId: number; userId: number; source: MissionLifecycleSource; suppressAutomations?: boolean }) {
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(120010, ${input.questId})`);
+    return toggleMissionLifecycleLocked(input);
+  });
+}
+
+async function toggleMissionLifecycleLocked(input: { questId: number; userId: number; source: MissionLifecycleSource; suppressAutomations?: boolean }) {
   const quest = await storage.getQuest(input.questId);
   if (!quest) throw new MissionLifecycleError(404, "Mission not found.");
   if (quest.userId !== input.userId) throw new MissionLifecycleError(403, "Not authorized to change this mission.");
   if (!quest.completed) {
+    const [highRiskContract] = await db.select().from(missionContracts).where(and(
+      eq(missionContracts.questId, quest.id),
+      eq(missionContracts.userId, input.userId),
+      eq(missionContracts.riskLevel, "high"),
+    )).limit(1);
+    if (highRiskContract) {
+      if (highRiskContract.state !== "accepted") {
+        throw new MissionLifecycleError(409, "Accept this high-risk Mission's current consequence preflight before completing it.");
+      }
+      const [preflight] = await db.select({
+        status: missionConsequencePreflights.status,
+        decision: missionConsequencePreflights.decision,
+        acknowledgedNoAuthority: missionConsequencePreflights.acknowledgedNoAuthority,
+      }).from(missionConsequencePreflights).where(and(
+        eq(missionConsequencePreflights.userId, input.userId),
+        eq(missionConsequencePreflights.missionContractId, highRiskContract.id),
+        eq(missionConsequencePreflights.contractRevision, highRiskContract.contractRevision),
+      )).orderBy(desc(missionConsequencePreflights.createdAt), desc(missionConsequencePreflights.id)).limit(1);
+      if (!preflight || preflight.status !== "ready" || preflight.decision !== "proceed" || !preflight.acknowledgedNoAuthority) {
+        throw new MissionLifecycleError(409, "Record and accept a same-revision proceed preflight before completing this high-risk Mission.");
+      }
+    }
     const incompletePrerequisites = await db.select({ title: quests.title })
       .from(missionDependencies)
       .innerJoin(quests, eq(quests.id, missionDependencies.prerequisiteQuestId))

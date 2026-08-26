@@ -23,6 +23,7 @@ type MissionContractBundle = {
     requiredEvidence: string[];
     rubricDefinition: Array<{ id: string; requirement: string; guidance: string; weight: 1 | 2 | 3; required: boolean }>;
     rubricVersion: number;
+    contractRevision: number;
     acceptanceContextSnapshot: { capturedAt?: string; capacity?: { availability?: string }; constraints?: string[] };
     stopConditions: string[];
     state: string;
@@ -49,6 +50,28 @@ type MissionContractBundle = {
   }>;
   reviews: Array<{ id: number; decision: string; summary: string; reviewerType: "self" | "human"; reviewerUserId: number | null; rubricVersion: number }>;
   appeals: Array<{ id: number; missionReviewId: number; reason: string; status: "open" | "withdrawn" | "upheld" | "reconsidered"; resolutionSummary: string | null; createdAt: string }>;
+  preflights: Array<{
+    id: number;
+    contractRevision: number;
+    assumptions: string[];
+    affectedParties: string[];
+    scenarios: Array<{ kind: "expected" | "upside" | "downside"; outcome: string; earlySignals: string[] }>;
+    reversibility: "reversible" | "partly_reversible" | "irreversible";
+    mitigationPlan: string;
+    uncertaintyNote: string;
+    decision: "proceed" | "revise" | "do_not_proceed";
+    decisionRationale: string;
+    status: "ready" | "revise" | "stopped";
+    createdAt: string;
+  }>;
+  preflightRequirement: null | {
+    required: boolean;
+    satisfied: boolean;
+    contractRevision: number;
+    currentPreflightId: number | null;
+    reason: string;
+    disclosure: string;
+  };
   planningDecision: null | {
     source: string;
     context: { capturedAt: string; capacity: { availability: "low" | "steady" | "high" | "unknown" }; constraints: string[] };
@@ -153,6 +176,20 @@ export default function MissionDetailPage() {
   const [reviewerSearch, setReviewerSearch] = useState("");
   const [selectedReviewer, setSelectedReviewer] = useState<ReviewerOption | null>(null);
   const [appealReason, setAppealReason] = useState("");
+  const [preflightAssumptions, setPreflightAssumptions] = useState("");
+  const [preflightAffectedParties, setPreflightAffectedParties] = useState("");
+  const [preflightExpected, setPreflightExpected] = useState("");
+  const [preflightUpside, setPreflightUpside] = useState("");
+  const [preflightDownside, setPreflightDownside] = useState("");
+  const [preflightExpectedSignal, setPreflightExpectedSignal] = useState("");
+  const [preflightUpsideSignal, setPreflightUpsideSignal] = useState("");
+  const [preflightDownsideSignal, setPreflightDownsideSignal] = useState("");
+  const [preflightReversibility, setPreflightReversibility] = useState<"reversible" | "partly_reversible" | "irreversible">("partly_reversible");
+  const [preflightMitigation, setPreflightMitigation] = useState("");
+  const [preflightUncertainty, setPreflightUncertainty] = useState("");
+  const [preflightDecision, setPreflightDecision] = useState<"proceed" | "revise" | "do_not_proceed">("revise");
+  const [preflightRationale, setPreflightRationale] = useState("");
+  const [preflightAcknowledged, setPreflightAcknowledged] = useState(false);
   const invitationQuery = useQuery<MissionReviewInvitationBundle>({
     queryKey: ["/api/quests", questId, "review-invitations"],
     queryFn: () => apiRequest(`/api/quests/${questId}/review-invitations`),
@@ -176,7 +213,38 @@ export default function MissionDetailPage() {
         state: "accepted",
       }),
     }),
-    onSuccess: () => { refreshContract(); toast({ title: "Proof plan saved", description: "This mission now has a purpose and declared evidence." }); },
+    onSuccess: (result: MissionContractBundle) => { refreshContract(); toast({ title: "Proof plan saved", description: result.preflightRequirement?.required ? "High-risk plans remain draft until you record and accept a consequence preflight." : "This mission now has a purpose and declared evidence." }); },
+  });
+  const recordConsequencePreflight = useMutation({
+    mutationFn: () => apiRequest(`/api/quests/${questId}/contract/preflights`, {
+      method: "POST",
+      body: JSON.stringify({
+        contractRevision: contractQuery.data!.contract!.contractRevision,
+        assumptions: preflightAssumptions.split(/\r?\n/).map((item) => item.trim()).filter(Boolean).slice(0, 8),
+        affectedParties: preflightAffectedParties.split(/\r?\n/).map((item) => item.trim()).filter(Boolean).slice(0, 8),
+        scenarios: [
+          { kind: "expected", outcome: preflightExpected, earlySignals: [preflightExpectedSignal] },
+          { kind: "upside", outcome: preflightUpside, earlySignals: [preflightUpsideSignal] },
+          { kind: "downside", outcome: preflightDownside, earlySignals: [preflightDownsideSignal] },
+        ],
+        reversibility: preflightReversibility,
+        mitigationPlan: preflightMitigation,
+        uncertaintyNote: preflightUncertainty,
+        decision: preflightDecision,
+        decisionRationale: preflightRationale,
+        acknowledgedNoAuthority: preflightAcknowledged,
+      }),
+    }),
+    onSuccess: () => { refreshContract(); toast({ title: "Preflight recorded", description: preflightDecision === "proceed" ? "Review and accept this exact plan revision before execution." : "The Mission remains draft. Revise it or record a new decision when ready." }); },
+    onError: (error: Error) => toast({ title: "Preflight not recorded", description: error.message, variant: "destructive" }),
+  });
+  const acceptConsequencePreflight = useMutation({
+    mutationFn: () => apiRequest(`/api/quests/${questId}/contract/accept`, {
+      method: "POST",
+      body: JSON.stringify({ contractRevision: contractQuery.data!.contract!.contractRevision }),
+    }),
+    onSuccess: () => { refreshContract(); toast({ title: "High-risk plan accepted", description: "This records your decision; it does not certify safety or grant external authority." }); },
+    onError: (error: Error) => toast({ title: "Plan not accepted", description: error.message, variant: "destructive" }),
   });
   const changeReviewMode = useMutation({
     mutationFn: (mode: "self" | "human") => apiRequest(`/api/quests/${questId}/contract/review-mode`, {
@@ -365,6 +433,23 @@ export default function MissionDetailPage() {
   const allEvidenceRequirementsChecked = declaredEvidenceRequirements.every((requirement) => evidenceChecks[requirement] === true);
   const latestHumanRevision = contractQuery.data?.reviews.find((review) => review.reviewerType === "human" && review.decision === "revisions_needed");
   const openAppeal = contractQuery.data?.appeals.find((appeal) => appeal.status === "open");
+  const currentConsequencePreflight = contractQuery.data?.preflights.find((preflight) => preflight.contractRevision === contractQuery.data?.contract?.contractRevision);
+  const assumptionLines = preflightAssumptions.split(/\r?\n/).map((item) => item.trim()).filter(Boolean);
+  const affectedPartyLines = preflightAffectedParties.split(/\r?\n/).map((item) => item.trim()).filter(Boolean);
+  const consequencePreflightComplete = assumptionLines.length >= 1 && assumptionLines.length <= 8
+    && assumptionLines.every((item) => item.length >= 3 && item.length <= 280)
+    && affectedPartyLines.length >= 1 && affectedPartyLines.length <= 8
+    && affectedPartyLines.every((item) => item.length >= 2 && item.length <= 280)
+    && [preflightExpected, preflightUpside, preflightDownside].every((value) => value.trim().length >= 10)
+    && [
+    preflightExpectedSignal,
+    preflightUpsideSignal,
+    preflightDownsideSignal,
+  ].every((value) => value.trim().length >= 2)
+    && preflightMitigation.trim().length >= 10
+    && preflightUncertainty.trim().length >= 10
+    && preflightRationale.trim().length >= 10
+    && preflightAcknowledged;
   const dependencyIds = new Set((dependencyQuery.data?.dependencies || []).map((dependency) => dependency.prerequisiteQuestId));
   const availablePrerequisites = events.filter((event) => {
     const eventId = Number(event.id);
@@ -618,6 +703,46 @@ export default function MissionDetailPage() {
                     <ul className="mt-1 space-y-1 text-xs text-muted-foreground">{contractQuery.data.contract.rubricDefinition.map((criterion) => <li key={criterion.id} className="rounded border border-primary/10 bg-background/20 p-2"><span className="text-foreground">{criterion.requirement}</span> · weight {criterion.weight}{criterion.required ? " · required" : ""}<br /><span className="text-[11px]">{criterion.guidance}</span></li>)}</ul>
                   </div> : null}
                   <p><span className="text-muted-foreground">Risk:</span> {contractQuery.data.contract.riskLevel}</p>
+                  {contractQuery.data.contract.riskLevel === "high" && contractQuery.data.preflightRequirement ? <div className="rounded-md border border-amber-300/20 bg-amber-300/5 p-3 space-y-3">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div>
+                        <p className="text-[10px] font-mono uppercase tracking-[0.1em] text-amber-100">Consequence preflight · contract revision {contractQuery.data.contract.contractRevision}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">{contractQuery.data.preflightRequirement.reason}</p>
+                      </div>
+                      <span className={`rounded border px-2 py-1 text-[10px] ${contractQuery.data.preflightRequirement.satisfied ? "border-primary/30 text-primary" : "border-amber-300/25 text-amber-100"}`}>{contractQuery.data.preflightRequirement.satisfied ? "decision recorded" : "required before acceptance"}</span>
+                    </div>
+                    <p className="text-[11px] leading-relaxed text-muted-foreground">{contractQuery.data.preflightRequirement.disclosure}</p>
+                    {currentConsequencePreflight ? <div className="rounded border border-amber-300/15 bg-background/25 p-2 text-xs text-muted-foreground">
+                      <p><span className="text-foreground">Latest decision:</span> {currentConsequencePreflight.decision.replaceAll("_", " ")} · {currentConsequencePreflight.reversibility.replaceAll("_", " ")}</p>
+                      <p className="mt-1">{currentConsequencePreflight.decisionRationale}</p>
+                      <p className="mt-1 text-[10px]">Recorded {new Date(currentConsequencePreflight.createdAt).toLocaleString()} · append-only receipt</p>
+                    </div> : null}
+                    {!mission.completed && (contractQuery.data.contract.state !== "accepted" || !contractQuery.data.preflightRequirement.satisfied) ? <details open={!currentConsequencePreflight} className="rounded border border-amber-300/15 bg-background/20 p-2">
+                      <summary className="cursor-pointer text-xs text-amber-100">Record a new decision for this revision</summary>
+                      <div className="mt-3 grid gap-2">
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          <Textarea aria-label="Material assumptions" value={preflightAssumptions} onChange={(event) => setPreflightAssumptions(event.target.value)} placeholder={"Material assumptions, one per line\nWhat must be true for this plan to work?"} className="min-h-20" maxLength={2240} />
+                          <Textarea aria-label="Affected people or systems" value={preflightAffectedParties} onChange={(event) => setPreflightAffectedParties(event.target.value)} placeholder={"Affected people or systems, one per line\nInclude anyone bearing downside risk"} className="min-h-20" maxLength={2240} />
+                        </div>
+                        <div className="grid gap-2 lg:grid-cols-3">
+                          <div className="space-y-2 rounded border border-primary/10 p-2"><p className="text-xs text-foreground">Expected scenario</p><Textarea aria-label="Expected scenario outcome" value={preflightExpected} onChange={(event) => setPreflightExpected(event.target.value)} placeholder="What reasonably happens?" className="min-h-16" maxLength={800} /><Input aria-label="Expected scenario early signal" value={preflightExpectedSignal} onChange={(event) => setPreflightExpectedSignal(event.target.value)} placeholder="Early signal to watch" maxLength={280} /></div>
+                          <div className="space-y-2 rounded border border-primary/10 p-2"><p className="text-xs text-foreground">Upside scenario</p><Textarea aria-label="Upside scenario outcome" value={preflightUpside} onChange={(event) => setPreflightUpside(event.target.value)} placeholder="What could go better?" className="min-h-16" maxLength={800} /><Input aria-label="Upside scenario early signal" value={preflightUpsideSignal} onChange={(event) => setPreflightUpsideSignal(event.target.value)} placeholder="Early signal to watch" maxLength={280} /></div>
+                          <div className="space-y-2 rounded border border-amber-300/15 p-2"><p className="text-xs text-amber-100">Downside scenario</p><Textarea aria-label="Downside scenario outcome" value={preflightDownside} onChange={(event) => setPreflightDownside(event.target.value)} placeholder="What harm or failure could occur?" className="min-h-16" maxLength={800} /><Input aria-label="Downside scenario early warning" value={preflightDownsideSignal} onChange={(event) => setPreflightDownsideSignal(event.target.value)} placeholder="Early warning signal" maxLength={280} /></div>
+                        </div>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          <select aria-label="Plan reversibility" value={preflightReversibility} onChange={(event) => setPreflightReversibility(event.target.value as typeof preflightReversibility)} className="h-9 rounded-md border border-primary/20 bg-background/40 px-2 text-sm text-foreground"><option value="reversible">reversible</option><option value="partly_reversible">partly reversible</option><option value="irreversible">irreversible</option></select>
+                          <select aria-label="Preflight decision" value={preflightDecision} onChange={(event) => setPreflightDecision(event.target.value as typeof preflightDecision)} className="h-9 rounded-md border border-primary/20 bg-background/40 px-2 text-sm text-foreground"><option value="revise">revise the plan</option><option value="do_not_proceed">do not proceed</option><option value="proceed">proceed with this revision</option></select>
+                        </div>
+                        <Textarea aria-label="Mitigation and escalation plan" value={preflightMitigation} onChange={(event) => setPreflightMitigation(event.target.value)} placeholder="How will you contain harm, reverse what is reversible, or escalate?" className="min-h-16" maxLength={1200} />
+                        <Textarea aria-label="Remaining uncertainty" value={preflightUncertainty} onChange={(event) => setPreflightUncertainty(event.target.value)} placeholder="What remains unknown or unverified?" className="min-h-16" maxLength={800} />
+                        <Textarea aria-label="Preflight decision rationale" value={preflightRationale} onChange={(event) => setPreflightRationale(event.target.value)} placeholder="Why is revise, stop, or proceed the right decision now?" className="min-h-16" maxLength={1000} />
+                        <label className="flex items-start gap-2 text-[11px] leading-relaxed text-muted-foreground"><input type="checkbox" checked={preflightAcknowledged} onChange={(event) => setPreflightAcknowledged(event.target.checked)} className="mt-0.5" /><span>I understand this is my planning record. LyfeOS has not verified these assumptions, certified safety, granted authority, or replaced qualified professional advice.</span></label>
+                        <Button size="sm" variant="outline" className="w-fit border-amber-300/25 text-amber-100" disabled={!consequencePreflightComplete || recordConsequencePreflight.isPending} onClick={() => recordConsequencePreflight.mutate()}>{recordConsequencePreflight.isPending ? "Recording…" : "Record append-only preflight"}</Button>
+                      </div>
+                    </details> : null}
+                    {!mission.completed && contractQuery.data.preflightRequirement.satisfied && contractQuery.data.contract.state === "draft" ? <Button size="sm" className="w-fit" disabled={acceptConsequencePreflight.isPending} onClick={() => acceptConsequencePreflight.mutate()}>{acceptConsequencePreflight.isPending ? "Accepting…" : "Accept this high-risk plan revision"}</Button> : null}
+                    {mission.completed && !contractQuery.data.preflightRequirement.satisfied ? <p className="text-xs text-amber-100">Reopen this Mission to record the required pre-execution decision. A receipt cannot be backdated after completion.</p> : null}
+                  </div> : null}
                   <div className="flex flex-wrap items-center gap-2 text-xs">
                     <span className="text-muted-foreground">Review:</span>
                     <span className="rounded border border-primary/20 px-2 py-1">{contractQuery.data.contract.reviewMode === "human" ? "authorized human" : "self"}</span>

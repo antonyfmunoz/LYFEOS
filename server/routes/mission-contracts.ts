@@ -1,8 +1,9 @@
 import type { Express, Request, Response } from "express";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { isDeepStrictEqual } from "node:util";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../db";
-import { healthSourceRecords, missionContracts, missionDependencies, missionEvidence, missionEvidenceProviderBindings, missionReviewAppeals, missionReviewInvitations, missionReviews, personalCapabilities, questSkillContributions, quests, skillNodes, users } from "@shared/schema";
+import { healthSourceRecords, missionConsequencePreflights, missionContracts, missionDependencies, missionEvidence, missionEvidenceProviderBindings, missionReviewAppeals, missionReviewInvitations, missionReviews, personalCapabilities, questSkillContributions, quests, skillNodes, users } from "@shared/schema";
 import { isAuthenticated } from "./middleware";
 import { applyReviewedMissionProgression, revokeReviewedMissionProgression } from "../mission-lifecycle";
 import { wouldCreateMissionDependencyCycle } from "../mission-dependencies";
@@ -36,6 +37,30 @@ const contractSchema = z.object({
   escalationPath: z.string().trim().max(800).nullable().optional(),
   state: z.enum(["draft", "accepted"]).default("draft"),
 });
+const consequenceScenarioSchema = z.object({
+  kind: z.enum(["expected", "upside", "downside"]),
+  outcome: z.string().trim().min(10).max(800),
+  earlySignals: z.array(z.string().trim().min(2).max(280)).min(1).max(4),
+}).strict();
+const consequencePreflightSchema = z.object({
+  contractRevision: z.number().int().positive(),
+  assumptions: z.array(z.string().trim().min(3).max(280)).min(1).max(8),
+  affectedParties: z.array(z.string().trim().min(2).max(280)).min(1).max(8),
+  scenarios: z.array(consequenceScenarioSchema).length(3).superRefine((scenarios, context) => {
+    for (const kind of ["expected", "upside", "downside"] as const) {
+      if (scenarios.filter((scenario) => scenario.kind === kind).length !== 1) {
+        context.addIssue({ code: "custom", message: `Include exactly one ${kind} scenario.` });
+      }
+    }
+  }),
+  reversibility: z.enum(["reversible", "partly_reversible", "irreversible"]),
+  mitigationPlan: z.string().trim().min(10).max(1200),
+  uncertaintyNote: z.string().trim().min(10).max(800),
+  decision: z.enum(["proceed", "revise", "do_not_proceed"]),
+  decisionRationale: z.string().trim().min(10).max(1000),
+  acknowledgedNoAuthority: z.literal(true),
+}).strict();
+const consequenceAcceptSchema = z.object({ contractRevision: z.number().int().positive() }).strict();
 const manualEvidenceSchema = z.object({
   sourceType: z.enum(["self_report", "artifact", "observation"]),
   sourceReference: z.string().trim().max(2000).nullable().optional(),
@@ -84,6 +109,43 @@ async function ownedQuest(questId: number, userId: number) {
   return quest;
 }
 
+function contractMaterialState(value: Record<string, unknown>) {
+  return {
+    purpose: value.purpose,
+    expectedOutput: value.expectedOutput,
+    methodSteps: value.methodSteps,
+    toolRequirements: value.toolRequirements,
+    capabilityTargets: value.capabilityTargets,
+    prerequisites: value.prerequisites,
+    requiredEvidence: value.requiredEvidence,
+    rubricDefinition: value.rubricDefinition,
+    reviewMode: value.reviewMode,
+    riskLevel: value.riskLevel,
+    stopConditions: value.stopConditions,
+    escalationPath: value.escalationPath || null,
+  };
+}
+
+function preflightRequirement(contract: typeof missionContracts.$inferSelect, preflights: Array<typeof missionConsequencePreflights.$inferSelect>) {
+  const latest = preflights.find((preflight) => preflight.contractRevision === contract.contractRevision) || null;
+  const required = contract.riskLevel === "high";
+  const satisfied = !required || Boolean(latest && latest.status === "ready" && latest.decision === "proceed" && latest.acknowledgedNoAuthority);
+  return {
+    required,
+    satisfied,
+    contractRevision: contract.contractRevision,
+    currentPreflightId: latest?.id || null,
+    reason: !required
+      ? "This proof plan is not classified as high risk."
+      : satisfied
+        ? "A same-revision consequence preflight records the user's proceed decision."
+        : latest
+          ? `The latest same-revision preflight says ${latest.decision.replaceAll("_", " ")}; revise the plan or record a new decision before acceptance.`
+          : "Record a consequence preflight for this exact contract revision before accepting or completing the Mission.",
+    disclosure: "A preflight makes assumptions and downside planning inspectable. It does not predict safety, verify the scenario, grant authority, or replace professional advice.",
+  };
+}
+
 async function contractBundle(questId: number, userId: number) {
   const [contract] = await db.select().from(missionContracts)
     .where(and(eq(missionContracts.questId, questId), eq(missionContracts.userId, userId))).limit(1);
@@ -97,8 +159,8 @@ async function contractBundle(questId: number, userId: number) {
     calibration: quest.difficultyCalibration,
     source: quest.planningDecisionSource,
   } : null;
-  if (!contract) return { contract: null, evidence: [], reviews: [], appeals: [], planningDecision, unlockResult: null };
-  const [evidence, reviews, appeals, contributions] = await Promise.all([
+  if (!contract) return { contract: null, evidence: [], reviews: [], appeals: [], preflights: [], preflightRequirement: null, planningDecision, unlockResult: null };
+  const [evidence, reviews, appeals, contributions, preflights] = await Promise.all([
     missionEvidenceForContracts([contract.id], userId),
     db.select().from(missionReviews).where(and(eq(missionReviews.missionContractId, contract.id), eq(missionReviews.userId, userId))).orderBy(desc(missionReviews.createdAt)),
     db.select().from(missionReviewAppeals).where(and(eq(missionReviewAppeals.missionContractId, contract.id), eq(missionReviewAppeals.userId, userId))).orderBy(desc(missionReviewAppeals.createdAt)),
@@ -112,8 +174,12 @@ async function contractBundle(questId: number, userId: number) {
       .innerJoin(skillNodes, and(eq(skillNodes.id, questSkillContributions.skillNodeId), eq(skillNodes.userId, userId)))
       .leftJoin(personalCapabilities, and(eq(personalCapabilities.id, skillNodes.capabilityId), eq(personalCapabilities.userId, userId)))
       .where(and(eq(questSkillContributions.questId, questId), eq(questSkillContributions.userId, userId))),
+    db.select().from(missionConsequencePreflights).where(and(
+      eq(missionConsequencePreflights.missionContractId, contract.id),
+      eq(missionConsequencePreflights.userId, userId),
+    )).orderBy(desc(missionConsequencePreflights.createdAt), desc(missionConsequencePreflights.id)).limit(20),
   ]);
-  return { contract, evidence, reviews, appeals, planningDecision, unlockResult: buildMissionUnlockResult(contributions, Boolean(contract.progressionAppliedAt)) };
+  return { contract, evidence, reviews, appeals, preflights, preflightRequirement: preflightRequirement(contract, preflights), planningDecision, unlockResult: buildMissionUnlockResult(contributions, Boolean(contract.progressionAppliedAt)) };
 }
 
 async function dependencyBundle(questId: number, userId: number) {
@@ -334,33 +400,145 @@ export function registerMissionContractRoutes(app: Express): void {
     const parsed = contractSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: "Invalid mission contract.", details: parsed.error.flatten() });
     const input = parsed.data;
-    const [existing] = await db.select({
-      progressionAppliedAt: missionContracts.progressionAppliedAt,
-      rubricDefinition: missionContracts.rubricDefinition,
-      rubricVersion: missionContracts.rubricVersion,
-    })
-      .from(missionContracts)
-      .where(and(eq(missionContracts.questId, questId), eq(missionContracts.userId, req.session.userId!)))
-      .limit(1);
-    if (existing?.progressionAppliedAt) {
-      return res.status(409).json({ error: "Reopen this reviewed mission before changing the contract that supports its recorded progression." });
-    }
-    const rubricDefinition = normalizeRubricDefinition(input.requiredEvidence, input.rubricDefinition);
-    const rubricChanged = existing && JSON.stringify(existing.rubricDefinition) !== JSON.stringify(rubricDefinition);
-    const rubricVersion = existing ? existing.rubricVersion + (rubricChanged ? 1 : 0) : 1;
     const [profile, stats, dailyLog] = await Promise.all([
       storage.getUserProfile(req.session.userId!),
       storage.getUserStats(req.session.userId!),
       storage.getUserDailyLogByDate(req.session.userId!, new Date()),
     ]);
     const acceptanceContextSnapshot = buildPlanningContextSnapshot({ profile, stats, dailyLog });
-    const [contract] = await db.insert(missionContracts).values({
-      userId: req.session.userId!, questId, ...input, rubricDefinition, rubricVersion, acceptanceContextSnapshot, escalationPath: input.escalationPath || null,
-    }).onConflictDoUpdate({
-      target: missionContracts.questId,
-      set: { ...input, rubricDefinition, rubricVersion, acceptanceContextSnapshot, escalationPath: input.escalationPath || null, updatedAt: new Date() },
-    }).returning();
+    const result = await db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(120010, ${questId})`);
+      const [currentQuest] = await tx.select({ completed: quests.completed }).from(quests).where(and(
+        eq(quests.id, questId),
+        eq(quests.userId, req.session.userId!),
+      )).limit(1);
+      if (!currentQuest) return { error: "Mission not found.", status: 404 as const };
+      if (currentQuest.completed) return { error: "Reopen this mission before changing its proof plan.", status: 409 as const };
+      const [existing] = await tx.select()
+        .from(missionContracts)
+        .where(and(eq(missionContracts.questId, questId), eq(missionContracts.userId, req.session.userId!)))
+        .limit(1);
+      if (existing?.progressionAppliedAt) {
+        return { error: "Reopen this reviewed mission before changing the contract that supports its recorded progression.", status: 409 as const };
+      }
+      const rubricDefinition = normalizeRubricDefinition(input.requiredEvidence, input.rubricDefinition);
+      const rubricChanged = existing && !isDeepStrictEqual(existing.rubricDefinition, rubricDefinition);
+      const rubricVersion = existing ? existing.rubricVersion + (rubricChanged ? 1 : 0) : 1;
+      const nextMaterialState = contractMaterialState({ ...input, rubricDefinition, escalationPath: input.escalationPath || null });
+      const materialChanged = existing
+        ? !isDeepStrictEqual(contractMaterialState(existing as unknown as Record<string, unknown>), nextMaterialState)
+        : true;
+      const contractRevision = existing ? existing.contractRevision + (materialChanged ? 1 : 0) : 1;
+      const state = input.riskLevel === "high"
+        ? existing?.riskLevel === "high" && existing.state === "accepted" && !materialChanged ? "accepted" : "draft"
+        : input.state;
+      const [contract] = await tx.insert(missionContracts).values({
+        userId: req.session.userId!, questId, ...input, state, rubricDefinition, rubricVersion, contractRevision, acceptanceContextSnapshot, escalationPath: input.escalationPath || null,
+      }).onConflictDoUpdate({
+        target: missionContracts.questId,
+        set: { ...input, state, rubricDefinition, rubricVersion, contractRevision, acceptanceContextSnapshot, escalationPath: input.escalationPath || null, updatedAt: new Date() },
+      }).returning();
+      if (!contract) return { error: "Mission proof plan could not be saved.", status: 409 as const };
+      return { contract };
+    });
+    if (!("contract" in result)) return res.status(result.status).json({ error: result.error });
+    const { contract } = result;
+    if (!contract) return res.status(409).json({ error: "Mission proof plan could not be saved." });
     return res.json(await contractBundle(contract.questId, req.session.userId!));
+  });
+
+  app.post("/api/quests/:questId/contract/preflights", isAuthenticated, async (req: Request, res: Response) => {
+    const questId = Number(req.params.questId);
+    if (!Number.isInteger(questId)) return res.status(400).json({ error: "Invalid mission." });
+    const userId = req.session.userId!;
+    const quest = await ownedQuest(questId, userId);
+    if (!quest) return res.status(404).json({ error: "Mission not found." });
+    if (quest.completed) return res.status(409).json({ error: "A consequence preflight must be recorded before completion. Reopen this Mission first." });
+    const parsed = consequencePreflightSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: "Complete every consequence-preflight field.", details: parsed.error.flatten() });
+    const result = await db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(120010, ${questId})`);
+      const [currentQuest] = await tx.select({ completed: quests.completed }).from(quests).where(and(
+        eq(quests.id, questId),
+        eq(quests.userId, userId),
+      )).limit(1);
+      if (!currentQuest) return { error: "Mission not found.", status: 404 as const };
+      if (currentQuest.completed) return { error: "A consequence preflight must be recorded before completion. Reopen this Mission first.", status: 409 as const };
+      const [contract] = await tx.select().from(missionContracts).where(and(
+        eq(missionContracts.questId, questId),
+        eq(missionContracts.userId, userId),
+      )).limit(1);
+      if (!contract) return { error: "Create the Mission proof plan before its consequence preflight.", status: 409 as const };
+      if (contract.riskLevel !== "high") return { error: "Consequence preflight is reserved for Missions explicitly classified as high risk.", status: 409 as const };
+      if (contract.progressionAppliedAt || contract.state === "reviewed") return { error: "Reopen this reviewed Mission before changing its execution decision.", status: 409 as const };
+      if (contract.contractRevision !== parsed.data.contractRevision) {
+        return { error: "This proof plan changed. Review the current revision before recording a decision.", status: 409 as const, currentRevision: contract.contractRevision };
+      }
+      const status = parsed.data.decision === "proceed" ? "ready" : parsed.data.decision === "revise" ? "revise" : "stopped";
+      await tx.insert(missionConsequencePreflights).values({
+        userId,
+        missionContractId: contract.id,
+        contractRevision: contract.contractRevision,
+        assumptions: parsed.data.assumptions,
+        affectedParties: parsed.data.affectedParties,
+        scenarios: parsed.data.scenarios,
+        reversibility: parsed.data.reversibility,
+        mitigationPlan: parsed.data.mitigationPlan,
+        uncertaintyNote: parsed.data.uncertaintyNote,
+        decision: parsed.data.decision,
+        decisionRationale: parsed.data.decisionRationale,
+        status,
+        stopConditionsSnapshot: contract.stopConditions,
+        acknowledgedNoAuthority: true,
+      });
+      return { created: true as const };
+    });
+    if (!("created" in result)) return res.status(result.status).json({ error: result.error, ...("currentRevision" in result ? { currentRevision: result.currentRevision } : {}) });
+    return res.status(201).json(await contractBundle(questId, userId));
+  });
+
+  app.post("/api/quests/:questId/contract/accept", isAuthenticated, async (req: Request, res: Response) => {
+    const questId = Number(req.params.questId);
+    if (!Number.isInteger(questId)) return res.status(400).json({ error: "Invalid mission." });
+    const userId = req.session.userId!;
+    const quest = await ownedQuest(questId, userId);
+    if (!quest) return res.status(404).json({ error: "Mission not found." });
+    if (quest.completed) return res.status(409).json({ error: "Reopen this Mission before accepting a pre-execution decision." });
+    const parsed = consequenceAcceptSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: "Review the current proof-plan revision before acceptance." });
+    const result = await db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(120010, ${questId})`);
+      const [currentQuest] = await tx.select({ completed: quests.completed }).from(quests).where(and(
+        eq(quests.id, questId),
+        eq(quests.userId, userId),
+      )).limit(1);
+      if (!currentQuest) return { error: "Mission not found.", status: 404 as const };
+      if (currentQuest.completed) return { error: "Reopen this Mission before accepting a pre-execution decision.", status: 409 as const };
+      const [contract] = await tx.select().from(missionContracts).where(and(
+        eq(missionContracts.questId, questId),
+        eq(missionContracts.userId, userId),
+      )).limit(1);
+      if (!contract) return { error: "Mission proof plan not found.", status: 404 as const };
+      if (contract.riskLevel !== "high") return { error: "This proof plan does not require high-risk acceptance.", status: 409 as const };
+      if (contract.contractRevision !== parsed.data.contractRevision) return { error: "This proof plan changed. Review its current revision before acceptance.", status: 409 as const };
+      if (contract.progressionAppliedAt || contract.state === "reviewed") return { error: "This reviewed Mission cannot be re-accepted.", status: 409 as const };
+      const [preflight] = await tx.select().from(missionConsequencePreflights).where(and(
+        eq(missionConsequencePreflights.userId, userId),
+        eq(missionConsequencePreflights.missionContractId, contract.id),
+        eq(missionConsequencePreflights.contractRevision, contract.contractRevision),
+      )).orderBy(desc(missionConsequencePreflights.createdAt), desc(missionConsequencePreflights.id)).limit(1);
+      if (!preflight || preflight.status !== "ready" || preflight.decision !== "proceed" || !preflight.acknowledgedNoAuthority) {
+        return { error: "Record a same-revision proceed preflight before accepting this high-risk Mission.", status: 409 as const };
+      }
+      const [accepted] = await tx.update(missionContracts).set({ state: "accepted", updatedAt: new Date() }).where(and(
+        eq(missionContracts.id, contract.id),
+        eq(missionContracts.userId, userId),
+        eq(missionContracts.contractRevision, contract.contractRevision),
+      )).returning({ id: missionContracts.id });
+      return accepted ? { accepted: true as const } : { error: "This proof plan changed during acceptance.", status: 409 as const };
+    });
+    if (!("accepted" in result)) return res.status(result.status).json({ error: result.error });
+    return res.json(await contractBundle(questId, userId));
   });
 
   app.patch("/api/quests/:questId/contract/review-mode", isAuthenticated, async (req: Request, res: Response) => {
@@ -371,14 +549,26 @@ export function registerMissionContractRoutes(app: Express): void {
     const quest = await ownedQuest(questId, req.session.userId!);
     if (!quest) return res.status(404).json({ error: "Mission not found." });
     if (quest.completed) return res.status(409).json({ error: "Reopen this mission before changing who must review its evidence." });
-    const [contract] = await db.select().from(missionContracts)
-      .where(and(eq(missionContracts.questId, questId), eq(missionContracts.userId, req.session.userId!))).limit(1);
-    if (!contract) return res.status(404).json({ error: "Mission proof plan not found." });
-    if (contract.progressionAppliedAt || contract.state === "reviewed") {
-      return res.status(409).json({ error: "Reopen this reviewed mission before changing who must review its evidence." });
-    }
-    const [updated] = await db.transaction(async (tx) => {
-      const [changed] = await tx.update(missionContracts).set({ reviewMode: parsed.data.reviewMode, updatedAt: new Date() })
+    const result = await db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(120010, ${questId})`);
+      const [currentQuest] = await tx.select({ completed: quests.completed }).from(quests).where(and(
+        eq(quests.id, questId),
+        eq(quests.userId, req.session.userId!),
+      )).limit(1);
+      if (!currentQuest) return { error: "Mission not found.", status: 404 as const };
+      if (currentQuest.completed) return { error: "Reopen this mission before changing who must review its evidence.", status: 409 as const };
+      const [contract] = await tx.select().from(missionContracts)
+        .where(and(eq(missionContracts.questId, questId), eq(missionContracts.userId, req.session.userId!))).limit(1);
+      if (!contract) return { error: "Mission proof plan not found.", status: 404 as const };
+      if (contract.progressionAppliedAt || contract.state === "reviewed") {
+        return { error: "Reopen this reviewed mission before changing who must review its evidence.", status: 409 as const };
+      }
+      const invalidatesHighRiskDecision = contract.riskLevel === "high" && contract.reviewMode !== parsed.data.reviewMode;
+      const [changed] = await tx.update(missionContracts).set({
+        reviewMode: parsed.data.reviewMode,
+        ...(invalidatesHighRiskDecision ? { state: "draft", contractRevision: sql`${missionContracts.contractRevision} + 1` } : {}),
+        updatedAt: new Date(),
+      })
         .where(eq(missionContracts.id, contract.id)).returning();
       if (parsed.data.reviewMode === "self") {
         await tx.update(missionReviewInvitations).set({ status: "revoked" }).where(and(
@@ -387,9 +577,10 @@ export function registerMissionContractRoutes(app: Express): void {
           inArray(missionReviewInvitations.status, ["pending", "accepted"]),
         ));
       }
-      return [changed];
+      return { contract: changed };
     });
-    return res.json({ contract: updated });
+    if (!("contract" in result)) return res.status(result.status).json({ error: result.error });
+    return res.json(result);
   });
 
   app.post("/api/quests/:questId/evidence", isAuthenticated, async (req: Request, res: Response) => {
