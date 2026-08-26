@@ -71,6 +71,10 @@ describe("private workspace search", () => {
     expect(route).toContain("websearch_to_tsquery('simple'");
     expect(route).toContain("ts_rank_cd");
     expect(route).toContain("word_similarity");
+    expect(route).toContain("sql`${quests.title} % ${input.q}`");
+    expect(route).not.toContain("ilike(quests.description");
+    expect(route).not.toContain("ilike(documents.content");
+    expect(route).not.toContain("word_similarity(${input.q}, ${quests.title}) >=");
     expect(route).toContain(".slice(0, input.limit)");
   });
 

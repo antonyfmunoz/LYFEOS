@@ -51,27 +51,27 @@ export function registerSearchRoutes(app: Express): void {
       const [missionRows, documentRows, spreadsheetRows, canvasRows, databaseRows, relationshipRows] = await Promise.all([
         db.select({ id: quests.id, title: quests.title, description: quests.description, category: quests.category, updatedAt: quests.updatedAt, relevance: missionRelevance })
           .from(quests)
-          .where(and(eq(quests.userId, userId), isNull(quests.deletedAt), or(ilike(quests.title, pattern), ilike(quests.description, pattern), sql`${missionVector} @@ ${textQuery}`, sql`word_similarity(${input.q}, ${quests.title}) >= 0.35`)))
+          .where(and(eq(quests.userId, userId), isNull(quests.deletedAt), or(ilike(quests.title, pattern), sql`${missionVector} @@ ${textQuery}`, sql`${quests.title} % ${input.q}`)))
           .orderBy(desc(missionRelevance), desc(quests.updatedAt)).limit(input.limit),
         db.select({ id: documents.id, title: documents.title, description: documents.description, content: documents.content, updatedAt: documents.updatedAt, relevance: documentRelevance })
           .from(documents)
-          .where(and(eq(documents.userId, userId), isNull(documents.deletedAt), or(ilike(documents.title, pattern), ilike(documents.description, pattern), ilike(documents.content, pattern), sql`${documentVector} @@ ${textQuery}`, sql`word_similarity(${input.q}, ${documents.title}) >= 0.35`)))
+          .where(and(eq(documents.userId, userId), isNull(documents.deletedAt), or(ilike(documents.title, pattern), sql`${documentVector} @@ ${textQuery}`, sql`${documents.title} % ${input.q}`)))
           .orderBy(desc(documentRelevance), desc(documents.updatedAt)).limit(input.limit),
         db.select({ id: spreadsheets.id, title: spreadsheets.title, description: spreadsheets.description, category: spreadsheets.category, updatedAt: spreadsheets.updatedAt, relevance: spreadsheetRelevance })
           .from(spreadsheets)
-          .where(and(eq(spreadsheets.userId, userId), or(ilike(spreadsheets.title, pattern), ilike(spreadsheets.description, pattern), sql`${spreadsheetVector} @@ ${textQuery}`, sql`word_similarity(${input.q}, ${spreadsheets.title}) >= 0.35`)))
+          .where(and(eq(spreadsheets.userId, userId), or(ilike(spreadsheets.title, pattern), sql`${spreadsheetVector} @@ ${textQuery}`, sql`${spreadsheets.title} % ${input.q}`)))
           .orderBy(desc(spreadsheetRelevance), desc(spreadsheets.updatedAt)).limit(input.limit),
         db.select({ id: canvases.id, title: canvases.title, description: canvases.description, category: canvases.category, updatedAt: canvases.updatedAt, relevance: canvasRelevance })
           .from(canvases)
-          .where(and(eq(canvases.userId, userId), or(ilike(canvases.title, pattern), ilike(canvases.description, pattern), sql`${canvasVector} @@ ${textQuery}`, sql`word_similarity(${input.q}, ${canvases.title}) >= 0.35`)))
+          .where(and(eq(canvases.userId, userId), or(ilike(canvases.title, pattern), sql`${canvasVector} @@ ${textQuery}`, sql`${canvases.title} % ${input.q}`)))
           .orderBy(desc(canvasRelevance), desc(canvases.updatedAt)).limit(input.limit),
         db.select({ id: workspaceDatabases.id, title: workspaceDatabases.title, description: workspaceDatabases.description, category: workspaceDatabases.category, updatedAt: workspaceDatabases.updatedAt, relevance: databaseRelevance })
           .from(workspaceDatabases)
-          .where(and(eq(workspaceDatabases.userId, userId), or(ilike(workspaceDatabases.title, pattern), ilike(workspaceDatabases.description, pattern), sql`${databaseVector} @@ ${textQuery}`, sql`word_similarity(${input.q}, ${workspaceDatabases.title}) >= 0.35`)))
+          .where(and(eq(workspaceDatabases.userId, userId), or(ilike(workspaceDatabases.title, pattern), sql`${databaseVector} @@ ${textQuery}`, sql`${workspaceDatabases.title} % ${input.q}`)))
           .orderBy(desc(databaseRelevance), desc(workspaceDatabases.updatedAt)).limit(input.limit),
         db.select({ id: contacts.id, name: contacts.name, alias: contacts.alias, company: contacts.company, jobTitle: contacts.jobTitle, category: contacts.category, updatedAt: contacts.updatedAt, relevance: relationshipRelevance })
           .from(contacts)
-          .where(and(eq(contacts.userId, userId), or(ilike(contacts.name, pattern), ilike(contacts.alias, pattern), ilike(contacts.company, pattern), ilike(contacts.jobTitle, pattern), sql`${relationshipVector} @@ ${textQuery}`, sql`word_similarity(${input.q}, ${contacts.name}) >= 0.35`)))
+          .where(and(eq(contacts.userId, userId), or(ilike(contacts.name, pattern), sql`${relationshipVector} @@ ${textQuery}`, sql`${contacts.name} % ${input.q}`)))
           .orderBy(desc(relationshipRelevance), desc(contacts.updatedAt)).limit(input.limit),
       ]);
 

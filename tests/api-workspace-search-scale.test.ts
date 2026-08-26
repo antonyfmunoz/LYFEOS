@@ -119,9 +119,8 @@ describeApi("private workspace search at realistic account scale", () => {
       FROM quests
       WHERE user_id = $1 AND deleted_at IS NULL AND (
         title ILIKE '%atlasneedle%'
-        OR description ILIKE '%atlasneedle%'
         OR to_tsvector('simple', COALESCE(title, '') || ' ' || COALESCE(description, '')) @@ websearch_to_tsquery('simple', 'atlasneedle')
-        OR word_similarity('atlasneedle', title) >= 0.35
+        OR title % 'atlasneedle'
       )
       ORDER BY updated_at DESC
       LIMIT 25
