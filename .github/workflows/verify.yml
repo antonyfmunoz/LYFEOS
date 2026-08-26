@@ -114,3 +114,36 @@ jobs:
             cat "$server_log"
           fi
           exit "$test_status"
+      - name: Rehearse logical backup and isolated restore
+        shell: bash
+        run: |
+          backup="$RUNNER_TEMP/lyfeos-ci-backup.dump"
+          restored_url="postgresql://postgres:postgres@127.0.0.1:5432/lyfeos_restore_ci"
+          schema_fingerprint() {
+            psql "$1" -At -v ON_ERROR_STOP=1 <<'SQL'
+          SELECT md5(string_agg(signature, E'\n' ORDER BY signature))
+          FROM (
+            SELECT 'column|' || table_name || '|' || column_name || '|' || data_type || '|' || is_nullable || '|' || coalesce(column_default, '') AS signature
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+            UNION ALL
+            SELECT 'constraint|' || conrelid::regclass::text || '|' || conname || '|' || pg_get_constraintdef(oid, true)
+            FROM pg_constraint
+            WHERE connamespace = 'public'::regnamespace
+            UNION ALL
+            SELECT 'index|' || tablename || '|' || indexname || '|' || indexdef
+            FROM pg_indexes
+            WHERE schemaname = 'public'
+          ) AS structure;
+          SQL
+          }
+          source_fingerprint="$(schema_fingerprint "$DATABASE_URL")"
+          source_migrations="$(psql "$DATABASE_URL" -At -v ON_ERROR_STOP=1 -c 'SELECT string_agg(id, '"'"','"'"' ORDER BY id) FROM lyfeos_schema_migrations')"
+          test "$(psql "$DATABASE_URL" -At -v ON_ERROR_STOP=1 -c 'SELECT count(*) FROM lyfeos_schema_migrations')" = "119"
+          pg_dump "$DATABASE_URL" --format=custom --no-owner --no-acl --file="$backup"
+          test -s "$backup"
+          psql "postgresql://postgres:postgres@127.0.0.1:5432/postgres" -v ON_ERROR_STOP=1 -c 'CREATE DATABASE lyfeos_restore_ci' >/dev/null
+          pg_restore --dbname="$restored_url" --no-owner --no-acl --exit-on-error "$backup"
+          test "$(schema_fingerprint "$restored_url")" = "$source_fingerprint"
+          test "$(psql "$restored_url" -At -v ON_ERROR_STOP=1 -c 'SELECT string_agg(id, '"'"','"'"' ORDER BY id) FROM lyfeos_schema_migrations')" = "$source_migrations"
+          test "$(psql "$restored_url" -At -v ON_ERROR_STOP=1 -c 'SELECT count(*) FROM lyfeos_schema_migrations')" = "119"

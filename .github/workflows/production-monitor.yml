@@ -37,6 +37,14 @@ jobs:
         run: |
           status="$(curl --silent --show-error --retry 2 --retry-all-errors --max-time 20 --output /dev/null --write-out '%{http_code}' https://lyfeos.net/api/auth/me)"
           test "$status" = "401"
+      - name: Verify immutable release and migration identity
+        run: |
+          body="$(curl --fail --silent --show-error --retry 2 --retry-all-errors --max-time 20 https://lyfeos.net/api/release)"
+          test "$(printf '%s' "$body" | jq -r '.service')" = "lyfeos"
+          printf '%s' "$body" | jq -e '.sourceRevision | test("^[0-9a-f]{40}$")' >/dev/null
+          test "$(printf '%s' "$body" | jq -r '.migrations.status')" = "available"
+          test "$(printf '%s' "$body" | jq -r '.migrations.count')" -ge 119
+          test "$(printf '%s' "$body" | jq -r '.migrations.latest')" = "0127_distributed_request_rate_limits"
       - name: Verify protected health integrity aggregates
         env:
           LYFEOS_MONITOR_TOKEN: ${{ secrets.LYFEOS_MONITOR_TOKEN }}

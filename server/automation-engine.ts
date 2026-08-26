@@ -18,6 +18,7 @@ import { shiftCalendarDate } from "@shared/calendar";
 import { db } from "./db";
 import { createMissionLifecycle, updateMissionLifecycle } from "./mission-lifecycle";
 import { formatLocalDate, logger } from "./utils";
+import * as Sentry from "@sentry/node";
 
 type AutomationRecord = typeof workflowAutomations.$inferSelect;
 type RunRecord = typeof workflowAutomationRuns.$inferSelect;
@@ -239,13 +240,29 @@ async function persistRunOutcome(input: {
     return;
   }
 
-  await db.update(workflowAutomations).set({
+  const [failureState] = await db.update(workflowAutomations).set({
     consecutiveFailures: sql`${workflowAutomations.consecutiveFailures} + 1`,
     enabled: sql`CASE WHEN ${workflowAutomations.consecutiveFailures} + 1 >= ${FAILURE_PAUSE_THRESHOLD} THEN false ELSE ${workflowAutomations.enabled} END`,
     pausedAt: sql`CASE WHEN ${workflowAutomations.consecutiveFailures} + 1 >= ${FAILURE_PAUSE_THRESHOLD} THEN ${now} ELSE ${workflowAutomations.pausedAt} END`,
     pauseReason: sql`CASE WHEN ${workflowAutomations.consecutiveFailures} + 1 >= ${FAILURE_PAUSE_THRESHOLD} THEN 'REPEATED_ACTION_FAILURE' ELSE ${workflowAutomations.pauseReason} END`,
     updatedAt: now,
-  }).where(and(eq(workflowAutomations.id, input.automationId), eq(workflowAutomations.userId, input.run.userId)));
+  }).where(and(eq(workflowAutomations.id, input.automationId), eq(workflowAutomations.userId, input.run.userId))).returning({
+    consecutiveFailures: workflowAutomations.consecutiveFailures,
+    pauseReason: workflowAutomations.pauseReason,
+  });
+
+  // Emit once on the exact transition into the safety pause. Sentry is a
+  // configured operational sink only; user content and identity stay out of
+  // the event, while local logs remain useful when the provider is disabled.
+  if (failureState?.consecutiveFailures === FAILURE_PAUSE_THRESHOLD && failureState.pauseReason === "REPEATED_ACTION_FAILURE") {
+    const context = { automationId: input.automationId, runId: input.run.id, consecutiveFailures: failureState.consecutiveFailures };
+    logger.error("Workflow automation paused after repeated action failures", context);
+    Sentry.captureMessage("Workflow automation paused after repeated action failures", {
+      level: "error",
+      tags: { subsystem: "workflow_automation", pause_reason: "REPEATED_ACTION_FAILURE" },
+      extra: context,
+    });
+  }
 }
 
 async function executeRunActions(input: {
