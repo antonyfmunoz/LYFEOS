@@ -3567,6 +3567,70 @@ export const healthInsightInterpretations = pgTable("health_insight_interpretati
   index("health_insight_interpretations_user_created_idx").on(table.userId, table.createdAt),
 ]);
 
+// Cross-domain hypotheses are private, explicitly consented analytical
+// comparisons. They never award XP, mutate Missions, or become verified facts.
+export const hypothesisDomainConsents = pgTable("hypothesis_domain_consents", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  domain: text("domain").notNull(),
+  state: text("state").notNull(),
+  policyVersion: text("policy_version").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [index("hypothesis_domain_consents_user_domain_created_idx").on(table.userId, table.domain, table.id)]);
+
+export const crossDomainHypotheses = pgTable("cross_domain_hypotheses", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  leftSignalId: text("left_signal_id").notNull(),
+  rightSignalId: text("right_signal_id").notNull(),
+  periodDays: integer("period_days").notNull(),
+  lagDays: integer("lag_days").notNull().default(0),
+  timeZone: text("time_zone").notNull(),
+  status: text("status").notNull().default("active"),
+  revision: integer("revision").notNull().default(1),
+  calculationState: text("calculation_state").notNull().default("idle"),
+  lastErrorCode: text("last_error_code"),
+  nextCalculationAt: timestamp("next_calculation_at").notNull().defaultNow(),
+  lastCalculatedAt: timestamp("last_calculated_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [index("cross_domain_hypotheses_user_updated_idx").on(table.userId, table.updatedAt), index("cross_domain_hypotheses_due_idx").on(table.nextCalculationAt, table.id)]);
+
+export const crossDomainHypothesisSnapshots = pgTable("cross_domain_hypothesis_snapshots", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  hypothesisId: integer("hypothesis_id").notNull().references(() => crossDomainHypotheses.id, { onDelete: "cascade" }),
+  definitionRevision: integer("definition_revision").notNull(),
+  calculationVersion: text("calculation_version").notNull(),
+  evidenceStart: date("evidence_start").notNull(),
+  evidenceEnd: date("evidence_end").notNull(),
+  result: jsonb("result").notNull(),
+  leftQuality: jsonb("left_quality").notNull(),
+  rightQuality: jsonb("right_quality").notNull(),
+  dataFingerprint: text("data_fingerprint").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("cross_domain_hypothesis_snapshots_fingerprint_unique_idx").on(table.hypothesisId, table.definitionRevision, table.evidenceEnd, table.dataFingerprint),
+  index("cross_domain_hypothesis_snapshots_user_hypothesis_created_idx").on(table.userId, table.hypothesisId, table.createdAt),
+]);
+
+export const crossDomainHypothesisInterpretations = pgTable("cross_domain_hypothesis_interpretations", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  hypothesisId: integer("hypothesis_id").notNull().references(() => crossDomainHypotheses.id, { onDelete: "cascade" }),
+  snapshotId: integer("snapshot_id").notNull().references(() => crossDomainHypothesisSnapshots.id, { onDelete: "cascade" }),
+  interpretation: text("interpretation").notNull(),
+  note: text("note"),
+  acknowledgedExploratory: boolean("acknowledged_exploratory").notNull().default(false),
+  clientMutationId: text("client_mutation_id").notNull(),
+  mutationPayloadHash: text("mutation_payload_hash").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("cross_domain_hypothesis_interpretations_user_mutation_unique_idx").on(table.userId, table.clientMutationId),
+  index("cross_domain_hypothesis_interpretations_user_hypothesis_created_idx").on(table.userId, table.hypothesisId, table.createdAt),
+]);
+
 // Metadata-only model receipts intentionally omit the private question, source
 // values, and model output. Those values live only in the originating response.
 export const healthAiRequests = pgTable("health_ai_requests", {

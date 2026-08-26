@@ -29,6 +29,7 @@ import { startNotificationScheduler } from "./notificationScheduler";
 import { startUMHOutboxWorker } from "./umh/outbox";
 import { startHealthDeletionReceiptCleanup } from "./health-deletion-cleanup";
 import { startProductAnalyticsDeletionWorker } from "./product-analytics";
+import { startHypothesisWorker, stopHypothesisWorker } from "./hypothesis-engine";
 import { execSync } from "child_process";
 import * as Sentry from "@sentry/node";
 import { SESSION_COOKIE_NAME } from "./session-config";
@@ -279,12 +280,14 @@ async function ensureDatabaseSchema() {
     startUMHOutboxWorker();
     startHealthDeletionReceiptCleanup();
     startProductAnalyticsDeletionWorker();
+    startHypothesisWorker();
   });
 
   server.listen({ port, host: "0.0.0.0" });
 
   const gracefulShutdown = (signal: string) => {
     log(`Received ${signal}, shutting down gracefully...`);
+    stopHypothesisWorker();
     server.close(() => {
       log('Server closed');
       process.exit(0);

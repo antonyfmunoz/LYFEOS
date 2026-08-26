@@ -16,6 +16,7 @@ import { prepareMissionCreation } from "../mission-lifecycle";
 import { nutrientDefinitions, nutrientKeys } from "../nutrition";
 import { parseExpectedResourceRevision } from "../revision-concurrency";
 import { generateHealthAssistance, healthAssistantBoundary } from "../health-assistant";
+import { HYPOTHESIS_CONSENT_VERSION } from "@shared/hypotheses";
 
 const insightQuery = z.object({
   left: z.string().min(1).max(300), right: z.string().min(1).max(300).optional(),
@@ -756,6 +757,13 @@ export function registerHealthInsightRoutes(app: Express): void {
     tables.nutrition_recipe_ingredients = (childQueries[1] as { rows?: unknown[] }).rows || [];
     tables.workout_exercises = (childQueries[2] as { rows?: unknown[] }).rows || [];
     tables.workout_sets = (childQueries[3] as { rows?: unknown[] }).rows || [];
+    const healthHypotheses = await db.execute(sql`SELECT * FROM "cross_domain_hypotheses" WHERE "user_id" = ${userId} AND ("left_signal_id" LIKE 'health.%' OR "right_signal_id" LIKE 'health.%')`);
+    const healthHypothesisIds = sql`SELECT "id" FROM "cross_domain_hypotheses" WHERE "user_id" = ${userId} AND ("left_signal_id" LIKE 'health.%' OR "right_signal_id" LIKE 'health.%')`;
+    const healthHypothesisSnapshots = await db.execute(sql`SELECT * FROM "cross_domain_hypothesis_snapshots" WHERE "user_id" = ${userId} AND "hypothesis_id" IN (${healthHypothesisIds})`);
+    const healthHypothesisInterpretations = await db.execute(sql`SELECT * FROM "cross_domain_hypothesis_interpretations" WHERE "user_id" = ${userId} AND "hypothesis_id" IN (${healthHypothesisIds})`);
+    tables.cross_domain_hypotheses = (healthHypotheses as { rows?: unknown[] }).rows || [];
+    tables.cross_domain_hypothesis_snapshots = (healthHypothesisSnapshots as { rows?: unknown[] }).rows || [];
+    tables.cross_domain_hypothesis_interpretations = (healthHypothesisInterpretations as { rows?: unknown[] }).rows || [];
     res.setHeader("Content-Type", "application/json; charset=utf-8");
     res.setHeader("Content-Disposition", `attachment; filename="lyfeos-health-export-${new Date().toISOString().slice(0, 10)}.json"`);
     return res.send(JSON.stringify({ exportedAt: new Date().toISOString(), scope: "LyfeOS private health domain", tables }, null, 2));
@@ -766,11 +774,15 @@ export function registerHealthInsightRoutes(app: Express): void {
     if (!parsed.success) return res.status(400).json({ error: "Type DELETE MY HEALTH DATA to confirm." });
     const userId = req.session.userId!;
     const counts = await healthCounts(userId, healthDeleteOrder);
+    const hypothesisCountResult = await db.execute(sql`SELECT count(*)::integer AS "count" FROM "cross_domain_hypotheses" WHERE "user_id" = ${userId} AND ("left_signal_id" LIKE 'health.%' OR "right_signal_id" LIKE 'health.%')`);
+    counts.cross_domain_hypotheses = Number((hypothesisCountResult as { rows?: Array<{ count: number }> }).rows?.[0]?.count || 0);
     await db.transaction(async (tx) => {
+      await tx.execute(sql`DELETE FROM "cross_domain_hypotheses" WHERE "user_id" = ${userId} AND ("left_signal_id" LIKE 'health.%' OR "right_signal_id" LIKE 'health.%')`);
+      await tx.execute(sql`INSERT INTO "hypothesis_domain_consents" ("user_id", "domain", "state", "policy_version") VALUES (${userId}, 'health', 'revoked', ${HYPOTHESIS_CONSENT_VERSION})`);
       for (const table of healthDeleteOrder) await tx.execute(sql`DELETE FROM ${sql.identifier(table)} WHERE "user_id" = ${userId}`);
       await tx.execute(sql`UPDATE "user_daily_logs" SET "sleep_time" = NULL, "wake_time" = NULL, "sleep_quality" = NULL, "sleep_note" = NULL WHERE "user_id" = ${userId}`);
       await tx.insert(healthDataRightsAudit).values({ userId, action: "health_data_deleted", scope: "health_domain", details: { deletedRecordCounts: counts, dailyWellnessSleepFieldsCleared: true } });
     });
-    return res.json({ deleted: true, deletedRecordCounts: counts, disclosure: "Private health-domain records and Daily Wellness sleep fields were deleted. The rights receipt and non-health account data remain." });
+    return res.json({ deleted: true, deletedRecordCounts: counts, disclosure: "Private health-domain records, Health-derived cross-domain hypotheses, and Daily Wellness sleep fields were deleted. Health hypothesis consent was revoked; the rights receipt and non-health account data remain." });
   });
 }

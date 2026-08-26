@@ -17,6 +17,7 @@ import {
   XAxis, YAxis, Tooltip, CartesianGrid, Area, AreaChart,
   Cell, PieChart, Pie, Legend
 } from "recharts";
+import HypothesisWorkbench from "@/components/analytics/HypothesisWorkbench";
 
 const RANGE_OPTIONS = [
   { label: "7D", value: 7 },
@@ -374,11 +375,9 @@ export default function AnalyticsPage() {
           </div>
         );
       case 'pattern-explorer':
-        if (!sleepWellnessDataQuality.readyToExplore) {
-          return <EmptyState message={`${sleepWellnessDataQuality.note} ${sleepWellnessDataQuality.observations}/${sleepWellnessDataQuality.availableDays} complete days in this range.`} />;
-        }
         return (
-          <ChartCard title="Sleep and daily state" icon={<TrendingUp className="h-5 w-5" />}>
+          <div>
+          {sleepWellnessDataQuality.readyToExplore ? <ChartCard title="Sleep and daily state" icon={<TrendingUp className="h-5 w-5" />}>
             <ResponsiveContainer width="100%" height={250}>
               <LineChart data={sleepWellnessCorrelation}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted))" opacity={0.3} />
@@ -395,7 +394,9 @@ export default function AnalyticsPage() {
               <span>{sleepWellnessDataQuality.observations}/{sleepWellnessDataQuality.availableDays} complete days · {sleepWellnessDataQuality.coveragePercent}% coverage</span>
             </div>
             <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{sleepWellnessDataQuality.note} This is an observed co-occurrence in your self-reported data, not a causal or health conclusion.</p>
-          </ChartCard>
+          </ChartCard> : <EmptyState message={`${sleepWellnessDataQuality.note} ${sleepWellnessDataQuality.observations}/${sleepWellnessDataQuality.availableDays} complete days in this range.`} />}
+          <HypothesisWorkbench />
+          </div>
         );
       case 'personal-records':
         if (!personalRecords) return null;
