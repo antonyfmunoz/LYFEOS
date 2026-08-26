@@ -1,0 +1,65 @@
+name: Managed recovery drill
+
+on:
+  schedule:
+    - cron: "0 17 1 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: lyfeos-managed-recovery-drill
+  cancel-in-progress: false
+
+jobs:
+  open-drill:
+    name: Open the monthly managed recovery drill
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create or refresh the drill ticket
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const title = '[Recovery drill] LyfeOS managed point-in-time restore';
+            const { data: openIssues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100,
+            });
+            const existing = openIssues.find((issue) => issue.title === title);
+            const body = [
+              'Recurring production-recovery ownership ticket. Do not restore over production.',
+              '',
+              `Opened or refreshed by the scheduled workflow at ${new Date().toISOString()}.`,
+              '',
+              '## Required evidence',
+              '',
+              '- [ ] Select a timestamp inside the current managed restore window and record why it is safe.',
+              '- [ ] Restore only into an isolated provider branch; record branch identity and start time.',
+              '- [ ] Compare migration ledger, schema fingerprint, and content-free production aggregates.',
+              '- [ ] Run the production-mode account/session and Mission/Project read-write acceptance journey.',
+              '- [ ] Return test data to baseline and record restore and validation durations.',
+              '- [ ] Delete the isolated branch after validating the intended target path.',
+              '- [ ] Record any provider, application, access-custody, or incident-response failure and owner.',
+              '',
+              'The required CI workflow separately rehearses logical backup/restore on every promoted revision. Closing this ticket requires managed-provider evidence; CI is not a substitute.',
+            ].join('\n');
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                body: `Monthly recovery-drill reminder at ${new Date().toISOString()}. Complete the open checklist before closing.`,
+              });
+              return;
+            }
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+              assignees: [context.repo.owner],
+            });
