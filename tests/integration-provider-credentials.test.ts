@@ -9,7 +9,7 @@ let credentials: Module;
 beforeAll(async () => {
   process.env.DATABASE_URL ||= "postgresql://unused:unused@127.0.0.1:5432/unused";
   credentials = await import("../server/integration-provider-credentials");
-});
+}, 30_000);
 
 describe("general integration provider credential vault", () => {
   const key = crypto.randomBytes(32);

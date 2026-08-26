@@ -179,7 +179,7 @@ async function selectFederationAuditRows(userId: number, clerkId?: string | null
   };
 }
 
-async function deleteLocalAccountData(userId: number): Promise<void> {
+export async function deleteLocalAccountData(userId: number): Promise<void> {
   await db.transaction(async (tx) => {
     // Retire every pseudonymous analytics subject before its owner record is
     // erased. This operational queue intentionally survives account deletion

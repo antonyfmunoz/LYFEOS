@@ -6,6 +6,8 @@ import { logger, formatLocalDate } from "../utils";
 import crypto from "crypto";
 import bcrypt from "bcrypt";
 import { SESSION_COOKIE_NAME } from "../session-config";
+import { applyClerkUserLifecycleEvent } from "../clerk-webhook-lifecycle";
+import { deleteLocalAccountData } from "./profile";
 
 declare module "express-session" {
   interface SessionData {
@@ -202,26 +204,16 @@ export function registerAuthRoutes(app: Express): void {
     try {
       const verified = verifyClerkWebhook(req);
       if (!verified.ok) return res.status(process.env.CLERK_WEBHOOK_SIGNING_SECRET ? 401 : 503).json({ error: verified.reason });
-      const { type, data } = verified.body;
-
-      if (type === "user.created") {
-        const clerkId = data.id;
-        const email = data.email_addresses?.[0]?.email_address;
-        const firstName = data.first_name || null;
-        const lastName = data.last_name || null;
-
-        if (!email) {
-          logger.error("Clerk webhook user.created: no email found");
-          return res.status(400).json({ error: "No email in webhook payload" });
-        }
-
-        const user = await provisionLocalUser({ clerkId, email, firstName, lastName });
-
-        logger.debug("Clerk webhook: created new user", user.id);
-        return res.json({ success: true, userId: user.id });
-      }
-
-      return res.json({ success: true });
+      const type = typeof verified.body.type === "string" ? verified.body.type : "";
+      const data = verified.body.data && typeof verified.body.data === "object" ? verified.body.data : {};
+      const result = await applyClerkUserLifecycleEvent(type, data, {
+        getUserByClerkId: (clerkId) => storage.getUserByClerkId(clerkId),
+        getUserByEmail: (email) => storage.getUserByEmail(email),
+        provisionUser: provisionLocalUser,
+        updateUser: (id, patch) => storage.updateUser(id, patch),
+        deleteLocalAccountData,
+      });
+      return res.status(result.status).json(result.body);
     } catch (error) {
       logger.error("Clerk webhook error:", error);
       return res.status(500).json({ error: "Internal server error" });
