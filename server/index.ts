@@ -38,7 +38,10 @@ import { consumeDistributedRateLimit, deleteExpiredRateLimits, rateLimitBucketHa
 
 const sentryDsn = process.env.SENTRY_DSN;
 const sentryEnvironment = process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || "development";
-const sentryRelease = process.env.SENTRY_RELEASE;
+// The immutable image revision is updated by the deploy command and must win
+// over a manually configured fallback so server and browser events cannot be
+// attributed to an older release after a successful deployment.
+const sentryRelease = process.env.LYFEOS_RELEASE?.trim() || process.env.SENTRY_RELEASE?.trim();
 
 Sentry.init({
   dsn: sentryDsn,
