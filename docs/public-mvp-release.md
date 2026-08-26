@@ -36,9 +36,9 @@ Build the client with a production Clerk publishable key. Provide it through the
 1. Publish approved Terms of Service and Privacy Policy at the registration links before collecting contractual consent. Do not substitute placeholder content.
 2. Back up the production database.
 3. The Fly release command applies the idempotent release migrations before the new app version receives traffic, including `0025_ai_context_preferences`, `0026_mission_deferrals`, `0027_mission_dependencies`, and `0028_mission_evidence_confidence`. Confirm the release output records each new migration ID on first release and reports success on later releases. Apply any older, untracked migrations deliberately before enabling a new environment.
-4. In Clerk, configure the production origin, redirect URLs, and a `user.created` webhook at `https://<public-host>/api/webhooks/clerk`.
+4. In Clerk, configure the production origin, redirect URLs, and a webhook at `https://<public-host>/api/webhooks/clerk` subscribed exactly to `user.created`, `user.updated`, and `user.deleted`.
 5. Put Clerk's `whsec_...` signing secret in `CLERK_WEBHOOK_SIGNING_SECRET`. The webhook fails closed until configured; first authenticated login still provisions a LyfeOS account if webhook delivery is delayed.
-6. Verify a new Clerk user results in one LyfeOS user, stats record, profile, integration record, and daily log.
+6. With a disposable authorized account, verify create and update result in one canonical LyfeOS user, stats record, profile, integration record, and daily log. Verify provider-only deletion invokes complete LyfeOS account erasure, while deletion of a Clerk identity linked to a local-password account preserves the locally owned account and unlinks only Clerk.
 
 ## Verification
 
@@ -64,7 +64,7 @@ Run this acceptance pass on staging and production:
 2. Complete onboarding and refresh the page.
 3. Create, edit, complete, restore, and delete a mission; confirm the dashboard and mission list agree after refresh.
 4. Confirm one user cannot request another user's records by altering a user ID in a request.
-5. Send an invalid Clerk webhook and confirm it returns `401`; send a valid Clerk test webhook and confirm it is accepted.
+5. Send an invalid Clerk webhook and confirm it returns `401`; send a signed, non-mutating `user.deleted` provider example and confirm successful delivery. Exercise create/update/delete only with a disposable user and confirm the lifecycle outcomes in the preceding section.
 6. Complete all onboarding missions and confirm the dashboard shows one reviewable Transformation Thread derived from the saved onboarding profile. Activate it and confirm exactly three linked starter missions are created; verify no second active thread can be activated.
 7. Add a prerequisite to a second mission and confirm it cannot be completed before its prerequisite; confirm a cycle is rejected. On a low-capacity day, defer an over-capacity recommended mission and confirm its due date changes while an audit row is recorded. Complete one linked mission, add the declared mission evidence, and record a positive review. Confirm activity XP appears on completion but skill XP, reviewed Thread evidence, and any capability progress appear only after the review. Save one daily reflection, record a weekly review, pause and resume the thread, then complete it with a closing reflection only after the readiness requirements are met.
 8. From Profile settings, export data, clear chat history in a test account, reset the generated AI profile, and confirm account deletion requires the exact confirmation phrase.
