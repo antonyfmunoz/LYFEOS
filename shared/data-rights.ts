@@ -134,6 +134,18 @@ export const LYFEOS_DATA_CLASSES: readonly LyfeOSDataClass[] = [
     rightsDetail: "Operational systems are intentionally separated from the portable product record. Sentry is configured without default PII; approved retention and deletion operations remain provider/operations responsibilities.",
   },
   {
+    id: "product_analytics",
+    label: "Optional product analytics",
+    sensitivity: "sensitive",
+    purpose: "Measure coarse LyfeOS adoption, navigation, and completion funnels only after the owner explicitly opts in.",
+    examples: ["coarse area viewed", "mission lifecycle milestone", "onboarding completion", "random analytics subject"],
+    access: "restricted_operations",
+    retention: "owner_configurable",
+    retentionDetail: "Capture is off by default. Withdrawal stops capture, retires the random subject, and queues provider-side person and event deletion.",
+    rights: { export: true, erase: true, revoke: true },
+    rightsDetail: "Consent receipts are included in account export. No message, mission, Health, profile, or journal content is collected. Re-enabling creates a new random subject rather than reusing one queued for deletion.",
+  },
+  {
     id: "external_providers",
     label: "External provider records",
     sensitivity: "sensitive",
@@ -155,6 +167,7 @@ export const LYFEOS_DATA_RIGHTS = {
     local: "transactional_erasure",
     authenticationProvider: "delete_requested_before_local_erasure",
     sharedRecords: "other_participants_and_external_copies_are_not_unilaterally_erased",
+    productAnalytics: "capture_stops_and_provider_deletion_is_queued_before_local_erasure",
   },
   classes: LYFEOS_DATA_CLASSES,
 } as const;

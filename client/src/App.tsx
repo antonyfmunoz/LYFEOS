@@ -14,6 +14,7 @@ import VoiceOverlay from "./components/VoiceOverlay";
 import BlueLightFilter from "./components/BlueLightFilter";
 import { setHapticEnabled } from "./lib/haptics";
 import { setSoundEnabled } from "./lib/sounds";
+import { ProductAnalytics } from "./components/ProductAnalytics";
 
 const DashboardPage = React.lazy(() => import("./pages/DashboardPage"));
 const QuestsPage = React.lazy(() => import("./pages/QuestsPage"));
@@ -726,6 +727,7 @@ function App() {
               <VoiceOverlay />
               <CelebrationOverlay />
               <BlueLightFilter />
+              <ProductAnalytics />
               <Toaster />
             </DndProvider>
           </ThemeProvider>

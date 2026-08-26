@@ -73,6 +73,7 @@ import {
   Trash2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { PRODUCT_ANALYTICS_POLICY_VERSION, type ProductAnalyticsStatus } from "@/lib/productAnalytics";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { DraggableWidget, type DraggableWidgetProps } from '@/components/ui/draggable-widget';
@@ -760,6 +761,27 @@ export default function ProfilePage() {
   }>({
     queryKey: ["/api/account/data-rights"],
     enabled: !!user?.id,
+  });
+  const { data: productAnalytics } = useQuery<ProductAnalyticsStatus>({
+    queryKey: ["/api/product-analytics"],
+    enabled: !!user?.id,
+    staleTime: 30_000,
+  });
+  const productAnalyticsMutation = useMutation({
+    mutationFn: (enabled: boolean) => apiRequest<ProductAnalyticsStatus>("/api/product-analytics/consent", {
+      method: "PUT",
+      body: JSON.stringify({ enabled, policyVersion: PRODUCT_ANALYTICS_POLICY_VERSION }),
+    }),
+    onSuccess: (status) => {
+      queryClient.setQueryData(["/api/product-analytics"], status);
+      toast({
+        title: status.enabled ? "Product analytics enabled" : "Product analytics disabled",
+        description: status.enabled
+          ? "LyfeOS will record only the coarse, content-free events listed here."
+          : "Capture stopped and the retired analytics subject was queued for provider deletion.",
+      });
+    },
+    onError: (error: Error) => toast({ title: "Could not update product analytics", description: error.message, variant: "destructive" }),
   });
 
   const { data: twoFactorStatus, refetch: refetchTwoFactorStatus } = useQuery<{
@@ -2134,6 +2156,45 @@ export default function ProfilePage() {
                   <Trash2 className="mr-2 h-3.5 w-3.5" /> Permanently delete account
                 </Button>
               </div>
+            </div>
+
+            <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <BarChart4 className="h-4 w-4 text-primary" />
+                <Label className="text-sm text-foreground">Optional Product Analytics</Label>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">
+                Help improve LyfeOS by sharing coarse navigation and core-loop milestones. This is off by default and never includes message, mission, Health, profile, journal, or document content.
+              </p>
+              <div className="flex items-center justify-between gap-4 p-3 bg-card/50 rounded-lg">
+                <div>
+                  <p className="text-sm text-foreground">Share content-free usage events</p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    {productAnalytics?.configured
+                      ? (productAnalytics.enabled ? "Enabled with your explicit consent." : "Disabled. No PostHog events are sent.")
+                      : "Unavailable until the privacy and deletion credentials are configured."}
+                  </p>
+                </div>
+                <button
+                  onClick={() => productAnalyticsMutation.mutate(!productAnalytics?.enabled)}
+                  disabled={!productAnalytics?.configured || productAnalyticsMutation.isPending}
+                  className={`w-10 h-5 shrink-0 rounded-full relative transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-50 ${productAnalytics?.enabled ? 'bg-primary/30' : 'bg-card'}`}
+                  aria-pressed={productAnalytics?.enabled === true}
+                  aria-label="Share optional product analytics"
+                  role="switch"
+                >
+                  <span className={`absolute top-0.5 w-4 h-4 rounded-full transition-all duration-300 ${productAnalytics?.enabled ? 'left-5 bg-primary shadow-[0_0_5px_var(--primary-glow-medium)]' : 'left-0.5 bg-muted-foreground'}`} />
+                </button>
+              </div>
+              <details className="mt-3 rounded-md border border-primary/10 bg-card/30 px-3 py-2">
+                <summary className="cursor-pointer text-xs font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">Exactly what can be recorded</summary>
+                <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+                  Session start, coarse app area viewed, onboarding completion, mission creation/completion/reopen, evidence submission, review completion, and transformation-focus completion. Automatic click capture, session replay, exception capture, precise URLs, and profile properties stay disabled.
+                </p>
+                <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+                  Turning this off stops capture immediately, retires the random analytics identifier, and queues its provider-side events for deletion. Re-enabling creates a new identifier.
+                </p>
+              </details>
             </div>
 
             {/* Connected Apps / Integrations */}

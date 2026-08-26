@@ -1,5 +1,6 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import { getBrowserTimeZone } from "@/lib/utils";
+import { captureProductMutation } from "@/lib/productAnalytics";
 
 export function timeContextHeaders(): Record<string, string> {
   return { "x-lyfeos-time-zone": getBrowserTimeZone(), "x-lyfeos-utc-offset-minutes": String(-new Date().getTimezoneOffset()) };
@@ -28,7 +29,9 @@ export async function apiRequest<T = any>(
 
   await throwIfResNotOk(res);
   if (res.status === 204) return undefined as T;
-  return await res.json() as T;
+  const data = await res.json() as T;
+  captureProductMutation(url, options, data);
+  return data;
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";

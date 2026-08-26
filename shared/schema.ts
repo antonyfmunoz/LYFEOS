@@ -968,6 +968,30 @@ export const spreadsheets = pgTable("spreadsheets", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Product analytics is explicit opt-in. Each enablement receives a fresh
+// pseudonymous subject so a provider-deleted identifier is never reused.
+export const productAnalyticsConsents = pgTable("product_analytics_consents", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  subjectId: uuid("subject_id").notNull(),
+  state: text("state").notNull(),
+  policyVersion: text("policy_version").notNull(),
+  source: text("source").notNull().default("profile_settings"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [index("product_analytics_consents_user_created_idx").on(table.userId, table.id)]);
+
+// The queue deliberately has no user FK. It retains only the retired random
+// subject until PostHog confirms the right-to-be-forgotten request was queued.
+export const productAnalyticsDeletionQueue = pgTable("product_analytics_deletion_queue", {
+  id: serial("id").primaryKey(),
+  subjectId: uuid("subject_id").notNull().unique(),
+  requestedAt: timestamp("requested_at").notNull().defaultNow(),
+  attempts: integer("attempts").notNull().default(0),
+  lastAttemptAt: timestamp("last_attempt_at"),
+  lastError: text("last_error"),
+  completedAt: timestamp("completed_at"),
+}, (table) => [index("product_analytics_deletion_queue_pending_idx").on(table.requestedAt, table.id)]);
+
 export const spreadsheetRevisions = pgTable("spreadsheet_revisions", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),

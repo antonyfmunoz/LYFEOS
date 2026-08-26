@@ -28,6 +28,7 @@ import connectPgSimple from "connect-pg-simple";
 import { startNotificationScheduler } from "./notificationScheduler";
 import { startUMHOutboxWorker } from "./umh/outbox";
 import { startHealthDeletionReceiptCleanup } from "./health-deletion-cleanup";
+import { startProductAnalyticsDeletionWorker } from "./product-analytics";
 import { execSync } from "child_process";
 import * as Sentry from "@sentry/node";
 import { SESSION_COOKIE_NAME } from "./session-config";
@@ -277,6 +278,7 @@ async function ensureDatabaseSchema() {
     startNotificationScheduler();
     startUMHOutboxWorker();
     startHealthDeletionReceiptCleanup();
+    startProductAnalyticsDeletionWorker();
   });
 
   server.listen({ port, host: "0.0.0.0" });
