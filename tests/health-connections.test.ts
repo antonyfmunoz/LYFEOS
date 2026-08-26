@@ -16,12 +16,13 @@ describe("provider-neutral health connections", () => {
     expect(nextHealthConnectionState("revoked", "resume", true)).toBeNull();
   });
 
-  it("marks every provider unavailable until its real authorization dependency exists", () => {
+  it("keeps every provider fail-closed until its real authorization dependency exists", () => {
     expect(healthProviderCatalog.map((provider) => provider.id)).toEqual(["apple_health", "health_connect", "oura", "whoop", "strava", "garmin"]);
     expect(healthProviderCatalog.every((provider) => provider.availability.startsWith("requires_"))).toBe(true);
     const ui = source("client/src/components/health/HealthConnections.tsx");
     expect(ui).toContain("Preparing consent does not connect, sync, or import anything");
-    expect(ui).toContain("Live authorization is unavailable");
+    expect(ui).toContain("Live authorization is not configured for this provider");
+    expect(ui).toContain("Connect Oura");
     expect(ui).toContain("LyfeOS data map");
     expect(ui).toContain("Actual records still depend on source support and your authorization");
     expect(ui).toContain("No provider-native mapping has been reviewed yet");
@@ -29,6 +30,7 @@ describe("provider-neutral health connections", () => {
     expect(routes).toContain("reviewedProviderCanonicalMetrics(provider.id)");
     expect(routes).toContain("providerSourceMapVersion");
     expect(routes).toContain('health-provider-consent-v2');
+    expect(routes).toContain('provider.id === "oura" && Boolean(configuredOuraOAuth())');
   });
 
   it("adds consent, cursor, immutable-source, priority, and audit persistence", () => {

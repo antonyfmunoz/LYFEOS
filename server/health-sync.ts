@@ -13,7 +13,9 @@ export const healthSyncRunCountsSchema = z.object({
   failedCount: z.number().int().min(0).max(1_000_000),
 }).superRefine((counts, context) => {
   if (counts.correctedCount > counts.importedCount) context.addIssue({ code: z.ZodIssueCode.custom, message: "Corrected records must be a subset of imported records." });
-  if (counts.importedCount + counts.replayedCount + counts.suppressedCount + counts.failedCount > counts.fetchedCount) context.addIssue({ code: z.ZodIssueCode.custom, message: "Run outcomes cannot exceed fetched records." });
+  const durableOutcomes = counts.importedCount + counts.replayedCount + counts.suppressedCount;
+  if (durableOutcomes > counts.fetchedCount) context.addIssue({ code: z.ZodIssueCode.custom, message: "Durable run outcomes cannot exceed fetched records." });
+  if (counts.failedCount > counts.fetchedCount && !(counts.fetchedCount === 0 && counts.failedCount === 1)) context.addIssue({ code: z.ZodIssueCode.custom, message: "Only one page-level failure may exist before records are fetched." });
 });
 
 export function healthSyncLockKey(connectionId: number, resourceType: string): string {

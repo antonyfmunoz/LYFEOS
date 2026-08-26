@@ -10,6 +10,8 @@ describe("provider import run receipts", () => {
     expect(healthSyncRunCountsSchema.safeParse({ fetchedCount: 4, importedCount: 1, replayedCount: 1, correctedCount: 1, suppressedCount: 1, failedCount: 1 }).success).toBe(true);
     expect(healthSyncRunCountsSchema.safeParse({ fetchedCount: 1, importedCount: 1, replayedCount: 1, correctedCount: 0, suppressedCount: 0, failedCount: 0 }).success).toBe(false);
     expect(healthSyncRunCountsSchema.safeParse({ fetchedCount: 1, importedCount: 0, replayedCount: 0, correctedCount: 1, suppressedCount: 0, failedCount: 0 }).success).toBe(false);
+    expect(healthSyncRunCountsSchema.safeParse({ fetchedCount: 0, importedCount: 0, replayedCount: 0, correctedCount: 0, suppressedCount: 0, failedCount: 1 }).success).toBe(true);
+    expect(healthSyncRunCountsSchema.safeParse({ fetchedCount: 0, importedCount: 0, replayedCount: 0, correctedCount: 0, suppressedCount: 0, failedCount: 2 }).success).toBe(false);
   });
 
   it("stores sanitized run and failure receipts without payloads, cursors, or vendor messages", () => {

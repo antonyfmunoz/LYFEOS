@@ -1,4 +1,5 @@
 import type { Express, Request, Response } from "express";
+import crypto from "node:crypto";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { healthConnectionAudits, healthConnections, healthImportFailures, healthImportRuns, healthObservations, healthProviderCredentials, healthSourcePreferences, healthSourceRecords, healthSourceSuppressions, healthSyncCursors } from "@shared/schema";
@@ -7,6 +8,20 @@ import { healthConnectionLockKey, healthProviderCatalog, healthProviderDefinitio
 import { isAuthenticated } from "./middleware";
 import { canonicalHealthMetricRegistryVersion } from "../health-provider-metrics";
 import { healthProviderSourceMap, reviewedProviderCanonicalMetrics } from "../health-provider-source-maps";
+import { healthCredentialEnvelopeVersion, healthCredentialReference, openHealthProviderCredential, sealHealthProviderCredential } from "../health-provider-credentials";
+import { buildOuraAuthorizationUrl, configuredOuraOAuth, exchangeOuraAuthorizationCode, normalizeOuraGrantedScopes, ouraAppScopesFromGrantedProviderScopes, ouraProviderScopesForAppScopes, revokeOuraAccessToken } from "../oura-oauth";
+import { syncOuraResourcePage } from "../oura-sync";
+import { ouraSyncResourceSchema, ouraSyncResourcesForScopes } from "../oura-sync-contract";
+
+declare module "express-session" {
+  interface SessionData {
+    ouraOAuthState?: string;
+    ouraOAuthUserId?: number;
+    ouraOAuthConnectionId?: number;
+    ouraOAuthRequestedScopes?: string[];
+    ouraOAuthStartedAt?: number;
+  }
+}
 
 const consentVersion = "health-provider-consent-v2";
 const intentSchema = z.object({ provider: z.string().trim().min(1).max(60), scopes: z.array(z.string().trim().min(1).max(60)).min(1).max(12) });
@@ -16,8 +31,24 @@ const sourcePreferenceSchema = z.object({
   metricKey: z.string().trim().min(1).max(120).regex(/^[a-z0-9_.:-]+$/i),
   orderedSources: z.array(z.string().trim().min(1).max(60)).min(1).max(12),
 });
+const ouraSyncSchema = z.object({ resource: ouraSyncResourceSchema });
 
 const actionAudit: Record<HealthConnectionAction, string> = { cancel: "cancelled", pause: "paused", resume: "resumed", retry: "retry_requested", revoke: "revoked" };
+const ouraOAuthStateLifetimeMs = 10 * 60 * 1_000;
+
+function safeStateMatch(received: unknown, expected: unknown): boolean {
+  if (typeof received !== "string" || typeof expected !== "string") return false;
+  const receivedBytes = Buffer.from(received); const expectedBytes = Buffer.from(expected);
+  return receivedBytes.length === expectedBytes.length && crypto.timingSafeEqual(receivedBytes, expectedBytes);
+}
+
+function clearOuraOAuthSession(req: Request): void {
+  delete req.session.ouraOAuthState;
+  delete req.session.ouraOAuthUserId;
+  delete req.session.ouraOAuthConnectionId;
+  delete req.session.ouraOAuthRequestedScopes;
+  delete req.session.ouraOAuthStartedAt;
+}
 
 export function registerHealthConnectionRoutes(app: Express): void {
   app.get("/api/health-connections", isAuthenticated, async (req: Request, res: Response) => {
@@ -37,12 +68,14 @@ export function registerHealthConnectionRoutes(app: Express): void {
         providerSourceMapVersion: healthProviderSourceMap(provider.id)?.version || null,
         providerSourceMapReviewedAt: healthProviderSourceMap(provider.id)?.reviewedAt || null,
         canonicalMetrics: reviewedProviderCanonicalMetrics(provider.id),
-        liveAuthorizationAvailable: false,
+        liveAuthorizationAvailable: provider.id === "oura" && Boolean(configuredOuraOAuth()),
       })),
       connections: connections.map((connection) => ({ ...connection, cursors: cursors.filter((cursor) => cursor.connectionId === connection.id), importRuns: runs.filter((run) => run.connectionId === connection.id), importFailures: failures.filter((failure) => failure.connectionId === connection.id) })),
       sourcePreferences: preferences,
       audits,
-      disclosure: "This connection foundation stores consent intent and lifecycle receipts, but no live provider adapter or credential is available in this build. A pending intent is not a connected or syncing account.",
+      disclosure: configuredOuraOAuth()
+        ? "Oura authorization is available after an explicit consent intent. Other providers remain preparation-only. Authorization alone does not claim that a first sync has succeeded."
+        : "This environment stores consent intent and lifecycle receipts, but no live provider authorization is configured. A pending intent is not a connected or syncing account.",
     });
   });
 
@@ -57,13 +90,93 @@ export function registerHealthConnectionRoutes(app: Express): void {
     const [existing] = await db.select().from(healthConnections).where(and(eq(healthConnections.userId, userId), eq(healthConnections.provider, definition.id))).limit(1);
     if (existing && existing.status !== "pending" && existing.status !== "revoked") return res.status(409).json({ error: "Use the existing connection controls for this provider." });
     const [connection] = await db.insert(healthConnections).values({ userId, provider: definition.id, providerName: definition.name, status: "pending", scopes, consentVersion, consentedAt: new Date(), credentialRef: null, revokedAt: null, lastErrorCode: null, updatedAt: new Date() }).onConflictDoUpdate({ target: [healthConnections.userId, healthConnections.provider], set: { providerName: definition.name, status: "pending", scopes, consentVersion, consentedAt: new Date(), credentialRef: null, revokedAt: null, lastErrorCode: null, updatedAt: new Date() } }).returning({ id: healthConnections.id, provider: healthConnections.provider, providerName: healthConnections.providerName, status: healthConnections.status, scopes: healthConnections.scopes });
-    await db.insert(healthConnectionAudits).values({ userId, connectionId: connection.id, provider: connection.provider, action: "consent_intent_created", details: { scopes, consentVersion, liveAuthorizationAvailable: false } });
+    await db.insert(healthConnectionAudits).values({ userId, connectionId: connection.id, provider: connection.provider, action: "consent_intent_created", details: { scopes, consentVersion, liveAuthorizationAvailable: definition.id === "oura" && Boolean(configuredOuraOAuth()) } });
     return res.status(201).json({ connection, disclosure: "Consent intent saved. No provider authorization, credential, sync, or imported record was created." });
+  });
+
+  app.get("/api/health-connections/oura/auth-url", isAuthenticated, async (req: Request, res: Response) => {
+    const config = configuredOuraOAuth(); const connectionId = Number(req.query.connectionId); const userId = req.session.userId!;
+    if (!config) return res.status(503).json({ error: "Oura authorization is not configured for this environment." });
+    if (!Number.isInteger(connectionId)) return res.status(400).json({ error: "A valid Oura connection is required." });
+    const [connection] = await db.select({ id: healthConnections.id, provider: healthConnections.provider, status: healthConnections.status, scopes: healthConnections.scopes }).from(healthConnections).where(and(eq(healthConnections.id, connectionId), eq(healthConnections.userId, userId))).limit(1);
+    if (!connection || connection.provider !== "oura") return res.status(404).json({ error: "Oura connection intent not found." });
+    if (connection.status !== "pending") return res.status(409).json({ error: "Oura authorization requires a pending consent intent." });
+    const requestedScopes = Array.isArray(connection.scopes) ? connection.scopes.filter((scope): scope is string => typeof scope === "string") : [];
+    if (!ouraProviderScopesForAppScopes(requestedScopes).length) return res.status(409).json({ error: "The Oura consent intent has no supported scopes." });
+    const state = crypto.randomBytes(32).toString("base64url");
+    req.session.ouraOAuthState = state; req.session.ouraOAuthUserId = userId; req.session.ouraOAuthConnectionId = connection.id; req.session.ouraOAuthRequestedScopes = requestedScopes; req.session.ouraOAuthStartedAt = Date.now();
+    return res.json({ url: buildOuraAuthorizationUrl(config, state, requestedScopes), expiresInSeconds: ouraOAuthStateLifetimeMs / 1_000 });
+  });
+
+  app.get("/api/health-connections/oura/callback", isAuthenticated, async (req: Request, res: Response) => {
+    const config = configuredOuraOAuth();
+    if (!config) { clearOuraOAuthSession(req); return res.redirect("/health?oura=error&reason=not_configured"); }
+    const code = req.query.code; const state = req.query.state; const providerError = req.query.error; const callbackScope = typeof req.query.scope === "string" ? req.query.scope : undefined;
+    const sessionUserId = req.session.ouraOAuthUserId; const connectionId = req.session.ouraOAuthConnectionId; const requestedScopes = req.session.ouraOAuthRequestedScopes || []; const startedAt = req.session.ouraOAuthStartedAt;
+    const validSession = sessionUserId === req.session.userId && Number.isInteger(connectionId) && typeof startedAt === "number" && Date.now() - startedAt >= 0 && Date.now() - startedAt <= ouraOAuthStateLifetimeMs && safeStateMatch(state, req.session.ouraOAuthState);
+    clearOuraOAuthSession(req);
+    if (providerError || !validSession || typeof code !== "string") return res.redirect("/health?oura=error&reason=authorization_not_completed");
+    try {
+      const token = await exchangeOuraAuthorizationCode(code, config);
+      const requestedProviderScopes = ouraProviderScopesForAppScopes(requestedScopes);
+      const callbackGrantedScopes = normalizeOuraGrantedScopes(callbackScope);
+      const providerReportedScopes = token.grantedProviderScopes.length && callbackGrantedScopes.length
+        ? token.grantedProviderScopes.filter((scope) => callbackGrantedScopes.includes(scope))
+        : token.grantedProviderScopes.length ? token.grantedProviderScopes : callbackGrantedScopes;
+      const grantedProviderScopes = providerReportedScopes.filter((scope) => requestedProviderScopes.includes(scope));
+      const grantedAppScopes = ouraAppScopesFromGrantedProviderScopes(grantedProviderScopes).filter((scope) => requestedScopes.includes(scope));
+      if (!grantedAppScopes.length) return res.redirect("/health?oura=error&reason=no_supported_scope");
+      token.credential.grantedScopes = grantedProviderScopes;
+      const outcome = await db.transaction(async (tx) => {
+        await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${healthConnectionLockKey(connectionId!)}))`);
+        const [connection] = await tx.select().from(healthConnections).where(and(eq(healthConnections.id, connectionId!), eq(healthConnections.userId, sessionUserId!), eq(healthConnections.provider, "oura"))).limit(1);
+        if (!connection || connection.status !== "pending") return null;
+        const sealed = sealHealthProviderCredential(token.credential, { userId: sessionUserId!, connectionId: connectionId!, provider: "oura" });
+        const [credential] = await tx.insert(healthProviderCredentials).values({ userId: sessionUserId!, connectionId: connectionId!, provider: "oura", ...sealed, updatedAt: new Date() }).onConflictDoUpdate({ target: healthProviderCredentials.connectionId, set: { ciphertext: sealed.ciphertext, iv: sealed.iv, authTag: sealed.authTag, keyVersion: sealed.keyVersion, updatedAt: new Date() } }).returning({ id: healthProviderCredentials.id });
+        const [updated] = await tx.update(healthConnections).set({ status: "active", scopes: grantedAppScopes, credentialRef: healthCredentialReference(credential.id), lastErrorCode: null, revokedAt: null, updatedAt: new Date() }).where(and(eq(healthConnections.id, connectionId!), eq(healthConnections.userId, sessionUserId!), eq(healthConnections.status, "pending"))).returning({ id: healthConnections.id });
+        if (!updated) return null;
+        await tx.insert(healthConnectionAudits).values({ userId: sessionUserId!, connectionId: connectionId!, provider: "oura", action: "authorized", details: { consentVersion: connection.consentVersion, appScopes: grantedAppScopes, providerScopes: grantedProviderScopes, credentialEnvelope: sealed.keyVersion } });
+        return updated;
+      });
+      return outcome ? res.redirect("/health?oura=connected") : res.redirect("/health?oura=error&reason=connection_changed");
+    } catch {
+      return res.redirect("/health?oura=error&reason=token_exchange_failed");
+    }
+  });
+
+  app.post("/api/health-connections/:id/oura-sync", isAuthenticated, async (req: Request, res: Response) => {
+    const connectionId = Number(req.params.id); const parsed = ouraSyncSchema.safeParse(req.body); const userId = req.session.userId!;
+    if (!Number.isInteger(connectionId) || !parsed.success) return res.status(400).json({ error: "A valid Oura sync resource is required." });
+    const [connection] = await db.select({ provider: healthConnections.provider, status: healthConnections.status, scopes: healthConnections.scopes }).from(healthConnections).where(and(eq(healthConnections.id, connectionId), eq(healthConnections.userId, userId))).limit(1);
+    if (!connection || connection.provider !== "oura") return res.status(404).json({ error: "Oura connection not found." });
+    if (connection.status !== "active") return res.status(409).json({ error: "Oura must be actively authorized before syncing." });
+    const scopes = Array.isArray(connection.scopes) ? connection.scopes.filter((scope): scope is string => typeof scope === "string") : [];
+    if (!ouraSyncResourcesForScopes(scopes).includes(parsed.data.resource)) return res.status(403).json({ error: "That Oura resource was not authorized." });
+    try {
+      const receipt = await syncOuraResourcePage({ userId, connectionId, resource: parsed.data.resource });
+      return res.json({ receipt, disclosure: "One bounded Oura page was imported. Only reviewed factual fields within your explicit LyfeOS scopes were retained; proprietary Oura scores were not imported." });
+    } catch (error) {
+      const code = error instanceof Error && /^[A-Z][A-Z0-9_.:-]+$/.test(error.message) ? error.message : "PROVIDER.SYNC_FAILED";
+      const status = code === "PROVIDER.RATE_LIMIT" ? 429 : code === "OURA.AUTHORIZATION_REJECTED" ? 401 : code.includes("NOT_AUTHORIZED") || code.includes("SCOPE_NOT_GRANTED") ? 403 : 502;
+      return res.status(status).json({ error: "Oura sync did not complete. A sanitized retry receipt was recorded.", code });
+    }
   });
 
   app.patch("/api/health-connections/:id/state", isAuthenticated, async (req: Request, res: Response) => {
     const id = Number(req.params.id); const parsed = actionSchema.safeParse(req.body); const userId = req.session.userId!;
     if (!Number.isInteger(id) || !parsed.success) return res.status(400).json({ error: "Invalid connection state request." });
+    let providerRevokeAttempted = false; let providerRevokeSucceeded = false;
+    if (parsed.data.action === "revoke") {
+      const [stored] = await db.select({ connectionId: healthProviderCredentials.connectionId, provider: healthProviderCredentials.provider, ciphertext: healthProviderCredentials.ciphertext, iv: healthProviderCredentials.iv, authTag: healthProviderCredentials.authTag, keyVersion: healthProviderCredentials.keyVersion }).from(healthProviderCredentials).where(and(eq(healthProviderCredentials.connectionId, id), eq(healthProviderCredentials.userId, userId))).limit(1);
+      if (stored?.provider === "oura") {
+        providerRevokeAttempted = true;
+        try {
+          if (stored.keyVersion !== healthCredentialEnvelopeVersion) throw new Error("Unsupported credential envelope.");
+          const credential = openHealthProviderCredential({ ...stored, keyVersion: stored.keyVersion }, { userId, connectionId: id, provider: "oura" });
+          providerRevokeSucceeded = await revokeOuraAccessToken(credential.accessToken);
+        } catch { providerRevokeSucceeded = false; }
+      }
+    }
     const outcome = await db.transaction(async (tx) => {
       await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${healthConnectionLockKey(id)}))`);
       const [current] = await tx.select().from(healthConnections).where(and(eq(healthConnections.id, id), eq(healthConnections.userId, userId))).limit(1);
@@ -76,13 +189,14 @@ export function registerHealthConnectionRoutes(app: Express): void {
       if (next === "revoked") await tx.delete(healthProviderCredentials).where(and(eq(healthProviderCredentials.connectionId, id), eq(healthProviderCredentials.userId, userId)));
       const cursorStatus = next === "paused" ? "paused" : next === "revoked" ? "revoked" : "idle";
       await tx.update(healthSyncCursors).set({ status: cursorStatus, updatedAt: now }).where(and(eq(healthSyncCursors.connectionId, id), eq(healthSyncCursors.userId, userId)));
+      if (next === "revoked" && providerRevokeAttempted) await tx.insert(healthConnectionAudits).values({ userId, connectionId: id, provider: current.provider, action: "provider_revoke_attempted", details: { succeeded: providerRevokeSucceeded } });
       await tx.insert(healthConnectionAudits).values({ userId, connectionId: id, provider: current.provider, action: actionAudit[parsed.data.action], details: { from: current.status, to: next } });
       return { kind: "updated" as const, connection, next };
     });
     if (outcome.kind === "missing") return res.status(404).json({ error: "Health connection not found." });
     if (outcome.kind === "conflict") return res.status(409).json({ error: "That state change is not available for this connection." });
     const { connection, next } = outcome;
-    return res.json({ connection, disclosure: next === "revoked" ? "Authorization is revoked and the credential reference is cleared. Previously imported records remain until separately deleted." : "Connection lifecycle state updated. No provider data was inferred." });
+    return res.json({ connection, disclosure: next === "revoked" ? `The local encrypted credential was destroyed${providerRevokeAttempted ? providerRevokeSucceeded ? " and Oura accepted the provider revocation request" : "; Oura did not confirm the best-effort provider revocation request" : ""}. Previously imported records remain until separately deleted.` : "Connection lifecycle state updated. No provider data was inferred." });
   });
 
   app.delete("/api/health-connections/:id/imported-data", isAuthenticated, async (req: Request, res: Response) => {

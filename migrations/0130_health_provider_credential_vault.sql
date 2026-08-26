@@ -13,3 +13,5 @@ CREATE TABLE IF NOT EXISTS "health_provider_credentials" (
 );
 CREATE INDEX IF NOT EXISTS "health_provider_credentials_user_provider_idx" ON "health_provider_credentials" ("user_id", "provider");
 
+ALTER TABLE "health_connection_audits" DROP CONSTRAINT IF EXISTS "health_connection_audits_action_valid";
+ALTER TABLE "health_connection_audits" ADD CONSTRAINT "health_connection_audits_action_valid" CHECK ("action" IN ('consent_intent_created', 'authorized', 'credential_rotated', 'provider_revoke_attempted', 'paused', 'resumed', 'retry_requested', 'revoked', 'cancelled', 'imports_deleted', 'source_priority_updated'));
