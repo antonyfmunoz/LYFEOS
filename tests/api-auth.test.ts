@@ -6,7 +6,13 @@ const BASE_URL = process.env.LYFEOS_TEST_API_URL;
 const describeApi = BASE_URL && process.env.LYFEOS_TEST_ENV === 'isolated' ? describe : describe.skip;
 
 async function apiRequest(method: string, path: string, body?: any, cookie?: string) {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  // The isolated production-mode server uses secure cookies behind its trusted
+  // HTTPS proxy boundary. Exercise that real boundary instead of weakening
+  // cookie policy for local qualification.
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'X-Forwarded-Proto': 'https',
+  };
   if (cookie) headers['Cookie'] = cookie;
   
   const res = await fetch(`${BASE_URL}${path}`, {
