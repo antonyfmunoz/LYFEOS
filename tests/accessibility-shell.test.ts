@@ -39,4 +39,16 @@ describe("shared accessibility shell", () => {
     expect(waitlist).toContain("aria-expanded={open}");
     expect(waitlist).toContain("aria-controls={answerId}");
   });
+
+  it("keeps automation loading, failure, selection, and schedule state explicit", () => {
+    const automations = readFileSync(resolve(process.cwd(), "client/src/pages/AutomationsPage.tsx"), "utf8");
+    expect(automations).not.toContain('<main className="space-y-5">');
+    expect(automations).toContain('aria-label="Automation rules"');
+    expect(automations).toContain("aria-pressed={selectedId === item.id}");
+    expect(automations).toContain('role="status" aria-live="polite"');
+    expect(automations).toContain('role="alert"');
+    expect(automations).toContain("list.refetch()");
+    expect(automations).toContain("detail.refetch()");
+    expect(automations).toContain('<Button asChild variant="outline"><Link href="/document-vault">Data Vault</Link></Button>');
+  });
 });
