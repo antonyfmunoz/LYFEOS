@@ -1874,6 +1874,22 @@ export const healthConnections = pgTable("health_connections", {
   index("health_connections_status_error_idx").on(table.status, table.lastErrorCode),
 ]);
 
+// Provider access and refresh tokens are encrypted as one authenticated
+// envelope. This table is never part of account export; revocation deletes the
+// envelope and clears the opaque reference on health_connections.
+export const healthProviderCredentials = pgTable("health_provider_credentials", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  connectionId: integer("connection_id").notNull().references(() => healthConnections.id, { onDelete: "cascade" }).unique(),
+  provider: text("provider").notNull(),
+  ciphertext: text("ciphertext").notNull(),
+  iv: varchar("iv", { length: 24 }).notNull(),
+  authTag: varchar("auth_tag", { length: 32 }).notNull(),
+  keyVersion: varchar("key_version", { length: 40 }).notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [index("health_provider_credentials_user_provider_idx").on(table.userId, table.provider)]);
+
 export const healthSyncCursors = pgTable("health_sync_cursors", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),

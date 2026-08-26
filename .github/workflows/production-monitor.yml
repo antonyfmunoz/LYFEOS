@@ -48,8 +48,8 @@ jobs:
           test "$(printf '%s' "$body" | jq -r '.service')" = "lyfeos"
           printf '%s' "$body" | jq -e '.sourceRevision | test("^[0-9a-f]{40}$")' >/dev/null
           test "$(printf '%s' "$body" | jq -r '.migrations.status')" = "available"
-          test "$(printf '%s' "$body" | jq -r '.migrations.count')" -ge 121
-          test "$(printf '%s' "$body" | jq -r '.migrations.latest')" = "0129_personal_finance_foundation"
+          test "$(printf '%s' "$body" | jq -r '.migrations.count')" -ge 122
+          test "$(printf '%s' "$body" | jq -r '.migrations.latest')" = "0130_health_provider_credential_vault"
       - name: Verify protected health integrity aggregates
         env:
           LYFEOS_MONITOR_TOKEN: ${{ secrets.LYFEOS_MONITOR_TOKEN }}

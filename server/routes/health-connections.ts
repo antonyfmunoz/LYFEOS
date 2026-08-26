@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
-import { healthConnectionAudits, healthConnections, healthImportFailures, healthImportRuns, healthObservations, healthSourcePreferences, healthSourceRecords, healthSourceSuppressions, healthSyncCursors } from "@shared/schema";
+import { healthConnectionAudits, healthConnections, healthImportFailures, healthImportRuns, healthObservations, healthProviderCredentials, healthSourcePreferences, healthSourceRecords, healthSourceSuppressions, healthSyncCursors } from "@shared/schema";
 import { db } from "../db";
 import { healthConnectionLockKey, healthProviderCatalog, healthProviderDefinition, nextHealthConnectionState, type HealthConnectionAction, type HealthConnectionState } from "../health-connections";
 import { isAuthenticated } from "./middleware";
@@ -73,6 +73,7 @@ export function registerHealthConnectionRoutes(app: Express): void {
       const now = new Date();
       const [connection] = await tx.update(healthConnections).set({ status: next, credentialRef: next === "revoked" ? null : current.credentialRef, revokedAt: next === "revoked" ? now : null, lastErrorCode: parsed.data.action === "retry" ? null : current.lastErrorCode, updatedAt: now }).where(and(eq(healthConnections.id, id), eq(healthConnections.userId, userId), eq(healthConnections.status, current.status))).returning({ id: healthConnections.id, provider: healthConnections.provider, providerName: healthConnections.providerName, status: healthConnections.status, scopes: healthConnections.scopes, revokedAt: healthConnections.revokedAt });
       if (!connection) return { kind: "conflict" as const };
+      if (next === "revoked") await tx.delete(healthProviderCredentials).where(and(eq(healthProviderCredentials.connectionId, id), eq(healthProviderCredentials.userId, userId)));
       const cursorStatus = next === "paused" ? "paused" : next === "revoked" ? "revoked" : "idle";
       await tx.update(healthSyncCursors).set({ status: cursorStatus, updatedAt: now }).where(and(eq(healthSyncCursors.connectionId, id), eq(healthSyncCursors.userId, userId)));
       await tx.insert(healthConnectionAudits).values({ userId, connectionId: id, provider: current.provider, action: actionAudit[parsed.data.action], details: { from: current.status, to: next } });
