@@ -1,4 +1,4 @@
-export const LYFEOS_DATA_RIGHTS_VERSION = "lyfeos.data-rights.v2" as const;
+export const LYFEOS_DATA_RIGHTS_VERSION = "lyfeos.data-rights.v3" as const;
 
 export type DataAccessModel = "owner_private" | "purpose_bound_participants" | "restricted_operations" | "provider_managed";
 export type DataRetentionPolicy = "until_owner_deletes" | "owner_configurable" | "short_lived" | "shared_record_lifecycle" | "provider_policy";
@@ -84,6 +84,18 @@ export const LYFEOS_DATA_CLASSES: readonly LyfeOSDataClass[] = [
     retentionDetail: "Private relationship records follow the owner account. Conversation history is also scoped to its current participants and shared conversation lifecycle.",
     rights: { export: true, erase: true, revoke: true },
     rightsDetail: "Owners can revoke relationship-sharing consent and remove their account participation. Account deletion cannot erase another participant's independent account or lawful copy of a shared message.",
+  },
+  {
+    id: "consent_bound_collaboration",
+    label: "Team and coach collaboration",
+    sensitivity: "sensitive",
+    purpose: "Coordinate with invited LyfeOS members through owner-selected, purpose-bound Mission or Thread projections.",
+    examples: ["workspace membership", "invitation purpose", "Mission summary grant", "Thread status grant", "revocation audit"],
+    access: "purpose_bound_participants",
+    retention: "shared_record_lifecycle",
+    retentionDetail: "Membership metadata follows the workspace lifecycle. Visibility grants expire within one year or end immediately when revoked, a recipient leaves, or membership is revoked.",
+    rights: { export: true, erase: true, revoke: true },
+    rightsDetail: "Membership alone grants no personal-record access. The owner can revoke each projection or membership; export includes collaboration metadata, while source Health, finance, relationship, journal, message, AI-memory, and evidence records are never copied into collaboration storage.",
   },
   {
     id: "workspace_content",

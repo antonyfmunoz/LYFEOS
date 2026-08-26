@@ -3944,3 +3944,65 @@ export const installationAuditEvents = pgTable("installation_audit_events", {
   metadata: jsonb("metadata").notNull().default({}),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => [index("installation_audit_events_installation_created_idx").on(table.installationId, table.createdAt)]);
+
+// Team and coach membership is coordination context only. Personal records
+// remain private unless their owner creates a separate, expiring projection.
+export const collaborationWorkspaces = pgTable("collaboration_workspaces", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  ownerUserId: integer("owner_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  purpose: text("purpose").notNull(),
+  status: text("status").notNull().default("active"),
+  revision: integer("revision").notNull().default(1),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [index("collaboration_workspaces_owner_updated_idx").on(table.ownerUserId, table.updatedAt)]);
+
+export const collaborationMemberships = pgTable("collaboration_memberships", {
+  id: serial("id").primaryKey(),
+  workspaceId: uuid("workspace_id").notNull().references(() => collaborationWorkspaces.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  invitedByUserId: integer("invited_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  role: text("role").notNull(),
+  status: text("status").notNull().default("invited"),
+  invitationPurpose: text("invitation_purpose").notNull(),
+  acceptedAt: timestamp("accepted_at"),
+  revokedAt: timestamp("revoked_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("collaboration_memberships_workspace_user_unique_idx").on(table.workspaceId, table.userId),
+  index("collaboration_memberships_user_status_idx").on(table.userId, table.status, table.updatedAt),
+  index("collaboration_memberships_workspace_status_idx").on(table.workspaceId, table.status),
+]);
+
+export const collaborationVisibilityGrants = pgTable("collaboration_visibility_grants", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  workspaceId: uuid("workspace_id").notNull().references(() => collaborationWorkspaces.id, { onDelete: "cascade" }),
+  ownerUserId: integer("owner_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  granteeUserId: integer("grantee_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  subjectType: text("subject_type").notNull(),
+  subjectId: integer("subject_id").notNull(),
+  scopes: jsonb("scopes").notNull().default([]),
+  purpose: text("purpose").notNull(),
+  status: text("status").notNull().default("active"),
+  expiresAt: timestamp("expires_at").notNull(),
+  revokedAt: timestamp("revoked_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("collaboration_visibility_grants_grantee_status_idx").on(table.granteeUserId, table.status, table.expiresAt),
+  index("collaboration_visibility_grants_owner_created_idx").on(table.ownerUserId, table.createdAt),
+]);
+
+export const collaborationAuditEvents = pgTable("collaboration_audit_events", {
+  id: serial("id").primaryKey(),
+  workspaceId: uuid("workspace_id").notNull().references(() => collaborationWorkspaces.id, { onDelete: "cascade" }),
+  actorUserId: integer("actor_user_id").references(() => users.id, { onDelete: "set null" }),
+  subjectUserId: integer("subject_user_id").references(() => users.id, { onDelete: "set null" }),
+  action: text("action").notNull(),
+  subjectType: text("subject_type").notNull(),
+  subjectId: text("subject_id"),
+  metadata: jsonb("metadata").notNull().default({}),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [index("collaboration_audit_events_workspace_created_idx").on(table.workspaceId, table.createdAt)]);

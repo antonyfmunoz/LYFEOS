@@ -83,6 +83,7 @@ import type { LyfeOSDataClass } from "@shared/data-rights";
 import { startThetaBeats, stopThetaBeats } from '@/lib/theta-beats';
 import { useUser } from "@clerk/clerk-react";
 import PushNotificationSettings from "@/components/profile/PushNotificationSettings";
+import CollaborationSettings from "@/components/profile/CollaborationSettings";
 type ClerkPhoneNumber = {
   id: string;
   phoneNumber: string;
@@ -1973,6 +1974,7 @@ export default function ProfilePage() {
             </div>
             
             <PushNotificationSettings />
+            <CollaborationSettings />
 
             <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
               <div className="flex items-center gap-2 mb-2">

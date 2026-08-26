@@ -137,6 +137,21 @@ async function selectSafeMissionReviewInvitationRows(userId: number): Promise<un
   return (result as { rows?: unknown[] }).rows || [];
 }
 
+async function selectCollaborationRows(userId: number): Promise<Record<string, unknown[]>> {
+  const queryRows = async (query: ReturnType<typeof sql>): Promise<unknown[]> => {
+    const result = await db.execute(query);
+    return (result as { rows?: unknown[] }).rows || [];
+  };
+  const workspaceScope = sql`SELECT "workspace_id" FROM "collaboration_memberships" WHERE "user_id" = ${userId}`;
+  const [workspaces, memberships, grants, audit] = await Promise.all([
+    queryRows(sql`SELECT * FROM "collaboration_workspaces" WHERE "id" IN (${workspaceScope}) OR "owner_user_id" = ${userId}`),
+    queryRows(sql`SELECT * FROM "collaboration_memberships" WHERE "user_id" = ${userId} OR "workspace_id" IN (SELECT "id" FROM "collaboration_workspaces" WHERE "owner_user_id" = ${userId})`),
+    queryRows(sql`SELECT * FROM "collaboration_visibility_grants" WHERE "owner_user_id" = ${userId} OR "grantee_user_id" = ${userId}`),
+    queryRows(sql`SELECT * FROM "collaboration_audit_events" WHERE "workspace_id" IN (SELECT "id" FROM "collaboration_workspaces" WHERE "owner_user_id" = ${userId}) OR "actor_user_id" = ${userId} OR "subject_user_id" = ${userId}`),
+  ]);
+  return { collaboration_workspaces: workspaces, collaboration_memberships: memberships, collaboration_visibility_grants: grants, collaboration_audit_events: audit };
+}
+
 async function selectSafeWorkspaceFormAccessRows(userId: number): Promise<Record<string, unknown[]>> {
   const [grants, receipts] = await Promise.all([
     db.execute(sql`SELECT "id", "public_id", "user_id", "form_id", "label", "active", "expires_at", "max_submissions", "submission_count", "last_used_at", "revoked_at", "created_at" FROM "workspace_form_access_grants" WHERE "user_id" = ${userId}`),
@@ -517,7 +532,7 @@ export function registerProfileRoutes(app: Express): void {
       const userId = req.session.userId!;
       const user = await storage.getUser(userId);
       if (!user) return res.status(404).json({ error: "User not found" });
-      const [rows, federationAudit, healthConnectionRows, workspaceFormAccessRows, nutritionNutrients, nutritionRecipeIngredients, workoutExerciseRows, workoutSetRows, messageHubRows, missionReviewInvitationRows] = await Promise.all([
+      const [rows, federationAudit, healthConnectionRows, workspaceFormAccessRows, nutritionNutrients, nutritionRecipeIngredients, workoutExerciseRows, workoutSetRows, messageHubRows, missionReviewInvitationRows, collaborationRows] = await Promise.all([
         Promise.all(accountExportTables.map(async (table) => [table, await selectAccountRows(table, userId)] as const)),
         selectFederationAuditRows(userId, user.clerkId),
         selectSafeHealthConnectionRows(userId),
@@ -528,6 +543,7 @@ export function registerProfileRoutes(app: Express): void {
         selectWorkoutSetRows(userId),
         selectMessageHubRows(userId),
         selectSafeMissionReviewInvitationRows(userId),
+        selectCollaborationRows(userId),
       ]);
       const data = Object.fromEntries(rows) as Record<string, unknown[]>;
       Object.assign(data, federationAudit);
@@ -539,6 +555,7 @@ export function registerProfileRoutes(app: Express): void {
       data.workout_sets = workoutSetRows;
       Object.assign(data, messageHubRows);
       data.mission_review_invitations = missionReviewInvitationRows;
+      Object.assign(data, collaborationRows);
       const safeUser = { ...user, password: undefined, passwordResetToken: undefined, passwordResetExpiry: undefined, emailVerificationToken: undefined, emailVerificationExpiry: undefined, twoFactorEmailCode: undefined, twoFactorEmailExpiry: undefined, twoFactorPhoneCode: undefined, twoFactorPhoneExpiry: undefined };
       data.integrations = data.integrations.map((entry: any) => {
         const { access_token, refresh_token, accessToken, refreshToken, credential_ref, credentialRef, ...safe } = entry;

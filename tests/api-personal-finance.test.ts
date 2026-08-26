@@ -83,7 +83,7 @@ describeApi("Personal Finance authenticated contract", () => {
     const exported = await request("GET", "/api/account/export", undefined, ownerCookie);
     expect(exported.status).toBe(200);
     for (const table of ["finance_accounts", "finance_balance_snapshots", "finance_transactions", "finance_budgets", "finance_goals"]) expect(exported.data.data).toHaveProperty(table);
-    expect(exported.data.dataRights.version).toBe("lyfeos.data-rights.v2");
+    expect(exported.data.dataRights.version).toBe("lyfeos.data-rights.v3");
     expect((await request("DELETE", "/api/account", { confirmation: "DELETE MY ACCOUNT" }, ownerCookie)).status).toBe(200); ownerCookie = "";
     for (const table of ["finance_accounts", "finance_balance_snapshots", "finance_transactions", "finance_budgets", "finance_goals"]) {
       const count = await pool.query(`SELECT count(*)::integer AS count FROM ${table} WHERE user_id = $1`, [ownerId]);
