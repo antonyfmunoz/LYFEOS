@@ -1,4 +1,4 @@
-export const LYFEOS_DATA_RIGHTS_VERSION = "lyfeos.data-rights.v1" as const;
+export const LYFEOS_DATA_RIGHTS_VERSION = "lyfeos.data-rights.v2" as const;
 
 export type DataAccessModel = "owner_private" | "purpose_bound_participants" | "restricted_operations" | "provider_managed";
 export type DataRetentionPolicy = "until_owner_deletes" | "owner_configurable" | "short_lived" | "shared_record_lifecycle" | "provider_policy";
@@ -108,6 +108,18 @@ export const LYFEOS_DATA_CLASSES: readonly LyfeOSDataClass[] = [
     retentionDetail: "Health records remain local until selective Health deletion or account deletion. Short-lived deletion receipts expire under the Health cleanup policy.",
     rights: { export: true, erase: true, revoke: true },
     rightsDetail: "Health has a separate export/delete surface. Connections and planning handoffs are revocable, and credential references are excluded from export.",
+  },
+  {
+    id: "personal_finance",
+    label: "Personal finance",
+    sensitivity: "highly_sensitive",
+    purpose: "Let the owner track accounts, balances, cash flow, budgets, and financial goals without treating Wealth Tokens as money or giving financial advice.",
+    examples: ["manual account balances", "transactions", "budgets", "financial goals", "balance history"],
+    access: "owner_private",
+    retention: "until_owner_deletes",
+    retentionDetail: "Local financial records remain private until the owner removes the applicable record or account. Future provider-held copies follow the provider policy.",
+    rights: { export: true, erase: true, revoke: true },
+    rightsDetail: "Personal finance records are included in account export and erased with account deletion. A future bank connection must be independently revocable, and provider credentials must never enter export.",
   },
   {
     id: "integrations_federation",

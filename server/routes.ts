@@ -39,6 +39,7 @@ import { registerMessageRoutes } from "./routes/messages";
 import { registerAIGovernanceRoutes } from "./routes/ai-governance";
 import { registerProductAnalyticsRoutes } from "./routes/product-analytics";
 import { registerHypothesisRoutes } from "./routes/hypotheses";
+import { registerPersonalFinanceRoutes } from "./routes/personal-finance";
 import { db } from "./db";
 import { sql } from "drizzle-orm";
 import { isHealthEvidenceMutation, scheduleHealthProgressionReconcile } from "./health-progression";
@@ -140,6 +141,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerAIGovernanceRoutes(app);
   registerProductAnalyticsRoutes(app);
   registerHypothesisRoutes(app);
+  registerPersonalFinanceRoutes(app);
   registerGoalRoutes(app);
   registerDocumentRoutes(app);
   registerChatRoutes(app);

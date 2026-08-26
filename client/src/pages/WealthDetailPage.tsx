@@ -6,7 +6,7 @@ import { useAuth } from "@/lib/authContext";
 import { useLYFEOS } from "@/lib/context";
 import { usePageTitle } from "@/hooks/use-page-title";
 import AIStatTip from "@/components/stats/AIStatTip";
-import { ArrowLeft, Coins, Target, Flame, Loader2, TrendingUp, Activity, Zap } from "lucide-react";
+import { ArrowLeft, Coins, Target, Flame, Loader2, TrendingUp, Activity, Zap, Landmark } from "lucide-react";
 import { LineChart, Line, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 
 function getStatusBadge(pct: number): { label: string; color: string; bg: string } {
@@ -82,6 +82,11 @@ export default function WealthDetailPage() {
           Wealth Tokens
         </h1>
       </div>
+
+      <Link href="/finance" className="mb-6 flex items-center justify-between gap-4 rounded-xl border border-primary/30 bg-primary/10 p-4 transition-colors hover:bg-primary/15">
+        <span className="flex items-center gap-3"><Landmark className="h-6 w-6 text-primary" /><span><strong className="block text-sm text-foreground">Open Personal Finance</strong><span className="text-xs text-muted-foreground">Track real accounts, cash flow, budgets, and goals separately from Wealth Tokens.</span></span></span>
+        <span aria-hidden="true" className="text-primary">→</span>
+      </Link>
 
       <div className="flex items-center gap-2 mb-6">
         <span className="text-sm text-muted-foreground font-mono">Period:</span>

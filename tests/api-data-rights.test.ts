@@ -36,14 +36,14 @@ describeApi("account data-rights journey", () => {
     expect(rights.status).toBe(200);
     expect(rights.cacheControl).toContain("private");
     expect(rights.cacheControl).toContain("no-store");
-    expect(rights.data).toMatchObject({ version: "lyfeos.data-rights.v1", legalStatus: "product_contract_not_approved_legal_policy" });
+    expect(rights.data).toMatchObject({ version: "lyfeos.data-rights.v2", legalStatus: "product_contract_not_approved_legal_policy" });
     expect(rights.data.classes.map((entry: any) => entry.id)).toEqual(expect.arrayContaining(["account_identity", "missions_progression", "ai_memory_actions", "relationships_messages", "workspace_content", "health_fitness", "integrations_federation", "security_operations", "product_analytics", "external_providers"]));
   });
 
   it("includes the exact rights contract in the portable account export", async () => {
     const exported = await request("GET", "/api/account/export", undefined, cookie);
     expect(exported.status).toBe(200);
-    expect(exported.data.dataRights.version).toBe("lyfeos.data-rights.v1");
+    expect(exported.data.dataRights.version).toBe("lyfeos.data-rights.v2");
     expect(exported.data.dataRights.classes).toHaveLength(11);
     expect(exported.data.user.email).toBe(account.email);
     expect(exported.data.user).not.toHaveProperty("password");

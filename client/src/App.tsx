@@ -33,6 +33,7 @@ const EfficiencyDetailPage = React.lazy(() => import("./pages/EfficiencyDetailPa
 const EnergyDetailPage = React.lazy(() => import("./pages/EnergyDetailPage"));
 const HealthDetailPage = React.lazy(() => import("./pages/HealthDetailPage"));
 const WealthDetailPage = React.lazy(() => import("./pages/WealthDetailPage"));
+const PersonalFinancePage = React.lazy(() => import("./pages/PersonalFinancePage"));
 const AttentionDetailPage = React.lazy(() => import("./pages/AttentionDetailPage"));
 const TimeDetailPage = React.lazy(() => import("./pages/TimeDetailPage"));
 const ExperienceDetailPage = React.lazy(() => import("./pages/ExperienceDetailPage"));
@@ -635,6 +636,14 @@ function Router() {
 
       <Route path="/forms/:formId">
         <ProtectedRoute><RootLayout><FormPage /></RootLayout></ProtectedRoute>
+      </Route>
+
+      <Route path="/finance">
+        <ProtectedRoute>
+          <RootLayout>
+            <PersonalFinancePage />
+          </RootLayout>
+        </ProtectedRoute>
       </Route>
 
       <Route path="/forms/respond/:publicId">

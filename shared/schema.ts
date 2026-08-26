@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, jsonb, date, varchar, uuid, index, uniqueIndex, real } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, bigint, boolean, timestamp, jsonb, date, varchar, uuid, index, uniqueIndex, real } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations, sql } from "drizzle-orm";
@@ -2867,6 +2867,90 @@ export const umhOutboxEvents = pgTable("umh_outbox_events", {
 
 export type UMHInboundCommand = typeof umhInboundCommands.$inferSelect;
 export type UMHOutboxEvent = typeof umhOutboxEvents.$inferSelect;
+
+// Personal Finance is deliberately separate from the in-app Wealth Token
+// planning signal. Money is stored in integer minor units and is never summed
+// across currencies without an explicit exchange-rate source.
+export const financeAccounts = pgTable("finance_accounts", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  name: varchar("name", { length: 120 }).notNull(),
+  accountType: text("account_type").notNull(),
+  currency: varchar("currency", { length: 3 }).notNull(),
+  balanceMinor: bigint("balance_minor", { mode: "number" }).notNull().default(0),
+  includeInNetWorth: boolean("include_in_net_worth").notNull().default(true),
+  source: text("source").notNull().default("manual"),
+  providerAccountRef: text("provider_account_ref"),
+  status: text("status").notNull().default("active"),
+  version: integer("version").notNull().default(1),
+  balanceUpdatedAt: timestamp("balance_updated_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("finance_accounts_user_status_idx").on(table.userId, table.status),
+  uniqueIndex("finance_accounts_user_provider_ref_unique_idx").on(table.userId, table.source, table.providerAccountRef).where(sql`${table.providerAccountRef} IS NOT NULL`),
+]);
+
+export const financeBalanceSnapshots = pgTable("finance_balance_snapshots", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  accountId: integer("account_id").notNull().references(() => financeAccounts.id),
+  balanceMinor: bigint("balance_minor", { mode: "number" }).notNull(),
+  currency: varchar("currency", { length: 3 }).notNull(),
+  source: text("source").notNull().default("manual"),
+  observedAt: timestamp("observed_at").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [index("finance_balance_snapshots_user_currency_observed_idx").on(table.userId, table.currency, table.observedAt)]);
+
+export const financeTransactions = pgTable("finance_transactions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  accountId: integer("account_id").notNull().references(() => financeAccounts.id),
+  amountMinor: bigint("amount_minor", { mode: "number" }).notNull(),
+  currency: varchar("currency", { length: 3 }).notNull(),
+  transactionDate: date("transaction_date").notNull(),
+  description: varchar("description", { length: 240 }).notNull(),
+  category: varchar("category", { length: 80 }).notNull(),
+  status: text("status").notNull().default("posted"),
+  source: text("source").notNull().default("manual"),
+  providerTransactionRef: text("provider_transaction_ref"),
+  clientMutationId: text("client_mutation_id"),
+  version: integer("version").notNull().default(1),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("finance_transactions_user_date_idx").on(table.userId, table.transactionDate, table.id),
+  index("finance_transactions_user_account_date_idx").on(table.userId, table.accountId, table.transactionDate),
+  uniqueIndex("finance_transactions_user_mutation_unique_idx").on(table.userId, table.clientMutationId).where(sql`${table.clientMutationId} IS NOT NULL`),
+  uniqueIndex("finance_transactions_user_provider_ref_unique_idx").on(table.userId, table.source, table.providerTransactionRef).where(sql`${table.providerTransactionRef} IS NOT NULL`),
+]);
+
+export const financeBudgets = pgTable("finance_budgets", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  month: date("month").notNull(),
+  category: varchar("category", { length: 80 }).notNull(),
+  currency: varchar("currency", { length: 3 }).notNull(),
+  limitMinor: bigint("limit_minor", { mode: "number" }).notNull(),
+  version: integer("version").notNull().default(1),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [uniqueIndex("finance_budgets_user_month_category_currency_unique_idx").on(table.userId, table.month, table.category, table.currency)]);
+
+export const financeGoals = pgTable("finance_goals", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  name: varchar("name", { length: 120 }).notNull(),
+  goalType: text("goal_type").notNull(),
+  currency: varchar("currency", { length: 3 }).notNull(),
+  targetMinor: bigint("target_minor", { mode: "number" }).notNull(),
+  currentMinor: bigint("current_minor", { mode: "number" }).notNull().default(0),
+  targetDate: date("target_date"),
+  status: text("status").notNull().default("active"),
+  version: integer("version").notNull().default(1),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [index("finance_goals_user_status_idx").on(table.userId, table.status)]);
 
 // Nutrition is deliberately modeled as factual diary data: each entry points
 // to an owned food record and nutrient quantities retain their source.
