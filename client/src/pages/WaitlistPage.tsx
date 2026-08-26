@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useLocation } from "wouter";
 import {
   ChevronDown,
@@ -145,10 +145,14 @@ function Placeholder({ label }: { label: string }) {
 
 function FAQItem({ q, a }: { q: string; a: string }) {
   const [open, setOpen] = useState(false);
+  const answerId = useId();
   return (
     <div className="border border-border/50 rounded-lg overflow-hidden">
       <button
+        type="button"
         onClick={() => setOpen(!open)}
+        aria-expanded={open}
+        aria-controls={answerId}
         className="w-full flex items-center justify-between gap-4 px-5 py-4 text-left hover:bg-card/50 transition-colors"
       >
         <span className="font-medium text-foreground text-sm sm:text-base">{q}</span>
@@ -159,7 +163,7 @@ function FAQItem({ q, a }: { q: string; a: string }) {
         )}
       </button>
       {open && (
-        <div className="px-5 pb-4 text-sm text-muted-foreground leading-relaxed">
+        <div id={answerId} className="px-5 pb-4 text-sm text-muted-foreground leading-relaxed">
           {a}
         </div>
       )}
@@ -168,12 +172,14 @@ function FAQItem({ q, a }: { q: string; a: string }) {
 }
 
 function WaitlistForm({
+  id,
   email,
   setEmail,
   error,
   isSubmitting,
   onSubmit,
 }: {
+  id: string;
   email: string;
   setEmail: (v: string) => void;
   error: string;
@@ -183,14 +189,18 @@ function WaitlistForm({
   return (
     <form onSubmit={onSubmit} className="flex flex-col sm:flex-row items-center gap-3 max-w-xl mx-auto lg:mx-0">
       <div className="relative flex-1 w-full">
+        <label htmlFor={id} className="sr-only">Email address</label>
         <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/50" />
         <input
+          id={id}
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="Enter your email"
           className="w-full pl-11 pr-4 py-3 rounded-lg border border-border bg-card text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors"
           disabled={isSubmitting}
+          aria-invalid={Boolean(error)}
+          aria-describedby={error ? `${id}-error` : undefined}
         />
       </div>
       <button
@@ -211,7 +221,7 @@ function WaitlistForm({
         )}
       </button>
       {error && (
-        <p className="text-sm text-red-400 w-full text-center sm:text-left">{error}</p>
+        <p id={`${id}-error`} role="alert" className="text-sm text-red-400 w-full text-center sm:text-left">{error}</p>
       )}
     </form>
   );
@@ -251,12 +261,13 @@ export default function WaitlistPage() {
     <div className="min-h-screen bg-background text-foreground">
       {/* ─── BRANDING ─── */}
       <div className="text-center pt-8 pb-2">
-        <h1 className="text-4xl font-orbitron font-bold tracking-wider">
+        <p className="text-4xl font-orbitron font-bold tracking-wider" aria-label="LYFEOS">
           <span className="text-white">LYFE</span><span className="text-primary">OS</span>
-        </h1>
+        </p>
         <p className="text-muted-foreground text-sm mt-1">Your personal life operating system</p>
       </div>
 
+      <main>
       {/* ─── HERO ─── */}
       <section className="max-w-6xl mx-auto px-4 py-16 sm:py-24 lg:py-32">
         <div className="grid lg:grid-cols-5 gap-10 lg:gap-14 items-center">
@@ -270,6 +281,7 @@ export default function WaitlistPage() {
             </p>
             <div className="flex flex-col items-center lg:items-start gap-4">
               <WaitlistForm
+                id="waitlist-email-hero"
                 email={email}
                 setEmail={setEmail}
                 error={error}
@@ -405,6 +417,7 @@ export default function WaitlistPage() {
           </p>
           <div className="flex justify-center">
             <WaitlistForm
+              id="waitlist-email-footer"
               email={email}
               setEmail={setEmail}
               error={error}
@@ -415,6 +428,7 @@ export default function WaitlistPage() {
           <p className="text-xs text-muted-foreground/60">No spam, ever. We respect your privacy.</p>
         </div>
       </section>
+      </main>
 
       {/* ─── FOOTER ─── */}
       <footer className="bg-background">

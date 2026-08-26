@@ -29,4 +29,14 @@ describe("shared accessibility shell", () => {
     expect(assistant).toContain('e.key === "Enter" || e.key === " "');
     expect(assistant).toContain('aria-label="Send message"');
   });
+
+  it("keeps the public waitlist forms and FAQ semantically operable", () => {
+    const waitlist = readFileSync(resolve(process.cwd(), "client/src/pages/WaitlistPage.tsx"), "utf8");
+    expect(waitlist).toContain("<main>");
+    expect(waitlist).toContain('<label htmlFor={id} className="sr-only">Email address</label>');
+    expect(waitlist).toContain("aria-invalid={Boolean(error)}");
+    expect(waitlist).toContain('role="alert"');
+    expect(waitlist).toContain("aria-expanded={open}");
+    expect(waitlist).toContain("aria-controls={answerId}");
+  });
 });
