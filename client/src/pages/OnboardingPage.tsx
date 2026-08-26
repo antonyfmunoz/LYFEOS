@@ -753,6 +753,7 @@ export default function OnboardingPage() {
   const [onboardingFirstName, setOnboardingFirstName] = useState("");
   const [onboardingLastName, setOnboardingLastName] = useState("");
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
+  const [usernameCheckError, setUsernameCheckError] = useState("");
   const [checkingUsername, setCheckingUsername] = useState(false);
   const [lifeStage, setLifeStage] = useState(saved.lifeStage || "");
   
@@ -1645,17 +1646,23 @@ export default function OnboardingPage() {
   const checkUsernameAvailability = async (name: string): Promise<boolean> => {
     if (name.trim().length < 3) {
       setUsernameAvailable(null);
+      setUsernameCheckError("");
       return false;
     }
     setCheckingUsername(true);
+    setUsernameCheckError("");
     try {
       const res = await fetch(`/api/auth/check-display-name?displayName=${encodeURIComponent(name.trim())}`, { credentials: "include" });
       const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Username availability could not be checked");
+      }
       const available = data.available === true;
       setUsernameAvailable(available);
       return available;
     } catch {
       setUsernameAvailable(null);
+      setUsernameCheckError("We couldn't check that display name. Please try again.");
       return false;
     } finally {
       setCheckingUsername(false);
@@ -1709,6 +1716,7 @@ export default function OnboardingPage() {
                   const val = e.target.value.replace(/[^a-zA-Z0-9_-]/g, '');
                   setOnboardingUsername(val);
                   setUsernameAvailable(null);
+                  setUsernameCheckError("");
                 }}
                 onBlur={() => { void checkUsernameAvailability(onboardingUsername); }}
                 placeholder="e.g., phantom_coder"
@@ -1726,6 +1734,9 @@ export default function OnboardingPage() {
               )}
               {usernameAvailable === false && (
                 <p className="text-xs text-red-400 text-center">Display name is already taken</p>
+              )}
+              {usernameCheckError && (
+                <p role="alert" className="text-xs text-red-400 text-center">{usernameCheckError}</p>
               )}
             </div>
           </div>

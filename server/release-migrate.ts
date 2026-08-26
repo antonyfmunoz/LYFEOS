@@ -2539,6 +2539,15 @@ const migrations = [
         ON "health_insight_interpretations" ("user_id", "created_at" DESC);
     `,
   },
+  {
+    id: "0122_user_identity_reconciliation",
+    sql: `
+      ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "avatar_url" text;
+      CREATE UNIQUE INDEX IF NOT EXISTS "users_display_name_lower_unique"
+        ON "users" (lower("display_name"))
+        WHERE "display_name" IS NOT NULL;
+    `,
+  },
 ];
 
 async function run(): Promise<void> {

@@ -294,7 +294,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserByDisplayName(displayName: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.displayName, displayName));
+    const [user] = await db.select().from(users).where(sql`lower(${users.displayName}) = lower(${displayName})`);
     return user;
   }
   
