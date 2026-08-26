@@ -24,7 +24,8 @@ describe("health provider credential vault", () => {
     expect(() => openHealthProviderCredential(sealed, { ...context, connectionId: 12 }, key)).toThrow();
     expect(() => openHealthProviderCredential(sealed, { ...context, provider: "whoop" }, key)).toThrow();
     expect(() => openHealthProviderCredential(sealed, context, crypto.randomBytes(32))).toThrow();
-    expect(() => openHealthProviderCredential({ ...sealed, ciphertext: `A${sealed.ciphertext.slice(1)}` }, context, key)).toThrow();
+    const tamperedCiphertext = `${sealed.ciphertext.startsWith("A") ? "B" : "A"}${sealed.ciphertext.slice(1)}`;
+    expect(() => openHealthProviderCredential({ ...sealed, ciphertext: tamperedCiphertext }, context, key)).toThrow();
   });
 
   it("keeps encrypted credentials outside export and destroys them on revoke", () => {
