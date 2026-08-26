@@ -43,10 +43,8 @@ jobs:
           test "$(printf '%s' "$body" | jq -r '.service')" = "lyfeos"
           printf '%s' "$body" | jq -e '.sourceRevision | test("^[0-9a-f]{40}$")' >/dev/null
           test "$(printf '%s' "$body" | jq -r '.migrations.status')" = "available"
-          # Two-phase rollout: keep the previous production floor until the
-          # migration-bearing image is live, then advance this exact check.
-          test "$(printf '%s' "$body" | jq -r '.migrations.count')" -ge 119
-          test "$(printf '%s' "$body" | jq -r '.migrations.latest')" = "0127_distributed_request_rate_limits"
+          test "$(printf '%s' "$body" | jq -r '.migrations.count')" -ge 120
+          test "$(printf '%s' "$body" | jq -r '.migrations.latest')" = "0128_umh_outbox_leases"
       - name: Verify protected health integrity aggregates
         env:
           LYFEOS_MONITOR_TOKEN: ${{ secrets.LYFEOS_MONITOR_TOKEN }}
