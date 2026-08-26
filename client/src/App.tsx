@@ -71,32 +71,6 @@ const WaitlistThankYouPage = React.lazy(() => import("./pages/WaitlistThankYouPa
 const isTouchDevice = () =>
   typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
 
-function setAccessCookie(value: string) {
-  document.cookie = `lyfeos_access=${value}; path=/; max-age=${365 * 24 * 60 * 60}; SameSite=Lax`;
-}
-
-function getAccessCookie(): boolean {
-  return document.cookie.split(';').some(c => c.trim().startsWith('lyfeos_access=true'));
-}
-
-function isStandaloneMode(): boolean {
-  return (window.navigator as any).standalone === true ||
-    window.matchMedia('(display-mode: standalone)').matches;
-}
-
-function hasAccess(): boolean {
-  if (isStandaloneMode() && !window.location.pathname.startsWith('/waitlist')) {
-    grantAccess();
-    return true;
-  }
-  return localStorage.getItem('lyfeos_access') === 'true' || getAccessCookie();
-}
-
-function grantAccess() {
-  localStorage.setItem('lyfeos_access', 'true');
-  setAccessCookie('true');
-}
-
 function hideOAuthPreloader() {
   const el = document.getElementById('oauth-preloader');
   if (el) el.style.display = 'none';
@@ -260,17 +234,8 @@ function Router() {
     wasAuthenticated.current = isAuthenticated;
   }, [isAuthenticated]);
   
-  useEffect(() => {
-    const searchParams = new URLSearchParams(window.location.search);
-    if (searchParams.get('access') === 'beta') {
-      grantAccess();
-      searchParams.delete('access');
-      const cleanUrl = window.location.pathname + (searchParams.toString() ? '?' + searchParams.toString() : '');
-      window.history.replaceState({}, '', cleanUrl);
-    }
-  }, []);
-
-  // Redirect from root to dashboard if authenticated, or to login if not
+  // Authenticated users enter the app at Dashboard. Public visitors keep the
+  // public landing, login, registration, recovery, waitlist and review routes.
   useEffect(() => {
     if (isLoading) {
       return; // Wait until auth state is determined
@@ -283,22 +248,6 @@ function Router() {
     }
     
     const currentPath = window.location.pathname;
-
-    if (currentPath.startsWith('/review-mission')) {
-      grantAccess();
-    }
-
-    if (isAuthenticated) {
-      grantAccess();
-    }
-
-    const userHasAccess = hasAccess();
-    const isWaitlistPath = currentPath.startsWith('/waitlist');
-
-    if (!userHasAccess && !isAuthenticated && !isWaitlistPath) {
-      navigate('/waitlist', { replace: true });
-      return;
-    }
 
     const hasPendingOnboarding = localStorage.getItem("lyfeos-pending-onboarding") === "true";
     const hasPendingRegistration = !!sessionStorage.getItem("lyfeos-pending-registration");
@@ -318,24 +267,23 @@ function Router() {
       return;
     }
     
-    // Skip if we've already redirected for this path
-    if (routeRedirectRef.current === currentPath) {
-      return;
-    }
-    
-    // Handle root path redirects
+    // Handle the public root before the redirect de-duplication guard. Signed-out
+    // visitors stay on the landing page; an authentication state change can still
+    // promote the same path to the dashboard immediately.
     if (currentPath === '/') {
-      routeRedirectRef.current = currentPath;
       if (isAuthenticated) {
+        routeRedirectRef.current = currentPath;
         console.log('Authenticated at root, redirecting to dashboard');
         navigate('/dashboard', { replace: true });
-      } else if (userHasAccess) {
-        console.log('Not authenticated at root, redirecting to login');
-        navigate('/login', { replace: true });
       } else {
-        console.log('No access at root, redirecting to waitlist');
-        navigate('/waitlist', { replace: true });
+        routeRedirectRef.current = null;
+        console.log('Public visitor at root, keeping the landing page');
       }
+      return;
+    }
+
+    // Skip if we've already redirected for this path
+    if (routeRedirectRef.current === currentPath) {
       return;
     }
     
@@ -350,7 +298,7 @@ function Router() {
     }
     
     // Public paths that don't require auth
-    const publicPaths = ['/login', '/register', '/login-success', '/waitlist', '/review-mission', '/forms/respond'];
+    const publicPaths = ['/login', '/register', '/forgot-password', '/reset-password', '/login-success', '/waitlist', '/review-mission', '/forms/respond'];
     const exactPublicPaths = ['/subscription'];
     if (publicPaths.some(path => currentPath.startsWith(path)) || exactPublicPaths.includes(currentPath)) {
       return;
@@ -697,15 +645,15 @@ function Router() {
         <ProtectedRoute><RootLayout><AutomationsPage /></RootLayout></ProtectedRoute>
       </Route>
       
-      {/* Redirect to dashboard if authenticated, or login if not */}
+      {/* Public landing for signed-out visitors; authenticated users see Dashboard. */}
       <Route path="/">
         {isAuthenticated ? (
           <RootLayout>
             <DashboardPage />
           </RootLayout>
-        ) : isLoading && localStorage.getItem('lyfeos-oauth-mode') && !hasAccess() ? (
+        ) : isLoading && localStorage.getItem('lyfeos-oauth-mode') ? (
           <OAuthLoadingScreen />
-        ) : <LoginPage />}
+        ) : <LandingPage />}
       </Route>
       
       {/* Fallback to 404 */}
