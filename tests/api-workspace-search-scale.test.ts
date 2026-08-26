@@ -34,7 +34,7 @@ describeApi("private workspace search at realistic account scale", () => {
     if (ownerCookie) await request("DELETE", "/api/account", { confirmation: "DELETE MY ACCOUNT" }, ownerCookie);
     if (otherCookie) await request("DELETE", "/api/account", { confirmation: "DELETE MY ACCOUNT" }, otherCookie);
     await pool.end();
-  });
+  }, 60_000);
 
   it("builds isolated canonical fixtures without exposing a contact secret as search content", async () => {
     expect((await request("GET", "/api/search?q=atlasneedle")).status).toBe(401);
