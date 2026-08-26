@@ -34,7 +34,10 @@ export interface CommandOutcome {
 }
 
 function isUniqueViolation(error: unknown): boolean {
-  return Boolean(error && typeof error === "object" && "code" in error && error.code === "23505");
+  if (!error || typeof error !== "object") return false;
+  if ("code" in error && error.code === "23505") return true;
+  if ("cause" in error && error.cause !== error) return isUniqueViolation(error.cause);
+  return false;
 }
 
 async function existingIdempotentOutcome(command: UMHCommandEnvelope, payloadHash: string): Promise<CommandOutcome | undefined> {

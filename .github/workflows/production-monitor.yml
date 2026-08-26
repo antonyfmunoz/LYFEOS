@@ -43,6 +43,8 @@ jobs:
           test "$(printf '%s' "$body" | jq -r '.service')" = "lyfeos"
           printf '%s' "$body" | jq -e '.sourceRevision | test("^[0-9a-f]{40}$")' >/dev/null
           test "$(printf '%s' "$body" | jq -r '.migrations.status')" = "available"
+          # Two-phase rollout: keep the previous production floor until the
+          # migration-bearing image is live, then advance this exact check.
           test "$(printf '%s' "$body" | jq -r '.migrations.count')" -ge 119
           test "$(printf '%s' "$body" | jq -r '.migrations.latest')" = "0127_distributed_request_rate_limits"
       - name: Verify protected health integrity aggregates
@@ -59,7 +61,7 @@ jobs:
           test "$(printf '%s' "$body" | jq -r '.status')" = "healthy"
       - name: Open an incident when the monitor fails
         if: failure()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const title = '[Incident] LyfeOS production synthetic monitor failed';
@@ -81,7 +83,7 @@ jobs:
             }
       - name: Close recovered monitor incidents
         if: success()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const { data: incidents } = await github.rest.issues.listForRepo({

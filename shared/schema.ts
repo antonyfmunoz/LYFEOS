@@ -2857,10 +2857,12 @@ export const umhOutboxEvents = pgTable("umh_outbox_events", {
   payload: jsonb("payload").notNull(),
   status: text("status").notNull().default("pending"),
   attempts: integer("attempts").notNull().default(0),
-  nextAttemptAt: timestamp("next_attempt_at").notNull().defaultNow(),
-  deliveredAt: timestamp("delivered_at"),
+  nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull().defaultNow(),
+  leaseToken: text("lease_token"),
+  leasedUntil: timestamp("leased_until", { withTimezone: true }),
+  deliveredAt: timestamp("delivered_at", { withTimezone: true }),
   lastError: text("last_error"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export type UMHInboundCommand = typeof umhInboundCommands.$inferSelect;

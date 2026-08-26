@@ -161,7 +161,9 @@ async function selectFederationAuditRows(userId: number, clerkId?: string | null
     queryRows(sql`SELECT * FROM "umh_approval_requests" WHERE "command_id" IN (SELECT "command_id" FROM "umh_inbound_commands" WHERE "local_user_id" = ${userId})`),
     queryRows(sql`SELECT * FROM "umh_audit_records" WHERE "local_user_id" = ${userId}`),
     queryRows(sql`
-      SELECT * FROM "umh_outbox_events"
+      SELECT "id", "event_id", "event_type", "aggregate_type", "aggregate_id", "payload", "status",
+        "attempts", "next_attempt_at", "delivered_at", "last_error", "created_at"
+      FROM "umh_outbox_events"
       WHERE ("aggregate_type" = 'mission' AND "aggregate_id" IN (SELECT "id"::text FROM "quests" WHERE "user_id" = ${userId}))
          OR ("aggregate_type" = 'progression' AND "aggregate_id" = ${String(userId)})
          OR ("aggregate_type" = 'coordination_context' AND "aggregate_id" LIKE ${`${userId}:%`})
