@@ -651,6 +651,23 @@ export const missionMutationReceipts = pgTable("mission_mutation_receipts", {
   index("mission_mutation_receipts_user_created_idx").on(table.userId, table.createdAt),
 ]);
 
+// The mission's creation snapshot remains immutable on quests. Corrections are
+// full, append-only revisions so later planning can use current owner context
+// without rewriting the evidence that explains the original decision.
+export const missionPlanningContextAmendments = pgTable("mission_planning_context_amendments", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  questId: integer("quest_id").notNull().references(() => quests.id, { onDelete: "cascade" }),
+  revision: integer("revision").notNull(),
+  previousSnapshot: jsonb("previous_snapshot").notNull(),
+  snapshot: jsonb("snapshot").notNull(),
+  reason: text("reason").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("mission_planning_context_amendments_quest_revision_unique").on(table.questId, table.revision),
+  index("mission_planning_context_amendments_user_quest_revision_idx").on(table.userId, table.questId, table.revision),
+]);
+
 // A mission contract keeps purpose, expected proof, review mode, and safety
 // bounds explicit. It is separate from the task record so legacy missions
 // remain readable while new developmental missions can be reviewed honestly.

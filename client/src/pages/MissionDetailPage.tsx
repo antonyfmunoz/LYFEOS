@@ -74,7 +74,11 @@ type MissionContractBundle = {
   };
   planningDecision: null | {
     source: string;
-    context: { capturedAt: string; capacity: { availability: "low" | "steady" | "high" | "unknown" }; constraints: string[] };
+    context: { capturedAt: string; focus: string | null; declaredWeeklyHours: number | null; capacity: { availability: "low" | "steady" | "high" | "unknown" }; constraints: string[] };
+    currentContext: { capturedAt: string; focus: string | null; declaredWeeklyHours: number | null; capacity: { availability: "low" | "steady" | "high" | "unknown" }; constraints: string[] };
+    contextRevision: number;
+    amendments: Array<{ id: number; revision: number; reason: string; createdAt: string }>;
+    sources: Record<string, { label: string; fields: readonly string[]; href: string }>;
     calibration: { recommendedDifficulty: string; selectedDifficulty: string; selectedBy: string; confidence: string; rationale: string[] };
   };
   unlockResult: null | {
@@ -190,6 +194,10 @@ export default function MissionDetailPage() {
   const [preflightDecision, setPreflightDecision] = useState<"proceed" | "revise" | "do_not_proceed">("revise");
   const [preflightRationale, setPreflightRationale] = useState("");
   const [preflightAcknowledged, setPreflightAcknowledged] = useState(false);
+  const [contextFocus, setContextFocus] = useState("");
+  const [contextWeeklyHours, setContextWeeklyHours] = useState("");
+  const [contextConstraints, setContextConstraints] = useState("");
+  const [contextReason, setContextReason] = useState("");
   const invitationQuery = useQuery<MissionReviewInvitationBundle>({
     queryKey: ["/api/quests", questId, "review-invitations"],
     queryFn: () => apiRequest(`/api/quests/${questId}/review-invitations`),
@@ -197,6 +205,31 @@ export default function MissionDetailPage() {
   });
   const refreshContract = () => queryClient.invalidateQueries({ queryKey: ["/api/quests", questId, "contract"] });
   const refreshDependencies = () => queryClient.invalidateQueries({ queryKey: ["/api/quests", questId, "dependencies"] });
+  useEffect(() => {
+    const context = contractQuery.data?.planningDecision?.currentContext;
+    if (!context) return;
+    setContextFocus(context.focus || "");
+    setContextWeeklyHours(context.declaredWeeklyHours === null ? "" : String(context.declaredWeeklyHours));
+    setContextConstraints(context.constraints.join("\n"));
+    setContextReason("");
+  }, [contractQuery.data?.planningDecision?.contextRevision, questId]);
+  const amendPlanningContext = useMutation({
+    mutationFn: () => apiRequest(`/api/quests/${questId}/planning-context/amendments`, {
+      method: "POST",
+      body: JSON.stringify({
+        expectedRevision: contractQuery.data!.planningDecision!.contextRevision,
+        focus: contextFocus.trim() || null,
+        declaredWeeklyHours: contextWeeklyHours.trim() === "" ? null : Number(contextWeeklyHours),
+        constraints: contextConstraints.split(/\r?\n/).map((value) => value.trim()).filter(Boolean).slice(0, 3),
+        reason: contextReason,
+      }),
+    }),
+    onSuccess: (result: MissionContractBundle) => {
+      queryClient.setQueryData(["/api/quests", questId, "contract"], result);
+      toast({ title: "Planning context revised", description: "The original creation snapshot remains unchanged in the history." });
+    },
+    onError: (error: Error) => toast({ title: "Context not revised", description: error.message, variant: "destructive" }),
+  });
   const saveContract = useMutation({
     mutationFn: () => apiRequest(`/api/quests/${questId}/contract`, {
       method: "PUT",
@@ -666,6 +699,31 @@ export default function MissionDetailPage() {
                 </div>
                 {contractQuery.data.planningDecision.calibration.rationale?.slice(0, 2).map((reason) => <p key={reason} className="mt-1 text-[10px] leading-relaxed">• {reason}</p>)}
                 <p className="mt-1 text-[10px]">Captured when this mission was created from {contractQuery.data.planningDecision.source}. This explains the initial scope; it is not a competence verdict.</p>
+                <details className="mt-3 rounded border border-primary/10 bg-background/20 p-2">
+                  <summary className="cursor-pointer text-xs text-primary">Review sources or correct current context</summary>
+                  <div className="mt-3 space-y-3">
+                    <div className="grid gap-1 sm:grid-cols-2">
+                      {Object.entries(contractQuery.data.planningDecision.sources).map(([key, source]) => <Link key={key} href={source.href} className="rounded border border-primary/10 p-2 hover:border-primary/30">
+                        <span className="block text-foreground">{source.label}</span>
+                        <span className="text-[10px]">{source.fields.join(" · ")}</span>
+                      </Link>)}
+                    </div>
+                    <p className="text-[10px] leading-relaxed">Revision {contractQuery.data.planningDecision.contextRevision}. Corrections affect current planning only. The creation snapshot and every prior correction remain immutable.</p>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <Input aria-label="Current mission focus" value={contextFocus} onChange={(event) => setContextFocus(event.target.value)} placeholder="Current objective or focus" maxLength={280} />
+                      <Input aria-label="Declared weekly hours" type="number" min="0" max="168" step="0.5" value={contextWeeklyHours} onChange={(event) => setContextWeeklyHours(event.target.value)} placeholder="Hours per week" />
+                    </div>
+                    <Textarea aria-label="Current planning constraints" value={contextConstraints} onChange={(event) => setContextConstraints(event.target.value)} placeholder={"Up to three current constraints, one per line"} className="min-h-20" maxLength={840} />
+                    <Textarea aria-label="Reason for context correction" value={contextReason} onChange={(event) => setContextReason(event.target.value)} placeholder="What changed or needed correction?" className="min-h-16" maxLength={500} />
+                    <Button size="sm" variant="outline" className="border-primary/30 text-primary" disabled={contextReason.trim().length < 3 || amendPlanningContext.isPending || (contextWeeklyHours.trim() !== "" && (!Number.isFinite(Number(contextWeeklyHours)) || Number(contextWeeklyHours) < 0 || Number(contextWeeklyHours) > 168))} onClick={() => amendPlanningContext.mutate()}>
+                      {amendPlanningContext.isPending ? "Recording…" : "Record context revision"}
+                    </Button>
+                    {contractQuery.data.planningDecision.amendments.length > 0 && <div className="border-t border-primary/10 pt-2">
+                      <p className="text-[10px] font-mono uppercase tracking-[0.1em] text-primary/80">Revision history</p>
+                      {contractQuery.data.planningDecision.amendments.slice(0, 5).map((amendment) => <p key={amendment.id} className="mt-1 text-[10px]">v{amendment.revision} · {new Date(amendment.createdAt).toLocaleString()} · {amendment.reason}</p>)}
+                    </div>}
+                  </div>
+                </details>
               </div>}
               {contractQuery.isLoading ? <p className="text-sm text-muted-foreground">Loading proof plan…</p> : !contractQuery.data?.contract ? (
                 <div className="grid gap-2">

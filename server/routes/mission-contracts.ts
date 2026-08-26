@@ -3,7 +3,7 @@ import { isDeepStrictEqual } from "node:util";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../db";
-import { healthSourceRecords, missionConsequencePreflights, missionContracts, missionDependencies, missionEvidence, missionEvidenceProviderBindings, missionReviewAppeals, missionReviewInvitations, missionReviews, personalCapabilities, questSkillContributions, quests, skillNodes, users } from "@shared/schema";
+import { healthSourceRecords, missionConsequencePreflights, missionContracts, missionDependencies, missionEvidence, missionEvidenceProviderBindings, missionPlanningContextAmendments, missionReviewAppeals, missionReviewInvitations, missionReviews, personalCapabilities, questSkillContributions, quests, skillNodes, users } from "@shared/schema";
 import { isAuthenticated } from "./middleware";
 import { applyReviewedMissionProgression, revokeReviewedMissionProgression } from "../mission-lifecycle";
 import { wouldCreateMissionDependencyCycle } from "../mission-dependencies";
@@ -102,6 +102,38 @@ const appealResolutionSchema = z.object({
     })).max(8).default([]),
   }).default({ evidenceChecks: [] }),
 });
+const planningContextSnapshotSchema = z.object({
+  capturedAt: z.string().datetime(),
+  focus: z.string().trim().max(280).nullable(),
+  declaredWeeklyHours: z.number().min(0).max(168).nullable(),
+  capacity: z.object({
+    energy: z.number().min(0).max(100).nullable(),
+    time: z.number().min(0).max(100).nullable(),
+    attention: z.number().min(0).max(100).nullable(),
+    availability: z.enum(["low", "steady", "high", "unknown"]),
+  }).strict(),
+  dailyState: z.object({
+    mental: z.number().min(1).max(10).nullable(),
+    physical: z.number().min(1).max(10).nullable(),
+    emotional: z.number().min(1).max(10).nullable(),
+  }).strict().nullable(),
+  constraints: z.array(z.string().trim().min(1).max(280)).max(3),
+}).strict();
+const planningContextAmendmentSchema = z.object({
+  expectedRevision: z.number().int().min(0),
+  focus: z.string().trim().max(280).nullable(),
+  declaredWeeklyHours: z.number().min(0).max(168).nullable(),
+  constraints: z.array(z.string().trim().min(1).max(280)).max(3),
+  reason: z.string().trim().min(3).max(500),
+}).strict();
+
+const planningContextSources = {
+  focus: { label: "Profile focus", fields: ["desired trait", "primary craft", "90-day vision"], href: "/profile" },
+  declaredWeeklyHours: { label: "Profile weekly capacity", fields: ["declared weekly hours"], href: "/profile" },
+  capacity: { label: "Capacity balances at capture", fields: ["energy", "time", "attention"], href: "/dashboard" },
+  dailyState: { label: "Daily state at capture", fields: ["mental", "physical", "emotional"], href: "/tracker" },
+  constraints: { label: "Profile constraints", fields: ["capacity cap", "locked habit", "environment impact"], href: "/profile" },
+} as const;
 
 async function ownedQuest(questId: number, userId: number) {
   const [quest] = await db.select({ id: quests.id, completed: quests.completed })
@@ -154,8 +186,16 @@ async function contractBundle(questId: number, userId: number) {
     difficultyCalibration: quests.difficultyCalibration,
     planningDecisionSource: quests.planningDecisionSource,
   }).from(quests).where(and(eq(quests.id, questId), eq(quests.userId, userId))).limit(1);
+  const amendments = quest ? await db.select().from(missionPlanningContextAmendments).where(and(
+    eq(missionPlanningContextAmendments.questId, questId),
+    eq(missionPlanningContextAmendments.userId, userId),
+  )).orderBy(desc(missionPlanningContextAmendments.revision)).limit(20) : [];
   const planningDecision = quest ? {
     context: quest.planningContextSnapshot,
+    currentContext: amendments[0]?.snapshot || quest.planningContextSnapshot,
+    contextRevision: amendments[0]?.revision || 0,
+    amendments: amendments.map(({ id, revision, reason, createdAt }) => ({ id, revision, reason, createdAt })),
+    sources: planningContextSources,
     calibration: quest.difficultyCalibration,
     source: quest.planningDecisionSource,
   } : null;
@@ -344,6 +384,50 @@ export function registerMissionContractRoutes(app: Express): void {
     if (!Number.isInteger(questId)) return res.status(400).json({ error: "Invalid mission." });
     if (!await ownedQuest(questId, req.session.userId!)) return res.status(404).json({ error: "Mission not found." });
     return res.json(await contractBundle(questId, req.session.userId!));
+  });
+
+  app.post("/api/quests/:questId/planning-context/amendments", isAuthenticated, async (req: Request, res: Response) => {
+    const questId = Number(req.params.questId);
+    if (!Number.isInteger(questId)) return res.status(400).json({ error: "Invalid mission." });
+    const parsed = planningContextAmendmentSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: "Provide a valid planning-context correction.", details: parsed.error.flatten() });
+    const userId = req.session.userId!;
+    const result = await db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(120011, ${questId})`);
+      const [quest] = await tx.select({ planningContextSnapshot: quests.planningContextSnapshot }).from(quests).where(and(
+        eq(quests.id, questId),
+        eq(quests.userId, userId),
+      )).limit(1);
+      if (!quest) return { status: 404 as const, error: "Mission not found." };
+      const [latest] = await tx.select().from(missionPlanningContextAmendments).where(and(
+        eq(missionPlanningContextAmendments.questId, questId),
+        eq(missionPlanningContextAmendments.userId, userId),
+      )).orderBy(desc(missionPlanningContextAmendments.revision)).limit(1);
+      const currentRevision = latest?.revision || 0;
+      if (parsed.data.expectedRevision !== currentRevision) {
+        return { status: 409 as const, error: "Planning context changed. Review the latest revision before saving.", currentRevision };
+      }
+      const base = planningContextSnapshotSchema.safeParse(latest?.snapshot || quest.planningContextSnapshot);
+      if (!base.success) return { status: 409 as const, error: "This legacy mission has no complete planning snapshot to amend." };
+      const nextSnapshot = {
+        ...base.data,
+        capturedAt: new Date().toISOString(),
+        focus: parsed.data.focus?.trim() || null,
+        declaredWeeklyHours: parsed.data.declaredWeeklyHours,
+        constraints: parsed.data.constraints.map((value) => value.trim()),
+      };
+      const [amendment] = await tx.insert(missionPlanningContextAmendments).values({
+        userId,
+        questId,
+        revision: currentRevision + 1,
+        previousSnapshot: base.data,
+        snapshot: nextSnapshot,
+        reason: parsed.data.reason,
+      }).returning({ id: missionPlanningContextAmendments.id });
+      return { status: 201 as const, amendmentId: amendment.id };
+    });
+    if ("error" in result) return res.status(result.status).json(result);
+    return res.status(201).json(await contractBundle(questId, userId));
   });
 
   app.get("/api/quests/:questId/dependencies", isAuthenticated, async (req: Request, res: Response) => {
