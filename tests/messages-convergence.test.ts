@@ -152,6 +152,10 @@ describe("LyfeOS native Messages convergence", () => {
     expect(workflow).toContain("node dist/release-migrate.js");
     expect(workflow).toContain('second_pass="$(node dist/release-migrate.js)"');
     expect(workflow).toContain("LYFEOS_TEST_ENV: isolated");
+    const server = source("server/index.ts");
+    expect(server).toContain('process.env.LYFEOS_TEST_ENV === "isolated" && !process.env.FLY_APP_NAME');
+    expect(server).toContain("qualificationRequestLimit(100)");
+    expect(server).toContain("qualificationRequestLimit(5)");
     expect(workflow).toContain("npx vitest run tests/api-messages-convergence.test.ts tests/api-transformation-intelligence.test.ts");
   });
 });

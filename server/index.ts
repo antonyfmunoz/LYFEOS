@@ -154,13 +154,19 @@ setInterval(() => {
   }
 }, 60000);
 
-app.use("/api/auth/register", createRateLimiter(5, 60 * 1000));
-app.use("/api/auth/complete-registration", createRateLimiter(5, 60 * 1000));
-app.use("/api/auth/login", createRateLimiter(10, 60 * 1000));
-app.use("/api/auth/sync-email-verified", createRateLimiter(5, 60 * 1000));
-app.use("/api/profile/generate-affirmation", createRateLimiter(5, 60 * 1000));
-app.use("/api/voice-command", createRateLimiter(20, 60 * 1000));
-app.use("/api", createRateLimiter(100, 60 * 1000, true));
+const isolatedQualification = process.env.LYFEOS_TEST_ENV === "isolated" && !process.env.FLY_APP_NAME;
+const qualificationRequestLimit = (productionLimit: number) => isolatedQualification ? 10_000 : productionLimit;
+
+app.use("/api/auth/register", createRateLimiter(qualificationRequestLimit(5), 60 * 1000));
+app.use("/api/auth/complete-registration", createRateLimiter(qualificationRequestLimit(5), 60 * 1000));
+app.use("/api/auth/login", createRateLimiter(qualificationRequestLimit(10), 60 * 1000));
+app.use("/api/auth/sync-email-verified", createRateLimiter(qualificationRequestLimit(5), 60 * 1000));
+app.use("/api/profile/generate-affirmation", createRateLimiter(qualificationRequestLimit(5), 60 * 1000));
+app.use("/api/voice-command", createRateLimiter(qualificationRequestLimit(20), 60 * 1000));
+// The isolated authenticated journey exercises the whole API through one local
+// loopback address. Keep the production ceiling unchanged while preventing the
+// shared CI harness from turning unrelated later tests into 429 cascades.
+app.use("/api", createRateLimiter(qualificationRequestLimit(100), 60 * 1000, true));
 
 app.use((req, res, next) => {
   const requestId = req.header("x-request-id") || crypto.randomUUID();
