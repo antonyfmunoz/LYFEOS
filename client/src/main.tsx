@@ -8,6 +8,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
 import * as Sentry from "@sentry/react";
 import { sentryEnabled } from "./instrument";
+import { AppErrorFallback } from "./components/AppErrorFallback";
 
 const runtimeConfig = (window as Window & {
   __LYFEOS_RUNTIME_CONFIG__?: {
@@ -33,7 +34,7 @@ if ('serviceWorker' in navigator) {
       }
       const cacheNames = await caches.keys();
       for (const name of cacheNames) {
-        if (name !== 'lyfeos-v25') {
+        if (name !== 'lyfeos-v26') {
           await caches.delete(name);
         }
       }
@@ -56,7 +57,9 @@ const application = (
 
 createRoot(document.getElementById("root")!).render(
   sentryEnabled ? (
-    <Sentry.ErrorBoundary fallback={<p role="alert">LyfeOS encountered an unexpected error. Please refresh and try again.</p>}>
+    <Sentry.ErrorBoundary
+      fallback={({ error, eventId }) => <AppErrorFallback error={error} eventId={eventId} />}
+    >
       {application}
     </Sentry.ErrorBoundary>
   ) : application,

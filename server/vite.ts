@@ -29,8 +29,17 @@ export function serveStatic(app: Express, runtimeConfig: {
 
   app.use(express.static(distPath, {
     index: false,
-    maxAge: "1y",
-    immutable: true,
+    setHeaders: (res, filePath) => {
+      const normalizedPath = filePath.replace(/\\/g, "/");
+      if (normalizedPath.endsWith("/sw.js")) {
+        res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+        res.setHeader("Service-Worker-Allowed", "/");
+      } else if (normalizedPath.includes("/assets/")) {
+        res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+      } else {
+        res.setHeader("Cache-Control", "public, max-age=0, must-revalidate");
+      }
+    },
   }));
 
   // fall through to index.html if the file doesn't exist
@@ -38,6 +47,7 @@ export function serveStatic(app: Express, runtimeConfig: {
     try {
       const template = await fs.promises.readFile(path.resolve(distPath, "index.html"), "utf-8");
       const serializedConfig = JSON.stringify(runtimeConfig).replace(/</g, "\\u003c");
+      res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
       res.type("html").send(template.replace("</head>", `<script>window.__LYFEOS_RUNTIME_CONFIG__=${serializedConfig};</script></head>`));
     } catch (error) {
       next(error);
