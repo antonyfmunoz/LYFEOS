@@ -40,6 +40,20 @@ describe("shared accessibility shell", () => {
     expect(waitlist).toContain("aria-controls={answerId}");
   });
 
+  it("keeps public launch and registration pages landmark and form accessible", () => {
+    const landing = readFileSync(resolve(process.cwd(), "client/src/pages/LandingPage.tsx"), "utf8");
+    const register = readFileSync(resolve(process.cwd(), "client/src/pages/RegisterPage.tsx"), "utf8");
+    expect(landing).toContain('usePageTitle("Home")');
+    expect(landing).toContain("<main>");
+    expect(landing).toContain('aria-label={mobileMenuOpen ? "Close navigation" : "Open navigation"}');
+    expect(landing).toContain("aria-expanded={mobileMenuOpen}");
+    expect(register).toContain('<main className="flex-1 flex items-center w-full justify-center">');
+    expect(register).toContain('id="registration-error" role="alert"');
+    expect(register).toContain('autoComplete="email"');
+    expect(register).toContain('autoComplete="new-password"');
+    expect(register).toContain('aria-describedby={error ? "registration-error" : undefined}');
+  });
+
   it("keeps automation loading, failure, selection, and schedule state explicit", () => {
     const automations = readFileSync(resolve(process.cwd(), "client/src/pages/AutomationsPage.tsx"), "utf8");
     expect(automations).not.toContain('<main className="space-y-5">');

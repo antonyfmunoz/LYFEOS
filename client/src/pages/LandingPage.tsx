@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import { useAuth } from "../lib/authContext";
+import { usePageTitle } from "@/hooks/use-page-title";
 import {
   Check,
   ChevronDown,
@@ -215,6 +216,7 @@ function Placeholder({ label }: { label: string }) {
 }
 
 export default function LandingPage() {
+  usePageTitle("Home");
   const { isAuthenticated } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -230,6 +232,9 @@ export default function LandingPage() {
             <button
               className="md:hidden p-1.5 text-muted-foreground z-10"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label={mobileMenuOpen ? "Close navigation" : "Open navigation"}
+              aria-expanded={mobileMenuOpen}
+              aria-controls="landing-mobile-navigation"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
@@ -276,7 +281,7 @@ export default function LandingPage() {
         </div>
 
         {mobileMenuOpen && (
-          <div className="md:hidden bg-background/95 backdrop-blur-lg px-4 py-3 space-y-2">
+          <div id="landing-mobile-navigation" className="md:hidden bg-background/95 backdrop-blur-lg px-4 py-3 space-y-2">
             {NAV_LINKS.map((l) => (
               <button
                 key={l.href}
@@ -292,6 +297,8 @@ export default function LandingPage() {
           </div>
         )}
       </header>
+
+      <main>
 
       {/* ─── HERO ─── */}
       <section id="hero" className="max-w-6xl mx-auto px-4 py-16 sm:py-24 lg:py-32">
@@ -547,6 +554,7 @@ export default function LandingPage() {
           <p className="text-xs text-muted-foreground/60">No credit card required</p>
         </div>
       </section>
+      </main>
 
       {/* ─── FOOTER ─── */}
       <footer className="bg-background">

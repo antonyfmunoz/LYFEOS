@@ -113,11 +113,11 @@ export default function RegisterPage() {
 
   if (isOAuthRedirecting) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-4 text-white" style={{ backgroundColor: 'hsl(0 0% 7%)' }}>
+      <main className="min-h-screen flex flex-col items-center justify-center p-4 text-white" style={{ backgroundColor: 'hsl(0 0% 7%)' }}>
         <h1 className="text-4xl font-orbitron font-bold mb-6"><span className="text-white">LYFE</span><span className="text-white">OS</span></h1>
         <Loader2 className="h-8 w-8 animate-spin text-white/60 mb-4" />
-        <p className="text-white/60 text-sm">Completing sign-in...</p>
-      </div>
+        <p className="text-white/60 text-sm" role="status" aria-live="polite">Completing sign-in...</p>
+      </main>
     );
   }
 
@@ -127,7 +127,7 @@ export default function RegisterPage() {
         <h1 className="text-4xl font-orbitron font-bold mb-2"><span className="text-white">LYFE</span><span style={{ color: accent?.color || 'white' }}>OS</span></h1>
         <p className="text-white">Your personal life operating system</p>
       </div>
-      <div className="flex-1 flex items-center w-full justify-center">
+      <main className="flex-1 flex items-center w-full justify-center">
       <div className="w-full max-w-md rounded-xl p-6 border backdrop-blur-md animate-fadeIn"
            style={{ backgroundColor: "hsla(0, 0%, 11%, 0.7)", boxShadow: `0 0 20px ${accent?.glow || 'rgba(255,255,255,0.08)'}`, borderColor: accent?.border20 || 'rgba(255,255,255,0.2)' }}>
         <h2 className="text-xl font-orbitron text-center mb-6" style={{ color: accent?.color || 'white' }}>Create Account</h2>
@@ -177,6 +177,9 @@ export default function RegisterPage() {
               className="w-full bg-transparent rounded-lg p-3 outline-none text-white"
               placeholder="Enter your email"
               required
+              autoComplete="email"
+              aria-invalid={Boolean(error)}
+              aria-describedby={error ? "registration-error" : undefined}
               style={{ borderColor: accent?.border30 || 'rgba(255,255,255,0.3)', '--tw-ring-color': accent?.border30 || 'rgba(255,255,255,0.3)' } as any}
             />
           </div>
@@ -191,6 +194,9 @@ export default function RegisterPage() {
               className="w-full bg-transparent rounded-lg p-3 outline-none text-white"
               placeholder="Create a password"
               required
+              autoComplete="new-password"
+              aria-invalid={Boolean(error)}
+              aria-describedby={error ? "registration-error" : undefined}
               style={{ borderColor: accent?.border30 || 'rgba(255,255,255,0.3)', '--tw-ring-color': accent?.border30 || 'rgba(255,255,255,0.3)' } as any}
             />
           </div>
@@ -205,6 +211,9 @@ export default function RegisterPage() {
               className="w-full bg-transparent rounded-lg p-3 outline-none text-white"
               placeholder="Confirm your password"
               required
+              autoComplete="new-password"
+              aria-invalid={Boolean(error)}
+              aria-describedby={error ? "registration-error" : undefined}
               style={{ borderColor: accent?.border30 || 'rgba(255,255,255,0.3)', '--tw-ring-color': accent?.border30 || 'rgba(255,255,255,0.3)' } as any}
             />
           </div>
@@ -223,7 +232,7 @@ export default function RegisterPage() {
           </div>
           
           {error && (
-            <div className="px-3 py-2 rounded bg-red-500/10 border border-red-500/30 text-red-500 text-sm">
+            <div id="registration-error" role="alert" className="px-3 py-2 rounded bg-red-500/10 border border-red-500/30 text-red-500 text-sm">
               {error}
             </div>
           )}
@@ -254,7 +263,7 @@ export default function RegisterPage() {
           </p>
         </div>
       </div>
-      </div>
+      </main>
     </div>
   );
 }
