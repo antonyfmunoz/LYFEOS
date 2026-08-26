@@ -1,7 +1,7 @@
 import type { HealthProviderId } from "./health-connections";
 import { canonicalHealthMetricDefinition, HealthMetricMappingError, type CanonicalHealthMetricKey } from "./health-provider-metrics";
 
-export const healthProviderSourceMapReviewDate = "2026-08-23";
+export const healthProviderSourceMapReviewDate = "2026-08-26";
 
 export type HealthProviderSourceMapEntry = Readonly<{
   sourceMetricId: string;
@@ -84,6 +84,30 @@ export const reviewedHealthProviderSourceMaps = {
       { sourceMetricId: "BloodPressureRecord.systolic", canonicalMetricKey: "blood_pressure_systolic", adapterUnit: "mmHg", temporalType: "instant", extraction: "instantaneous systolic pressure converted to millimeters of mercury" },
       { sourceMetricId: "BloodPressureRecord.diastolic", canonicalMetricKey: "blood_pressure_diastolic", adapterUnit: "mmHg", temporalType: "instant", extraction: "instantaneous diastolic pressure converted to millimeters of mercury" },
       { sourceMetricId: "BloodGlucoseRecord.level", canonicalMetricKey: "blood_glucose", adapterUnit: "mmol/L", temporalType: "instant", extraction: "instantaneous blood-glucose level converted to millimoles per liter" },
+    ],
+  },
+  oura: {
+    provider: "oura",
+    version: "oura-source-map-v1",
+    reviewedAt: healthProviderSourceMapReviewDate,
+    documentationUrls: [
+      "https://cloud.ouraring.com/v2/docs",
+      "https://cloud.ouraring.com/v2/static/json/openapi-1.37.json",
+    ],
+    entries: [
+      { sourceMetricId: "PublicDailyActivity.steps", canonicalMetricKey: "steps", adapterUnit: "count", temporalType: "interval", extraction: "daily activity steps over the provider day interval" },
+      { sourceMetricId: "PublicDailyActivity.active_calories", canonicalMetricKey: "active_energy", adapterUnit: "kcal", temporalType: "interval", extraction: "active calories in kilocalories over the provider day interval" },
+      { sourceMetricId: "PublicDailyActivity.equivalent_walking_distance", canonicalMetricKey: "distance", adapterUnit: "m", temporalType: "interval", extraction: "equivalent walking distance in meters over the provider day interval; not traveled-route distance" },
+      { sourceMetricId: "PublicWorkout.start_datetime+end_datetime", canonicalMetricKey: "workout_duration", adapterUnit: "s", temporalType: "interval", extraction: "workout end timestamp minus start timestamp in seconds" },
+      { sourceMetricId: "PublicModifiedSleepModel.total_sleep_duration", canonicalMetricKey: "sleep_duration", adapterUnit: "s", temporalType: "interval", extraction: "provider total sleep duration in seconds over the named sleep interval" },
+      { sourceMetricId: "PublicModifiedSleepModel.awake_time", canonicalMetricKey: "sleep_awake_duration", adapterUnit: "s", temporalType: "interval", extraction: "provider awake duration in seconds over the named sleep interval" },
+      { sourceMetricId: "PublicModifiedSleepModel.light_sleep_duration", canonicalMetricKey: "sleep_light_duration", adapterUnit: "s", temporalType: "interval", extraction: "provider light sleep duration in seconds over the named sleep interval" },
+      { sourceMetricId: "PublicModifiedSleepModel.deep_sleep_duration", canonicalMetricKey: "sleep_deep_duration", adapterUnit: "s", temporalType: "interval", extraction: "provider deep sleep duration in seconds over the named sleep interval" },
+      { sourceMetricId: "PublicModifiedSleepModel.rem_sleep_duration", canonicalMetricKey: "sleep_rem_duration", adapterUnit: "s", temporalType: "interval", extraction: "provider REM sleep duration in seconds over the named sleep interval" },
+      { sourceMetricId: "PublicHeartRateRow.bpm", canonicalMetricKey: "heart_rate", adapterUnit: "bpm", temporalType: "instant", extraction: "one factual envelope per discrete timestamped beats-per-minute sample" },
+      { sourceMetricId: "PublicModifiedSleepModel.average_breath", canonicalMetricKey: "respiratory_rate", adapterUnit: "breaths/min", temporalType: "interval", extraction: "provider average breathing rate over the named sleep interval" },
+      { sourceMetricId: "PublicDailySpO2.spo2_percentage.average", canonicalMetricKey: "oxygen_saturation", adapterUnit: "%", temporalType: "interval", extraction: "provider daily aggregate oxygen-saturation percentage; no timeseries or diagnosis is inferred" },
+      { sourceMetricId: "PublicDailyReadiness.temperature_deviation", canonicalMetricKey: "temperature_deviation", adapterUnit: "degC", temporalType: "interval", extraction: "temperature deviation in degrees Celsius from the provider-defined baseline over the provider day interval" },
     ],
   },
 } as const satisfies Partial<Record<HealthProviderId, HealthProviderSourceMap>>;

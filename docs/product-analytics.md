@@ -31,3 +31,11 @@ Capture stays unavailable unless all five values are configured:
 - `POSTHOG_ADMIN_HOST` — HTTPS API origin, such as `https://us.posthog.com`.
 
 The personal API key is never included in browser runtime configuration or logs. Production activation additionally requires a received-event check, withdrawal/deletion drill, deletion-status receipt, retention decision, access review, and approved privacy language.
+
+## Provider control-plane state (2026-08-26)
+
+The dedicated PostHog project exists, but production capture remains intentionally unavailable. A live provider audit found that the project still permits automatic capture, client IP retention, console/performance capture, session recording, and heatmaps. Those provider defaults conflict with this contract even though the LyfeOS SDK also disables the corresponding browser features. No LyfeOS event has been ingested, and Fly does not yet hold the five required PostHog values. Do not configure only the public project token: provider-side deletion requires the server-only project ID, personal API key, and admin host as one complete activation unit.
+
+A restricted, pinned provider dashboard named **LYFEOS Privacy-Safe Lifecycle** now contains three saved definitions: consented lifecycle event volume, a post-consent session-to-Mission activation funnel, and bounded Mission-review outcomes. Their descriptions explicitly distinguish consented telemetry from registrations or total product activity. All currently return zero because collection is disabled; this is expected and is not evidence of zero application use.
+
+Activation is complete only after an authorized project administrator disables autocapture, session recording, console/performance capture and heatmaps; enables client-IP discard; chooses and records provider retention; creates a least-privilege deletion-capable personal API key; installs all five Fly secrets together; approves the privacy language; opts in a test account; observes one allowed event and no blocked content/properties; withdraws consent; and retains the accepted person/event/recording deletion receipt. If any step fails, remove the five secrets together and keep capture unavailable.

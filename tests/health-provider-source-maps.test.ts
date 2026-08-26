@@ -4,10 +4,10 @@ import { canonicalHealthMetricDefinition, normalizeCanonicalHealthMetric } from 
 import { healthProviderSourceMap, reviewedHealthProviderSourceMaps, reviewedProviderCanonicalMetrics, validateProviderSourceMetric } from "../server/health-provider-source-maps";
 
 describe("reviewed provider-native health source maps", () => {
-  it("maps Apple Health and Health Connect identifiers into governed metrics and units", () => {
+  it("maps reviewed provider identifiers into governed metrics and units", () => {
     for (const sourceMap of Object.values(reviewedHealthProviderSourceMaps)) {
       expect(sourceMap.entries.length).toBeGreaterThan(0);
-      expect(sourceMap.documentationUrls.every((url) => url.startsWith("https://developer."))).toBe(true);
+      expect(sourceMap.documentationUrls.every((url) => url.startsWith("https://"))).toBe(true);
       const nativeIds = sourceMap.entries.map((entry) => entry.sourceMetricId);
       expect(new Set(nativeIds).size).toBe(nativeIds.length);
       for (const entry of sourceMap.entries) {
@@ -22,6 +22,18 @@ describe("reviewed provider-native health source maps", () => {
   it("keeps SDNN and RMSSD as distinct factual measurements", () => {
     expect(healthProviderSourceMap("apple_health")?.entries.find((entry) => entry.sourceMetricId.includes("Variability"))?.canonicalMetricKey).toBe("heart_rate_variability_sdnn");
     expect(healthProviderSourceMap("health_connect")?.entries.find((entry) => entry.sourceMetricId.includes("Variability"))?.canonicalMetricKey).toBe("heart_rate_variability_rmssd");
+  });
+
+  it("maps Oura factual observations without importing proprietary readiness or stress scores", () => {
+    const map = healthProviderSourceMap("oura");
+    expect(map?.version).toBe("oura-source-map-v1");
+    expect(reviewedProviderCanonicalMetrics("oura").map((item) => item.key)).toEqual([
+      "steps", "active_energy", "distance", "workout_duration", "sleep_duration", "sleep_awake_duration",
+      "sleep_light_duration", "sleep_deep_duration", "sleep_rem_duration", "heart_rate", "respiratory_rate",
+      "oxygen_saturation", "temperature_deviation",
+    ]);
+    expect(map?.entries.some((entry) => /readiness|stress/i.test(entry.canonicalMetricKey))).toBe(false);
+    expect(map?.entries.find((entry) => entry.sourceMetricId.includes("equivalent_walking_distance"))?.extraction).toContain("not traveled-route distance");
   });
 
   it("maps reviewed Apple and Android vitals without inventing a composite score", () => {
@@ -41,10 +53,10 @@ describe("reviewed provider-native health source maps", () => {
     }
   });
 
-  it("exposes only reviewed source coverage and fails closed for direct vendors", () => {
+  it("exposes only reviewed source coverage and fails closed for unreviewed direct vendors", () => {
     expect(reviewedProviderCanonicalMetrics("apple_health").length).toBe(19);
     expect(reviewedProviderCanonicalMetrics("health_connect").length).toBe(19);
-    for (const provider of healthProviderCatalog.filter((item) => item.availability === "requires_vendor_approval")) {
+    for (const provider of healthProviderCatalog.filter((item) => item.availability === "requires_vendor_approval" && item.id !== "oura")) {
       expect(healthProviderSourceMap(provider.id)).toBeNull();
       expect(reviewedProviderCanonicalMetrics(provider.id)).toEqual([]);
     }

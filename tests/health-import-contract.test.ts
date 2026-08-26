@@ -62,7 +62,10 @@ describe("provider health import contract", () => {
     expect(() => prepareProviderHealthImport("health_connect", { ...envelope, sourceMetricId: "UnknownRecord.value" })).toThrowError(/not reviewed/);
     expect(() => prepareProviderHealthImport("health_connect", { ...envelope, sourceMetricId: "DistanceRecord.distance" })).toThrowError(/does not map/);
     expect(() => prepareProviderHealthImport("health_connect", { ...envelope, sourceMetricId: "DistanceRecord.distance", metricKey: "distance", unit: "km" })).toThrowError(/does not match/);
-    expect(() => prepareProviderHealthImport("oura", envelope)).toThrowError(/no reviewed native source map/);
+    expect(() => prepareProviderHealthImport("oura", { ...envelope, sourceMetricId: "UnknownOuraMetric.value" })).toThrowError(/not reviewed/);
+    expect(() => prepareProviderHealthImport("oura", {
+      ...envelope, sourceMetricId: "PublicDailyActivity.steps", sourceVersion: "openapi-1.37",
+    })).not.toThrow();
   });
 
   it("requires exact temporal semantics from the reviewed native map", () => {

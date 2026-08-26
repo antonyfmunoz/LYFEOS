@@ -135,3 +135,19 @@ LyfeOS database migrations are forward-only, numbered, additive where possible, 
 ## External operating gates
 
 These controls require separate provider configuration or ownership before claiming mature SaaS operations: Neon backup retention and quarterly recovery evidence, product analytics consent and retention policy, billing/entitlement controls, support intake, and a named operational owner.
+
+### External-provider closure register (2026-08-26)
+
+| Provider | Verified state | Remaining promotion evidence |
+| --- | --- | --- |
+| Fly | Production deployment `deployment-01M0ZH0Y6W5GKDYBHRVHFX1HWD` serves source `2fa1f07c2e8cf305ef81d379cbf02680e5c6d461`; readiness is green; 121 release migrations through `0129_personal_finance_foundation`; production monitor run `32993184158` passed. | Deploy and requalify later source increments before describing them as live. |
+| GitHub Actions | Exact verification run `32992687821` passed source, authenticated product journeys, migrations, and isolated logical backup/restore for the deployed finance foundation. | Preserve branch protection and qualify every promoted revision. |
+| Sentry | Production DSN, environment and immutable release attribution are deployed; the protected content-free transport probe has passed. | Confirm the event in Sentry and prove a routed test alert reaches its named recipient. |
+| PostHog | Dedicated project and restricted privacy-safe lifecycle dashboard exist; no events have been ingested. LyfeOS capture is fail-closed. | Correct provider privacy settings, choose retention, create deletion-authorized credentials, install all five secrets, then complete opt-in/event/withdrawal/deletion proof. |
+| Clerk | Production Backend API responds and currently reports zero Clerk-hosted users; LyfeOS local authentication remains the primary no-verification path. | Create the production webhook endpoint, install `CLERK_WEBHOOK_SIGNING_SECRET`, and prove signed create/update/delete delivery without reintroducing email verification. |
+| Neon | Production database is healthy and application-controlled logical restore is continuously proven in isolated CI. | Verify managed history retention and complete an authorized point-in-time branch restore/login/read/write drill. |
+| Google | Configuration-aware routes fail closed; no production OAuth client credentials are installed. | Create the production OAuth client and approved consent screen, install credentials, and complete authorization/revocation evidence. |
+| Health providers | Provider-neutral credential-reference, consent, sync and provenance foundations exist; Apple Health and Health Connect source maps are reviewed. | Select authorized native/direct providers, approve requested scopes, supply adapters/credentials, and prove device sync/correction/revocation. |
+| Food catalog | Source-attributed gateway and explicit-save contracts exist without a selected dataset. | Select a licensed provider and territory, approve attribution/retention terms, install gateway credentials, and prove known/unknown barcode and deletion behavior. |
+| UMH receivers | LyfeOS signed ingress/outbox and leased delivery are deployed but unconfigured. | Install the agreed receiver URL/signing material and prove signed retry/rejection/round-trip evidence with each product receiver. |
+| Billing | Entitlement shell exists without an approved commercial model. | Decide plans, prices, tax/refund policy and legal entity before creating live products or accepting payment. |
