@@ -9,22 +9,61 @@ import { createMissionLifecycleResult, MissionLifecycleError, updateMissionLifec
 import { shiftCalendarDate } from "@shared/calendar";
 import { pool } from "../db";
 import { fetchGoogleCalendarSyncBatch, parseGoogleCalendarDateTime, readGoogleCalendarSyncState, writeGoogleCalendarSyncState } from "../google-calendar-sync";
+import { configuredIntegrationCredentialKey, deleteIntegrationCredential, readIntegrationCredential, writeIntegrationCredential } from "../integration-provider-credentials";
 
 declare module "express-session" {
   interface SessionData {
     googleOAuthState?: string;
     googleOAuthUserId?: number;
+    googleOAuthStartedAt?: number;
   }
 }
 
-const SCOPES = [
-  "https://www.googleapis.com/auth/calendar",
-  "https://www.googleapis.com/auth/tasks.readonly",
-  "https://www.googleapis.com/auth/drive",
-];
+const GOOGLE_CALENDAR_SCOPE = "https://www.googleapis.com/auth/calendar";
+const GOOGLE_TASKS_SCOPE = "https://www.googleapis.com/auth/tasks.readonly";
+const GOOGLE_DRIVE_SCOPE = "https://www.googleapis.com/auth/drive";
+const SCOPES = [GOOGLE_CALENDAR_SCOPE, GOOGLE_TASKS_SCOPE, GOOGLE_DRIVE_SCOPE];
+const requestedGoogleScopes = new Set(SCOPES);
+const googleOAuthStateLifetimeMs = 10 * 60 * 1_000;
+
+function googleStateMatches(received: unknown, expected: unknown): boolean {
+  if (typeof received !== "string" || typeof expected !== "string") return false;
+  const left = Buffer.from(received); const right = Buffer.from(expected);
+  return left.length === right.length && crypto.timingSafeEqual(left, right);
+}
+
+function clearGoogleOAuthSession(req: Request): void {
+  delete req.session.googleOAuthState; delete req.session.googleOAuthUserId; delete req.session.googleOAuthStartedAt;
+}
+
+function allowedGoogleScopes(scopes: Iterable<string>): string[] {
+  return Array.from(new Set(Array.from(scopes).filter((scope) => requestedGoogleScopes.has(scope)))).sort();
+}
+
+function googleProviderStatus(error: unknown): number | undefined {
+  const candidate = error as { code?: unknown; response?: { status?: unknown } } | null;
+  const status = Number(candidate?.response?.status ?? candidate?.code);
+  return Number.isInteger(status) && status >= 100 && status <= 599 ? status : undefined;
+}
+
+function logGoogleFailure(operation: string, error: unknown, userId?: number): void {
+  logger.error(operation, {
+    userId,
+    providerStatus: googleProviderStatus(error),
+    errorType: error instanceof Error ? error.name : "unknown",
+  });
+}
 
 function isGoogleOAuthConfigured(): boolean {
-  return Boolean(process.env.GOOGLE_OAUTH_CLIENT_ID && process.env.GOOGLE_OAUTH_CLIENT_SECRET);
+  if (!process.env.GOOGLE_OAUTH_CLIENT_ID || !process.env.GOOGLE_OAUTH_CLIENT_SECRET) return false;
+  try {
+    configuredIntegrationCredentialKey();
+    const redirect = new URL(getRedirectUri());
+    if (process.env.NODE_ENV === "production" && (redirect.protocol !== "https:" || !process.env.GOOGLE_OAUTH_REDIRECT_URI)) return false;
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function getRedirectUri(): string {
@@ -47,35 +86,73 @@ async function getAuthenticatedClient(userId: number) {
     (i) => i.provider === "google" && i.status === "active"
   );
 
-  if (!googleIntegration || !googleIntegration.accessToken) {
+  if (!googleIntegration) {
     return null;
   }
+  const credential = await readIntegrationCredential({ userId, integrationId: googleIntegration.id, provider: "google" });
+  if (!credential?.accessToken) return null;
 
   const oauth2Client = getOAuth2Client();
   oauth2Client.setCredentials({
-    access_token: googleIntegration.accessToken,
-    refresh_token: googleIntegration.refreshToken,
+    access_token: credential.accessToken,
+    refresh_token: credential.refreshToken,
+    expiry_date: credential.expiresAt ? new Date(credential.expiresAt).getTime() : undefined,
   });
 
   oauth2Client.on("tokens", async (tokens) => {
     try {
-      const updateData: Record<string, any> = {};
-      if (tokens.access_token) updateData.accessToken = tokens.access_token;
-      if (tokens.refresh_token) updateData.refreshToken = tokens.refresh_token;
-      if (tokens.expiry_date) updateData.tokenExpiry = new Date(tokens.expiry_date);
-      if (Object.keys(updateData).length > 0) {
-        await storage.updateIntegration(googleIntegration.id, updateData);
-      }
-    } catch (err) {
-      logger.error("Failed to persist refreshed Google tokens:", err);
+      if (!tokens.access_token && !tokens.refresh_token && !tokens.expiry_date) return;
+      const current = await readIntegrationCredential({ userId, integrationId: googleIntegration.id, provider: "google" });
+      if (!current) return;
+      await writeIntegrationCredential({ userId, integrationId: googleIntegration.id, provider: "google" }, {
+        accessToken: tokens.access_token || current.accessToken,
+        refreshToken: tokens.refresh_token || current.refreshToken || null,
+        expiresAt: tokens.expiry_date ? new Date(tokens.expiry_date).toISOString() : current.expiresAt || null,
+        tokenType: tokens.token_type || current.tokenType || "Bearer",
+        grantedScopes: tokens.scope ? allowedGoogleScopes(tokens.scope.split(/\s+/).filter(Boolean)) : current.grantedScopes,
+      });
+    } catch (error) {
+      logger.error("Failed to persist refreshed Google credential", { userId, integrationId: googleIntegration.id, errorType: error instanceof Error ? error.name : "unknown" });
     }
   });
 
-  return { oauth2Client, integration: googleIntegration };
+  return { oauth2Client, integration: googleIntegration, grantedScopes: new Set(credential.grantedScopes) };
+}
+
+async function resolveGoogleGrantedScopes(oauth2Client: ReturnType<typeof getOAuth2Client>, accessToken: string, reportedScope?: string | null): Promise<string[]> {
+  const reported = reportedScope?.split(/\s+/).filter(Boolean) || [];
+  const providerScopes = reported.length > 0 ? reported : (await oauth2Client.getTokenInfo(accessToken)).scopes;
+  const allowed = allowedGoogleScopes(providerScopes);
+  if (allowed.length === 0) throw new Error("Google did not grant any requested scopes.");
+  return allowed;
+}
+
+function hasGoogleScope(client: Awaited<ReturnType<typeof getAuthenticatedClient>>, scope: string): boolean {
+  return Boolean(client?.grantedScopes.has(scope));
 }
 
 function normalizeTitle(title: string): string {
   return title.trim().toLowerCase();
+}
+
+async function fetchGoogleTasksSnapshot(oauth2Client: ReturnType<typeof getOAuth2Client>): Promise<any[]> {
+  const tasks = google.tasks({ version: "v1", auth: oauth2Client });
+  const taskListsResponse = await tasks.tasklists.list({ maxResults: 10 });
+  const allTasks: any[] = [];
+  for (const list of taskListsResponse.data.items || []) {
+    if (!list.id) continue;
+    const tasksResponse = await tasks.tasks.list({ tasklist: list.id, maxResults: 100, showCompleted: false, showHidden: false });
+    allTasks.push(...(tasksResponse.data.items || []).map((task) => ({
+      id: task.id,
+      title: task.title || "Untitled",
+      notes: task.notes || "",
+      due: task.due || null,
+      status: task.status,
+      listId: list.id,
+      listName: list.title || "Tasks",
+    })));
+  }
+  return allTasks;
 }
 
 export function registerGoogleRoutes(app: Express): void {
@@ -88,6 +165,7 @@ export function registerGoogleRoutes(app: Express): void {
       const state = crypto.randomUUID();
       req.session.googleOAuthState = state;
       req.session.googleOAuthUserId = req.session.userId;
+      req.session.googleOAuthStartedAt = Date.now();
 
       const authUrl = oauth2Client.generateAuthUrl({
         access_type: "offline",
@@ -98,58 +176,62 @@ export function registerGoogleRoutes(app: Express): void {
 
       return res.json({ url: authUrl });
     } catch (error) {
-      logger.error("Error generating Google auth URL:", error);
+      logger.error("Error generating Google auth URL", { userId: req.session.userId, errorType: error instanceof Error ? error.name : "unknown" });
       return res.status(500).json({ error: "Failed to generate auth URL" });
     }
   });
 
-  app.get("/api/google/callback", async (req: Request, res: Response) => {
+  app.get("/api/google/callback", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const { code, state } = req.query;
+      const { code, state, error: providerError } = req.query;
+      const startedAt = req.session.googleOAuthStartedAt;
 
-      if (!code || typeof code !== "string") {
+      if (providerError || !code || typeof code !== "string") {
+        clearGoogleOAuthSession(req);
         return res.redirect("/profile?google=error&reason=no_code");
       }
 
-      if (typeof state !== "string" || state !== req.session.googleOAuthState || req.session.googleOAuthUserId !== req.session.userId) {
+      if (!googleStateMatches(state, req.session.googleOAuthState) || req.session.googleOAuthUserId !== req.session.userId || typeof startedAt !== "number" || Date.now() - startedAt < 0 || Date.now() - startedAt > googleOAuthStateLifetimeMs) {
+        clearGoogleOAuthSession(req);
         return res.redirect("/profile?google=error&reason=session_mismatch");
       }
       const userId = req.session.userId!;
-      delete req.session.googleOAuthState;
-      delete req.session.googleOAuthUserId;
+      clearGoogleOAuthSession(req);
 
       const oauth2Client = getOAuth2Client();
       const { tokens } = await oauth2Client.getToken(code);
 
+      if (!tokens.access_token) throw new Error("Google did not return an access token.");
+      const grantedScopes = await resolveGoogleGrantedScopes(oauth2Client, tokens.access_token, tokens.scope);
+      const grantedScope = grantedScopes.join(" ");
       const existingIntegrations = await storage.getUserIntegrations(userId);
       const existingGoogle = existingIntegrations.find((i) => i.provider === "google");
-
-      if (existingGoogle) {
-        await storage.updateIntegration(existingGoogle.id, {
-          accessToken: tokens.access_token || undefined,
-          refreshToken: tokens.refresh_token || undefined,
-          tokenExpiry: tokens.expiry_date ? new Date(tokens.expiry_date) : undefined,
-          status: "active",
-          scope: SCOPES.join(" "),
-          settings: writeGoogleCalendarSyncState(existingGoogle.settings, null),
-        });
-      } else {
-        await storage.createIntegration({
+      const previousCredential = existingGoogle ? await readIntegrationCredential({ userId, integrationId: existingGoogle.id, provider: "google" }) : null;
+      const integration = existingGoogle
+        ? await storage.updateIntegration(existingGoogle.id, {
+          accessToken: null, refreshToken: null, tokenExpiry: null, status: "pending", scope: grantedScope, settings: writeGoogleCalendarSyncState(existingGoogle.settings, null),
+        })
+        : await storage.createIntegration({
           userId,
           provider: "google",
           providerName: "Google",
-          accessToken: tokens.access_token || undefined,
-          refreshToken: tokens.refresh_token || undefined,
-          tokenExpiry: tokens.expiry_date ? new Date(tokens.expiry_date) : undefined,
-          scope: SCOPES.join(" "),
-          status: "active",
+          accessToken: null, refreshToken: null, tokenExpiry: null,
+          scope: grantedScope,
+          status: "pending",
           settings: {},
         });
-      }
+      await writeIntegrationCredential({ userId, integrationId: integration.id, provider: "google" }, {
+        accessToken: tokens.access_token,
+        refreshToken: tokens.refresh_token || previousCredential?.refreshToken || null,
+        expiresAt: tokens.expiry_date ? new Date(tokens.expiry_date).toISOString() : null,
+        tokenType: tokens.token_type || "Bearer",
+        grantedScopes,
+      });
+      await storage.updateIntegration(integration.id, { status: "active" });
 
       return res.redirect("/profile?google=connected");
     } catch (error) {
-      logger.error("Google OAuth callback error:", error);
+      logger.error("Google OAuth callback failed", { userId: req.session.userId, errorType: error instanceof Error ? error.name : "unknown" });
       return res.redirect("/profile?google=error&reason=token_exchange");
     }
   });
@@ -162,6 +244,7 @@ export function registerGoogleRoutes(app: Express): void {
       if (!client) {
         return res.status(401).json({ error: "Google not connected" });
       }
+      if (!hasGoogleScope(client, GOOGLE_CALENDAR_SCOPE)) return res.status(403).json({ error: "Google Calendar permission was not granted. Reconnect Google to enable this feature." });
 
       const calendar = google.calendar({ version: "v3", auth: client.oauth2Client });
 
@@ -195,7 +278,7 @@ export function registerGoogleRoutes(app: Express): void {
       if (error?.code === 401 || error?.response?.status === 401) {
         return res.status(401).json({ error: "Google token expired. Please reconnect." });
       }
-      logger.error("Error fetching Google Calendar events:", error);
+      logGoogleFailure("Google Calendar event fetch failed", error, req.session.userId);
       return res.status(500).json({ error: "Failed to fetch calendar events" });
     }
   });
@@ -213,6 +296,7 @@ export function registerGoogleRoutes(app: Express): void {
       if (!client) {
         return res.status(401).json({ error: "Google not connected" });
       }
+      if (!hasGoogleScope(client, GOOGLE_CALENDAR_SCOPE)) return res.status(403).json({ error: "Google Calendar permission was not granted. Reconnect Google to enable this feature." });
 
       lockClient = await pool.connect();
       lockedUserId = userId;
@@ -387,12 +471,7 @@ export function registerGoogleRoutes(app: Express): void {
       if (error?.code === 401 || error?.response?.status === 401) {
         return res.status(401).json({ error: "Google token expired. Please reconnect." });
       }
-      const providerStatus = Number(error?.response?.status ?? error?.code);
-      logger.error("Error syncing Google Calendar", {
-        userId: req.session.userId,
-        providerStatus: Number.isInteger(providerStatus) ? providerStatus : undefined,
-        errorType: error instanceof Error ? error.name : "unknown",
-      });
+      logGoogleFailure("Google Calendar sync failed", error, req.session.userId);
       return res.status(500).json({ error: "Failed to sync calendar" });
     } finally {
       if (lockClient) {
@@ -416,6 +495,7 @@ export function registerGoogleRoutes(app: Express): void {
       if (!client) {
         return res.status(401).json({ error: "Google not connected" });
       }
+      if (!hasGoogleScope(client, GOOGLE_CALENDAR_SCOPE)) return res.status(403).json({ error: "Google Calendar permission was not granted. Reconnect Google to enable this feature." });
 
       const { missionId } = req.body;
       if (!missionId) {
@@ -492,7 +572,7 @@ export function registerGoogleRoutes(app: Express): void {
       if (error?.code === 401 || error?.response?.status === 401) {
         return res.status(401).json({ error: "Google token expired. Please reconnect." });
       }
-      logger.error("Error pushing mission to Google Calendar:", error);
+      logGoogleFailure("Google Calendar push failed", error, req.session.userId);
       return res.status(500).json({ error: "Failed to push mission to Google" });
     }
   });
@@ -505,42 +585,14 @@ export function registerGoogleRoutes(app: Express): void {
       if (!client) {
         return res.status(401).json({ error: "Google not connected" });
       }
+      if (!hasGoogleScope(client, GOOGLE_TASKS_SCOPE)) return res.status(403).json({ error: "Google Tasks permission was not granted. Reconnect Google to enable this feature." });
 
-      const tasks = google.tasks({ version: "v1", auth: client.oauth2Client });
-
-      const taskListsResponse = await tasks.tasklists.list({ maxResults: 10 });
-      const taskLists = taskListsResponse.data.items || [];
-
-      const allTasks: any[] = [];
-
-      for (const list of taskLists) {
-        if (!list.id) continue;
-        const tasksResponse = await tasks.tasks.list({
-          tasklist: list.id,
-          maxResults: 100,
-          showCompleted: false,
-          showHidden: false,
-        });
-
-        const items = (tasksResponse.data.items || []).map((task) => ({
-          id: task.id,
-          title: task.title || "Untitled",
-          notes: task.notes || "",
-          due: task.due || null,
-          status: task.status,
-          listId: list.id,
-          listName: list.title || "Tasks",
-        }));
-
-        allTasks.push(...items);
-      }
-
-      return res.json({ tasks: allTasks });
+      return res.json({ tasks: await fetchGoogleTasksSnapshot(client.oauth2Client) });
     } catch (error: any) {
       if (error?.code === 401 || error?.response?.status === 401) {
         return res.status(401).json({ error: "Google token expired. Please reconnect." });
       }
-      logger.error("Error fetching Google Tasks:", error);
+      logGoogleFailure("Google Tasks fetch failed", error, req.session.userId);
       return res.status(500).json({ error: "Failed to fetch tasks" });
     }
   });
@@ -548,11 +600,13 @@ export function registerGoogleRoutes(app: Express): void {
   app.post("/api/google/tasks/import", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = req.session.userId as number;
-      const { tasks: tasksToImport } = req.body;
-
-      if (!Array.isArray(tasksToImport) || tasksToImport.length === 0) {
-        return res.status(400).json({ error: "No tasks provided" });
-      }
+      const client = await getAuthenticatedClient(userId);
+      if (!client) return res.status(401).json({ error: "Google not connected" });
+      if (!hasGoogleScope(client, GOOGLE_TASKS_SCOPE)) return res.status(403).json({ error: "Google Tasks permission was not granted. Reconnect Google to enable this feature." });
+      // Re-read tasks from Google at mutation time. Browser-submitted task
+      // bodies are deliberately ignored so provider provenance cannot be forged.
+      const tasksToImport = await fetchGoogleTasksSnapshot(client.oauth2Client);
+      if (tasksToImport.length === 0) return res.json({ imported: 0, skipped: 0, total: 0 });
 
       const existingQuests = await storage.getQuests(userId);
 
@@ -618,7 +672,7 @@ export function registerGoogleRoutes(app: Express): void {
       return res.json({ imported, skipped, total: tasksToImport.length });
     } catch (error) {
       if (error instanceof MissionLifecycleError) return res.status(error.status).json({ error: error.message });
-      logger.error("Error importing Google Tasks:", error);
+      logGoogleFailure("Google Tasks import failed", error, req.session.userId);
       return res.status(500).json({ error: "Failed to import tasks" });
     }
   });
@@ -631,19 +685,22 @@ export function registerGoogleRoutes(app: Express): void {
       const retainedMissionCount = (await storage.getQuests(userId)).filter(
         (quest) => quest.externalSource === "google_calendar" || quest.externalSource === "google_tasks",
       ).length;
+      let providerRevocation: "confirmed" | "unconfirmed" | "not_needed" = "not_needed";
 
       if (googleIntegration) {
-        try {
-          const oauth2Client = getOAuth2Client();
-          if (googleIntegration.accessToken) {
-            await oauth2Client.revokeToken(googleIntegration.accessToken);
+        const credential = await readIntegrationCredential({ userId, integrationId: googleIntegration.id, provider: "google" });
+        if (credential?.accessToken) {
+          try {
+            const oauth2Client = getOAuth2Client();
+            await oauth2Client.revokeToken(credential.accessToken);
+            providerRevocation = "confirmed";
+          } catch (error) {
+            providerRevocation = "unconfirmed";
+            logGoogleFailure("Google provider revocation was not confirmed", error, userId);
           }
-        } catch {
         }
+        await deleteIntegrationCredential({ userId, integrationId: googleIntegration.id, provider: "google" });
         await storage.updateIntegration(googleIntegration.id, {
-          accessToken: null,
-          refreshToken: null,
-          tokenExpiry: null,
           status: "revoked",
           settings: writeGoogleCalendarSyncState(googleIntegration.settings, null),
         });
@@ -651,13 +708,16 @@ export function registerGoogleRoutes(app: Express): void {
 
       return res.json({
         success: true,
+        providerRevocation,
         retainedMissionCount,
-        message: retainedMissionCount > 0
-          ? "Google access was revoked. Imported LyfeOS missions were retained and will not sync until you reconnect."
-          : "Google access was revoked. No imported missions needed to be retained.",
+        message: providerRevocation === "unconfirmed"
+          ? "Google was disconnected locally and its stored credential was destroyed, but Google did not confirm remote revocation. Remove LyfeOS from your Google Account permissions to finish revocation."
+          : retainedMissionCount > 0
+            ? "Google access was revoked. Imported LyfeOS missions were retained and will not sync until you reconnect."
+            : "Google access was revoked. No imported missions needed to be retained.",
       });
     } catch (error) {
-      logger.error("Error disconnecting Google:", error);
+      logGoogleFailure("Google disconnect failed", error, req.session.userId);
       return res.status(500).json({ error: "Failed to disconnect Google" });
     }
   });
@@ -668,16 +728,25 @@ export function registerGoogleRoutes(app: Express): void {
       const integrations = await storage.getUserIntegrations(userId);
       const googleRecord = integrations.find((i) => i.provider === "google");
       const googleIntegration = googleRecord?.status === "active" ? googleRecord : undefined;
+      const credential = googleIntegration
+        ? await readIntegrationCredential({ userId, integrationId: googleIntegration.id, provider: "google" })
+        : null;
+      const grantedScopes = new Set(credential?.grantedScopes || []);
 
       return res.json({
-        connected: !!googleIntegration,
+        connected: Boolean(googleIntegration && credential?.accessToken),
         configured: isGoogleOAuthConfigured(),
-        scope: googleIntegration?.scope || null,
+        scope: credential?.grantedScopes.join(" ") || null,
+        capabilities: {
+          calendar: grantedScopes.has(GOOGLE_CALENDAR_SCOPE),
+          tasks: grantedScopes.has(GOOGLE_TASKS_SCOPE),
+          drive: grantedScopes.has(GOOGLE_DRIVE_SCOPE),
+        },
         connectedAt: googleIntegration?.connectedAt || null,
         status: googleRecord?.status || null,
       });
     } catch (error) {
-      logger.error("Error checking Google status:", error);
+      logGoogleFailure("Google status check failed", error, req.session.userId);
       return res.status(500).json({ error: "Failed to check status" });
     }
   });
@@ -689,6 +758,7 @@ export function registerGoogleRoutes(app: Express): void {
       if (!client) {
         return res.status(401).json({ error: "Google not connected" });
       }
+      if (!hasGoogleScope(client, GOOGLE_DRIVE_SCOPE)) return res.status(403).json({ error: "Google Drive permission was not granted. Reconnect Google to enable this feature." });
 
       const drive = google.drive({ version: "v3", auth: client.oauth2Client });
       const parentId = (req.query.parentId as string) || "root";
@@ -714,7 +784,7 @@ export function registerGoogleRoutes(app: Express): void {
       if (error?.code === 401 || error?.response?.status === 401) {
         return res.status(401).json({ error: "Google token expired. Please reconnect." });
       }
-      logger.error("Error fetching Google Drive folders:", error);
+      logGoogleFailure("Google Drive folder fetch failed", error, req.session.userId);
       return res.status(500).json({ error: "Failed to fetch Drive folders" });
     }
   });
@@ -726,6 +796,7 @@ export function registerGoogleRoutes(app: Express): void {
       if (!client) {
         return res.status(401).json({ error: "Google not connected" });
       }
+      if (!hasGoogleScope(client, GOOGLE_DRIVE_SCOPE)) return res.status(403).json({ error: "Google Drive permission was not granted. Reconnect Google to enable this feature." });
 
       const drive = google.drive({ version: "v3", auth: client.oauth2Client });
       const pageToken = req.query.pageToken as string | undefined;
@@ -759,7 +830,7 @@ export function registerGoogleRoutes(app: Express): void {
       if (error?.code === 401 || error?.response?.status === 401) {
         return res.status(401).json({ error: "Google token expired. Please reconnect." });
       }
-      logger.error("Error fetching Google Drive files:", error);
+      logGoogleFailure("Google Drive file fetch failed", error, req.session.userId);
       return res.status(500).json({ error: "Failed to fetch Drive files" });
     }
   });
@@ -771,6 +842,7 @@ export function registerGoogleRoutes(app: Express): void {
       if (!client) {
         return res.status(401).json({ error: "Google not connected" });
       }
+      if (!hasGoogleScope(client, GOOGLE_DRIVE_SCOPE)) return res.status(403).json({ error: "Google Drive permission was not granted. Reconnect Google to enable this feature." });
 
       const drive = google.drive({ version: "v3", auth: client.oauth2Client });
 
@@ -879,7 +951,7 @@ export function registerGoogleRoutes(app: Express): void {
               });
               markdownContent = (exported.data as string) || "";
             } catch (exportErr) {
-              logger.error(`Failed to export Google Doc ${file.id}:`, exportErr);
+              logGoogleFailure("Google document export failed", exportErr, userId);
               markdownContent = "";
             }
 
@@ -928,7 +1000,7 @@ export function registerGoogleRoutes(app: Express): void {
                 fileData = `data:${mimeType};base64,${buffer.toString("base64")}`;
               }
             } catch (dlErr) {
-              logger.error(`Failed to download file ${file.id}:`, dlErr);
+              logGoogleFailure("Google Drive file download failed", dlErr, userId);
             }
 
             if (existingDoc) {
@@ -1001,7 +1073,7 @@ export function registerGoogleRoutes(app: Express): void {
       if (error?.code === 401 || error?.response?.status === 401) {
         return res.status(401).json({ error: "Google token expired. Please reconnect." });
       }
-      logger.error("Error syncing Google Drive:", error);
+      logGoogleFailure("Google Drive sync failed", error, req.session.userId);
       return res.status(500).json({ error: "Failed to sync Google Drive" });
     }
   });
@@ -1013,6 +1085,7 @@ export function registerGoogleRoutes(app: Express): void {
       if (!client) {
         return res.status(401).json({ error: "Google not connected" });
       }
+      if (!hasGoogleScope(client, GOOGLE_DRIVE_SCOPE)) return res.status(403).json({ error: "Google Drive permission was not granted. Reconnect Google to enable this feature." });
 
       const drive = google.drive({ version: "v3", auth: client.oauth2Client });
       const allDocs = await storage.getDocuments(userId);
@@ -1041,7 +1114,7 @@ export function registerGoogleRoutes(app: Express): void {
           await storage.updateDocument(doc.id, { lastSyncedAt: new Date() });
           pushed++;
         } catch (pushErr) {
-          logger.error(`Failed to push doc ${doc.id} to Drive:`, pushErr);
+          logGoogleFailure("Google Drive document update failed", pushErr, userId);
         }
       }
 
@@ -1078,7 +1151,7 @@ export function registerGoogleRoutes(app: Express): void {
               created++;
             }
           } catch (createErr) {
-            logger.error(`Failed to create doc ${doc.id} in Drive:`, createErr);
+            logGoogleFailure("Google Drive document creation failed", createErr, userId);
           }
         }
       }
@@ -1088,7 +1161,7 @@ export function registerGoogleRoutes(app: Express): void {
       if (error?.code === 401 || error?.response?.status === 401) {
         return res.status(401).json({ error: "Google token expired. Please reconnect." });
       }
-      logger.error("Error pushing to Google Drive:", error);
+      logGoogleFailure("Google Drive push failed", error, req.session.userId);
       return res.status(500).json({ error: "Failed to push to Google Drive" });
     }
   });
@@ -1114,6 +1187,7 @@ export function registerGoogleRoutes(app: Express): void {
       if (!client) {
         return res.status(401).json({ error: "Google not connected" });
       }
+      if (!hasGoogleScope(client, GOOGLE_DRIVE_SCOPE)) return res.status(403).json({ error: "Google Drive permission was not granted. Reconnect Google to enable this feature." });
 
       const drive = google.drive({ version: "v3", auth: client.oauth2Client });
 
@@ -1159,7 +1233,7 @@ export function registerGoogleRoutes(app: Express): void {
       if (error?.code === 401 || error?.response?.status === 401) {
         return res.status(401).json({ error: "Google token expired. Please reconnect." });
       }
-      logger.error("Error pushing document to Google Drive:", error);
+      logGoogleFailure("Google Drive single-document push failed", error, req.session.userId);
       return res.status(500).json({ error: "Failed to push document to Google Drive" });
     }
   });

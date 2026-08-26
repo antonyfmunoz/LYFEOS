@@ -6,6 +6,12 @@ AI_INTEGRATIONS_ANTHROPIC_API_KEY=replace-with-provider-key
 GOOGLE_OAUTH_CLIENT_ID=your-google-client-id
 GOOGLE_OAUTH_CLIENT_SECRET=your-google-client-secret
 GOOGLE_OAUTH_REDIRECT_URI=https://lyfeos.net/api/google/callback
+# Independent random 32-byte values encoded as base64. Never reuse these keys.
+INTEGRATION_PROVIDER_CREDENTIAL_KEY=generate-32-random-bytes-and-base64-encode
+HEALTH_PROVIDER_CREDENTIAL_KEY=generate-a-different-32-random-bytes-and-base64-encode
+OURA_CLIENT_ID=your-oura-client-id
+OURA_CLIENT_SECRET=your-oura-client-secret
+OURA_REDIRECT_URI=https://lyfeos.net/api/health-connections/oura/callback
 VITE_CLERK_PUBLISHABLE_KEY=pk_live_or_test_value
 CLERK_SECRET_KEY=sk_live_or_test_value
 CLERK_WEBHOOK_SIGNING_SECRET=whsec_value_from_clerk

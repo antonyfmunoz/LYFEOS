@@ -204,7 +204,9 @@ describe("mission lifecycle wiring", () => {
     const google = readSource("server/routes/google.ts");
     expect(google).toContain("crypto.randomUUID()");
     expect(google).toContain("req.session.googleOAuthState = state");
-    expect(google).toContain("state !== req.session.googleOAuthState");
+    expect(google).toContain("googleStateMatches(state, req.session.googleOAuthState)");
+    expect(google).toContain("crypto.timingSafeEqual");
+    expect(google).toContain("googleOAuthStartedAt");
     expect(google).not.toContain("JSON.stringify({ userId: req.session.userId })");
   });
 

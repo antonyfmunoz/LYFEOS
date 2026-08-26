@@ -14,6 +14,11 @@ CLERK_WEBHOOK_SIGNING_SECRET
 GOOGLE_OAUTH_CLIENT_ID                 # only if Google Calendar is enabled
 GOOGLE_OAUTH_CLIENT_SECRET             # only if Google Calendar is enabled
 GOOGLE_OAUTH_REDIRECT_URI              # https://lyfeos.net/api/google/callback in production
+INTEGRATION_PROVIDER_CREDENTIAL_KEY     # independent random 32 bytes, base64; required for Google
+HEALTH_PROVIDER_CREDENTIAL_KEY          # independent random 32 bytes, base64; required for direct Health OAuth
+OURA_CLIENT_ID                          # only if direct Oura sync is enabled
+OURA_CLIENT_SECRET                      # only if direct Oura sync is enabled
+OURA_REDIRECT_URI                       # https://lyfeos.net/api/health-connections/oura/callback in production
 SENTRY_DSN                             # enable server and browser error reporting
 SENTRY_ENVIRONMENT=production
 SENTRY_RELEASE=<immutable release id>

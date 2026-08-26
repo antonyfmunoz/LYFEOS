@@ -35,6 +35,7 @@ import { execSync } from "child_process";
 import * as Sentry from "@sentry/node";
 import { SESSION_COOKIE_NAME } from "./session-config";
 import { consumeDistributedRateLimit, deleteExpiredRateLimits, rateLimitBucketHash } from "./distributed-rate-limit";
+import { migrateLegacyIntegrationCredentials } from "./integration-provider-credentials";
 
 const sentryDsn = process.env.SENTRY_DSN;
 const sentryEnvironment = process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || "development";
@@ -264,6 +265,8 @@ async function ensureDatabaseSchema() {
 
 (async () => {
   await ensureDatabaseSchema();
+  const migratedIntegrationCredentials = await migrateLegacyIntegrationCredentials();
+  if (migratedIntegrationCredentials > 0) log(`Migrated ${migratedIntegrationCredentials} legacy integration credential envelope(s)`);
   const server = await registerRoutes(app);
 
   // API callers must receive an API-shaped 404. Without this boundary, Vite

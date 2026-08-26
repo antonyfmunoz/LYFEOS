@@ -1611,9 +1611,10 @@ export const integrations = pgTable("integrations", {
   userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   provider: text("provider").notNull(), // google, notion, etc.
   providerName: text("provider_name").notNull(), // Display name for the provider
-  accessToken: text("access_token"), // Encrypted access token
-  refreshToken: text("refresh_token"), // Encrypted refresh token
-  tokenExpiry: timestamp("token_expiry"), // When the token expires
+  accessToken: text("access_token"), // Legacy column cleared into the encrypted server vault
+  refreshToken: text("refresh_token"), // Legacy column cleared into the encrypted server vault
+  tokenExpiry: timestamp("token_expiry"), // Legacy column cleared into the encrypted server vault
+  credentialRef: text("credential_ref"), // Opaque server-only encrypted-vault reference
   scope: text("scope"), // Permissions scope
   connectedAt: timestamp("connected_at").defaultNow().notNull(),
   lastSyncedAt: timestamp("last_synced_at"),
@@ -2265,6 +2266,19 @@ export const messages = pgTable("messages", {
   content: text("content").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+export const integrationProviderCredentials = pgTable("integration_provider_credentials", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  integrationId: integer("integration_id").notNull().references(() => integrations.id, { onDelete: "cascade" }).unique(),
+  provider: text("provider").notNull(),
+  ciphertext: text("ciphertext").notNull(),
+  iv: varchar("iv", { length: 24 }).notNull(),
+  authTag: varchar("auth_tag", { length: 32 }).notNull(),
+  keyVersion: varchar("key_version", { length: 40 }).notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [index("integration_provider_credentials_user_provider_idx").on(table.userId, table.provider)]);
 
 export const relationshipAssessments = pgTable("relationship_assessments", {
   id: serial("id").primaryKey(),

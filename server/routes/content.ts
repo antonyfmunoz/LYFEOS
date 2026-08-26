@@ -28,6 +28,8 @@ import { canvasRevisionSnapshotSchema, createCanvasRequestSchema, updateCanvasRe
 import { and, desc, eq, sql } from "drizzle-orm";
 import { parseExpectedResourceRevision } from "../revision-concurrency";
 
+const serverManagedIntegrationProviders = new Set(["google"]);
+
 declare module "express-session" {
   interface SessionData {
     userId: number;
@@ -1645,7 +1647,7 @@ export function registerContentRoutes(app: Express): void {
       
       // For security, don't return tokens in the response
       const safeIntegrations = integrations.map(integration => {
-        const { accessToken, refreshToken, ...safeIntegration } = integration;
+        const { accessToken, refreshToken, credentialRef, ...safeIntegration } = integration;
         return safeIntegration;
       });
       
@@ -1675,7 +1677,7 @@ export function registerContentRoutes(app: Express): void {
       }
       
       // For security, don't return tokens in the response
-      const { accessToken, refreshToken, ...safeIntegration } = integration;
+      const { accessToken, refreshToken, credentialRef, ...safeIntegration } = integration;
       
       return res.status(200).json({ integration: safeIntegration });
     } catch (error) {
@@ -1689,27 +1691,32 @@ export function registerContentRoutes(app: Express): void {
     try {
       // Ensure userId is a number
       const userId = req.session.userId as number;
-      const { provider, providerName, accessToken, refreshToken, tokenExpiry, scope, status, settings } = req.body;
+      const credentialFields = ["accessToken", "refreshToken", "tokenExpiry", "credentialRef"];
+      if (credentialFields.some((field) => Object.prototype.hasOwnProperty.call(req.body || {}, field))) return res.status(400).json({ error: "Provider credentials may only be created by a server-side authorization flow." });
+      const { provider, providerName, scope, status, settings } = req.body;
       
       // Basic validation
       if (!provider || !providerName) {
         return res.status(400).json({ error: "Provider and provider name are required" });
+      }
+      if (typeof provider !== "string" || serverManagedIntegrationProviders.has(provider.trim().toLowerCase())) {
+        return res.status(400).json({ error: "This provider may only be connected through its dedicated server-side authorization flow." });
       }
       
       const newIntegration = await storage.createIntegration({
         userId,
         provider,
         providerName,
-        accessToken,
-        refreshToken,
-        tokenExpiry,
+        accessToken: null,
+        refreshToken: null,
+        tokenExpiry: null,
         scope,
         status: status || "active",
         settings: settings || {}
       });
       
       // For security, don't return tokens in the response
-      const { accessToken: _, refreshToken: __, ...safeIntegration } = newIntegration;
+      const { accessToken: _, refreshToken: __, credentialRef: ___, ...safeIntegration } = newIntegration;
       
       return res.status(201).json({ integration: safeIntegration });
     } catch (error) {
@@ -1735,12 +1742,17 @@ export function registerContentRoutes(app: Express): void {
       if (existingIntegration.userId !== req.session.userId) {
         return res.status(403).json({ error: "Not authorized to update this integration" });
       }
+      if (serverManagedIntegrationProviders.has(existingIntegration.provider.trim().toLowerCase())) {
+        return res.status(400).json({ error: "This provider may only be changed through its dedicated connection controls." });
+      }
       
-      // Update the integration
-      const updatedIntegration = await storage.updateIntegration(integrationId, req.body);
+      const credentialFields = ["accessToken", "refreshToken", "tokenExpiry", "credentialRef", "userId", "provider"];
+      if (credentialFields.some((field) => Object.prototype.hasOwnProperty.call(req.body || {}, field))) return res.status(400).json({ error: "Provider identity and credentials may only be changed by a server-side authorization flow." });
+      const { providerName, scope, status, settings } = req.body || {};
+      const updatedIntegration = await storage.updateIntegration(integrationId, { ...(providerName !== undefined ? { providerName } : {}), ...(scope !== undefined ? { scope } : {}), ...(status !== undefined ? { status } : {}), ...(settings !== undefined ? { settings } : {}) });
       
       // For security, don't return tokens in the response
-      const { accessToken, refreshToken, ...safeIntegration } = updatedIntegration;
+      const { accessToken, refreshToken, credentialRef, ...safeIntegration } = updatedIntegration;
       
       return res.status(200).json({ integration: safeIntegration });
     } catch (error) {
@@ -1765,6 +1777,9 @@ export function registerContentRoutes(app: Express): void {
       
       if (existingIntegration.userId !== req.session.userId) {
         return res.status(403).json({ error: "Not authorized to delete this integration" });
+      }
+      if (serverManagedIntegrationProviders.has(existingIntegration.provider.trim().toLowerCase())) {
+        return res.status(400).json({ error: "Use the provider disconnect control so remote revocation is attempted before local credentials are destroyed." });
       }
       
       // Delete the integration

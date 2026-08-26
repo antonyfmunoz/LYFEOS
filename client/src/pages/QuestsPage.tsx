@@ -335,7 +335,7 @@ export default function QuestsPage() {
     staleTime: 0,
   });
 
-  interface GoogleStatus { connected: boolean; configured: boolean; scope: string | null; connectedAt: string | null; }
+  interface GoogleStatus { connected: boolean; configured: boolean; scope: string | null; capabilities?: { calendar: boolean; tasks: boolean; drive: boolean }; connectedAt: string | null; }
   const { data: googleStatus } = useQuery<GoogleStatus>({
     queryKey: ['/api/google/status'],
     enabled: !!user,
@@ -363,17 +363,13 @@ export default function QuestsPage() {
         });
         await refetchQuests();
       } else {
-        const tasksRes = await fetch('/api/google/tasks', { credentials: 'include' });
-        if (!tasksRes.ok) throw new Error('Failed to fetch tasks');
-        const { tasks } = await tasksRes.json();
-        if (!tasks || tasks.length === 0) {
+        const result = await apiRequest<{ imported: number; skipped: number }>('/api/google/tasks/import', {
+          method: 'POST',
+        });
+        if (result.imported === 0 && result.skipped === 0) {
           toast({ title: "No tasks found", description: "Your Google Tasks lists are empty." });
           return;
         }
-        const result = await apiRequest<{ imported: number; skipped: number }>('/api/google/tasks/import', {
-          method: 'POST',
-          body: JSON.stringify({ tasks }),
-        });
         toast({
           title: "Tasks synced",
           description: `Imported ${result.imported} task${result.imported !== 1 ? 's' : ''}${result.skipped > 0 ? `, ${result.skipped} already existed` : ''}.`,
@@ -3076,16 +3072,20 @@ export default function QuestsPage() {
               Calendar
             </button>
           </div>
-          {googleStatus?.connected && (
+          {googleStatus?.connected && (googleStatus.capabilities?.calendar || googleStatus.capabilities?.tasks) && (
             <div className="flex items-center gap-1">
+              {googleStatus.capabilities?.calendar && (
               <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-primary hover:bg-primary/10" onClick={() => syncGoogle('calendar')} disabled={isSyncing}>
                 {isSyncing ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Download className="h-3.5 w-3.5 mr-1" />}
                 Sync Calendar
               </Button>
+              )}
+              {googleStatus.capabilities?.tasks && (
               <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-primary hover:bg-primary/10" onClick={() => syncGoogle('tasks')} disabled={isSyncing}>
                 {isSyncing ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Download className="h-3.5 w-3.5 mr-1" />}
                 Sync Tasks
               </Button>
+              )}
             </div>
           )}
         </div>

@@ -109,7 +109,7 @@ function IntegrationsSection({ userId }: { userId?: number }) {
   const [connectingGoogle, setConnectingGoogle] = useState(false);
   const [disconnectingGoogle, setDisconnectingGoogle] = useState(false);
 
-  const { data: googleStatus, isLoading: isGoogleLoading } = useQuery<{ connected: boolean; configured: boolean; scope: string | null; connectedAt: string | null; status: string | null }>({
+  const { data: googleStatus, isLoading: isGoogleLoading } = useQuery<{ connected: boolean; configured: boolean; scope: string | null; capabilities?: { calendar: boolean; tasks: boolean; drive: boolean }; connectedAt: string | null; status: string | null }>({
     queryKey: ["/api/google/status"],
     enabled: !!userId,
   });
@@ -185,7 +185,9 @@ function IntegrationsSection({ userId }: { userId?: number }) {
             <div>
               <span className="text-sm">Google</span>
               {isGoogleConnected && (
-                <p className="text-xs text-primary">Connected — Calendar, Tasks &amp; Drive</p>
+                <p className="text-xs text-primary">
+                  Connected — {([googleStatus?.capabilities?.calendar && "Calendar", googleStatus?.capabilities?.tasks && "Tasks", googleStatus?.capabilities?.drive && "Drive"].filter(Boolean).join(", ") || "no data permissions")}
+                </p>
               )}
               {!isGoogleConnected && googleStatus?.status === "revoked" && (
                 <p className="text-xs text-muted-foreground">Disconnected — imported LyfeOS missions retained</p>

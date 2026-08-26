@@ -1859,7 +1859,7 @@ function SyncImportDialog({ open, onOpenChange, obsidianInputRef, evernoteInputR
   currentFolderId: number | null;
   onSyncComplete: () => Promise<void>;
 }) {
-  const [gdStatus, setGdStatus] = useState<{ connected: boolean; connectedAt?: string } | null>(null);
+  const [gdStatus, setGdStatus] = useState<{ connected: boolean; capabilities?: { drive: boolean }; connectedAt?: string } | null>(null);
   const [gdSyncStatus, setGdSyncStatus] = useState<SyncStatus>('idle');
   const [gdResult, setGdResult] = useState<SyncResult | null>(null);
   const [gdPushStatus, setGdPushStatus] = useState<SyncStatus>('idle');
@@ -2048,8 +2048,8 @@ function SyncImportDialog({ open, onOpenChange, obsidianInputRef, evernoteInputR
           <TabsContent value="google-drive" className="space-y-4 mt-4">
             <div className="flex items-center justify-between p-3 rounded-lg bg-primary/5 border border-primary/10">
               <div className="flex items-center gap-2">
-                <div className={cn("h-2 w-2 rounded-full", gdStatus?.connected ? "bg-green-500" : "bg-muted-foreground/50")} />
-                <span className="text-sm">{gdStatus?.connected ? 'Connected' : 'Not connected'}</span>
+                <div className={cn("h-2 w-2 rounded-full", gdStatus?.connected && gdStatus.capabilities?.drive ? "bg-green-500" : "bg-muted-foreground/50")} />
+                <span className="text-sm">{gdStatus?.connected && gdStatus.capabilities?.drive ? 'Connected' : 'Drive not authorized'}</span>
               </div>
               {gdStatus?.connectedAt && (
                 <span className="text-[10px] text-muted-foreground">
@@ -2058,7 +2058,7 @@ function SyncImportDialog({ open, onOpenChange, obsidianInputRef, evernoteInputR
               )}
             </div>
 
-            {gdStatus?.connected ? (
+            {gdStatus?.connected && gdStatus.capabilities?.drive ? (
               <div className="space-y-3">
                 <Button
                   className="w-full bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30 font-mono text-xs"

@@ -541,7 +541,7 @@ export function registerProfileRoutes(app: Express): void {
       data.mission_review_invitations = missionReviewInvitationRows;
       const safeUser = { ...user, password: undefined, passwordResetToken: undefined, passwordResetExpiry: undefined, emailVerificationToken: undefined, emailVerificationExpiry: undefined, twoFactorEmailCode: undefined, twoFactorEmailExpiry: undefined, twoFactorPhoneCode: undefined, twoFactorPhoneExpiry: undefined };
       data.integrations = data.integrations.map((entry: any) => {
-        const { access_token, refresh_token, accessToken, refreshToken, ...safe } = entry;
+        const { access_token, refresh_token, accessToken, refreshToken, credential_ref, credentialRef, ...safe } = entry;
         return { ...safe, settings: sanitizeIntegrationSettingsForExport(safe.settings) };
       });
       const exportPayload = { exportedAt: new Date().toISOString(), formatVersion: 1, dataRights: LYFEOS_DATA_RIGHTS, user: safeUser, data };
