@@ -14,6 +14,7 @@ const localDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine((value) =
 const accountTypeSchema = z.enum(["cash", "checking", "savings", "investment", "property", "credit", "loan", "other_asset", "other_liability"]);
 const transactionStatusSchema = z.enum(["pending", "posted"]);
 const goalTypeSchema = z.enum(["savings", "emergency_fund", "debt_paydown", "net_worth", "other"]);
+const categorySchema = z.string().trim().min(1).max(80).transform((value) => value.toLocaleLowerCase("en-US"));
 
 const accountCreateSchema = z.object({
   name: z.string().trim().min(1).max(120),
@@ -34,7 +35,7 @@ const transactionCreateSchema = z.object({
   amountMinor: moneySchema.refine((value) => value !== 0),
   transactionDate: localDateSchema,
   description: z.string().trim().min(1).max(240),
-  category: z.string().trim().min(1).max(80),
+  category: categorySchema,
   status: transactionStatusSchema.default("posted"),
   clientMutationId: z.string().trim().uuid().optional(),
 });
@@ -43,10 +44,10 @@ const transactionUpdateSchema = z.object({
   amountMinor: moneySchema.refine((value) => value !== 0).optional(),
   transactionDate: localDateSchema.optional(),
   description: z.string().trim().min(1).max(240).optional(),
-  category: z.string().trim().min(1).max(80).optional(),
+  category: categorySchema.optional(),
   status: transactionStatusSchema.optional(),
 }).refine((value) => Object.keys(value).some((key) => key !== "expectedVersion"), "Provide a transaction change.");
-const budgetSchema = z.object({ month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/), category: z.string().trim().min(1).max(80), currency: currencySchema, limitMinor: positiveMoneySchema });
+const budgetSchema = z.object({ month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/), category: categorySchema, currency: currencySchema, limitMinor: positiveMoneySchema });
 const goalCreateSchema = z.object({ name: z.string().trim().min(1).max(120), goalType: goalTypeSchema, currency: currencySchema, targetMinor: positiveMoneySchema, currentMinor: moneySchema.nonnegative().default(0), targetDate: localDateSchema.nullable().optional() });
 const goalUpdateSchema = z.object({ expectedVersion: z.number().int().positive(), name: z.string().trim().min(1).max(120).optional(), targetMinor: positiveMoneySchema.optional(), currentMinor: moneySchema.nonnegative().optional(), targetDate: localDateSchema.nullable().optional(), status: z.enum(["active", "completed", "archived"]).optional() }).refine((value) => Object.keys(value).some((key) => key !== "expectedVersion"), "Provide a goal change.");
 

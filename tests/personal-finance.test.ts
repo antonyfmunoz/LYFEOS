@@ -35,5 +35,9 @@ describe("personal finance foundation", () => {
     expect(routes).toContain('Currency totals stay separate');
     expect(page).toContain('This is separate from Wealth Tokens');
     expect(page).toContain('Bank connection is not yet active');
+    expect(page).toContain('Save correction');
+    expect(page).toContain('Delete ${item.description}');
+    expect(page).toContain('Complete');
+    expect(page).toContain('Reopen');
   });
 });

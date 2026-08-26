@@ -45,7 +45,12 @@ describeApi("Personal Finance authenticated contract", () => {
     expect((await request("PUT", "/api/finance/budgets", { month: "2026-08", category: "Food", currency: "USD", limitMinor: 25000 }, ownerCookie)).status).toBe(200);
     const summary = await request("GET", "/api/finance/summary?month=2026-08", undefined, ownerCookie);
     expect(summary.data.cashFlow).toContainEqual({ currency: "USD", incomeMinor: 0, spendingMinor: 4250 });
-    expect(summary.data.budgets[0]).toMatchObject({ category: "Food", limitMinor: 25000, spentMinor: 4250 });
+    expect(summary.data.budgets[0]).toMatchObject({ category: "food", limitMinor: 25000, spentMinor: 4250 });
+    const corrected = await request("PATCH", `/api/finance/transactions/${created.data.id}`, { expectedVersion: created.data.version, amountMinor: -5000, category: "FOOD" }, ownerCookie);
+    expect(corrected.status).toBe(200);
+    expect(corrected.data).toMatchObject({ amountMinor: -5000, category: "food", version: created.data.version + 1 });
+    expect((await request("DELETE", `/api/finance/transactions/${created.data.id}?expectedVersion=${created.data.version}`, undefined, ownerCookie)).status).toBe(409);
+    expect((await request("DELETE", `/api/finance/transactions/${created.data.id}?expectedVersion=${corrected.data.version}`, undefined, ownerCookie)).status).toBe(200);
   });
 
   it("uses optimistic versions and preserves every balance correction as a snapshot", async () => {
@@ -54,6 +59,21 @@ describeApi("Personal Finance authenticated contract", () => {
     expect((await request("PATCH", `/api/finance/accounts/${checkingId}`, { expectedVersion: checkingVersion, balanceMinor: 300000 }, ownerCookie)).status).toBe(409);
     const snapshots = await pool.query("SELECT balance_minor FROM finance_balance_snapshots WHERE user_id = $1 AND account_id = $2 ORDER BY id", [ownerId, checkingId]);
     expect(snapshots.rows.map((row) => Number(row.balance_minor))).toEqual([250000, 275000]);
+  });
+
+  it("supports complete user-controlled budget, goal, and account lifecycles", async () => {
+    const budget = await request("PUT", "/api/finance/budgets", { month: "2026-09", category: "Housing", currency: "usd", limitMinor: 150000 }, ownerCookie);
+    expect(budget.status).toBe(200);
+    expect((await request("DELETE", `/api/finance/budgets/${budget.data.id}`, undefined, ownerCookie)).status).toBe(200);
+    const goal = await request("POST", "/api/finance/goals", { name: "Emergency fund", goalType: "emergency_fund", currency: "USD", targetMinor: 500000, currentMinor: 100000 }, ownerCookie);
+    expect(goal.status).toBe(201);
+    const completed = await request("PATCH", `/api/finance/goals/${goal.data.id}`, { expectedVersion: goal.data.version, currentMinor: 500000, status: "completed" }, ownerCookie);
+    expect(completed.status).toBe(200);
+    expect(completed.data).toMatchObject({ currentMinor: 500000, status: "completed", version: goal.data.version + 1 });
+    const closed = await request("PATCH", `/api/finance/accounts/${checkingId}`, { expectedVersion: checkingVersion + 1, status: "closed" }, ownerCookie);
+    expect(closed.status).toBe(200);
+    expect(closed.data.status).toBe("closed");
+    checkingVersion = closed.data.version;
   });
 
   it("isolates owners and includes the domain in portable export and exact erasure", async () => {

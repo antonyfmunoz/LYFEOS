@@ -2873,7 +2873,7 @@ export type UMHOutboxEvent = typeof umhOutboxEvents.$inferSelect;
 // across currencies without an explicit exchange-rate source.
 export const financeAccounts = pgTable("finance_accounts", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   name: varchar("name", { length: 120 }).notNull(),
   accountType: text("account_type").notNull(),
   currency: varchar("currency", { length: 3 }).notNull(),
@@ -2893,8 +2893,8 @@ export const financeAccounts = pgTable("finance_accounts", {
 
 export const financeBalanceSnapshots = pgTable("finance_balance_snapshots", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id),
-  accountId: integer("account_id").notNull().references(() => financeAccounts.id),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  accountId: integer("account_id").notNull().references(() => financeAccounts.id, { onDelete: "cascade" }),
   balanceMinor: bigint("balance_minor", { mode: "number" }).notNull(),
   currency: varchar("currency", { length: 3 }).notNull(),
   source: text("source").notNull().default("manual"),
@@ -2904,8 +2904,8 @@ export const financeBalanceSnapshots = pgTable("finance_balance_snapshots", {
 
 export const financeTransactions = pgTable("finance_transactions", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id),
-  accountId: integer("account_id").notNull().references(() => financeAccounts.id),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  accountId: integer("account_id").notNull().references(() => financeAccounts.id, { onDelete: "cascade" }),
   amountMinor: bigint("amount_minor", { mode: "number" }).notNull(),
   currency: varchar("currency", { length: 3 }).notNull(),
   transactionDate: date("transaction_date").notNull(),
@@ -2927,7 +2927,7 @@ export const financeTransactions = pgTable("finance_transactions", {
 
 export const financeBudgets = pgTable("finance_budgets", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   month: date("month").notNull(),
   category: varchar("category", { length: 80 }).notNull(),
   currency: varchar("currency", { length: 3 }).notNull(),
@@ -2939,7 +2939,7 @@ export const financeBudgets = pgTable("finance_budgets", {
 
 export const financeGoals = pgTable("finance_goals", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   name: varchar("name", { length: 120 }).notNull(),
   goalType: text("goal_type").notNull(),
   currency: varchar("currency", { length: 3 }).notNull(),
