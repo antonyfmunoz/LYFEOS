@@ -51,12 +51,13 @@ describeApi("private workspace search at realistic account scale", () => {
     expect(otherId).toBeGreaterThan(0);
 
     const fixtureSize = 10_000;
+    const missionFixtureSize = 100_000;
     await pool.query(`
       INSERT INTO quests (user_id, title, description)
       SELECT $1, CASE WHEN n = $2 THEN 'Atlasneedle' WHEN n % 1000 = 0 THEN 'Atlasneedle mission ' || n ELSE 'Mission ' || n END,
         CASE WHEN n % 1000 = 0 THEN 'Indexed atlasneedle evidence' ELSE 'Ordinary mission evidence' END
       FROM generate_series(1, $2) AS n
-    `, [ownerId, fixtureSize]);
+    `, [ownerId, missionFixtureSize]);
     await pool.query(`
       INSERT INTO documents (user_id, title, content, description)
       SELECT $1, CASE WHEN n = $2 THEN 'Atlasneedle' WHEN n % 1000 = 0 THEN 'Atlasneedle document ' || n ELSE 'Document ' || n END,
@@ -99,7 +100,7 @@ describeApi("private workspace search at realistic account scale", () => {
     for (const table of ["quests", "documents", "spreadsheets", "canvases", "workspace_databases", "contacts"]) {
       await pool.query(`ANALYZE ${table}`);
     }
-  }, 45_000);
+  }, 90_000);
 
   it("returns a bounded private cross-domain result set within the local latency budget", async () => {
     const searched = await request("GET", "/api/search?q=atlasneedle&limit=25", undefined, ownerCookie);
