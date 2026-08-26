@@ -1,9 +1,13 @@
 import { storage } from "./storage";
 import type { SmartReminder } from "@shared/schema";
 import { formatLocalDate, logger } from "./utils";
+import { and, eq, sql } from "drizzle-orm";
+import { pushSubscriptions } from "@shared/schema";
+import { db } from "./db";
+import { deliverWebPush, webPushConfiguration } from "./web-push";
 
-// Push notifications are currently disabled (firebase-admin removed during Clerk migration).
-// TODO: Re-implement push via a provider-agnostic solution (e.g. web-push / Clerk notifications).
+// Standards-based Web Push is enabled only when both VAPID keys are present.
+// Browser permission and device subscription remain explicit user actions.
 
 interface NotificationPayload {
   title: string;
@@ -14,19 +18,38 @@ interface NotificationPayload {
   actions?: { action: string; title: string }[];
 }
 
-export const PUSH_NOTIFICATIONS_CONFIGURED = false;
+export const PUSH_NOTIFICATIONS_CONFIGURED = webPushConfiguration().configured;
 
-export async function sendPushToUser(userId: number, payload: NotificationPayload): Promise<false> {
-  logger.warn(`sendPushToUser: Push notifications disabled (no provider configured). Skipping notification for user ${userId}: ${payload.title}`);
-  return false;
+export async function sendPushToUser(userId: number, payload: NotificationPayload): Promise<boolean> {
+  if (!webPushConfiguration().configured) return false;
+  const subscriptions = await db.select().from(pushSubscriptions).where(and(eq(pushSubscriptions.userId, userId), eq(pushSubscriptions.status, "active")));
+  let delivered = false;
+  for (const subscription of subscriptions) {
+    if (!subscription.endpoint || !subscription.p256dh || !subscription.auth) continue;
+    try {
+      await deliverWebPush({ endpoint: subscription.endpoint, p256dh: subscription.p256dh, auth: subscription.auth, expirationTime: subscription.expirationTime }, payload);
+      delivered = true;
+      await db.update(pushSubscriptions).set({ lastSuccessAt: new Date(), failureCount: 0, lastFailureAt: null, updatedAt: new Date() }).where(and(eq(pushSubscriptions.id, subscription.id), eq(pushSubscriptions.userId, userId)));
+    } catch (error) {
+      const statusCode = typeof error === "object" && error && "statusCode" in error ? Number((error as { statusCode?: unknown }).statusCode) : 0;
+      const terminal = statusCode === 404 || statusCode === 410;
+      await db.update(pushSubscriptions).set({ status: terminal ? "expired" : (subscription.failureCount + 1 >= 5 ? "failed" : "active"), failureCount: sql`${pushSubscriptions.failureCount} + 1`, lastFailureAt: new Date(), updatedAt: new Date() }).where(and(eq(pushSubscriptions.id, subscription.id), eq(pushSubscriptions.userId, userId)));
+      logger.warn(`Web Push delivery failed for subscription ${subscription.id} with bounded status ${statusCode || "unknown"}`);
+    }
+  }
+  return delivered;
 }
 
 async function checkAndSendNotifications() {
   try {
     const results = await storage.getAllPushSubscriptionsForNotification();
+    const sentMissionReminders = new Set<string>();
 
     for (const { subscription, quests } of results) {
       for (const quest of quests) {
+        const reminderKey = `${subscription.userId}:${quest.id}`;
+        if (sentMissionReminders.has(reminderKey)) continue;
+        sentMissionReminders.add(reminderKey);
         await sendPushToUser(subscription.userId, {
           title: "Mission Reminder",
           body: `Time for: ${quest.title}`,
@@ -155,14 +178,14 @@ async function evaluateSmartReminders() {
 
         const body = config.bodies[Math.floor(Math.random() * config.bodies.length)];
 
-        await sendPushToUser(reminder.userId, {
+        const sent = await sendPushToUser(reminder.userId, {
           title: config.title,
           body,
           tag: config.tag,
           url: config.url,
         });
 
-        await storage.updateSmartReminderLastSent(reminder.id);
+        if (sent) await storage.updateSmartReminderLastSent(reminder.id);
       } catch (err) {
         logger.error(`Smart reminder error for user ${reminder.userId}:`, err);
       }

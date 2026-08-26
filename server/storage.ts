@@ -1067,7 +1067,7 @@ export class DatabaseStorage implements IStorage {
   
   // Push Subscription methods
   async getPushSubscriptions(userId: number): Promise<PushSubscription[]> {
-    return db.select().from(pushSubscriptions).where(eq(pushSubscriptions.userId, userId));
+    return db.select().from(pushSubscriptions).where(and(eq(pushSubscriptions.userId, userId), eq(pushSubscriptions.status, "active")));
   }
   
   async savePushSubscription(sub: InsertPushSubscription): Promise<PushSubscription> {
@@ -1087,7 +1087,7 @@ export class DatabaseStorage implements IStorage {
   }
   
   async getAllPushSubscriptionsForNotification(): Promise<{ subscription: PushSubscription; quests: Quest[] }[]> {
-    const allSubs = await db.select().from(pushSubscriptions);
+    const allSubs = await db.select().from(pushSubscriptions).where(eq(pushSubscriptions.status, "active"));
     const results: { subscription: PushSubscription; quests: Quest[] }[] = [];
     
     const now = new Date();

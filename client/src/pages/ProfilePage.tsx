@@ -82,6 +82,7 @@ import type { UserProfile as UserProfileSchema } from "@shared/schema";
 import type { LyfeOSDataClass } from "@shared/data-rights";
 import { startThetaBeats, stopThetaBeats } from '@/lib/theta-beats';
 import { useUser } from "@clerk/clerk-react";
+import PushNotificationSettings from "@/components/profile/PushNotificationSettings";
 type ClerkPhoneNumber = {
   id: string;
   phoneNumber: string;
@@ -1971,35 +1972,7 @@ export default function ProfilePage() {
               ) : null}
             </div>
             
-            {/* Push Notifications */}
-            <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="material-icons text-primary text-sm">notifications</span>
-                <Label className="text-sm text-foreground">Push Notifications</Label>
-              </div>
-              <p className="text-xs text-muted-foreground mb-3">
-                Push delivery is not available in this LyfeOS release. Mission reminders remain visible in the app.
-              </p>
-              <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors">
-                <div className="flex items-center">
-                  <span className="material-icons text-primary text-sm mr-2">notifications_active</span>
-                  <div>
-                    <span className="text-sm">Push Notifications</span>
-                    <p className="text-xs text-muted-foreground">Not yet configured</p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  disabled
-                  className="w-10 h-5 rounded-full relative bg-card opacity-40"
-                  role="switch"
-                  aria-checked={false}
-                  aria-label="Push notifications are not yet configured"
-                >
-                  <span className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-muted-foreground" />
-                </button>
-              </div>
-            </div>
+            <PushNotificationSettings />
 
             <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
               <div className="flex items-center gap-2 mb-2">

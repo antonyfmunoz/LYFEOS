@@ -544,6 +544,10 @@ export function registerProfileRoutes(app: Express): void {
         const { access_token, refresh_token, accessToken, refreshToken, credential_ref, credentialRef, ...safe } = entry;
         return { ...safe, settings: sanitizeIntegrationSettingsForExport(safe.settings) };
       });
+      data.push_subscriptions = data.push_subscriptions.map((entry: any) => {
+        const { endpoint, p256dh, auth, fcm_token, fcmToken, ...safe } = entry;
+        return safe;
+      });
       const exportPayload = { exportedAt: new Date().toISOString(), formatVersion: 1, dataRights: LYFEOS_DATA_RIGHTS, user: safeUser, data };
       res.setHeader("Content-Type", "application/json; charset=utf-8");
       res.setHeader("Content-Disposition", `attachment; filename="lyfeos-data-export-${new Date().toISOString().slice(0, 10)}.json"`);

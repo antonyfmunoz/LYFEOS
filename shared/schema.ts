@@ -1348,15 +1348,27 @@ export const insertUserIntegrationsSchema = createInsertSchema(userIntegrations)
   otherIntegrations: true,
 });
 
-// Push Subscriptions table (FCM tokens)
+// Owner-scoped Web Push devices. The retired FCM column remains nullable only
+// so pre-Web-Push rows can be safely revoked during migration.
 export const pushSubscriptions = pgTable("push_subscriptions", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id),
-  // Nullable only for preserved pre-FCM subscription rows. New subscriptions
-  // are still required to provide a token by the insert schema below.
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   fcmToken: text("fcm_token"),
+  endpoint: text("endpoint"),
+  p256dh: text("p256dh"),
+  auth: text("auth"),
+  expirationTime: timestamp("expiration_time"),
+  status: text("status").notNull().default("active"),
+  userAgent: varchar("user_agent", { length: 300 }),
+  lastSuccessAt: timestamp("last_success_at"),
+  lastFailureAt: timestamp("last_failure_at"),
+  failureCount: integer("failure_count").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("push_subscriptions_endpoint_unique_idx").on(table.endpoint).where(sql`${table.endpoint} IS NOT NULL`),
+  index("push_subscriptions_user_status_idx").on(table.userId, table.status),
+]);
 
 export const insertPushSubscriptionSchema = createInsertSchema(pushSubscriptions).pick({
   userId: true,
