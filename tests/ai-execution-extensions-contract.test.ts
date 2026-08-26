@@ -32,4 +32,15 @@ describe("AI execution and signed extension product boundary", () => {
     const profile = source("server/routes/profile.ts");
     for (const table of ["ai_execution_preferences", "extension_installations", "extension_audit_events"]) expect(profile).toContain(`\"${table}\"`);
   });
+
+  it("keeps production publishing fixed to committed manifests and write-only custody", () => {
+    const publisher = source("scripts/publish-extension.ts");
+    expect(publisher).toContain('path.resolve(process.cwd(), "extensions", "manifests")');
+    expect(publisher).toContain('fetch("https://lyfeos.net/api/internal/extensions/packages"');
+    expect(publisher).not.toContain("console.log(privateKey");
+    const workflow = source(".github/workflows/publish-extension.yml");
+    expect(workflow).toContain("environment: production");
+    expect(workflow).toContain("secrets.LYFEOS_EXTENSION_PUBLISHER_PRIVATE_KEY");
+    expect(workflow).toContain("secrets.LYFEOS_EXTENSION_REGISTRY_ADMIN_TOKEN");
+  });
 });

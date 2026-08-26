@@ -1,0 +1,34 @@
+name: Publish signed extension
+
+on:
+  workflow_dispatch:
+    inputs:
+      manifest_path:
+        description: Committed JSON manifest under extensions/manifests
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lyfeos-extension-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Validate, sign, and publish immutable package
+        env:
+          LYFEOS_EXTENSION_PUBLISHER_KEY_ID: ${{ vars.LYFEOS_EXTENSION_PUBLISHER_KEY_ID }}
+          LYFEOS_EXTENSION_PUBLISHER_PRIVATE_KEY: ${{ secrets.LYFEOS_EXTENSION_PUBLISHER_PRIVATE_KEY }}
+          LYFEOS_EXTENSION_REGISTRY_ADMIN_TOKEN: ${{ secrets.LYFEOS_EXTENSION_REGISTRY_ADMIN_TOKEN }}
+        run: npx tsx scripts/publish-extension.ts "${{ inputs.manifest_path }}"
