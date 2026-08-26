@@ -141,35 +141,35 @@ export function associationFromDailySeries(
   if (aligned.length < minimumSamples) reasons.push(`At least ${minimumSamples} aligned days are required.`);
   if (coverage < minimumCoverage) reasons.push(`Aligned coverage must be at least ${Math.round(minimumCoverage * 100)}% of the selected period.`);
   if (reasons.length) return { status: "insufficient" as const, pairedSamples: aligned.length, coverage, reasons, aligned, diagnostics };
-  // Pearson is scale invariant. Normalizing first avoids overflow for large but
-  // finite source values while preserving the same mathematical association.
-  const leftScale = Math.max(...aligned.map((point) => Math.abs(point.left)), 1);
-  const rightScale = Math.max(...aligned.map((point) => Math.abs(point.right)), 1);
-  const normalized = aligned.map((point) => ({ left: point.left / leftScale, right: point.right / rightScale }));
-  const leftMean = normalized.reduce((sum, point) => sum + point.left, 0) / normalized.length;
-  const rightMean = normalized.reduce((sum, point) => sum + point.right, 0) / normalized.length;
-  let numerator = 0;
-  let leftSquares = 0;
-  let rightSquares = 0;
-  for (const point of normalized) {
-    const leftDelta = point.left - leftMean;
-    const rightDelta = point.right - rightMean;
-    numerator += leftDelta * rightDelta;
-    leftSquares += leftDelta ** 2;
-    rightSquares += rightDelta ** 2;
-  }
-  if (leftSquares === 0 || rightSquares === 0) return { status: "insufficient" as const, pairedSamples: aligned.length, coverage, reasons: ["At least one selected series has no variation in the aligned period."], aligned, diagnostics };
-  const coefficient = Math.max(-1, Math.min(1, numerator / Math.sqrt(leftSquares * rightSquares)));
+  const coefficientFor = (points: Array<{ left: number; right: number }>): number | null => {
+    // Pearson is scale invariant. Normalizing first avoids overflow for large
+    // but finite source values while preserving the same association.
+    const leftScale = Math.max(...points.map((point) => Math.abs(point.left)), 1);
+    const rightScale = Math.max(...points.map((point) => Math.abs(point.right)), 1);
+    const normalized = points.map((point) => ({ left: point.left / leftScale, right: point.right / rightScale }));
+    const leftMean = normalized.reduce((sum, point) => sum + point.left, 0) / normalized.length;
+    const rightMean = normalized.reduce((sum, point) => sum + point.right, 0) / normalized.length;
+    let numerator = 0;
+    let leftSquares = 0;
+    let rightSquares = 0;
+    for (const point of normalized) {
+      const leftDelta = point.left - leftMean;
+      const rightDelta = point.right - rightMean;
+      numerator += leftDelta * rightDelta;
+      leftSquares += leftDelta ** 2;
+      rightSquares += rightDelta ** 2;
+    }
+    if (leftSquares === 0 || rightSquares === 0) return null;
+    return Math.max(-1, Math.min(1, numerator / Math.sqrt(leftSquares * rightSquares)));
+  };
+  const coefficient = coefficientFor(aligned);
+  if (coefficient === null) return { status: "insufficient" as const, pairedSamples: aligned.length, coverage, reasons: ["At least one selected series has no variation in the aligned period."], aligned, diagnostics };
   const magnitude = Math.abs(coefficient) < 0.3 ? "small" : Math.abs(coefficient) < 0.5 ? "moderate" : "large";
   const direction = coefficient < 0 ? "inverse" : "same-direction";
-  // Fisher's z interval estimates sampling uncertainty for the mathematical
-  // association under strong assumptions. It cannot establish causation,
-  // clinical meaning, prediction quality, or source accuracy.
-  const boundedCoefficient = Math.max(-0.999999999999, Math.min(0.999999999999, coefficient));
-  const fisherZ = Math.atanh(boundedCoefficient);
-  const fisherStandardError = 1 / Math.sqrt(aligned.length - 3);
-  const uncertaintyLower = Math.tanh(fisherZ - 1.96 * fisherStandardError);
-  const uncertaintyUpper = Math.tanh(fisherZ + 1.96 * fisherStandardError);
+  const leaveOneOut = aligned.map((_, omittedIndex) => coefficientFor(aligned.filter((__, index) => index !== omittedIndex)));
+  const finiteLeaveOneOut = leaveOneOut.filter((value): value is number => value !== null && Number.isFinite(value));
+  const sensitivityLower = Math.min(coefficient, ...finiteLeaveOneOut);
+  const sensitivityUpper = Math.max(coefficient, ...finiteLeaveOneOut);
   return {
     status: "available" as const,
     pairedSamples: aligned.length,
@@ -178,12 +178,12 @@ export function associationFromDailySeries(
     magnitude,
     direction,
     uncertainty: {
-      method: "fisher_z_approximation" as const,
-      confidenceLevel: 0.95,
-      lower: Math.round(uncertaintyLower * 1000) / 1000,
-      upper: Math.round(uncertaintyUpper * 1000) / 1000,
-      assumptions: ["paired daily values are independent", "the relationship is approximately linear", "the selected recorded days are representative"],
-      disclosure: "This interval quantifies sampling uncertainty only under its stated assumptions. It does not account for confounding, measurement error, missing-not-at-random data, repeated comparisons, or causation.",
+      method: "leave_one_day_out_sensitivity" as const,
+      lower: Math.round(sensitivityLower * 1000) / 1000,
+      upper: Math.round(sensitivityUpper * 1000) / 1000,
+      recalculations: finiteLeaveOneOut.length,
+      unavailableRecalculations: leaveOneOut.length - finiteLeaveOneOut.length,
+      disclosure: "This range shows the coefficient after omitting each paired day one at a time. It is a sensitivity check, not a confidence interval or probability statement, and it does not correct serial dependence, confounding, measurement error, missing-not-at-random data, repeated comparisons, or causation.",
     },
     aligned,
     diagnostics,

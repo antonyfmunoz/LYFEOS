@@ -51,8 +51,8 @@ describeApi("Health insight interpretation authenticated journey", () => {
     }
     const association = await request("POST", "/api/health-insights/associations", comparison, ownerCookie);
     expect(association.status).toBe(200);
-    expect(association.data.result).toMatchObject({ status: "available", pairedSamples: 7, coefficient: 1, uncertainty: { method: "fisher_z_approximation", confidenceLevel: 0.95 } });
-    expect(association.data.result.uncertainty.disclosure).toContain("does not account for confounding");
+    expect(association.data.result).toMatchObject({ status: "available", pairedSamples: 7, coefficient: 1, uncertainty: { method: "leave_one_day_out_sensitivity", recalculations: 7, unavailableRecalculations: 0 } });
+    expect(association.data.result.uncertainty.disclosure).toContain("not a confidence interval or probability statement");
   });
 
   it("saves one metadata-only interpretation and converges exact retries", async () => {
@@ -61,7 +61,7 @@ describeApi("Health insight interpretation authenticated journey", () => {
     expect(created.status).toBe(201);
     expect(created.data.replayed).toBe(false);
     interpretationId = created.data.interpretation.id;
-    expect(created.data.interpretation.associationSnapshot).toMatchObject({ rawDailyValuesStored: false, result: { coefficient: 1, uncertainty: { confidenceLevel: 0.95 } } });
+    expect(created.data.interpretation.associationSnapshot).toMatchObject({ rawDailyValuesStored: false, result: { coefficient: 1, uncertainty: { method: "leave_one_day_out_sensitivity" } } });
     expect(created.data.interpretation.associationSnapshot.result).not.toHaveProperty("aligned");
     const replay = await request("POST", "/api/health-insights/interpretations", body, ownerCookie);
     expect(replay.status).toBe(200);

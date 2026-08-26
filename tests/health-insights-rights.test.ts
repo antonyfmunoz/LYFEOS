@@ -67,10 +67,23 @@ describe("health trends, associations, and data rights", () => {
       expect(result.coefficient).toBe(1);
       expect(result.disclosure).toContain("not proof");
       expect(result.pairedSamples).toBe(10);
-      expect(result.uncertainty).toMatchObject({ method: "fisher_z_approximation", confidenceLevel: 0.95 });
+      expect(result.uncertainty).toMatchObject({ method: "leave_one_day_out_sensitivity", recalculations: 10, unavailableRecalculations: 0 });
       expect(result.uncertainty.lower).toBeLessThanOrEqual(result.coefficient);
       expect(result.uncertainty.upper).toBeGreaterThanOrEqual(result.coefficient);
-      expect(result.uncertainty.disclosure).toContain("does not account for confounding");
+      expect(result.uncertainty.disclosure).toContain("not a confidence interval or probability statement");
+    }
+  });
+
+  it("shows when one recorded day materially changes the association", () => {
+    const left = Array.from({ length: 8 }, (_, index) => ({ date: `2026-08-${String(index + 1).padStart(2, "0")}`, value: index + 1, records: 1 }));
+    const right = left.map((point, index) => ({ ...point, value: index === 7 ? -20 : point.value * 2 }));
+    const result = associationFromDailySeries(left, right, 30);
+    expect(result.status).toBe("available");
+    if (result.status === "available") {
+      expect(result.uncertainty.recalculations).toBe(8);
+      expect(result.uncertainty.lower).toBeLessThanOrEqual(result.coefficient);
+      expect(result.uncertainty.upper).toBeGreaterThanOrEqual(result.coefficient);
+      expect(result.uncertainty.upper - result.uncertainty.lower).toBeGreaterThan(0.5);
     }
   });
 

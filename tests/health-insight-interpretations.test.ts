@@ -20,7 +20,8 @@ describe("Health insight interpretations", () => {
   it("keeps uncertainty and interpretation limits visible in the existing Health UI", () => {
     const workbench = source("client/src/components/health/HealthTrendWorkbench.tsx");
     const health = source("client/src/pages/HealthDetailPage.tsx");
-    expect(workbench).toContain("Approximate 95% sampling interval");
+    expect(workbench).toContain("One-day omission sensitivity range");
+    expect(workbench).toContain("one-day omission range");
     expect(workbench).toContain("not a verified health fact, cause, prediction, diagnosis, or instruction");
     expect(workbench).toContain("Raw daily values are not copied into the interpretation");
     expect(health).toContain("sleepWellnessDataQuality.readyToExplore");
