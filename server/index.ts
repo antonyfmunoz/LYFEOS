@@ -34,6 +34,7 @@ import { startScheduledAutomationWorker, stopScheduledAutomationWorker } from ".
 import { execSync } from "child_process";
 import * as Sentry from "@sentry/node";
 import { SESSION_COOKIE_NAME } from "./session-config";
+import { consumeDistributedRateLimit, deleteExpiredRateLimits, rateLimitBucketHash } from "./distributed-rate-limit";
 
 const sentryDsn = process.env.SENTRY_DSN;
 const sentryEnvironment = process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || "development";
@@ -160,16 +161,55 @@ setInterval(() => {
 const isolatedQualification = process.env.LYFEOS_TEST_ENV === "isolated" && !process.env.FLY_APP_NAME;
 const qualificationRequestLimit = (productionLimit: number) => isolatedQualification ? 10_000 : productionLimit;
 
-app.use("/api/auth/register", createRateLimiter(qualificationRequestLimit(5), 60 * 1000));
-app.use("/api/auth/complete-registration", createRateLimiter(qualificationRequestLimit(5), 60 * 1000));
-app.use("/api/auth/login", createRateLimiter(qualificationRequestLimit(10), 60 * 1000));
-app.use("/api/auth/sync-email-verified", createRateLimiter(qualificationRequestLimit(5), 60 * 1000));
+function requestSubject(req: Request): string | null {
+  const value = req.body?.identifier ?? req.body?.email ?? req.body?.displayName ?? req.query.email ?? req.query.displayName;
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function createDistributedRateLimiter(scope: string, productionLimit: number, subjectAware = true) {
+  const maxRequests = qualificationRequestLimit(productionLimit);
+  const windowMs = 60 * 1000;
+  return async (req: Request, res: Response, next: NextFunction) => {
+    const ip = req.ip || req.socket.remoteAddress || "unknown";
+    const buckets = [rateLimitBucketHash(sessionSecret, scope, "ip", ip)];
+    const subject = subjectAware ? requestSubject(req) : null;
+    if (subject) buckets.push(rateLimitBucketHash(sessionSecret, scope, "subject", subject));
+    try {
+      const decision = await consumeDistributedRateLimit(pool, buckets, maxRequests, windowMs);
+      res.setHeader("RateLimit-Limit", String(maxRequests));
+      res.setHeader("RateLimit-Remaining", String(decision.remaining));
+      res.setHeader("RateLimit-Reset", String(decision.retryAfterSeconds));
+      if (!decision.allowed) {
+        res.setHeader("Retry-After", String(decision.retryAfterSeconds));
+        return res.status(429).json({ error: "Too many requests. Please try again later." });
+      }
+      return next();
+    } catch (error) {
+      log(`Sensitive request limiter unavailable for ${scope}: ${error instanceof Error ? error.message : "unknown error"}`);
+      return res.status(503).json({ error: "This request is temporarily unavailable. Please try again." });
+    }
+  };
+}
+
+app.use("/api/auth/register", createDistributedRateLimiter("auth.register", 5));
+app.use("/api/auth/complete-registration", createDistributedRateLimiter("auth.complete_registration", 5));
+app.use("/api/auth/login", createDistributedRateLimiter("auth.login", 10));
+app.use("/api/auth/check-email", createDistributedRateLimiter("auth.check_email", 20));
+app.use("/api/auth/check-display-name", createDistributedRateLimiter("auth.check_display_name", 30));
+app.use("/api/auth/sync-email-verified", createDistributedRateLimiter("auth.sync_email_verified", 5));
+app.use("/api/webhooks/clerk", createDistributedRateLimiter("webhook.clerk", 120, false));
+app.use("/api/public/forms", createDistributedRateLimiter("public.forms", 30, false));
 app.use("/api/profile/generate-affirmation", createRateLimiter(qualificationRequestLimit(5), 60 * 1000));
 app.use("/api/voice-command", createRateLimiter(qualificationRequestLimit(20), 60 * 1000));
 // The isolated authenticated journey exercises the whole API through one local
 // loopback address. Keep the production ceiling unchanged while preventing the
 // shared CI harness from turning unrelated later tests into 429 cascades.
 app.use("/api", createRateLimiter(qualificationRequestLimit(100), 60 * 1000, true));
+
+const rateLimitCleanupTimer = setInterval(() => {
+  deleteExpiredRateLimits(pool).catch((error) => log(`Rate-limit cleanup failed: ${error instanceof Error ? error.message : "unknown error"}`));
+}, 5 * 60 * 1000);
+rateLimitCleanupTimer.unref();
 
 app.use((req, res, next) => {
   const requestId = req.header("x-request-id") || crypto.randomUUID();
