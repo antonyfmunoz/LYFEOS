@@ -10,7 +10,7 @@ describe("production operations workflow boundary", () => {
     expect(monitor).toContain("Verify immutable release and migration identity");
     expect(monitor).toContain(".sourceRevision");
     expect(monitor).toContain(".migrations.status");
-    expect(monitor).toContain("0134_web_push");
+    expect(monitor).toContain("0135_installation_branding");
   });
 
   it("rehearses a real isolated logical restore and structural comparison", () => {

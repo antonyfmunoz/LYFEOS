@@ -15,6 +15,7 @@ import BlueLightFilter from "./components/BlueLightFilter";
 import { setHapticEnabled } from "./lib/haptics";
 import { setSoundEnabled } from "./lib/sounds";
 import { ProductAnalytics } from "./components/ProductAnalytics";
+import InstallationBrandRuntime from "./components/InstallationBrandRuntime";
 
 const DashboardPage = React.lazy(() => import("./pages/DashboardPage"));
 const QuestsPage = React.lazy(() => import("./pages/QuestsPage"));
@@ -680,6 +681,7 @@ function App() {
           <ThemeProvider>
             <DndProvider backend={isTouchDevice() ? TouchBackend : HTML5Backend} options={isTouchDevice() ? { enableMouseEvents: true } : undefined}>
               <Router />
+              <InstallationBrandRuntime />
               <HapticInit />
               <VoiceOverlay />
               <CelebrationOverlay />

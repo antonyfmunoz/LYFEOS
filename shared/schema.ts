@@ -3888,3 +3888,59 @@ export const healthAiDrafts = pgTable("health_ai_drafts", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
   decidedAt: timestamp("decided_at"),
 }, (table) => [index("health_ai_drafts_user_state_created_idx").on(table.userId, table.state, table.createdAt), uniqueIndex("health_ai_drafts_request_unique_idx").on(table.requestId)]);
+
+// Installation presentation is deliberately separate from personal records.
+// Brand administrators can change this public projection but receive no
+// authority over any user's LyfeOS domain.
+export const lyfeosInstallations = pgTable("lyfeos_installations", {
+  id: text("id").primaryKey(),
+  productKey: text("product_key").notNull().default("lyfeos"),
+  productOwner: text("product_owner").notNull().default("OST"),
+  status: text("status").notNull().default("active"),
+  currentBrandRevision: integer("current_brand_revision").notNull().default(1),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const installationBrandRevisions = pgTable("installation_brand_revisions", {
+  id: serial("id").primaryKey(),
+  installationId: text("installation_id").notNull().references(() => lyfeosInstallations.id, { onDelete: "cascade" }),
+  revision: integer("revision").notNull(),
+  brand: jsonb("brand").notNull(),
+  actorUserId: integer("actor_user_id").references(() => users.id, { onDelete: "set null" }),
+  reason: text("reason").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [uniqueIndex("installation_brand_revisions_installation_revision_unique_idx").on(table.installationId, table.revision)]);
+
+export const installationDomainBindings = pgTable("installation_domain_bindings", {
+  id: serial("id").primaryKey(),
+  installationId: text("installation_id").notNull().references(() => lyfeosInstallations.id, { onDelete: "cascade" }),
+  hostname: text("hostname").notNull(),
+  status: text("status").notNull().default("pending"),
+  verificationTokenHash: text("verification_token_hash"),
+  verifiedAt: timestamp("verified_at"),
+  revokedAt: timestamp("revoked_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [uniqueIndex("installation_domain_bindings_hostname_unique_idx").on(sql`lower(${table.hostname})`), index("installation_domain_bindings_installation_status_idx").on(table.installationId, table.status)]);
+
+export const installationAdminGrants = pgTable("installation_admin_grants", {
+  id: serial("id").primaryKey(),
+  installationId: text("installation_id").notNull().references(() => lyfeosInstallations.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  role: text("role").notNull().default("brand_admin"),
+  status: text("status").notNull().default("active"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  revokedAt: timestamp("revoked_at"),
+}, (table) => [uniqueIndex("installation_admin_grants_installation_user_unique_idx").on(table.installationId, table.userId)]);
+
+export const installationAuditEvents = pgTable("installation_audit_events", {
+  id: serial("id").primaryKey(),
+  installationId: text("installation_id").notNull().references(() => lyfeosInstallations.id, { onDelete: "cascade" }),
+  actorUserId: integer("actor_user_id").references(() => users.id, { onDelete: "set null" }),
+  action: text("action").notNull(),
+  subjectType: text("subject_type").notNull(),
+  subjectId: text("subject_id"),
+  metadata: jsonb("metadata").notNull().default({}),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [index("installation_audit_events_installation_created_idx").on(table.installationId, table.createdAt)]);
