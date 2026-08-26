@@ -168,7 +168,7 @@ The existing release is not automatically invalid. It is a public MVP once its s
 - [x] AI-created and UI-created missions produce identical lifecycle/evidence results — canonical lifecycle and integration coverage.
 - [x] Account export, AI-memory clear, account deletion, consent revoke, and webhook verification tests — local/CI contract and authenticated API evidence; live Clerk provider receipt remains separate.
 - [x] Provider UI only advertises currently configured, testable capabilities — capability state is fail-closed and inactive providers remain unavailable.
-- [ ] Sentry error alert receipt; health-monitor incident open/close receipt; backup restore-drill receipt — monitor incident and CI logical restore receipts are complete; Sentry provider receipt and managed Neon PITR drill remain external.
+- [ ] Sentry error alert receipt; health-monitor incident open/close receipt; backup restore-drill receipt — monitor incident and CI logical restore receipts are complete. A protected, content-free, distributed-rate-limited manual probe can now prove deployed Sentry SDK transport without exposing its DSN; matching provider receipt/routing and the managed Neon PITR drill remain external.
 - [ ] Mobile and accessibility acceptance checks; measured performance budget — public desktop/mobile rendering is checked; protected authenticated surfaces, assistive technology and Core Web Vitals remain external session/tool gates.
 - [x] UMH remains disabled unless installation, tenancy, signing secret, receiver, and vertical-slice tests are configured — LyfeOS projection authority fails closed.
 

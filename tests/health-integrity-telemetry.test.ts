@@ -8,6 +8,7 @@ import {
   healthIntegrityReport,
   healthMonitorTokenMatches,
 } from "../server/health-integrity";
+import { sendSentryProbe, sentryProbeMessage } from "../server/sentry-probe";
 
 const root = path.resolve(import.meta.dirname, "..");
 const zeroCounts = (): HealthIntegrityCounts => ({
@@ -88,6 +89,42 @@ describe("value-free health integrity telemetry", () => {
     expect(workflow).toContain("/api/operations/health-integrity");
     expect(insightRoutes).toContain("health-planning-draft:${id}");
     expect(insightRoutes).toContain("The draft remains pending so a confirmed retry is safe.");
+  });
+
+  it("sends a fixed, content-free, manually tagged Sentry probe and waits for transport flush", async () => {
+    const captures: Array<{ exception: Error; context: unknown }> = [];
+    const result = await sendSentryProbe({
+      captureException(exception, context) {
+        captures.push({ exception, context });
+        return "0123456789abcdef0123456789abcdef";
+      },
+      async flush(timeout) {
+        expect(timeout).toBe(2_000);
+        return true;
+      },
+    });
+
+    expect(result).toEqual({ status: "sent", eventId: "0123456789abcdef0123456789abcdef" });
+    expect(captures).toHaveLength(1);
+    expect(captures[0]?.exception).toMatchObject({ name: "LyfeOSObservabilityProbe", message: sentryProbeMessage });
+    expect(captures[0]?.context).toEqual({
+      level: "error",
+      tags: { subsystem: "operations", probe: "manual", contains_user_data: "false" },
+    });
+  });
+
+  it("keeps the Sentry probe protected, distributed-rate-limited, and manual-only", () => {
+    const route = fs.readFileSync(path.join(root, "server/routes/operations.ts"), "utf8");
+    const workflow = fs.readFileSync(path.join(root, ".github/workflows/production-monitor.yml"), "utf8");
+    expect(route).toContain('app.post("/api/operations/sentry-probe"');
+    expect(route).toContain('healthMonitorTokenMatches(configuredToken, req.header("x-lyfeos-monitor-token"))');
+    expect(route).toContain('consumeDistributedRateLimit(pool, [bucket], 1, 60 * 60 * 1_000)');
+    expect(route).toContain('rateLimitBucketHash(configuredToken!, "operations:sentry-probe"');
+    expect(route).not.toMatch(/userId|email|username|source_payload|credential_ref/i);
+    expect(workflow).toContain("sentry_probe:");
+    expect(workflow).toContain("if: inputs.sentry_probe");
+    expect(workflow).toContain("--request POST");
+    expect(workflow).not.toContain("SENTRY_DSN: ${{ secrets.SENTRY_DSN }}");
   });
 
   it("keeps recurring aggregate checks on an explicit release-migrated index path", () => {

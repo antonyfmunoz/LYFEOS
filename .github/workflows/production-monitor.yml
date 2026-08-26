@@ -10,6 +10,11 @@ on:
         required: false
         default: false
         type: boolean
+      sentry_probe:
+        description: "Send one protected, content-free Sentry observability probe"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -57,6 +62,18 @@ jobs:
             --header "x-lyfeos-monitor-token: $LYFEOS_MONITOR_TOKEN" \
             https://lyfeos.net/api/operations/health-integrity)"
           test "$(printf '%s' "$body" | jq -r '.status')" = "healthy"
+      - name: Send protected Sentry observability probe
+        if: inputs.sentry_probe
+        env:
+          LYFEOS_MONITOR_TOKEN: ${{ secrets.LYFEOS_MONITOR_TOKEN }}
+        run: |
+          test -n "$LYFEOS_MONITOR_TOKEN"
+          body="$(curl --fail --silent --show-error --max-time 20 \
+            --request POST \
+            --header "x-lyfeos-monitor-token: $LYFEOS_MONITOR_TOKEN" \
+            https://lyfeos.net/api/operations/sentry-probe)"
+          test "$(printf '%s' "$body" | jq -r '.status')" = "sent"
+          printf '%s' "$body" | jq -e '.eventId | test("^[0-9a-f]{32}$")' >/dev/null
       - name: Open an incident when the monitor fails
         if: failure()
         uses: actions/github-script@v8
