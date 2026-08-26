@@ -350,6 +350,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
   const [reflectionLog, setReflectionLog] = useState<ReflectionLogData>(initialReflectionLog);
   const [displayName, setDisplayName] = useState<string>("Alex Chen");
   const streakToastFired = useRef(false);
+  const affirmationRecoveryAttempted = useRef(false);
   const levelUpTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [aiCompanionName, setAICompanionNameState] = useState<string>("Lyfe");
   const [aiPanelOpen, setAIPanelOpen] = useState<boolean>(false);
@@ -466,6 +467,41 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       setDisplayName(name);
     }
   }, [isAuthenticated, user]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !user || !userProfile || affirmationRecoveryAttempted.current) return;
+    if (userProfile.characterAffirmation) return;
+
+    const completedMissions = Array.isArray(userProfile.completedOnboardingMissions)
+      ? userProfile.completedOnboardingMissions
+      : [];
+    if (!userProfile.onboardingCompleted && completedMissions.length === 0) return;
+
+    affirmationRecoveryAttempted.current = true;
+    apiRequest<{ affirmation: string; generation?: "ai" | "foundational" }>("/api/profile/generate-affirmation", {
+      method: "POST",
+      body: JSON.stringify({
+        displayName: user.displayName || "Player",
+        missionDepth: completedMissions.length,
+        archetypePrimary: userProfile.archetypePrimary,
+        archetypeSecondary: userProfile.archetypeSecondary,
+        archetypeShadow: userProfile.archetypeShadow,
+        coreValues: userProfile.primaryValues,
+        desiredEmotion: userProfile.desiredEmotion,
+        lifeStage: userProfile.lifeStage,
+        strengths: userProfile.strengths,
+        coreBelief: userProfile.coreBelief,
+        vision90Day: userProfile.vision90Day,
+        vision5Year: userProfile.vision5Year,
+        primaryCraft: userProfile.primaryCraft,
+      }),
+    })
+      .then(() => queryClient.invalidateQueries({ queryKey: ["/api/profile"] }))
+      .catch((error) => {
+        affirmationRecoveryAttempted.current = false;
+        console.warn("Affirmation recovery failed:", error);
+      });
+  }, [isAuthenticated, user, userProfile]);
 
   // Load user stats (including AI assistant name) when user logs in
   useEffect(() => {

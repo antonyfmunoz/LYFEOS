@@ -2,6 +2,7 @@ import type { Express, Request, Response } from "express";
 import { z } from "zod";
 import bcrypt from "bcrypt";
 import Anthropic from "@anthropic-ai/sdk";
+import { buildFoundationalAffirmation } from "../affirmations";
 import { clerkClient } from "@clerk/express";
 import { storage } from "../storage";
 import { sanitizeIntegrationSettingsForExport } from "../google-calendar-sync";
@@ -642,11 +643,6 @@ export function registerProfileRoutes(app: Express): void {
         idealDay, boundaries, aesthetic, signatureExpression, lockedHabit,
       } = req.body;
       
-      const anthropic = new Anthropic({
-        apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY,
-        baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
-      });
-
       const rawDepth = typeof missionDepth === "number" ? missionDepth : parseInt(missionDepth) || 0;
       const depth = Math.max(0, Math.min(7, rawDepth));
       let wordRange: string;
@@ -779,6 +775,29 @@ Tone: ${tone}
 
 Generate the complete affirmation now:`;
 
+      if (!process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY) {
+        const affirmation = buildFoundationalAffirmation({
+          displayName,
+          coreValues,
+          strengths,
+          desiredEmotion,
+          coreBelief,
+          vision90Day,
+          vision5Year,
+          primaryCraft,
+        });
+        await storage.upsertUserProfile(req.session.userId!, { characterAffirmation: affirmation } as any);
+        logger.warn("Affirmation AI provider is not configured; stored foundational affirmation", {
+          userId: req.session.userId,
+        });
+        return res.json({ affirmation, generation: "foundational" });
+      }
+
+      const anthropic = new Anthropic({
+        apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY,
+        baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
+      });
+
       const message = await anthropic.messages.create({
         model: "claude-sonnet-4-5",
         max_tokens: 1024,
@@ -788,8 +807,13 @@ Generate the complete affirmation now:`;
       });
       
       const affirmation = message.content[0].type === "text" ? message.content[0].text : "";
-      
-      res.json({ affirmation });
+
+      if (!affirmation.trim()) {
+        throw new Error("Affirmation provider returned empty content");
+      }
+
+      await storage.upsertUserProfile(req.session.userId!, { characterAffirmation: affirmation } as any);
+      res.json({ affirmation, generation: "ai" });
     } catch (error) {
       logger.error("Error generating affirmation:", error);
       res.status(500).json({ error: "Failed to generate affirmation" });
