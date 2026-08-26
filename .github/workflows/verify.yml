@@ -78,8 +78,23 @@ jobs:
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c 'DROP TABLE umh_approval_requests, umh_audit_records, umh_outbox_events, umh_inbound_commands, umh_federation_installations CASCADE' >/dev/null
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "DELETE FROM lyfeos_schema_migrations WHERE id = '0128_umh_outbox_leases'" >/dev/null
           node dist/release-migrate.js
-          test "$(psql "$DATABASE_URL" -At -v ON_ERROR_STOP=1 -c \"SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ('umh_federation_installations', 'umh_inbound_commands', 'umh_approval_requests', 'umh_audit_records', 'umh_outbox_events')\")" = "5"
-          test "$(psql "$DATABASE_URL" -At -v ON_ERROR_STOP=1 -c \"SELECT count(*) FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'umh_outbox_events' AND column_name IN ('lease_token', 'leased_until')\")" = "2"
+          repaired_table_count="$(psql "$DATABASE_URL" -At -v ON_ERROR_STOP=1 <<'SQL'
+          SELECT count(*)
+          FROM information_schema.tables
+          WHERE table_schema = 'public'
+            AND table_name IN ('umh_federation_installations', 'umh_inbound_commands', 'umh_approval_requests', 'umh_audit_records', 'umh_outbox_events');
+          SQL
+          )"
+          repaired_lease_column_count="$(psql "$DATABASE_URL" -At -v ON_ERROR_STOP=1 <<'SQL'
+          SELECT count(*)
+          FROM information_schema.columns
+          WHERE table_schema = 'public'
+            AND table_name = 'umh_outbox_events'
+            AND column_name IN ('lease_token', 'leased_until');
+          SQL
+          )"
+          test "$repaired_table_count" = "5"
+          test "$repaired_lease_column_count" = "2"
           repaired_second_pass="$(node dist/release-migrate.js)"
           if [ -n "$repaired_second_pass" ]; then
             echo "Release migration drift repair was not a no-op on its second pass:"
