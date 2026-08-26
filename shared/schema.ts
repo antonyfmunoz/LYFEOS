@@ -317,6 +317,7 @@ export const userIntegrations = pgTable("user_integrations", {
 export const transformationThreads = pgTable("transformation_threads", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  primaryCapabilityId: integer("primary_capability_id").references(() => personalCapabilities.id, { onDelete: "set null" }),
   title: text("title").notNull(),
   focus: text("focus").notNull(),
   rationale: text("rationale").notNull(),
@@ -327,7 +328,9 @@ export const transformationThreads = pgTable("transformation_threads", {
   completedAt: timestamp("completed_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("transformation_threads_user_primary_capability_idx").on(table.userId, table.primaryCapabilityId, table.createdAt),
+]);
 
 // Durable, user-owned proof attached to a transformation thread. Sources stay
 // immutable enough to make progress reviewable without treating an AI summary

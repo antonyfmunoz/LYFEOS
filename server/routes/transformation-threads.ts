@@ -1,9 +1,9 @@
 import type { Express, Request, Response } from "express";
-import { and, desc, eq, inArray, isNotNull } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../db";
 import { storage } from "../storage";
-import { missionContracts, missionDeferrals, missionEvidence, missionReviews, personalCapabilities, questSkillContributions, quests, skillEdges, skillNodes, transformationThreadEvidence, transformationThreads, userActivityEvents } from "@shared/schema";
+import { missionContracts, missionDeferrals, missionEvidence, missionReviews, personalCapabilities, questSkillContributions, quests, skillEdges, skillNodes, skillProgressionEvents, transformationThreadEvidence, transformationThreads, userActivityEvents } from "@shared/schema";
 import { isAuthenticated } from "./middleware";
 import { recordTransformationThreadEvidence } from "../transformation-thread-evidence";
 import { getProgressionSummary, refreshProgressionState } from "../progression";
@@ -46,12 +46,14 @@ function shorten(value: string, maxLength = 72): string {
   return value.length > maxLength ? `${value.slice(0, maxLength - 1).trimEnd()}…` : value;
 }
 
-function buildSkillBlueprint(profile: Awaited<ReturnType<typeof storage.getUserProfile>>): SkillBlueprint {
+type FocusCapability = Pick<typeof personalCapabilities.$inferSelect, "id" | "name" | "description">;
+
+function buildSkillBlueprint(profile: Awaited<ReturnType<typeof storage.getUserProfile>>, focusCapability?: FocusCapability): SkillBlueprint {
   const craft = cleanText(profile?.primaryCraft);
   const desiredTrait = cleanText(profile?.desiredTrait);
   const vocation = cleanText(profile?.careerVocation);
   const habit = cleanText(profile?.lockedHabit);
-  const primary = shorten(craft || desiredTrait || vocation || "Focused execution", 72);
+  const primary = shorten(focusCapability?.name || craft || desiredTrait || vocation || "Focused execution", 72);
   const supporting = desiredTrait && desiredTrait.toLocaleLowerCase() !== primary.toLocaleLowerCase()
     ? shorten(desiredTrait, 72)
     : "Deliberate practice";
@@ -61,7 +63,7 @@ function buildSkillBlueprint(profile: Awaited<ReturnType<typeof storage.getUserP
       {
         key: "primary",
         name: primary,
-        description: `Your current Thread is centered on building ${primary} through real-world practice.`,
+        description: focusCapability?.description || `Your current Thread is centered on building ${primary} through real-world practice.`,
         kind: "primary",
         unlockRequirements: [],
         masteryRequirements: { minExperience: 100, minCompletedMissions: 3, minReviews: 2 },
@@ -116,10 +118,10 @@ function buildSkillBlueprint(profile: Awaited<ReturnType<typeof storage.getUserP
   };
 }
 
-function buildStarterMissions(profile: Awaited<ReturnType<typeof storage.getUserProfile>>, context: PlanningContextSnapshot): StarterMission[] {
-  const focus = cleanText(profile?.desiredTrait) || cleanText(profile?.primaryCraft) || cleanText(profile?.vision90Day) || "your next 90 days";
+function buildStarterMissions(profile: Awaited<ReturnType<typeof storage.getUserProfile>>, context: PlanningContextSnapshot, focusOverride?: string): StarterMission[] {
+  const focus = cleanText(focusOverride) || cleanText(profile?.desiredTrait) || cleanText(profile?.primaryCraft) || cleanText(profile?.vision90Day) || "your next 90 days";
   const vision = cleanText(profile?.vision90Day);
-  const craft = cleanText(profile?.primaryCraft);
+  const craft = focusOverride ? "" : cleanText(profile?.primaryCraft);
   const habit = cleanText(profile?.lockedHabit);
   const capacity = (profile?.weeklyCapacity as { hours?: unknown } | null)?.hours;
   const capacityText = typeof capacity === "number" || typeof capacity === "string" ? String(capacity).trim() : "";
@@ -167,10 +169,10 @@ function buildStarterMissions(profile: Awaited<ReturnType<typeof storage.getUser
   ];
 }
 
-function buildThread(profile: Awaited<ReturnType<typeof storage.getUserProfile>>, planningContext: PlanningContextSnapshot) {
-  const focus = cleanText(profile?.desiredTrait) || cleanText(profile?.primaryCraft) || cleanText(profile?.vision90Day) || "your next 90 days";
+function buildThread(profile: Awaited<ReturnType<typeof storage.getUserProfile>>, planningContext: PlanningContextSnapshot, focusCapability?: FocusCapability) {
+  const focus = cleanText(focusCapability?.name) || cleanText(profile?.desiredTrait) || cleanText(profile?.primaryCraft) || cleanText(profile?.vision90Day) || "your next 90 days";
   const vision = cleanText(profile?.vision90Day);
-  const title = vision ? `Build toward ${shorten(vision, 56)}` : `Develop ${shorten(focus, 56)}`;
+  const title = focusCapability ? `Deepen ${shorten(focus, 56)}` : vision ? `Build toward ${shorten(vision, 56)}` : `Develop ${shorten(focus, 56)}`;
   const primaryValues = Array.isArray(profile?.primaryValues) ? profile.primaryValues.filter((value): value is string => typeof value === "string") : [];
   const sourceSnapshot = {
     focus,
@@ -181,12 +183,15 @@ function buildThread(profile: Awaited<ReturnType<typeof storage.getUserProfile>>
     lockedHabit: cleanText(profile?.lockedHabit) || null,
     primaryValues,
     planningContext,
+    primaryCapabilityId: focusCapability?.id || null,
   };
-  const rationale = vision
-    ? `This focus begins with your 90-day vision and is bounded by the capacity and rituals you provided during onboarding.`
-    : `This focus begins with the direction and capacity you provided during onboarding.`;
+  const rationale = focusCapability
+    ? `This focus returns to a capability already in your private LyfeOS history while keeping this Thread's missions, reviews and completion state distinct.`
+    : vision
+      ? `This focus begins with your 90-day vision and is bounded by the capacity and rituals you provided during onboarding.`
+      : `This focus begins with the direction and capacity you provided during onboarding.`;
 
-  return { title, focus, rationale, sourceSnapshot, starterMissions: buildStarterMissions(profile, planningContext), skillBlueprint: buildSkillBlueprint(profile) };
+  return { title, focus, rationale, sourceSnapshot, starterMissions: buildStarterMissions(profile, planningContext, focusCapability?.name), skillBlueprint: buildSkillBlueprint(profile, focusCapability) };
 }
 
 async function getCompletionReadiness(userId: number, thread: typeof transformationThreads.$inferSelect) {
@@ -223,16 +228,108 @@ export function registerTransformationThreadRoutes(app: Express): void {
   app.get("/api/capabilities", isAuthenticated, async (req: Request, res: Response) => {
     const userId = req.session.userId!;
     try {
-      const capabilities = await db.select().from(personalCapabilities)
-        .where(eq(personalCapabilities.userId, userId))
-        .orderBy(desc(personalCapabilities.experience), personalCapabilities.name);
+      const [capabilities, focusRows] = await Promise.all([
+        db.select().from(personalCapabilities)
+          .where(eq(personalCapabilities.userId, userId))
+          .orderBy(desc(personalCapabilities.experience), personalCapabilities.name),
+        db.select({
+          id: transformationThreads.id,
+          primaryCapabilityId: transformationThreads.primaryCapabilityId,
+          title: transformationThreads.title,
+          status: transformationThreads.status,
+          createdAt: transformationThreads.createdAt,
+          completedAt: transformationThreads.completedAt,
+        }).from(transformationThreads)
+          .where(and(eq(transformationThreads.userId, userId), isNotNull(transformationThreads.primaryCapabilityId)))
+          .orderBy(desc(transformationThreads.createdAt)),
+      ]);
+      const focusesByCapability = focusRows.reduce((map, focus) => {
+        if (focus.primaryCapabilityId === null) return map;
+        map.set(focus.primaryCapabilityId, [...(map.get(focus.primaryCapabilityId) || []), focus]);
+        return map;
+      }, new Map<number, typeof focusRows>());
       return res.json({
-        capabilities,
+        capabilities: capabilities.map((capability) => {
+          const focuses = focusesByCapability.get(capability.id) || [];
+          return {
+            ...capability,
+            focusCount: focuses.length,
+            latestFocus: focuses[0] ? {
+              threadId: focuses[0].id,
+              title: focuses[0].title,
+              status: focuses[0].status,
+              createdAt: focuses[0].createdAt,
+              completedAt: focuses[0].completedAt,
+            } : null,
+          };
+        }),
         note: "Capability totals aggregate LyfeOS-recorded practice across linked Threads. They are not external certification.",
       });
     } catch {
       return res.status(500).json({ error: "Could not load capability map." });
     }
+  });
+
+  app.get("/api/capabilities/:id/history", isAuthenticated, async (req: Request, res: Response) => {
+    const userId = req.session.userId!;
+    const capabilityId = Number(req.params.id);
+    if (!Number.isInteger(capabilityId)) return res.status(400).json({ error: "Invalid capability." });
+    const [capability] = await db.select().from(personalCapabilities).where(and(
+      eq(personalCapabilities.id, capabilityId),
+      eq(personalCapabilities.userId, userId),
+    )).limit(1);
+    if (!capability) return res.status(404).json({ error: "Capability not found." });
+    const [focuses, events] = await Promise.all([
+      db.select({
+        threadId: transformationThreads.id,
+        title: transformationThreads.title,
+        focus: transformationThreads.focus,
+        status: transformationThreads.status,
+        activatedAt: transformationThreads.activatedAt,
+        completedAt: transformationThreads.completedAt,
+        createdAt: transformationThreads.createdAt,
+        skillNodeId: skillNodes.id,
+        threadExperience: skillNodes.experience,
+        threadLevel: skillNodes.level,
+      }).from(transformationThreads)
+        .leftJoin(skillNodes, and(
+          eq(skillNodes.transformationThreadId, transformationThreads.id),
+          eq(skillNodes.userId, userId),
+          eq(skillNodes.capabilityId, capabilityId),
+          eq(skillNodes.kind, "primary"),
+        ))
+        .where(and(
+          eq(transformationThreads.userId, userId),
+          eq(transformationThreads.primaryCapabilityId, capabilityId),
+        ))
+        .orderBy(desc(transformationThreads.createdAt)),
+      db.select({
+        id: skillProgressionEvents.id,
+        skillNodeId: skillProgressionEvents.skillNodeId,
+        questId: skillProgressionEvents.questId,
+        transformationThreadId: skillProgressionEvents.transformationThreadId,
+        sourceType: skillProgressionEvents.sourceType,
+        progressionRevision: skillProgressionEvents.progressionRevision,
+        reversalOfId: skillProgressionEvents.reversalOfId,
+        experienceDelta: skillProgressionEvents.experienceDelta,
+        evidenceSummary: skillProgressionEvents.evidenceSummary,
+        createdAt: skillProgressionEvents.createdAt,
+      }).from(skillProgressionEvents)
+        .innerJoin(skillNodes, and(
+          eq(skillNodes.id, skillProgressionEvents.skillNodeId),
+          eq(skillNodes.userId, userId),
+          eq(skillNodes.capabilityId, capabilityId),
+        ))
+        .where(eq(skillProgressionEvents.userId, userId))
+        .orderBy(desc(skillProgressionEvents.createdAt))
+        .limit(100),
+    ]);
+    return res.json({
+      capability,
+      focuses,
+      events,
+      disclosure: "Durable capability totals carry across focus periods. Each Thread keeps its own missions, reviews, local XP and completion state; this history is LyfeOS practice evidence, not certification.",
+    });
   });
 
   app.get("/api/transformation-thread", isAuthenticated, async (req: Request, res: Response) => {
@@ -463,6 +560,8 @@ export function registerTransformationThreadRoutes(app: Express): void {
 
   app.post("/api/transformation-thread/initialize", isAuthenticated, async (req: Request, res: Response) => {
     try {
+      const parsed = z.object({ primaryCapabilityId: z.number().int().positive().optional() }).strict().safeParse(req.body ?? {});
+      if (!parsed.success) return res.status(400).json({ error: "Choose a valid capability focus." });
       const userId = req.session.userId!;
       const [profile, stats, dailyLog] = await Promise.all([
         storage.getUserProfile(userId),
@@ -475,26 +574,42 @@ export function registerTransformationThreadRoutes(app: Express): void {
         return res.status(409).json({ error: "Complete the onboarding missions before initializing your system.", missing });
       }
 
-      const [existing] = await db
-        .select()
-        .from(transformationThreads)
-        .where(and(eq(transformationThreads.userId, userId), inArray(transformationThreads.status, ["draft", "active", "paused"])))
-        .orderBy(desc(transformationThreads.updatedAt))
-        .limit(1);
-      if (existing) return res.json({ thread: existing, existing: true });
+      const [focusCapability] = parsed.data.primaryCapabilityId
+        ? await db.select({
+          id: personalCapabilities.id,
+          name: personalCapabilities.name,
+          description: personalCapabilities.description,
+        }).from(personalCapabilities).where(and(
+          eq(personalCapabilities.id, parsed.data.primaryCapabilityId),
+          eq(personalCapabilities.userId, userId),
+        )).limit(1)
+        : [];
+      if (parsed.data.primaryCapabilityId && !focusCapability) return res.status(404).json({ error: "Capability focus not found." });
 
       const planningContext = buildPlanningContextSnapshot({ profile, stats, dailyLog });
-      const draft = buildThread(profile, planningContext);
+      const draft = buildThread(profile, planningContext, focusCapability);
       const { skillBlueprint, ...threadDraft } = draft;
-      const thread = await db.transaction(async (tx) => {
-        const [createdThread] = await tx.insert(transformationThreads).values({ userId, ...threadDraft }).returning();
+      const result = await db.transaction(async (tx) => {
+        await tx.execute(sql`SELECT pg_advisory_xact_lock(120103, ${userId})`);
+        const [existing] = await tx.select().from(transformationThreads)
+          .where(and(eq(transformationThreads.userId, userId), inArray(transformationThreads.status, ["draft", "active", "paused"])))
+          .orderBy(desc(transformationThreads.updatedAt))
+          .limit(1);
+        if (existing) return { thread: existing, existing: true };
+        const [createdThread] = await tx.insert(transformationThreads).values({
+          userId,
+          primaryCapabilityId: focusCapability?.id || null,
+          ...threadDraft,
+        }).returning();
         const createdSkills = [];
         for (const skill of skillBlueprint.nodes) {
-          const capability = await ensurePersonalCapability(tx, {
-            userId,
-            name: skill.name,
-            description: skill.description,
-          });
+          const capability = skill.key === "primary" && focusCapability
+            ? focusCapability
+            : await ensurePersonalCapability(tx, {
+              userId,
+              name: skill.name,
+              description: skill.description,
+            });
           const [createdSkill] = await tx.insert(skillNodes).values({
             userId,
             transformationThreadId: createdThread.id,
@@ -513,9 +628,14 @@ export function registerTransformationThreadRoutes(app: Express): void {
           }))
           .filter((edge): edge is { userId: number; sourceSkillId: number; targetSkillId: number; relationship: string } => Boolean(edge.sourceSkillId && edge.targetSkillId));
         if (edges.length > 0) await tx.insert(skillEdges).values(edges);
-        return createdThread;
+        const primaryCapabilityId = createdSkills.find((skill) => skill.key === "primary")?.capabilityId || null;
+        const [focusedThread] = await tx.update(transformationThreads)
+          .set({ primaryCapabilityId, updatedAt: new Date() })
+          .where(and(eq(transformationThreads.id, createdThread.id), eq(transformationThreads.userId, userId)))
+          .returning();
+        return { thread: focusedThread, existing: false };
       });
-      return res.status(201).json({ thread, existing: false });
+      return res.status(result.existing ? 200 : 201).json(result);
     } catch (error) {
       return res.status(500).json({ error: "Could not initialize the transformation thread." });
     }

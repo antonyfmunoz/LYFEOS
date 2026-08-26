@@ -15,6 +15,22 @@ type StarterMission = {
   rationale: string;
 };
 
+type CapabilitySummary = {
+  id: number;
+  name: string;
+  experience: number;
+  level: number;
+  focusCount: number;
+  latestFocus: null | { threadId: number; title: string; status: string; createdAt: string; completedAt: string | null };
+};
+
+type CapabilityHistoryBundle = {
+  capability: CapabilitySummary & { description: string };
+  focuses: Array<{ threadId: number; title: string; status: string; threadExperience: number | null; createdAt: string; completedAt: string | null }>;
+  events: Array<{ id: number; sourceType: string; experienceDelta: number; evidenceSummary: string; createdAt: string }>;
+  disclosure: string;
+};
+
 type TransformationThread = {
   id: number;
   title: string;
@@ -114,18 +130,32 @@ export function TransformationThreadPanel() {
   const [edgeTargetId, setEdgeTargetId] = useState("");
   const [edgeRelationship, setEdgeRelationship] = useState("reinforces");
   const [edgeInfluenceWeight, setEdgeInfluenceWeight] = useState("1");
+  const [nextCapabilityId, setNextCapabilityId] = useState("");
+  const [historyCapabilityId, setHistoryCapabilityId] = useState<number | null>(null);
   const { data, isLoading } = useQuery<{ thread: TransformationThread | null }>({
     queryKey: ["/api/transformation-thread"],
   });
   const { data: profile } = useQuery<{ onboardingCompleted?: boolean; completedOnboardingMissions?: number[] }>({
     queryKey: ["/api/profile"],
   });
-  const { data: capabilityData } = useQuery<{ capabilities: Array<{ id: number; name: string; experience: number; level: number }> }>({
+  const { data: capabilityData } = useQuery<{ capabilities: CapabilitySummary[]; note: string }>({
     queryKey: ["/api/capabilities"],
   });
+  const capabilityHistory = useQuery<CapabilityHistoryBundle>({
+    queryKey: ["/api/capabilities", historyCapabilityId, "history"],
+    queryFn: () => apiRequest(`/api/capabilities/${historyCapabilityId}/history`),
+    enabled: historyCapabilityId !== null,
+  });
   const initializeThread = useMutation({
-    mutationFn: () => apiRequest("/api/transformation-thread/initialize", { method: "POST" }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/transformation-thread"] }),
+    mutationFn: () => apiRequest("/api/transformation-thread/initialize", {
+      method: "POST",
+      body: JSON.stringify(nextCapabilityId ? { primaryCapabilityId: Number(nextCapabilityId) } : {}),
+    }),
+    onSuccess: () => {
+      setNextCapabilityId("");
+      queryClient.invalidateQueries({ queryKey: ["/api/transformation-thread"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/capabilities"] });
+    },
     onError: () => toast({ title: "System initialization failed", description: "Complete each onboarding mission before creating your plan.", variant: "destructive" }),
   });
   const activateThread = useMutation({
@@ -186,6 +216,7 @@ export function TransformationThreadPanel() {
   if (isLoading) return null;
 
   if (!thread && onboardingComplete) {
+    const reusableCapabilities = capabilityData?.capabilities || [];
     return (
       <section className="mb-6" data-tour="transformation-thread">
         <div className="glassmorphic rounded-xl p-4 neon-border">
@@ -194,18 +225,25 @@ export function TransformationThreadPanel() {
               <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-[0.16em] text-primary">
                 <Target className="h-4 w-4" /> System initialization
               </div>
-              <p className="mt-2 text-sm text-muted-foreground">Create a reviewable first focus and three starter missions from your onboarding record. You can edit the missions after activation.</p>
+              <p className="mt-2 text-sm text-muted-foreground">Create a reviewable focus and three starter missions. A Thread is a temporary focus period; your reviewed capability history remains durable across Threads.</p>
             </div>
-            <Button
-              size="sm"
-              className="shrink-0 bg-primary/20 text-primary border border-primary/50 hover:bg-primary/30"
-              onClick={() => initializeThread.mutate()}
-              disabled={initializeThread.isPending}
-            >
-              <Target className="mr-2 h-3.5 w-3.5" />
-              {initializeThread.isPending ? "Preparing…" : "Prepare my plan"}
-            </Button>
+            <div className="flex shrink-0 flex-col gap-2 sm:min-w-64">
+              {reusableCapabilities.length > 0 && <select aria-label="Next capability focus" value={nextCapabilityId} onChange={(event) => setNextCapabilityId(event.target.value)} className="h-9 rounded-md border border-primary/20 bg-background/40 px-2 text-sm text-foreground">
+                <option value="">Use current onboarding direction</option>
+                {reusableCapabilities.map((capability) => <option key={capability.id} value={capability.id}>{capability.name} · {capability.experience} XP</option>)}
+              </select>}
+              <Button
+                size="sm"
+                className="bg-primary/20 text-primary border border-primary/50 hover:bg-primary/30"
+                onClick={() => initializeThread.mutate()}
+                disabled={initializeThread.isPending}
+              >
+                <Target className="mr-2 h-3.5 w-3.5" />
+                {initializeThread.isPending ? "Preparing…" : nextCapabilityId ? "Prepare next focus" : "Prepare my plan"}
+              </Button>
+            </div>
           </div>
+          {reusableCapabilities.length > 0 && <div className="mt-3 flex flex-wrap gap-2 border-t border-primary/10 pt-3 text-[11px] text-muted-foreground">{reusableCapabilities.slice(0, 6).map((capability) => <span key={capability.id} className="rounded-full border border-primary/15 px-2 py-1"><span className="text-foreground">{capability.name}</span> · Lv {capability.level} · {capability.experience} reviewed XP · {capability.focusCount} focus{capability.focusCount === 1 ? "" : "es"}</span>)}</div>}
         </div>
       </section>
     );
@@ -405,10 +443,21 @@ export function TransformationThreadPanel() {
                     {graphNode && graphNode.threadExperience !== recordedExperience && <p className="mt-1 text-[10px] text-muted-foreground">This Thread: {graphNode.threadExperience} XP</p>}
                     {graphNode && status === "locked" && graphNode.unmetRequirements[0] && <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">{graphNode.unmetRequirements[0]}</p>}
                     {graphNode && status !== "locked" && <p className="mt-1 text-[10px] text-muted-foreground">{graphNode.completedMissionCount}/{graphNode.masteryRequirements.minCompletedMissions} reviewed missions · {thread.skillGraph?.reviewCount || 0}/{graphNode.masteryRequirements.minReviews} reviews</p>}
+                    {skill.capabilityId && <button type="button" className="mt-2 text-[10px] text-primary hover:underline" onClick={() => setHistoryCapabilityId((current) => current === skill.capabilityId ? null : skill.capabilityId!)}>{historyCapabilityId === skill.capabilityId ? "Hide durable history" : "View durable history"}</button>}
                   </div>
                 );
               })}
             </div>
+            {historyCapabilityId && <div className="mt-3 rounded-md border border-primary/15 bg-background/25 p-3">
+              {capabilityHistory.isLoading ? <p className="text-xs text-muted-foreground">Loading capability history…</p> : capabilityHistory.data ? <>
+                <div className="flex flex-wrap items-baseline justify-between gap-2"><p className="text-sm text-foreground">{capabilityHistory.data.capability.name}</p><span className="text-xs text-primary">Lv {capabilityHistory.data.capability.level} · {capabilityHistory.data.capability.experience} reviewed XP</span></div>
+                <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{capabilityHistory.data.disclosure}</p>
+                <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                  {capabilityHistory.data.focuses.slice(0, 4).map((focus) => <div key={focus.threadId} className="rounded border border-primary/10 p-2 text-[11px] text-muted-foreground"><p className="text-foreground">{focus.title}</p><p>{focus.status.replaceAll("_", " ")} · {focus.threadExperience || 0} XP recorded in this Thread</p></div>)}
+                </div>
+                {capabilityHistory.data.events.length > 0 && <div className="mt-2 space-y-1">{capabilityHistory.data.events.slice(0, 4).map((event) => <p key={event.id} className="text-[10px] text-muted-foreground"><span className={event.experienceDelta < 0 ? "text-amber-200" : "text-primary"}>{event.experienceDelta > 0 ? "+" : ""}{event.experienceDelta} XP</span> · {event.sourceType.replaceAll("_", " ")} · {event.evidenceSummary}</p>)}</div>}
+              </> : <p className="text-xs text-destructive">Capability history is unavailable.</p>}
+            </div>}
             {nextPractice && (
               <div className="mt-3 rounded-md border border-primary/20 bg-primary/5 p-3">
                 <p className="text-[10px] font-mono uppercase tracking-[0.12em] text-primary">Current path · {nextPractice.skillName}</p>
