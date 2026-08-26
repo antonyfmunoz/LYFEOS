@@ -84,6 +84,7 @@ import { startThetaBeats, stopThetaBeats } from '@/lib/theta-beats';
 import { useUser } from "@clerk/clerk-react";
 import PushNotificationSettings from "@/components/profile/PushNotificationSettings";
 import CollaborationSettings from "@/components/profile/CollaborationSettings";
+import ExtensionSettings from "@/components/profile/ExtensionSettings";
 type ClerkPhoneNumber = {
   id: string;
   phoneNumber: string;
@@ -1975,6 +1976,7 @@ export default function ProfilePage() {
             
             <PushNotificationSettings />
             <CollaborationSettings />
+            <ExtensionSettings />
 
             <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
               <div className="flex items-center gap-2 mb-2">

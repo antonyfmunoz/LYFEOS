@@ -3,8 +3,10 @@ import { and, eq, sql } from "drizzle-orm";
 import { db } from "../db";
 import { storage } from "../storage";
 import { isAuthenticated } from "./middleware";
-import { aiMemoryPolicies, aiPersonaProfiles, userStats } from "@shared/schema";
+import { aiExecutionPreferences, aiMemoryPolicies, aiPersonaProfiles, userStats } from "@shared/schema";
 import { aiMemoryPolicyInput, assistantPersonaInput, buildPortablePersonaProjection } from "../ai-governance";
+import { listAIProviderAvailability } from "../ai-providers";
+import { z } from "zod";
 
 const DEFAULT_POLICY = {
   chatHistoryDays: null as number | null,
@@ -28,6 +30,24 @@ async function ensureMemoryPolicy(userId: number) {
   const [created] = await db.insert(aiMemoryPolicies).values({ userId }).returning();
   return created;
 }
+
+async function ensureExecutionPreference(userId: number) {
+  const existing = await db.select().from(aiExecutionPreferences).where(eq(aiExecutionPreferences.userId, userId)).limit(1);
+  if (existing[0]) return existing[0];
+  const [created] = await db.insert(aiExecutionPreferences).values({ userId }).onConflictDoNothing().returning();
+  if (created) return created;
+  const [concurrent] = await db.select().from(aiExecutionPreferences).where(eq(aiExecutionPreferences.userId, userId)).limit(1);
+  if (!concurrent) throw new Error("execution_preference_convergence_failed");
+  return concurrent;
+}
+
+const executionPreferenceInput = z.object({
+  executionMode: z.enum(["local", "hybrid", "cloud"]),
+  cloudFallbackEnabled: z.boolean().default(false),
+  expectedRevision: z.number().int().positive(),
+}).superRefine((value, context) => {
+  if (value.executionMode !== "hybrid" && value.cloudFallbackEnabled) context.addIssue({ code: z.ZodIssueCode.custom, path: ["cloudFallbackEnabled"], message: "Cloud fallback is available only in hybrid mode." });
+});
 
 export async function applyAIMemoryRetention(userId: number): Promise<{ conversations: number; contextReceipts: number; actionReceipts: number }> {
   const policy = await ensureMemoryPolicy(userId);
@@ -62,6 +82,32 @@ export async function applyAIMemoryRetention(userId: number): Promise<{ conversa
 }
 
 export function registerAIGovernanceRoutes(app: Express): void {
+  app.get("/api/ai/execution", isAuthenticated, async (req: Request, res: Response) => {
+    res.setHeader("Cache-Control", "private, no-store");
+    try {
+      const preference = await ensureExecutionPreference(req.session.userId!);
+      return res.json({ preference, providers: listAIProviderAvailability(), disclosure: "Local means an installation-controlled OpenAI-compatible endpoint. Hybrid uses it first and reaches Anthropic only when cloud fallback is explicitly enabled. Provider credentials never enter this response." });
+    } catch {
+      return res.status(500).json({ error: "Could not load AI execution settings." });
+    }
+  });
+
+  app.put("/api/ai/execution", isAuthenticated, async (req: Request, res: Response) => {
+    res.setHeader("Cache-Control", "private, no-store");
+    const parsed = executionPreferenceInput.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: "AI execution settings are invalid.", details: parsed.error.flatten() });
+    const userId = req.session.userId!;
+    try {
+      await ensureExecutionPreference(userId);
+      const preferredProvider = parsed.data.executionMode === "cloud" ? "anthropic" : "self_hosted";
+      const [preference] = await db.update(aiExecutionPreferences).set({ executionMode: parsed.data.executionMode, preferredProvider, cloudFallbackEnabled: parsed.data.cloudFallbackEnabled, revision: parsed.data.expectedRevision + 1, updatedAt: new Date() }).where(and(eq(aiExecutionPreferences.userId, userId), eq(aiExecutionPreferences.revision, parsed.data.expectedRevision))).returning();
+      if (!preference) return res.status(409).json({ error: "AI execution settings changed in another session. Reload before saving." });
+      return res.json({ preference, providers: listAIProviderAvailability() });
+    } catch {
+      return res.status(500).json({ error: "Could not save AI execution settings." });
+    }
+  });
+
   app.get("/api/ai/persona", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const persona = await ensurePersona(req.session.userId!);
@@ -165,4 +211,3 @@ export function registerAIGovernanceRoutes(app: Express): void {
     }
   });
 }
-

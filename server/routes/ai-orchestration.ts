@@ -1,9 +1,10 @@
 import type { Express, Request, Response } from "express";
 import { and, asc, desc, eq } from "drizzle-orm";
 import { z } from "zod";
-import { aiOrchestrationRuns, aiOrchestrationSteps } from "@shared/schema";
+import { aiExecutionPreferences, aiOrchestrationRuns, aiOrchestrationSteps } from "@shared/schema";
 import { db } from "../db";
-import { AI_AGENT_KINDS, createAnthropicOrchestrationGenerator, executeOrchestrationRoles, type AIAgentKind } from "../ai-orchestration";
+import { AI_AGENT_KINDS, executeOrchestrationRoles, type AIAgentKind } from "../ai-orchestration";
+import { resolveOrchestrationGenerator, type AIExecutionMode, type AIProviderId } from "../ai-providers";
 import { isAuthenticated } from "./middleware";
 
 const idSchema = z.string().uuid();
@@ -42,6 +43,8 @@ export function registerAIOrchestrationRoutes(app: Express): void {
     const parsed = createSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: "Invalid orchestration draft.", details: parsed.error.flatten() });
     const userId = req.session.userId!;
+    const [savedPreference] = await db.select().from(aiExecutionPreferences).where(eq(aiExecutionPreferences.userId, userId)).limit(1);
+    const executionPolicy = savedPreference || { executionMode: "cloud", preferredProvider: "anthropic", cloudFallbackEnabled: false };
     const created = await db.transaction(async (tx) => {
       const now = new Date();
       const [run] = await tx.insert(aiOrchestrationRuns).values({
@@ -52,6 +55,10 @@ export function registerAIOrchestrationRoutes(app: Express): void {
         allowedDomains: parsed.data.allowedDomains,
         capabilitySnapshot: { externalAccess: false, mutations: false, externalSend: false },
         sourceManifest: [{ type: "user_objective", included: true }, { type: "user_supplied_context", included: Boolean(parsed.data.contextText) }],
+        executionMode: executionPolicy.executionMode,
+        providerPreference: executionPolicy.preferredProvider,
+        cloudFallbackEnabled: executionPolicy.cloudFallbackEnabled,
+        providerResolution: { state: "not_resolved" },
         status: "draft",
         createdAt: now,
         updatedAt: now,
@@ -94,7 +101,7 @@ export function registerAIOrchestrationRoutes(app: Express): void {
     if (!id.success || !parsed.success) return res.status(400).json({ error: "A valid expectedVersion is required." });
     const userId = req.session.userId!;
     const run = await db.transaction(async (tx) => {
-      const [updated] = await tx.update(aiOrchestrationRuns).set({ status: "approved", failureCode: null, provider: null, model: null, startedAt: null, completedAt: null, version: parsed.data.expectedVersion + 1, updatedAt: new Date() }).where(and(eq(aiOrchestrationRuns.id, id.data), eq(aiOrchestrationRuns.userId, userId), eq(aiOrchestrationRuns.version, parsed.data.expectedVersion), eq(aiOrchestrationRuns.status, "failed"))).returning();
+      const [updated] = await tx.update(aiOrchestrationRuns).set({ status: "approved", failureCode: null, provider: null, model: null, providerResolution: { state: "not_resolved" }, startedAt: null, completedAt: null, version: parsed.data.expectedVersion + 1, updatedAt: new Date() }).where(and(eq(aiOrchestrationRuns.id, id.data), eq(aiOrchestrationRuns.userId, userId), eq(aiOrchestrationRuns.version, parsed.data.expectedVersion), eq(aiOrchestrationRuns.status, "failed"))).returning();
       if (!updated) return null;
       await tx.update(aiOrchestrationSteps).set({ status: "pending", output: null, provider: null, model: null, startedAt: null, completedAt: null, updatedAt: new Date() }).where(and(eq(aiOrchestrationSteps.runId, id.data), eq(aiOrchestrationSteps.userId, userId)));
       return updated;
@@ -107,10 +114,16 @@ export function registerAIOrchestrationRoutes(app: Express): void {
     const id = idSchema.safeParse(req.params.id);
     const parsed = transitionSchema.safeParse(req.body);
     if (!id.success || !parsed.success) return res.status(400).json({ error: "A valid expectedVersion is required." });
-    const generator = createAnthropicOrchestrationGenerator();
-    if (!generator) return res.status(503).json({ error: "The AI orchestration provider is not configured. The approved run was not executed.", providerRequired: "anthropic" });
     const userId = req.session.userId!;
-    const [running] = await db.update(aiOrchestrationRuns).set({ status: "running", startedAt: new Date(), failureCode: null, version: parsed.data.expectedVersion + 1, updatedAt: new Date() }).where(and(eq(aiOrchestrationRuns.id, id.data), eq(aiOrchestrationRuns.userId, userId), eq(aiOrchestrationRuns.version, parsed.data.expectedVersion), eq(aiOrchestrationRuns.status, "approved"))).returning();
+    const record = await readOwnedRun(id.data, userId);
+    if (!record) return res.status(404).json({ error: "Orchestration run not found." });
+    const resolved = resolveOrchestrationGenerator({ executionMode: record.run.executionMode as AIExecutionMode, preferredProvider: record.run.providerPreference as AIProviderId, cloudFallbackEnabled: record.run.cloudFallbackEnabled });
+    if (!resolved.generator) {
+      await db.update(aiOrchestrationRuns).set({ providerResolution: resolved.resolution, updatedAt: new Date() }).where(and(eq(aiOrchestrationRuns.id, id.data), eq(aiOrchestrationRuns.userId, userId), eq(aiOrchestrationRuns.version, parsed.data.expectedVersion), eq(aiOrchestrationRuns.status, "approved")));
+      return res.status(503).json({ error: "No provider is configured for this run's approved execution policy. The run was not executed and no context was sent.", resolution: resolved.resolution });
+    }
+    const generator = resolved.generator;
+    const [running] = await db.update(aiOrchestrationRuns).set({ status: "running", providerResolution: resolved.resolution, startedAt: new Date(), failureCode: null, version: parsed.data.expectedVersion + 1, updatedAt: new Date() }).where(and(eq(aiOrchestrationRuns.id, id.data), eq(aiOrchestrationRuns.userId, userId), eq(aiOrchestrationRuns.version, parsed.data.expectedVersion), eq(aiOrchestrationRuns.status, "approved"))).returning();
     if (!running) {
       const current = await readOwnedRun(id.data, userId);
       return current ? res.status(409).json({ error: "The approved run changed before execution.", current: current.run }) : res.status(404).json({ error: "Orchestration run not found." });

@@ -1,5 +1,3 @@
-import Anthropic from "@anthropic-ai/sdk";
-
 export const AI_AGENT_KINDS = ["research", "scheduling", "content", "analysis", "integration"] as const;
 export type AIAgentKind = typeof AI_AGENT_KINDS[number];
 
@@ -31,27 +29,6 @@ export function buildOrchestrationPrompt(input: OrchestrationPromptInput): { sys
 
 export interface OrchestrationGenerator {
   generate(input: OrchestrationPromptInput): Promise<{ output: string; provider: string; model: string }>;
-}
-
-export function createAnthropicOrchestrationGenerator(): OrchestrationGenerator | null {
-  const apiKey = process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY?.trim();
-  if (!apiKey) return null;
-  const model = process.env.LYFEOS_ORCHESTRATION_MODEL?.trim() || "claude-haiku-4-5";
-  const client = new Anthropic({ apiKey, baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL });
-  return {
-    async generate(input) {
-      const prompt = buildOrchestrationPrompt(input);
-      const response = await client.messages.create({
-        model,
-        max_tokens: 800,
-        system: prompt.system,
-        messages: [{ role: "user", content: prompt.user }],
-      });
-      const output = response.content.filter((block) => block.type === "text").map((block) => block.text).join("\n").trim();
-      if (!output) throw new Error("AI_ORCHESTRATION_EMPTY_OUTPUT");
-      return { output, provider: "anthropic", model };
-    },
-  };
 }
 
 export async function executeOrchestrationRoles(input: {

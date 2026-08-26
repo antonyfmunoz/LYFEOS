@@ -2368,6 +2368,16 @@ export const aiMemoryPolicies = pgTable("ai_memory_policies", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+export const aiExecutionPreferences = pgTable("ai_execution_preferences", {
+  userId: integer("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+  executionMode: text("execution_mode").notNull().default("cloud"),
+  preferredProvider: text("preferred_provider").notNull().default("anthropic"),
+  cloudFallbackEnabled: boolean("cloud_fallback_enabled").notNull().default(false),
+  revision: integer("revision").notNull().default(1),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 // A receipt names the records made available to a model without duplicating
 // their private values. It is attribution of context, not a claim that the
 // model cited or correctly interpreted every source.
@@ -2442,6 +2452,10 @@ export const aiOrchestrationRuns = pgTable("ai_orchestration_runs", {
   allowedDomains: jsonb("allowed_domains").notNull().default([]),
   capabilitySnapshot: jsonb("capability_snapshot").notNull().default({ externalAccess: false, mutations: false, externalSend: false }),
   sourceManifest: jsonb("source_manifest").notNull().default([]),
+  executionMode: text("execution_mode").notNull().default("cloud"),
+  providerPreference: text("provider_preference").notNull().default("anthropic"),
+  cloudFallbackEnabled: boolean("cloud_fallback_enabled").notNull().default(false),
+  providerResolution: jsonb("provider_resolution").notNull().default({}),
   provider: text("provider"),
   model: text("model"),
   failureCode: text("failure_code"),
@@ -2478,6 +2492,59 @@ export const aiOrchestrationSteps = pgTable("ai_orchestration_steps", {
 
 export type AIOrchestrationRun = typeof aiOrchestrationRuns.$inferSelect;
 export type AIOrchestrationStep = typeof aiOrchestrationSteps.$inferSelect;
+
+export const extensionPublishers = pgTable("extension_publishers", {
+  keyId: text("key_id").primaryKey(),
+  name: text("name").notNull(),
+  publicKeyPem: text("public_key_pem").notNull(),
+  status: text("status").notNull().default("active"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  revokedAt: timestamp("revoked_at"),
+});
+
+export const extensionPackages = pgTable("extension_packages", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  slug: text("slug").notNull(),
+  version: text("version").notNull(),
+  displayName: text("display_name").notNull(),
+  description: text("description").notNull(),
+  manifest: jsonb("manifest").notNull(),
+  manifestDigest: text("manifest_digest").notNull(),
+  publisherKeyId: text("publisher_key_id").notNull().references(() => extensionPublishers.keyId, { onDelete: "restrict" }),
+  signature: text("signature").notNull(),
+  status: text("status").notNull().default("published"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  revokedAt: timestamp("revoked_at"),
+}, (table) => [
+  uniqueIndex("extension_packages_slug_version_unique").on(table.slug, table.version),
+  index("extension_packages_status_slug_idx").on(table.status, table.slug, table.createdAt),
+]);
+
+export const extensionInstallations = pgTable("extension_installations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  packageId: uuid("package_id").notNull().references(() => extensionPackages.id, { onDelete: "restrict" }),
+  extensionSlug: text("extension_slug").notNull(),
+  grantedPermissions: jsonb("granted_permissions").notNull().default([]),
+  status: text("status").notNull().default("enabled"),
+  revision: integer("revision").notNull().default(1),
+  installedAt: timestamp("installed_at").notNull().defaultNow(),
+  revokedAt: timestamp("revoked_at"),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("extension_installations_user_package_unique").on(table.userId, table.packageId),
+  uniqueIndex("extension_installations_user_active_slug_unique_idx").on(table.userId, table.extensionSlug).where(sql`${table.status} = 'enabled'`),
+  index("extension_installations_user_status_idx").on(table.userId, table.status, table.updatedAt),
+]);
+
+export const extensionAuditEvents = pgTable("extension_audit_events", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }),
+  packageId: uuid("package_id").references(() => extensionPackages.id, { onDelete: "set null" }),
+  action: text("action").notNull(),
+  metadata: jsonb("metadata").notNull().default({}),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [index("extension_audit_events_user_created_idx").on(table.userId, table.createdAt)]);
 
 // A provider evidence binding stores only the minimum immutable provenance
 // needed to explain a user's explicit Mission-evidence attachment. The source

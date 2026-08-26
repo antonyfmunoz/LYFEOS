@@ -65,6 +65,23 @@ describeApi("AI persona and memory governance authenticated journey", () => {
     expect((await request("DELETE", "/api/account/ai-memory", { scope: "action-history" }, cookie)).status).toBe(200);
   });
 
+  it("snapshots explicit local, hybrid, or cloud execution policy", async () => {
+    expect((await request("GET", "/api/ai/execution")).status).toBe(401);
+    const initial = await request("GET", "/api/ai/execution", undefined, cookie);
+    expect(initial.status).toBe(200);
+    expect(initial.data.preference).toMatchObject({ executionMode: "cloud", preferredProvider: "anthropic", cloudFallbackEnabled: false, revision: 1 });
+    expect(initial.data.providers.map((provider: any) => provider.id)).toEqual(["self_hosted", "anthropic"]);
+    const changed = await request("PUT", "/api/ai/execution", { executionMode: "hybrid", cloudFallbackEnabled: true, expectedRevision: 1 }, cookie);
+    expect(changed.status).toBe(200); expect(changed.data.preference).toMatchObject({ executionMode: "hybrid", preferredProvider: "self_hosted", cloudFallbackEnabled: true, revision: 2 });
+    expect((await request("PUT", "/api/ai/execution", { executionMode: "local", cloudFallbackEnabled: true, expectedRevision: 2 }, cookie)).status).toBe(400);
+    const draft = await request("POST", "/api/ai/orchestration-runs", { objective: "Check the execution snapshot", agents: ["analysis"], allowedDomains: [] }, cookie);
+    expect(draft.status).toBe(201); expect(draft.data.run).toMatchObject({ executionMode: "hybrid", providerPreference: "self_hosted", cloudFallbackEnabled: true, providerResolution: { state: "not_resolved" } });
+    const approved = await request("POST", `/api/ai/orchestration-runs/${draft.data.run.id}/approve`, { expectedVersion: 1 }, cookie);
+    expect(approved.status).toBe(200);
+    const execution = await request("POST", `/api/ai/orchestration-runs/${draft.data.run.id}/execute`, { expectedVersion: 2 }, cookie);
+    expect(execution.status).toBe(503); expect(execution.data.resolution).toMatchObject({ requestedMode: "hybrid", selectedProvider: null, usedCloudFallback: false, failureCode: "no_configured_provider" });
+  });
+
   it("executes a human-approved consequential action and repairs its exact prior field", async () => {
     const [{ db }, schema] = await Promise.all([import("../server/db"), import("../shared/schema")]);
     const [record] = await db.insert(schema.aiActionRecords).values({ userId, toolName: "update_profile", risk: "medium", state: "pending_approval", inputSummary: { fields: ["primaryCraft"] }, planningContextSnapshot: {} }).returning();

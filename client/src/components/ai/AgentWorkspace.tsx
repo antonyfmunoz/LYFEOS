@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Bot, Check, ChevronDown, ChevronRight, Loader2, Play, ShieldCheck } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -16,6 +16,11 @@ interface AgentRun {
   createdAt: string;
 }
 interface AgentStep { id: string; stepOrder: number; agentKind: AgentKind; status: string; output: string | null }
+interface ExecutionSettings {
+  preference: { executionMode: "local" | "hybrid" | "cloud"; cloudFallbackEnabled: boolean; revision: number };
+  providers: Array<{ id: "self_hosted" | "anthropic"; label: string; boundary: string; configured: boolean; model: string | null }>;
+  disclosure?: string;
+}
 
 export default function AgentWorkspace() {
   const [open, setOpen] = useState(false);
@@ -25,6 +30,9 @@ export default function AgentWorkspace() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const runs = useQuery<{ runs: AgentRun[] }>({ queryKey: ["/api/ai/orchestration-runs"], queryFn: () => apiRequest("/api/ai/orchestration-runs") });
+  const execution = useQuery<ExecutionSettings>({ queryKey: ["/api/ai/execution"], queryFn: () => apiRequest("/api/ai/execution") });
+  const [executionDraft, setExecutionDraft] = useState<{ executionMode: "local" | "hybrid" | "cloud"; cloudFallbackEnabled: boolean } | null>(null);
+  useEffect(() => { if (execution.data && !executionDraft) setExecutionDraft({ executionMode: execution.data.preference.executionMode, cloudFallbackEnabled: execution.data.preference.cloudFallbackEnabled }); }, [execution.data, executionDraft]);
 
   const refresh = async (id: string) => {
     const detail = await apiRequest<{ run: AgentRun; steps: AgentStep[] }>(`/api/ai/orchestration-runs/${id}`);
@@ -51,6 +59,15 @@ export default function AgentWorkspace() {
     } catch (caught) { setError(caught instanceof Error ? caught.message.replace(/^\d+:\s*/, "") : `Could not ${action} the run.`); }
     finally { setBusy(false); }
   };
+  const saveExecution = async () => {
+    if (!execution.data || !executionDraft) return;
+    setBusy(true); setError("");
+    try {
+      await apiRequest("/api/ai/execution", { method: "PUT", body: JSON.stringify({ ...executionDraft, expectedRevision: execution.data.preference.revision }) });
+      await queryClient.invalidateQueries({ queryKey: ["/api/ai/execution"] });
+    } catch (caught) { setError(caught instanceof Error ? caught.message.replace(/^\d+:\s*/, "") : "Could not save AI execution settings."); }
+    finally { setBusy(false); }
+  };
 
   return (
     <section className="border-t border-primary/20 py-3" aria-labelledby="agent-workspace-heading">
@@ -61,6 +78,22 @@ export default function AgentWorkspace() {
       </button>
       {open && (
         <div className="mt-3 space-y-3 text-[11px]">
+          {executionDraft && execution.data && (
+            <details className="rounded border border-primary/15 bg-card/20 p-2">
+              <summary className="cursor-pointer text-foreground">Execution and privacy</summary>
+              <div className="mt-2 space-y-2">
+                <label className="block text-muted-foreground">Where specialist runs execute
+                  <select value={executionDraft.executionMode} onChange={(event) => { const executionMode = event.target.value as typeof executionDraft.executionMode; setExecutionDraft({ executionMode, cloudFallbackEnabled: executionMode === "hybrid" ? executionDraft.cloudFallbackEnabled : false }); }} className="mt-1 w-full rounded border border-primary/20 bg-background p-1.5 text-foreground">
+                    <option value="local">Installation-controlled only</option><option value="hybrid">Hybrid</option><option value="cloud">Anthropic cloud only</option>
+                  </select>
+                </label>
+                {executionDraft.executionMode === "hybrid" && <label className="flex items-start gap-2 text-muted-foreground"><input type="checkbox" checked={executionDraft.cloudFallbackEnabled} onChange={(event) => setExecutionDraft((current) => current ? { ...current, cloudFallbackEnabled: event.target.checked } : current)} />Allow Anthropic only when the installation-controlled model is unavailable.</label>}
+                <div className="space-y-1">{execution.data.providers.map((provider) => <p key={provider.id} className="flex justify-between gap-2 text-[10px] text-muted-foreground"><span>{provider.label}</span><span className={provider.configured ? "text-emerald-300" : "text-amber-300"}>{provider.configured ? `ready · ${provider.model}` : "not configured"}</span></p>)}</div>
+                <button type="button" onClick={saveExecution} disabled={busy} className="w-full rounded border border-primary/30 bg-primary/10 px-2 py-1.5 text-primary disabled:opacity-40">Save execution policy</button>
+                <p className="text-[10px] text-muted-foreground">The policy is snapshotted when you create a draft. Changing it never reroutes an already approved run.</p>
+              </div>
+            </details>
+          )}
           {!active && (
             <>
               <textarea value={objective} onChange={(event) => setObjective(event.target.value)} maxLength={4000} rows={3} placeholder="What should the specialists work through?" className="w-full rounded border border-primary/20 bg-card/40 p-2 text-xs text-foreground resize-none focus:outline-none focus:ring-1 focus:ring-primary/40" />

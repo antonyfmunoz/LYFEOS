@@ -26,7 +26,7 @@ const accountExportTables = [
   "calendar_events", "mission_pages", "contacts", "personal_relationships", "relationship_interactions", "relationship_assessments", "relationship_commitments", "relationship_governance_consents", "relationship_ai_recommendations", "relationship_governance_audit", "spreadsheet_revisions", "spreadsheets", "canvas_revisions", "canvases", "graphs", "workspace_databases", "workspace_database_revisions", "workspace_database_rows", "workspace_database_row_revisions", "workspace_forms", "workspace_table_views", "workflow_automations", "workflow_automation_runs", "workflow_automation_action_receipts", "folders",
   "documents", "templates", "integrations", "progress_trackers", "kanban_boards", "project_events", "media_albums",
   "media_items", "conversations", "dismissed_knowledge", "vision_goals", "user_categories", "ritual_groups",
-  "widget_states", "user_activity_events", "smart_reminders", "mission_views", "push_subscriptions", "installation_admin_grants", "ai_orchestration_steps", "ai_orchestration_runs", "ai_voice_session_segments", "ai_voice_sessions", "ai_pending_actions", "ai_action_records", "ai_action_repairs", "ai_context_receipts", "ai_memory_policies", "ai_persona_profiles",
+  "widget_states", "user_activity_events", "smart_reminders", "mission_views", "push_subscriptions", "installation_admin_grants", "extension_audit_events", "extension_installations", "ai_orchestration_steps", "ai_orchestration_runs", "ai_voice_session_segments", "ai_voice_sessions", "ai_pending_actions", "ai_action_records", "ai_action_repairs", "ai_context_receipts", "ai_memory_policies", "ai_execution_preferences", "ai_persona_profiles",
   "product_analytics_consents", "mission_planning_context_amendments", "hypothesis_domain_consents", "cross_domain_hypotheses", "cross_domain_hypothesis_snapshots", "cross_domain_hypothesis_interpretations",
   "finance_accounts", "finance_balance_snapshots", "finance_transactions", "finance_budgets", "finance_goals",
   "transformation_threads", "transformation_thread_evidence", "personal_capabilities", "skill_nodes", "skill_edges", "quest_skill_contributions", "skill_progression_events", "activity_progression_events", "progression_badge_awards", "progression_badge_events", "mission_contracts", "mission_consequence_preflights", "mission_evidence", "mission_evidence_provider_bindings", "mission_reviews", "mission_review_appeals", "mission_deferrals", "mission_dependencies", "mission_mutation_receipts", "cross_product_sharing_preferences", "cross_product_work_links", "health_profiles", "health_targets", "health_target_revisions", "body_measurements", "health_observation_calculation_preferences", "health_observations", "health_metric_definitions", "health_metric_panels", "hydration_entries", "supplement_entries", "supplement_schedules", "supplement_schedule_events", "fasting_windows", "recovery_activities", "recovery_routines", "recovery_tag_policies", "sleep_naps", "sleep_sessions", "nutrition_foods", "nutrition_food_portions", "nutrition_diary_entries", "nutrition_recipes", "nutrition_recipe_revisions", "nutrition_meal_plans", "nutrition_meal_plan_entries", "health_deletion_receipts", "health_data_rights_audit", "health_planning_drafts", "health_planning_draft_events", "health_ai_requests", "health_ai_drafts", "health_practice_reviews", "health_insight_interpretations", "health_progression_events", "health_badge_events", "ingredient_scans", "ingredient_scan_items", "ingredient_preference_rules", "exercise_definitions", "workout_programs", "workout_program_sessions", "workouts", "workout_revisions", "workout_templates", "workout_template_revisions", "heart_rate_zone_profiles", "workout_heart_rate_samples",
@@ -152,6 +152,17 @@ async function selectCollaborationRows(userId: number): Promise<Record<string, u
   return { collaboration_workspaces: workspaces, collaboration_memberships: memberships, collaboration_visibility_grants: grants, collaboration_audit_events: audit };
 }
 
+async function selectSafeExtensionInstallationRows(userId: number): Promise<unknown[]> {
+  const result = await db.execute(sql`
+    SELECT i.*, p."version", p."display_name", p."description", p."manifest_digest", p."publisher_key_id"
+    FROM "extension_installations" i
+    INNER JOIN "extension_packages" p ON p."id" = i."package_id"
+    WHERE i."user_id" = ${userId}
+    ORDER BY i."installed_at", i."id"
+  `);
+  return (result as { rows?: unknown[] }).rows || [];
+}
+
 async function selectSafeWorkspaceFormAccessRows(userId: number): Promise<Record<string, unknown[]>> {
   const [grants, receipts] = await Promise.all([
     db.execute(sql`SELECT "id", "public_id", "user_id", "form_id", "label", "active", "expires_at", "max_submissions", "submission_count", "last_used_at", "revoked_at", "created_at" FROM "workspace_form_access_grants" WHERE "user_id" = ${userId}`),
@@ -227,7 +238,7 @@ export async function deleteLocalAccountData(userId: number): Promise<void> {
     for (const table of [
       "workflow_automation_action_receipts", "workflow_automation_runs", "workflow_automations", "cross_product_work_links", "cross_product_sharing_preferences", "progression_badge_events", "progression_badge_awards", "activity_progression_events", "skill_progression_events", "quest_skill_contributions", "skill_edges", "skill_nodes", "personal_capabilities", "transformation_thread_evidence", "mission_consequence_preflights", "mission_mutation_receipts", "mission_deferrals", "mission_dependencies", "quests", "transformation_threads", "mission_pages", "calendar_events",
       "relationship_ai_recommendations", "relationship_governance_audit", "relationship_governance_consents", "relationship_assessments", "relationship_commitments", "relationship_interactions", "personal_relationships", "documents", "folders", "media_items", "media_albums", "conversations", "user_stats", "user_profile",
-      "user_daily_logs", "user_integrations", "ai_orchestration_steps", "ai_orchestration_runs", "ai_voice_session_segments", "ai_voice_sessions", "ai_pending_actions", "ai_action_records", "ai_messages", "contacts", "spreadsheet_revisions", "spreadsheets", "canvas_revisions", "canvases", "graphs", "workspace_form_submission_receipts", "workspace_form_access_grants", "workspace_forms", "workspace_table_views", "workspace_database_row_revisions", "workspace_database_revisions", "workspace_database_rows", "workspace_databases",
+      "user_daily_logs", "user_integrations", "extension_audit_events", "extension_installations", "ai_orchestration_steps", "ai_orchestration_runs", "ai_voice_session_segments", "ai_voice_sessions", "ai_pending_actions", "ai_action_records", "ai_execution_preferences", "ai_messages", "contacts", "spreadsheet_revisions", "spreadsheets", "canvas_revisions", "canvases", "graphs", "workspace_form_submission_receipts", "workspace_form_access_grants", "workspace_forms", "workspace_table_views", "workspace_database_row_revisions", "workspace_database_revisions", "workspace_database_rows", "workspace_databases",
       "templates", "integrations", "progress_trackers", "dismissed_knowledge", "vision_goals", "user_categories",
       "ritual_groups", "widget_states", "user_activity_events", "smart_reminders", "mission_views", "push_subscriptions",
       "cross_domain_hypothesis_interpretations", "cross_domain_hypothesis_snapshots", "cross_domain_hypotheses", "hypothesis_domain_consents", "product_analytics_consents",
@@ -532,7 +543,7 @@ export function registerProfileRoutes(app: Express): void {
       const userId = req.session.userId!;
       const user = await storage.getUser(userId);
       if (!user) return res.status(404).json({ error: "User not found" });
-      const [rows, federationAudit, healthConnectionRows, workspaceFormAccessRows, nutritionNutrients, nutritionRecipeIngredients, workoutExerciseRows, workoutSetRows, messageHubRows, missionReviewInvitationRows, collaborationRows] = await Promise.all([
+      const [rows, federationAudit, healthConnectionRows, workspaceFormAccessRows, nutritionNutrients, nutritionRecipeIngredients, workoutExerciseRows, workoutSetRows, messageHubRows, missionReviewInvitationRows, collaborationRows, extensionInstallationRows] = await Promise.all([
         Promise.all(accountExportTables.map(async (table) => [table, await selectAccountRows(table, userId)] as const)),
         selectFederationAuditRows(userId, user.clerkId),
         selectSafeHealthConnectionRows(userId),
@@ -544,6 +555,7 @@ export function registerProfileRoutes(app: Express): void {
         selectMessageHubRows(userId),
         selectSafeMissionReviewInvitationRows(userId),
         selectCollaborationRows(userId),
+        selectSafeExtensionInstallationRows(userId),
       ]);
       const data = Object.fromEntries(rows) as Record<string, unknown[]>;
       Object.assign(data, federationAudit);
@@ -556,6 +568,7 @@ export function registerProfileRoutes(app: Express): void {
       Object.assign(data, messageHubRows);
       data.mission_review_invitations = missionReviewInvitationRows;
       Object.assign(data, collaborationRows);
+      data.extension_installations = extensionInstallationRows;
       const safeUser = { ...user, password: undefined, passwordResetToken: undefined, passwordResetExpiry: undefined, emailVerificationToken: undefined, emailVerificationExpiry: undefined, twoFactorEmailCode: undefined, twoFactorEmailExpiry: undefined, twoFactorPhoneCode: undefined, twoFactorPhoneExpiry: undefined };
       data.integrations = data.integrations.map((entry: any) => {
         const { access_token, refresh_token, accessToken, refreshToken, credential_ref, credentialRef, ...safe } = entry;
