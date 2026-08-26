@@ -1798,9 +1798,13 @@ export const workflowAutomations = pgTable("workflow_automations", {
   consecutiveFailures: integer("consecutive_failures").notNull().default(0),
   pausedAt: timestamp("paused_at"),
   pauseReason: text("pause_reason"),
+  scheduleNextRunAt: timestamp("schedule_next_run_at", { withTimezone: true }),
+  scheduleLastScheduledFor: timestamp("schedule_last_scheduled_for", { withTimezone: true }),
+  scheduleOccurrencesRun: integer("schedule_occurrences_run").notNull().default(0),
+  scheduleClaimedAt: timestamp("schedule_claimed_at", { withTimezone: true }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-}, (table) => [index("workflow_automations_user_updated_idx").on(table.userId, table.updatedAt), index("workflow_automations_user_enabled_idx").on(table.userId, table.enabled)]);
+}, (table) => [index("workflow_automations_user_updated_idx").on(table.userId, table.updatedAt), index("workflow_automations_user_enabled_idx").on(table.userId, table.enabled), index("workflow_automations_schedule_due_idx").on(table.scheduleNextRunAt, table.id)]);
 
 // Append-preserving execution receipts record only bounded action outcomes and
 // mission IDs. Private mission descriptions and generated content are not
@@ -1814,6 +1818,7 @@ export const workflowAutomationRuns = pgTable("workflow_automation_runs", {
   triggerQuestId: integer("trigger_quest_id").references(() => quests.id, { onDelete: "set null" }),
   idempotencyKey: text("idempotency_key").notNull(),
   definitionSnapshot: jsonb("definition_snapshot"),
+  triggerContext: jsonb("trigger_context"),
   status: text("status").notNull().default("running"),
   actionResults: jsonb("action_results").notNull().default([]),
   errorCode: text("error_code"),

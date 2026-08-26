@@ -775,7 +775,7 @@ export function registerHealthInsightRoutes(app: Express): void {
     const userId = req.session.userId!;
     const counts = await healthCounts(userId, healthDeleteOrder);
     const hypothesisCountResult = await db.execute(sql`SELECT count(*)::integer AS "count" FROM "cross_domain_hypotheses" WHERE "user_id" = ${userId} AND ("left_signal_id" LIKE 'health.%' OR "right_signal_id" LIKE 'health.%')`);
-    counts.cross_domain_hypotheses = Number((hypothesisCountResult as { rows?: Array<{ count: number }> }).rows?.[0]?.count || 0);
+    counts.cross_domain_hypotheses = Number((hypothesisCountResult as unknown as { rows?: Array<{ count: number }> }).rows?.[0]?.count || 0);
     await db.transaction(async (tx) => {
       await tx.execute(sql`DELETE FROM "cross_domain_hypotheses" WHERE "user_id" = ${userId} AND ("left_signal_id" LIKE 'health.%' OR "right_signal_id" LIKE 'health.%')`);
       await tx.execute(sql`INSERT INTO "hypothesis_domain_consents" ("user_id", "domain", "state", "policy_version") VALUES (${userId}, 'health', 'revoked', ${HYPOTHESIS_CONSENT_VERSION})`);

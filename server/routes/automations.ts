@@ -7,6 +7,7 @@ import { db } from "../db";
 import { executeAutomation, getAutomationPreview, repairAutomationRun } from "../automation-engine";
 import { logger } from "../utils";
 import { isAuthenticated } from "./middleware";
+import { nextScheduledOccurrence } from "../automation-schedule";
 
 function idParam(value: string): number | null {
   const id = Number(value);
@@ -74,7 +75,11 @@ export function registerAutomationRoutes(app: Express): void {
         .where(eq(workflowAutomations.userId, req.session.userId!)).limit(25);
       if (existing.length >= 25) return res.status(409).json({ error: "Automation limit reached. Archive or delete one before creating another." });
       const input = createAutomationSchema.parse(req.body);
-      const [automation] = await db.insert(workflowAutomations).values({ ...input, userId: req.session.userId!, enabled: false }).returning();
+      const definition = automationDefinitionSchema.parse(input.definition);
+      const scheduleNextRunAt = definition.trigger.type === "schedule" ? nextScheduledOccurrence(definition.trigger, new Date()) : null;
+      if (definition.trigger.type === "schedule" && !scheduleNextRunAt) return res.status(400).json({ error: "This bounded schedule has no future occurrence." });
+      if (definition.trigger.type === "schedule" && !await ownedQuest(definition.trigger.questId, req.session.userId!)) return res.status(400).json({ error: "Choose an existing Mission owned by this account as the schedule anchor." });
+      const [automation] = await db.insert(workflowAutomations).values({ ...input, definition, userId: req.session.userId!, enabled: false, scheduleNextRunAt }).returning();
       res.status(201).json({ automation });
     } catch (error) { return requestError(res, error); }
   });
@@ -89,6 +94,7 @@ export function registerAutomationRoutes(app: Express): void {
       triggerQuestId: workflowAutomationRuns.triggerQuestId,
       actionResults: workflowAutomationRuns.actionResults,
       errorCode: workflowAutomationRuns.errorCode,
+      triggerContext: workflowAutomationRuns.triggerContext,
       createdAt: workflowAutomationRuns.createdAt,
       completedAt: workflowAutomationRuns.completedAt,
     }).from(workflowAutomationRuns)
@@ -102,11 +108,27 @@ export function registerAutomationRoutes(app: Express): void {
       const id = idParam(req.params.id); if (!id) return res.status(400).json({ error: "Invalid automation ID" });
       const existing = await ownedAutomation(id, req.session.userId!); if (!existing) return res.status(404).json({ error: "Automation not found" });
       const input = updateAutomationSchema.parse(req.body);
-      automationDefinitionSchema.parse(input.definition || existing.definition);
+      const definition = automationDefinitionSchema.parse(input.definition || existing.definition);
+      const definitionChanged = input.definition !== undefined && JSON.stringify(definition) !== JSON.stringify(existing.definition);
+      if (definition.trigger.type === "schedule" && !await ownedQuest(definition.trigger.questId, req.session.userId!)) return res.status(400).json({ error: "Choose an existing Mission owned by this account as the schedule anchor." });
+      if (input.enabled === true && !definitionChanged && existing.pauseReason === "SCHEDULE_COMPLETE") return res.status(409).json({ error: "This bounded schedule is complete. Save a revised schedule before enabling it again." });
+      const resuming = input.enabled === true && !existing.enabled;
+      const scheduleNextRunAt = definition.trigger.type === "schedule" && (definitionChanged || resuming || !existing.scheduleNextRunAt)
+        ? nextScheduledOccurrence(definition.trigger, new Date())
+        : definition.trigger.type === "schedule" ? existing.scheduleNextRunAt : null;
+      if (definition.trigger.type === "schedule" && input.enabled === true && !scheduleNextRunAt) return res.status(400).json({ error: "This bounded schedule has no future occurrence." });
       const recoveryReset = input.enabled === true
         ? { consecutiveFailures: 0, pausedAt: null, pauseReason: null }
         : {};
-      const [automation] = await db.update(workflowAutomations).set({ ...input, ...recoveryReset, updatedAt: new Date() })
+      const [automation] = await db.update(workflowAutomations).set({
+        ...input,
+        definition,
+        ...recoveryReset,
+        scheduleNextRunAt,
+        scheduleClaimedAt: null,
+        ...(definitionChanged ? { scheduleOccurrencesRun: 0, scheduleLastScheduledFor: null } : {}),
+        updatedAt: new Date(),
+      })
         .where(and(eq(workflowAutomations.id, id), eq(workflowAutomations.userId, req.session.userId!))).returning();
       res.json({ automation });
     } catch (error) { return requestError(res, error); }

@@ -1,8 +1,36 @@
 import { z } from "zod";
 import type { Quest } from "./schema";
 
-export const automationTriggerTypes = ["mission_created", "mission_completed", "manual"] as const;
+export const automationTriggerTypes = ["mission_created", "mission_completed", "manual", "schedule"] as const;
 export const automationTriggerSchema = z.enum(automationTriggerTypes);
+
+const calendarDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+const clockTimeSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
+const timeZoneSchema = z.string().min(1).max(100).refine((value) => {
+  try { new Intl.DateTimeFormat("en-US", { timeZone: value }).format(); return true; } catch { return false; }
+}, "Choose a valid IANA time zone.");
+
+export const automationScheduleTriggerSchema = z.object({
+  type: z.literal("schedule"),
+  questId: z.number().int().positive(),
+  timeZone: timeZoneSchema,
+  localTime: clockTimeSchema,
+  cadence: z.enum(["daily", "weekly"]),
+  weekdays: z.array(z.number().int().min(0).max(6)).max(7).default([]),
+  startDate: calendarDateSchema,
+  endDate: calendarDateSchema.nullable().default(null),
+  maxOccurrences: z.number().int().min(1).max(365),
+  missedRunPolicy: z.enum(["skip", "run_once"]),
+}).strict().superRefine((input, context) => {
+  if (input.cadence === "weekly" && input.weekdays.length === 0) context.addIssue({ code: z.ZodIssueCode.custom, message: "Choose at least one weekday for a weekly schedule." });
+  if (new Set(input.weekdays).size !== input.weekdays.length) context.addIssue({ code: z.ZodIssueCode.custom, message: "Choose each weekday only once." });
+  if (input.endDate && input.endDate < input.startDate) context.addIssue({ code: z.ZodIssueCode.custom, message: "The schedule end date cannot be before its start date." });
+});
+
+const automationTriggerDefinitionSchema = z.union([
+  z.object({ type: z.enum(["mission_created", "mission_completed", "manual"]) }).strict(),
+  automationScheduleTriggerSchema,
+]);
 
 const automationConditionsSchema = z.object({
   titleContains: z.string().trim().max(120).nullable().optional(),
@@ -28,12 +56,14 @@ export const automationActionSchema = z.discriminatedUnion("type", [
 ]);
 
 export const automationDefinitionSchema = z.object({
-  version: z.literal(1),
-  trigger: z.object({ type: automationTriggerSchema }).strict(),
+  version: z.union([z.literal(1), z.literal(2)]),
+  trigger: automationTriggerDefinitionSchema,
   conditions: automationConditionsSchema.default({}),
   actions: z.array(automationActionSchema).min(1).max(3),
   stopOnError: z.boolean().default(true),
-}).strict();
+}).strict().superRefine((input, context) => {
+  if (input.trigger.type === "schedule" && input.version !== 2) context.addIssue({ code: z.ZodIssueCode.custom, message: "Scheduled automations require definition version 2." });
+});
 
 export const createAutomationSchema = z.object({
   name: z.string().trim().min(1).max(120),
@@ -51,6 +81,7 @@ export const automationRunRequestSchema = z.object({
 }).strict();
 
 export type AutomationTriggerType = z.infer<typeof automationTriggerSchema>;
+export type AutomationScheduleTrigger = z.infer<typeof automationScheduleTriggerSchema>;
 export type AutomationAction = z.infer<typeof automationActionSchema>;
 export type AutomationDefinition = z.infer<typeof automationDefinitionSchema>;
 

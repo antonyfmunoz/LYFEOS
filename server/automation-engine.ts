@@ -91,6 +91,7 @@ async function executeAction(input: {
   runId: number;
   actionIndex: number;
   receipt: ActionReceipt;
+  executionDate?: string;
 }): Promise<{ targetQuestId: number }> {
   const action = input.definition.actions[input.actionIndex];
   if (action.type === "set_mission_category") {
@@ -111,7 +112,7 @@ async function executeAction(input: {
   const lifecycleKey = `automation:${input.runId}:${input.actionIndex}`;
   const existing = await findLifecycleMission(input.quest.userId, lifecycleKey);
   if (existing) return { targetQuestId: existing.id };
-  const dueDate = shiftCalendarDate(formatLocalDate(), action.delayDays);
+  const dueDate = shiftCalendarDate(input.executionDate || formatLocalDate(), action.delayDays);
   if (!dueDate) throw new Error("AUTOMATION_DATE_INVALID");
   try {
     const followUp = await createMissionLifecycle({
@@ -254,6 +255,7 @@ async function executeRunActions(input: {
   definition: AutomationDefinition;
   quest: Quest;
   recovery: boolean;
+  executionDate?: string;
 }): Promise<AutomationExecutionResult> {
   for (let actionIndex = 0; actionIndex < input.definition.actions.length; actionIndex += 1) {
     const action = input.definition.actions[actionIndex];
@@ -281,6 +283,7 @@ async function executeRunActions(input: {
         runId: input.run.id,
         actionIndex,
         receipt: claim.receipt,
+        executionDate: input.executionDate,
       });
       const completedAt = new Date();
       await db.update(workflowAutomationActionReceipts).set({
@@ -326,10 +329,35 @@ export async function executeAutomation(input: {
   quest: Quest;
   triggerType: AutomationTriggerType;
   idempotencyKey: string;
+  triggerContext?: Record<string, unknown>;
+  executionDate?: string;
 }): Promise<AutomationExecutionResult> {
   const definition = automationDefinitionSchema.parse(input.automation.definition);
-  if (definition.trigger.type !== input.triggerType || !automationMatchesMission(definition, missionContext(input.quest))) {
+  if (definition.trigger.type !== input.triggerType) {
     return { status: "skipped", actionResults: [] };
+  }
+
+  if (!automationMatchesMission(definition, missionContext(input.quest))) {
+    if (input.triggerType !== "schedule") return { status: "skipped", actionResults: [] };
+    const [skipped] = await db.insert(workflowAutomationRuns).values({
+      userId: input.quest.userId,
+      automationId: input.automation.id,
+      automationName: input.automation.name,
+      triggerType: input.triggerType,
+      triggerQuestId: input.quest.id,
+      idempotencyKey: input.idempotencyKey,
+      definitionSnapshot: definition,
+      triggerContext: input.triggerContext || {},
+      status: "skipped",
+      errorCode: "CONDITIONS_NOT_MATCHED",
+      completedAt: new Date(),
+    }).onConflictDoNothing().returning();
+    const existing = skipped || (await db.select().from(workflowAutomationRuns).where(and(
+      eq(workflowAutomationRuns.userId, input.quest.userId),
+      eq(workflowAutomationRuns.automationId, input.automation.id),
+      eq(workflowAutomationRuns.idempotencyKey, input.idempotencyKey),
+    )).limit(1))[0];
+    return { status: "skipped", runId: existing?.id, duplicate: !skipped, actionResults: [] };
   }
 
   const [run] = await db.insert(workflowAutomationRuns).values({
@@ -340,6 +368,7 @@ export async function executeAutomation(input: {
     triggerQuestId: input.quest.id,
     idempotencyKey: input.idempotencyKey,
     definitionSnapshot: definition,
+    triggerContext: input.triggerContext || null,
   }).onConflictDoNothing().returning();
   if (!run) {
     const [existing] = await db.select().from(workflowAutomationRuns).where(and(
@@ -363,6 +392,7 @@ export async function executeAutomation(input: {
     definition,
     quest: input.quest,
     recovery: false,
+    executionDate: input.executionDate,
   });
 }
 
@@ -387,12 +417,13 @@ export async function repairAutomationRun(input: {
     definition,
     quest: input.quest,
     recovery: true,
+    executionDate: input.run.triggerType === "schedule" && input.run.triggerContext && typeof input.run.triggerContext === "object" && typeof (input.run.triggerContext as { localDate?: unknown }).localDate === "string" ? (input.run.triggerContext as { localDate: string }).localDate : undefined,
   });
 }
 
 export async function runMissionAutomations(input: {
   userId: number;
-  triggerType: Exclude<AutomationTriggerType, "manual">;
+  triggerType: Exclude<AutomationTriggerType, "manual" | "schedule">;
   quest: Quest;
   idempotencyReference: string;
 }): Promise<AutomationExecutionResult[]> {
