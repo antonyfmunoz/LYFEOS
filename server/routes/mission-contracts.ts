@@ -2,7 +2,7 @@ import type { Express, Request, Response } from "express";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../db";
-import { missionContracts, missionDependencies, missionEvidence, missionReviewAppeals, missionReviewInvitations, missionReviews, personalCapabilities, questSkillContributions, quests, skillNodes, users } from "@shared/schema";
+import { healthSourceRecords, missionContracts, missionDependencies, missionEvidence, missionEvidenceProviderBindings, missionReviewAppeals, missionReviewInvitations, missionReviews, personalCapabilities, questSkillContributions, quests, skillNodes, users } from "@shared/schema";
 import { isAuthenticated } from "./middleware";
 import { applyReviewedMissionProgression, revokeReviewedMissionProgression } from "../mission-lifecycle";
 import { wouldCreateMissionDependencyCycle } from "../mission-dependencies";
@@ -10,6 +10,7 @@ import { normalizeRubricDefinition, validateEvidenceChecks } from "../mission-re
 import { storage } from "../storage";
 import { buildPlanningContextSnapshot } from "../context-snapshot";
 import { buildMissionUnlockResult } from "../mission-unlock-result";
+import { missionEvidenceForContracts } from "../mission-evidence-provenance";
 
 const textList = z.array(z.string().trim().min(1).max(280)).max(8);
 const methodList = z.array(z.string().trim().min(1).max(280)).max(12);
@@ -35,12 +36,18 @@ const contractSchema = z.object({
   escalationPath: z.string().trim().max(800).nullable().optional(),
   state: z.enum(["draft", "accepted"]).default("draft"),
 });
-const evidenceSchema = z.object({
-  sourceType: z.enum(["self_report", "artifact", "observation", "provider"]),
+const manualEvidenceSchema = z.object({
+  sourceType: z.enum(["self_report", "artifact", "observation"]),
   sourceReference: z.string().trim().max(2000).nullable().optional(),
   summary: z.string().trim().min(3).max(2000),
   confidence: z.enum(["self_reported", "low", "medium", "high"]).default("self_reported"),
-});
+}).strict();
+const providerEvidenceSchema = z.object({
+  sourceType: z.literal("provider"),
+  providerSourceRecordId: z.number().int().positive(),
+  summary: z.string().trim().min(3).max(2000),
+}).strict();
+const evidenceSchema = z.discriminatedUnion("sourceType", [manualEvidenceSchema, providerEvidenceSchema]);
 const reviewSchema = z.object({
   decision: z.enum(["meets_evidence", "revisions_needed"]),
   rubric: z.object({
@@ -92,7 +99,7 @@ async function contractBundle(questId: number, userId: number) {
   } : null;
   if (!contract) return { contract: null, evidence: [], reviews: [], appeals: [], planningDecision, unlockResult: null };
   const [evidence, reviews, appeals, contributions] = await Promise.all([
-    db.select().from(missionEvidence).where(and(eq(missionEvidence.missionContractId, contract.id), eq(missionEvidence.userId, userId))).orderBy(desc(missionEvidence.submittedAt)),
+    missionEvidenceForContracts([contract.id], userId),
     db.select().from(missionReviews).where(and(eq(missionReviews.missionContractId, contract.id), eq(missionReviews.userId, userId))).orderBy(desc(missionReviews.createdAt)),
     db.select().from(missionReviewAppeals).where(and(eq(missionReviewAppeals.missionContractId, contract.id), eq(missionReviewAppeals.userId, userId))).orderBy(desc(missionReviewAppeals.createdAt)),
     db.select({
@@ -126,6 +133,24 @@ async function dependencyBundle(questId: number, userId: number) {
 }
 
 export function registerMissionContractRoutes(app: Express): void {
+  app.get("/api/mission-evidence/provider-records", isAuthenticated, async (req: Request, res: Response) => {
+    const records = await db.select({
+      id: healthSourceRecords.id,
+      provider: healthSourceRecords.provider,
+      recordType: healthSourceRecords.recordType,
+      observedAt: healthSourceRecords.observedAt,
+      receivedAt: healthSourceRecords.receivedAt,
+      transformVersion: healthSourceRecords.transformVersion,
+    }).from(healthSourceRecords).where(and(
+      eq(healthSourceRecords.userId, req.session.userId!),
+      eq(healthSourceRecords.state, "active"),
+    )).orderBy(desc(healthSourceRecords.observedAt)).limit(100);
+    return res.json({
+      records,
+      disclosure: "Only current imported records are selectable. Their private source payload stays in Health, and attaching one supports provenance rather than proving mission completion.",
+    });
+  });
+
   app.get("/api/mission-review-appeals/assigned", isAuthenticated, async (req: Request, res: Response) => {
     const rows = await db.select({
       appeal: missionReviewAppeals,
@@ -146,15 +171,7 @@ export function registerMissionContractRoutes(app: Express): void {
       .where(and(eq(missionReviewAppeals.reviewerUserId, req.session.userId!), eq(missionReviewAppeals.status, "open")))
       .orderBy(desc(missionReviewAppeals.createdAt));
     const contractIds = rows.map((row) => row.appeal.missionContractId);
-    const evidence = contractIds.length ? await db.select({
-      missionContractId: missionEvidence.missionContractId,
-      id: missionEvidence.id,
-      sourceType: missionEvidence.sourceType,
-      sourceReference: missionEvidence.sourceReference,
-      summary: missionEvidence.summary,
-      confidence: missionEvidence.confidence,
-      submittedAt: missionEvidence.submittedAt,
-    }).from(missionEvidence).where(inArray(missionEvidence.missionContractId, contractIds)).orderBy(desc(missionEvidence.submittedAt)) : [];
+    const evidence = await missionEvidenceForContracts(contractIds);
     return res.json({
       appeals: rows.map((row) => ({
         ...row.appeal,
@@ -383,7 +400,47 @@ export function registerMissionContractRoutes(app: Express): void {
     if (!parsed.success) return res.status(400).json({ error: "Invalid evidence.", details: parsed.error.flatten() });
     const [contract] = await db.select().from(missionContracts).where(and(eq(missionContracts.questId, questId), eq(missionContracts.userId, req.session.userId!))).limit(1);
     if (!contract) return res.status(409).json({ error: "Create the mission contract before adding evidence." });
-    const [evidence] = await db.insert(missionEvidence).values({ userId: req.session.userId!, missionContractId: contract.id, ...parsed.data, sourceReference: parsed.data.sourceReference || null }).returning();
+    if (parsed.data.sourceType !== "provider") {
+      const [evidence] = await db.insert(missionEvidence).values({
+        userId: req.session.userId!,
+        missionContractId: contract.id,
+        ...parsed.data,
+        sourceReference: parsed.data.sourceReference || null,
+      }).returning();
+      return res.status(201).json({ evidence: { ...evidence, provenance: null } });
+    }
+    const providerEvidence = parsed.data;
+    const createdId = await db.transaction(async (tx) => {
+      const [sourceRecord] = await tx.select().from(healthSourceRecords).where(and(
+        eq(healthSourceRecords.id, providerEvidence.providerSourceRecordId),
+        eq(healthSourceRecords.userId, req.session.userId!),
+        eq(healthSourceRecords.state, "active"),
+      )).for("update").limit(1);
+      if (!sourceRecord) return null;
+      const [created] = await tx.insert(missionEvidence).values({
+        userId: req.session.userId!,
+        missionContractId: contract.id,
+        sourceType: "provider",
+        sourceReference: null,
+        summary: providerEvidence.summary,
+        confidence: "provider_record",
+      }).returning({ id: missionEvidence.id });
+      await tx.insert(missionEvidenceProviderBindings).values({
+        userId: req.session.userId!,
+        missionEvidenceId: created.id,
+        providerSourceRecordId: sourceRecord.id,
+        provider: sourceRecord.provider,
+        recordType: sourceRecord.recordType,
+        observedAt: sourceRecord.observedAt,
+        receivedAt: sourceRecord.receivedAt,
+        payloadFingerprint: sourceRecord.payloadFingerprint,
+        transformVersion: sourceRecord.transformVersion,
+      });
+      return created.id;
+    });
+    if (createdId === null) return res.status(404).json({ error: "Imported provider record not found." });
+    const evidence = (await missionEvidenceForContracts([contract.id], req.session.userId!))
+      .find((item) => item.id === createdId);
     return res.status(201).json({ evidence });
   });
 

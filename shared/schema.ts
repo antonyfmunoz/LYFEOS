@@ -719,7 +719,7 @@ export const missionEvidence = pgTable("mission_evidence", {
   sourceType: text("source_type").notNull(), // self_report | artifact | observation | provider
   sourceReference: text("source_reference"),
   summary: text("summary").notNull(),
-  confidence: text("confidence").notNull().default("self_reported"), // self_reported | low | medium | high
+  confidence: text("confidence").notNull().default("self_reported"), // self_reported | low | medium | high | provider_record
   submittedAt: timestamp("submitted_at").notNull().defaultNow(),
 }, (table) => [
   index("mission_evidence_contract_submitted_idx").on(table.missionContractId, table.submittedAt),
@@ -2265,6 +2265,29 @@ export const aiContextReceipts = pgTable("ai_context_receipts", {
   expiresAt: timestamp("expires_at").notNull(),
 }, (table) => [
   index("ai_context_receipts_user_created_idx").on(table.userId, table.createdAt),
+]);
+
+// A provider evidence binding stores only the minimum immutable provenance
+// needed to explain a user's explicit Mission-evidence attachment. The source
+// payload remains in the private Health domain. Deleting that source is always
+// allowed and leaves this historical receipt with a null source reference.
+export const missionEvidenceProviderBindings = pgTable("mission_evidence_provider_bindings", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  missionEvidenceId: integer("mission_evidence_id").notNull().references(() => missionEvidence.id, { onDelete: "cascade" }),
+  providerDomain: text("provider_domain").notNull().default("health"),
+  providerSourceRecordId: integer("provider_source_record_id").references(() => healthSourceRecords.id, { onDelete: "set null" }),
+  provider: text("provider").notNull(),
+  recordType: text("record_type").notNull(),
+  observedAt: timestamp("observed_at").notNull(),
+  receivedAt: timestamp("received_at").notNull(),
+  payloadFingerprint: text("payload_fingerprint").notNull(),
+  transformVersion: text("transform_version").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("mission_evidence_provider_bindings_evidence_unique_idx").on(table.missionEvidenceId),
+  index("mission_evidence_provider_bindings_user_created_idx").on(table.userId, table.createdAt),
+  index("mission_evidence_provider_bindings_source_idx").on(table.providerSourceRecordId),
 ]);
 
 // Canonical native Messages transport. The historical conversations/messages

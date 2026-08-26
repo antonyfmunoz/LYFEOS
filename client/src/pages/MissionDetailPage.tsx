@@ -30,7 +30,23 @@ type MissionContractBundle = {
     riskLevel: "low" | "medium" | "high";
     escalationPath: string | null;
   };
-  evidence: Array<{ id: number; sourceType: string; sourceReference: string | null; summary: string; confidence: "self_reported" | "low" | "medium" | "high" }>;
+  evidence: Array<{
+    id: number;
+    sourceType: string;
+    sourceReference: string | null;
+    summary: string;
+    confidence: "self_reported" | "low" | "medium" | "high" | "provider_record";
+    provenance: null | {
+      domain: "health";
+      provider: string;
+      recordType: string;
+      observedAt: string;
+      receivedAt: string;
+      transformVersion: string;
+      status: "active" | "superseded" | "source_deleted";
+      disclosure: string;
+    };
+  }>;
   reviews: Array<{ id: number; decision: string; summary: string; reviewerType: "self" | "human"; reviewerUserId: number | null; rubricVersion: number }>;
   appeals: Array<{ id: number; missionReviewId: number; reason: string; status: "open" | "withdrawn" | "upheld" | "reconsidered"; resolutionSummary: string | null; createdAt: string }>;
   planningDecision: null | {
@@ -66,6 +82,11 @@ type MissionReviewInvitationBundle = {
 };
 
 type ReviewerOption = { id: number; displayName: string | null };
+
+type ProviderRecordBundle = {
+  records: Array<{ id: number; provider: string; recordType: string; observedAt: string; receivedAt: string; transformVersion: string }>;
+  disclosure: string;
+};
 
 type MissionDependencyBundle = {
   dependencies: Array<{ id: number; prerequisiteQuestId: number; title: string; completed: boolean }>;
@@ -124,6 +145,7 @@ export default function MissionDetailPage() {
   const [evidenceSourceType, setEvidenceSourceType] = useState<"self_report" | "artifact" | "observation" | "provider">("self_report");
   const [evidenceSourceReference, setEvidenceSourceReference] = useState("");
   const [evidenceConfidence, setEvidenceConfidence] = useState<"self_reported" | "low" | "medium" | "high">("self_reported");
+  const [providerSourceRecordId, setProviderSourceRecordId] = useState("");
   const [reviewSummary, setReviewSummary] = useState("");
   const [evidenceChecks, setEvidenceChecks] = useState<Record<string, boolean>>({});
   const [prerequisiteQuestId, setPrerequisiteQuestId] = useState("");
@@ -191,6 +213,11 @@ export default function MissionDetailPage() {
     },
     onError: (error: Error) => toast({ title: "Review link not created", description: error.message, variant: "destructive" }),
   });
+  const providerRecordsQuery = useQuery<ProviderRecordBundle>({
+    queryKey: ["/api/mission-evidence/provider-records"],
+    queryFn: () => apiRequest("/api/mission-evidence/provider-records"),
+    enabled: evidenceSourceType === "provider",
+  });
   const deliverReviewInvitation = useMutation({
     mutationFn: () => apiRequest(`/api/quests/${questId}/review-invitations`, {
       method: "POST",
@@ -214,8 +241,13 @@ export default function MissionDetailPage() {
     },
   });
   const addEvidence = useMutation({
-    mutationFn: () => apiRequest(`/api/quests/${questId}/evidence`, { method: "POST", body: JSON.stringify({ sourceType: evidenceSourceType, sourceReference: evidenceSourceReference || null, summary: evidenceSummary, confidence: evidenceConfidence }) }),
-    onSuccess: () => { setEvidenceSummary(""); setEvidenceSourceReference(""); refreshContract(); toast({ title: "Evidence added", description: "Your proof is attached to this mission." }); },
+    mutationFn: () => apiRequest(`/api/quests/${questId}/evidence`, {
+      method: "POST",
+      body: JSON.stringify(evidenceSourceType === "provider"
+        ? { sourceType: "provider", providerSourceRecordId: Number(providerSourceRecordId), summary: evidenceSummary }
+        : { sourceType: evidenceSourceType, sourceReference: evidenceSourceReference || null, summary: evidenceSummary, confidence: evidenceConfidence }),
+    }),
+    onSuccess: () => { setEvidenceSummary(""); setEvidenceSourceReference(""); setProviderSourceRecordId(""); refreshContract(); toast({ title: "Evidence added", description: "Your proof is attached to this mission." }); },
   });
   const reviewMission = useMutation({
     mutationFn: (decision: "meets_evidence" | "revisions_needed") => apiRequest(`/api/quests/${questId}/reviews`, {
@@ -601,27 +633,32 @@ export default function MissionDetailPage() {
                     <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">{contractQuery.data.unlockResult.disclosure}</p>
                   </div> : null}
                   <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                    {contractQuery.data.evidence.map((item) => <span key={item.id} className="rounded border border-primary/20 px-2 py-1">Evidence ({item.sourceType.replaceAll("_", " ")} · {item.confidence.replaceAll("_", " ")}): {item.summary}{item.sourceReference ? " · reference attached" : ""}</span>)}
+                    {contractQuery.data.evidence.map((item) => <span key={item.id} className="rounded border border-primary/20 px-2 py-1">Evidence ({item.sourceType.replaceAll("_", " ")} · {item.confidence.replaceAll("_", " ")}): {item.summary}{item.sourceReference ? " · reference attached" : ""}{item.provenance ? ` · ${item.provenance.provider} ${item.provenance.recordType} · ${item.provenance.status.replaceAll("_", " ")}` : ""}</span>)}
                     {contractQuery.data.reviews.map((item) => <span key={item.id} className="rounded border border-primary/20 px-2 py-1">{item.reviewerType === "human" ? "Human review" : "Self-review"}: {item.decision.replaceAll("_", " ")}</span>)}
                   </div>
-                  <div className="grid gap-2 sm:grid-cols-3">
+                  <div className={`grid gap-2 ${evidenceSourceType === "provider" ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
                     <select aria-label="Evidence source" value={evidenceSourceType} onChange={(event) => setEvidenceSourceType(event.target.value as typeof evidenceSourceType)} className="h-9 rounded-md border border-primary/20 bg-background/40 px-2 text-sm text-foreground">
                       <option value="self_report">self report</option>
                       <option value="artifact">artifact</option>
                       <option value="observation">observation</option>
                       <option value="provider">provider record</option>
                     </select>
-                    <select aria-label="Evidence confidence" value={evidenceConfidence} onChange={(event) => setEvidenceConfidence(event.target.value as typeof evidenceConfidence)} className="h-9 rounded-md border border-primary/20 bg-background/40 px-2 text-sm text-foreground">
-                      <option value="self_reported">self-reported</option>
-                      <option value="low">low confidence</option>
-                      <option value="medium">medium confidence</option>
-                      <option value="high">high confidence</option>
-                    </select>
-                    <Input value={evidenceSourceReference} onChange={(event) => setEvidenceSourceReference(event.target.value)} placeholder="Optional source or link" />
+                    {evidenceSourceType === "provider" ? <select aria-label="Imported provider record" value={providerSourceRecordId} onChange={(event) => setProviderSourceRecordId(event.target.value)} className="h-9 rounded-md border border-primary/20 bg-background/40 px-2 text-sm text-foreground">
+                      <option value="">Choose an imported record…</option>
+                      {(providerRecordsQuery.data?.records || []).map((record) => <option key={record.id} value={record.id}>{record.provider} · {record.recordType} · {new Date(record.observedAt).toLocaleDateString()}</option>)}
+                    </select> : <>
+                      <select aria-label="Evidence confidence" value={evidenceConfidence} onChange={(event) => setEvidenceConfidence(event.target.value as typeof evidenceConfidence)} className="h-9 rounded-md border border-primary/20 bg-background/40 px-2 text-sm text-foreground">
+                        <option value="self_reported">self-reported</option>
+                        <option value="low">low confidence</option>
+                        <option value="medium">medium confidence</option>
+                        <option value="high">high confidence</option>
+                      </select>
+                      <Input value={evidenceSourceReference} onChange={(event) => setEvidenceSourceReference(event.target.value)} placeholder="Optional source or link" />
+                    </>}
                   </div>
-                  <p className="text-[11px] text-muted-foreground">Source and confidence are review context you provide; LyfeOS does not infer proof quality from them.</p>
+                  {evidenceSourceType === "provider" ? <p className="text-[11px] leading-relaxed text-muted-foreground">{providerRecordsQuery.data?.disclosure || "Loading current imported records…"}{providerRecordsQuery.data && !providerRecordsQuery.data.records.length ? <> No imported records are available. <Link href="/health" className="text-primary underline">Open Health connections</Link>.</> : null}</p> : <p className="text-[11px] text-muted-foreground">Source and confidence are review context you provide; LyfeOS does not infer proof quality from them.</p>}
                   <Textarea value={evidenceSummary} onChange={(event) => setEvidenceSummary(event.target.value)} placeholder="Add a concise description of the proof you produced…" className="min-h-20" />
-                  <Button size="sm" variant="outline" disabled={evidenceSummary.trim().length < 3 || addEvidence.isPending} onClick={() => addEvidence.mutate()}>
+                  <Button size="sm" variant="outline" disabled={evidenceSummary.trim().length < 3 || (evidenceSourceType === "provider" && !providerSourceRecordId) || addEvidence.isPending} onClick={() => addEvidence.mutate()}>
                     {addEvidence.isPending ? "Adding…" : "Add evidence"}
                   </Button>
                   {contractQuery.data.contract.reviewMode === "human" ? <div className="border-t border-primary/10 pt-3 space-y-2">

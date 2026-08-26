@@ -24,6 +24,7 @@ import {
   missionReviewTokenMatches,
   validateEvidenceChecks,
 } from "../mission-review-authorization";
+import { missionEvidenceForContracts } from "../mission-evidence-provenance";
 
 const invitationSchema = z.object({
   expiresInDays: z.number().int().min(1).max(30).default(7),
@@ -347,14 +348,7 @@ export function registerMissionReviewRoutes(app: Express): void {
       return res.status(403).json({ error: "This review invitation is bound to another reviewer." });
     }
     const accepted = row.invitation.status === "accepted" && row.invitation.reviewerUserId === req.session.userId;
-    const evidence = accepted ? await db.select({
-      id: missionEvidence.id,
-      sourceType: missionEvidence.sourceType,
-      sourceReference: missionEvidence.sourceReference,
-      summary: missionEvidence.summary,
-      confidence: missionEvidence.confidence,
-      submittedAt: missionEvidence.submittedAt,
-    }).from(missionEvidence).where(eq(missionEvidence.missionContractId, row.contract.id)).orderBy(desc(missionEvidence.submittedAt)) : [];
+    const evidence = accepted ? await missionEvidenceForContracts([row.contract.id], row.invitation.ownerUserId) : [];
     return res.json({
       invitation: { id: row.invitation.id, status: row.invitation.status, expiresAt: row.invitation.expiresAt, accepted },
       owner: { displayName: row.ownerName || "LyfeOS user" },

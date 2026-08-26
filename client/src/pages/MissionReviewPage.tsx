@@ -14,7 +14,24 @@ type ReviewBundle = {
   owner: { displayName: string };
   mission: { id: number; title: string; completed: boolean };
   contract: { purpose: string; expectedOutput: string; requiredEvidence: string[]; rubricDefinition: Array<{ id: string; requirement: string; guidance: string; weight: number; required: boolean }>; rubricVersion: number; riskLevel: string; stopConditions: string[]; escalationPath: string | null };
-  evidence: Array<{ id: number; sourceType: string; sourceReference: string | null; summary: string; confidence: string; submittedAt: string }>;
+  evidence: Array<{
+    id: number;
+    sourceType: string;
+    sourceReference: string | null;
+    summary: string;
+    confidence: string;
+    submittedAt: string;
+    provenance: null | {
+      domain: "health";
+      provider: string;
+      recordType: string;
+      observedAt: string;
+      receivedAt: string;
+      transformVersion: string;
+      status: "active" | "superseded" | "source_deleted";
+      disclosure: string;
+    };
+  }>;
 };
 
 type AssignedAppeal = {
@@ -141,7 +158,7 @@ export default function MissionReviewPage() {
         <div><p className="text-xs text-primary">{appeal.ownerDisplayName}</p><h2 className="font-orbitron text-lg">{appeal.missionTitle}</h2><p className="mt-1 text-xs text-muted-foreground">Expected output: {appeal.expectedOutput}</p></div>
         <p className="text-sm"><span className="text-muted-foreground">Appeal:</span> {appeal.reason}</p>
         <p className="text-xs text-muted-foreground">Original review: {appeal.reviewSummary}</p>
-        <div className="space-y-1">{appeal.evidence.map((item) => <p key={item.id} className="rounded border border-primary/10 p-2 text-xs">{item.summary} <span className="text-muted-foreground">· {item.sourceType.replaceAll("_", " ")}</span></p>)}</div>
+        <div className="space-y-1">{appeal.evidence.map((item) => <div key={item.id} className="rounded border border-primary/10 p-2 text-xs"><p>{item.summary} <span className="text-muted-foreground">· {item.sourceType.replaceAll("_", " ")}</span></p>{item.provenance ? <p className="mt-1 text-muted-foreground">{item.provenance.provider} · {item.provenance.recordType} · {item.provenance.status.replaceAll("_", " ")}. {item.provenance.disclosure}</p> : null}</div>)}</div>
         <div className="space-y-2">{appeal.rubricDefinition.map((criterion) => <label key={criterion.id} className="flex items-start gap-2 text-sm"><input type="checkbox" className="mt-1" checked={checked[criterion.requirement] === true} onChange={(event) => setAppealChecks((current) => ({ ...current, [appeal.id]: { ...(current[appeal.id] || {}), [criterion.requirement]: event.target.checked } }))} /><span>{criterion.requirement}<span className="block text-[11px] text-muted-foreground">{criterion.guidance} · weight {criterion.weight}</span></span></label>)}</div>
         <Textarea value={summaryValue} onChange={(event) => setAppealSummaries((current) => ({ ...current, [appeal.id]: event.target.value }))} placeholder="Explain why the original decision stands or why the evidence now meets the rubric." className="min-h-24" />
         <div className="flex flex-wrap gap-2"><Button variant="outline" disabled={summaryValue.trim().length < 3 || resolveAppeal.isPending} onClick={() => resolveAppeal.mutate({ appeal, decision: "upheld" })}>Uphold revision</Button><Button disabled={summaryValue.trim().length < 3 || !allRequiredMet || resolveAppeal.isPending} onClick={() => resolveAppeal.mutate({ appeal, decision: "reconsidered" })}>Reconsider—evidence met</Button></div>
@@ -184,6 +201,7 @@ export default function MissionReviewPage() {
           <p>{item.summary}</p>
           <p className="mt-1 text-xs text-muted-foreground">{item.sourceType.replaceAll("_", " ")} · {item.confidence.replaceAll("_", " ")}{item.sourceReference ? " · source reference supplied" : ""}</p>
           {safeSourceUrl(item.sourceReference) && <a className="mt-1 block break-all text-xs text-primary underline" href={safeSourceUrl(item.sourceReference)!} target="_blank" rel="noreferrer">Open supplied reference</a>}
+          {item.provenance ? <div className="mt-2 rounded border border-primary/10 bg-background/30 p-2 text-xs text-muted-foreground"><p>{item.provenance.provider} · {item.provenance.recordType} · observed {new Date(item.provenance.observedAt).toLocaleString()} · {item.provenance.status.replaceAll("_", " ")}</p><p className="mt-1">{item.provenance.disclosure}</p></div> : null}
         </div>) : <p className="text-sm text-muted-foreground">No evidence has been submitted yet.</p>}
       </div>
       {data.contract.requiredEvidence.length > 0 && <div className="space-y-2">
