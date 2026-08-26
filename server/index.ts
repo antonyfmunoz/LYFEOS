@@ -205,6 +205,7 @@ app.use("/api/webhooks/clerk", createDistributedRateLimiter("webhook.clerk", 120
 app.use("/api/public/forms", createDistributedRateLimiter("public.forms", 30, false));
 app.use("/api/profile/generate-affirmation", createRateLimiter(qualificationRequestLimit(5), 60 * 1000));
 app.use("/api/voice-command", createRateLimiter(qualificationRequestLimit(20), 60 * 1000));
+app.use("/api/ai/orchestration-runs", createRateLimiter(qualificationRequestLimit(10), 60 * 1000, true));
 // The isolated authenticated journey exercises the whole API through one local
 // loopback address. Keep the production ceiling unchanged while preventing the
 // shared CI harness from turning unrelated later tests into 429 cascades.

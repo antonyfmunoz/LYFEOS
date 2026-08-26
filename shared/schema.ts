@@ -2373,6 +2373,100 @@ export const aiContextReceipts = pgTable("ai_context_receipts", {
   index("ai_context_receipts_user_created_idx").on(table.userId, table.createdAt),
 ]);
 
+// Durable, owner-scoped voice and meeting records. A session is deliberately
+// separate from chat history: it groups a real-time transcript, completion
+// state, and reviewable extractive outputs without implying that a model
+// verified the user's statements.
+export const aiVoiceSessions = pgTable("ai_voice_sessions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  conversationId: integer("conversation_id").references(() => conversations.id, { onDelete: "set null" }),
+  title: varchar("title", { length: 160 }).notNull(),
+  purpose: text("purpose").notNull().default("command"),
+  status: text("status").notNull().default("active"),
+  summaryMethod: text("summary_method"),
+  summary: text("summary"),
+  keyPoints: jsonb("key_points").notNull().default([]),
+  actionItems: jsonb("action_items").notNull().default([]),
+  transcriptStartedAt: timestamp("transcript_started_at").notNull().defaultNow(),
+  endedAt: timestamp("ended_at"),
+  version: integer("version").notNull().default(1),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("ai_voice_sessions_user_created_idx").on(table.userId, table.createdAt),
+  index("ai_voice_sessions_user_status_idx").on(table.userId, table.status),
+]);
+
+export const aiVoiceSessionSegments = pgTable("ai_voice_session_segments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  sessionId: uuid("session_id").notNull().references(() => aiVoiceSessions.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  speaker: text("speaker").notNull(),
+  transcript: text("transcript").notNull(),
+  source: text("source").notNull(),
+  idempotencyKey: uuid("idempotency_key").notNull(),
+  occurredAt: timestamp("occurred_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("ai_voice_segments_session_idempotency_unique").on(table.sessionId, table.idempotencyKey),
+  index("ai_voice_segments_session_occurred_idx").on(table.sessionId, table.occurredAt, table.id),
+  index("ai_voice_segments_user_created_idx").on(table.userId, table.createdAt),
+]);
+
+export type AIVoiceSession = typeof aiVoiceSessions.$inferSelect;
+export type AIVoiceSessionSegment = typeof aiVoiceSessionSegments.$inferSelect;
+
+// Governed multi-role orchestration. Capability snapshots make negative
+// authority explicit: an approved synthesis run is not permission to browse,
+// mutate records, or send anything outside LyfeOS.
+export const aiOrchestrationRuns = pgTable("ai_orchestration_runs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  objective: text("objective").notNull(),
+  contextText: text("context_text"),
+  status: text("status").notNull().default("draft"),
+  requestedAgents: jsonb("requested_agents").notNull().default([]),
+  allowedDomains: jsonb("allowed_domains").notNull().default([]),
+  capabilitySnapshot: jsonb("capability_snapshot").notNull().default({ externalAccess: false, mutations: false, externalSend: false }),
+  sourceManifest: jsonb("source_manifest").notNull().default([]),
+  provider: text("provider"),
+  model: text("model"),
+  failureCode: text("failure_code"),
+  version: integer("version").notNull().default(1),
+  approvedAt: timestamp("approved_at"),
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("ai_orchestration_runs_user_created_idx").on(table.userId, table.createdAt),
+  index("ai_orchestration_runs_user_status_idx").on(table.userId, table.status),
+]);
+
+export const aiOrchestrationSteps = pgTable("ai_orchestration_steps", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  runId: uuid("run_id").notNull().references(() => aiOrchestrationRuns.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  stepOrder: integer("step_order").notNull(),
+  agentKind: text("agent_kind").notNull(),
+  instruction: text("instruction").notNull(),
+  status: text("status").notNull().default("pending"),
+  output: text("output"),
+  provider: text("provider"),
+  model: text("model"),
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("ai_orchestration_steps_run_order_unique").on(table.runId, table.stepOrder),
+  index("ai_orchestration_steps_user_created_idx").on(table.userId, table.createdAt),
+]);
+
+export type AIOrchestrationRun = typeof aiOrchestrationRuns.$inferSelect;
+export type AIOrchestrationStep = typeof aiOrchestrationSteps.$inferSelect;
+
 // A provider evidence binding stores only the minimum immutable provenance
 // needed to explain a user's explicit Mission-evidence attachment. The source
 // payload remains in the private Health domain. Deleting that source is always

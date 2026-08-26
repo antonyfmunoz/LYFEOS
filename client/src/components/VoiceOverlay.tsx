@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Loader2, Mic, MicOff, Square, ChevronUp, ChevronDown, GripHorizontal } from 'lucide-react';
 import { useVoiceControl } from '@/hooks/use-voice-control';
 import { useLYFEOS } from '@/lib/context';
@@ -12,6 +12,11 @@ interface VoiceCommandResponse {
   understood: boolean;
 }
 
+interface VoiceSessionRef {
+  id: string;
+  version: number;
+}
+
 export default function VoiceOverlay() {
   const { activeChatSessionId, chatSessions, aiCompanionName } = useLYFEOS();
   const { executeToolActions } = useNovaActions();
@@ -22,6 +27,7 @@ export default function VoiceOverlay() {
   const [transcript, setTranscript] = useState('');
   const [feedback, setFeedback] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const voiceSessionRef = useRef<VoiceSessionRef | null>(null);
 
   const showFeedbackMsg = useCallback((message: string) => {
     setFeedback(message);
@@ -35,11 +41,63 @@ export default function VoiceOverlay() {
     return match ? match[1] : null;
   }, [activeChatSessionId, chatSessions]);
 
+  const createVoiceSession = useCallback(async (): Promise<void> => {
+    if (voiceSessionRef.current) return;
+    const conversationId = getDbConversationId();
+    const data = await apiRequest<{ session: VoiceSessionRef }>("/api/ai/voice-sessions", {
+      method: "POST",
+      body: JSON.stringify({
+        title: "Voice session",
+        purpose: "command",
+        conversationId: conversationId ? Number(conversationId) : undefined,
+      }),
+    });
+    voiceSessionRef.current = { id: data.session.id, version: data.session.version };
+    queryClient.invalidateQueries({ queryKey: ["/api/ai/voice-sessions"] });
+  }, [getDbConversationId]);
+
+  const appendVoiceSegment = useCallback(async (speaker: "user" | "assistant", value: string): Promise<void> => {
+    const session = voiceSessionRef.current;
+    const transcriptValue = value.trim();
+    if (!session || !transcriptValue) return;
+    await apiRequest(`/api/ai/voice-sessions/${session.id}/segments`, {
+      method: "POST",
+      body: JSON.stringify({
+        speaker,
+        transcript: transcriptValue,
+        source: speaker === "user" ? "browser_speech" : "assistant",
+        idempotencyKey: crypto.randomUUID(),
+        occurredAt: new Date().toISOString(),
+      }),
+    });
+  }, []);
+
+  const completeVoiceSession = useCallback(async (): Promise<void> => {
+    const session = voiceSessionRef.current;
+    voiceSessionRef.current = null;
+    if (!session) return;
+    try {
+      await apiRequest(`/api/ai/voice-sessions/${session.id}/complete`, {
+        method: "POST",
+        body: JSON.stringify({ expectedVersion: session.version }),
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/ai/voice-sessions"] });
+    } catch (error) {
+      console.error("Voice session completion error:", error);
+    }
+  }, []);
+
   const handleCommand = useCallback(async (finalTranscript: string) => {
     setIsProcessing(true);
     setTranscript(finalTranscript);
 
     try {
+      try {
+        await createVoiceSession();
+        await appendVoiceSegment("user", finalTranscript);
+      } catch (error) {
+        console.error("Voice transcript storage error:", error);
+      }
       await new Promise<void>(resolve => {
         const detail = { onComplete: resolve };
         window.dispatchEvent(new CustomEvent("nova-flush-pending-save", { detail }));
@@ -62,13 +120,18 @@ export default function VoiceOverlay() {
       queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
 
       showFeedbackMsg(data.speech || "Command processed.");
+      try {
+        await appendVoiceSegment("assistant", data.speech || "Command processed.");
+      } catch (error) {
+        console.error("Voice response storage error:", error);
+      }
     } catch (error) {
       console.error("Voice command error:", error);
       showFeedbackMsg("Connection issue. Try again.");
     } finally {
       setIsProcessing(false);
     }
-  }, [executeToolActions, showFeedbackMsg, getDbConversationId]);
+  }, [executeToolActions, showFeedbackMsg, getDbConversationId, createVoiceSession, appendVoiceSegment]);
 
   const onVoiceCommand = useCallback((command: { raw: string }) => {
     handleCommand(command.raw);
@@ -79,11 +142,12 @@ export default function VoiceOverlay() {
     onTranscript: setTranscript,
   });
 
-  const handleToggleVoice = useCallback(() => {
+  const handleToggleVoice = useCallback(async () => {
     if (showOverlay) {
       if (isListening) {
         stopListening();
       }
+      void completeVoiceSession();
       setShowOverlay(false);
       setTranscript('');
       setFeedback('');
@@ -92,9 +156,14 @@ export default function VoiceOverlay() {
       setShowOverlay(true);
       setTranscript('');
       setFeedback('');
+      try {
+        await createVoiceSession();
+      } catch (error) {
+        console.error("Voice session creation error:", error);
+      }
       startListening();
     }
-  }, [showOverlay, isListening, stopListening, startListening, resetPosition]);
+  }, [showOverlay, isListening, stopListening, startListening, resetPosition, createVoiceSession, completeVoiceSession]);
 
   const handleStop = useCallback(() => {
     if (isListening) {
@@ -104,7 +173,8 @@ export default function VoiceOverlay() {
     setTranscript('');
     setFeedback('');
     resetPosition();
-  }, [isListening, stopListening, resetPosition]);
+    void completeVoiceSession();
+  }, [isListening, stopListening, resetPosition, completeVoiceSession]);
 
   const handlePauseResume = useCallback(() => {
     if (isListening) {
@@ -118,11 +188,13 @@ export default function VoiceOverlay() {
 
   useEffect(() => {
     const handler = () => {
-      handleToggleVoice();
+      void handleToggleVoice();
     };
     window.addEventListener('toggle-voice-control', handler);
     return () => window.removeEventListener('toggle-voice-control', handler);
   }, [handleToggleVoice]);
+
+  useEffect(() => () => { void completeVoiceSession(); }, [completeVoiceSession]);
 
   if (!isSupported || !showOverlay) return null;
 

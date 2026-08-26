@@ -134,7 +134,7 @@ jobs:
           fi
 
           test_status=0
-          npx vitest run tests/api-messages-convergence.test.ts tests/api-transformation-intelligence.test.ts tests/api-auth.test.ts tests/api-thread-capability-focus.test.ts tests/api-mission-consequence-preflight.test.ts tests/api-health-insight-interpretations.test.ts tests/api-cross-domain-hypotheses.test.ts tests/api-gamification-contract.test.ts tests/api-ai-governance.test.ts tests/api-relationship-governance.test.ts tests/api-food-catalog.test.ts tests/api-spreadsheets.test.ts tests/api-tables-forms.test.ts tests/api-calendar-window.test.ts tests/api-calendar-offline-concurrency.test.ts tests/api-workflow-automation-recovery.test.ts tests/api-scheduled-automations.test.ts tests/api-project-lifecycle-recovery.test.ts tests/api-mission-source-convergence.test.ts tests/api-mission-provider-evidence.test.ts tests/api-data-rights.test.ts tests/api-product-analytics.test.ts tests/api-planning-context-amendments.test.ts tests/api-workspace-search-scale.test.ts tests/api-personal-finance.test.ts tests/db-distributed-rate-limit.test.ts || test_status=$?
+          npx vitest run tests/api-messages-convergence.test.ts tests/api-transformation-intelligence.test.ts tests/api-auth.test.ts tests/api-thread-capability-focus.test.ts tests/api-mission-consequence-preflight.test.ts tests/api-health-insight-interpretations.test.ts tests/api-cross-domain-hypotheses.test.ts tests/api-gamification-contract.test.ts tests/api-ai-governance.test.ts tests/api-ai-voice-orchestration.test.ts tests/api-relationship-governance.test.ts tests/api-food-catalog.test.ts tests/api-spreadsheets.test.ts tests/api-tables-forms.test.ts tests/api-calendar-window.test.ts tests/api-calendar-offline-concurrency.test.ts tests/api-workflow-automation-recovery.test.ts tests/api-scheduled-automations.test.ts tests/api-project-lifecycle-recovery.test.ts tests/api-mission-source-convergence.test.ts tests/api-mission-provider-evidence.test.ts tests/api-data-rights.test.ts tests/api-product-analytics.test.ts tests/api-planning-context-amendments.test.ts tests/api-workspace-search-scale.test.ts tests/api-personal-finance.test.ts tests/db-distributed-rate-limit.test.ts || test_status=$?
           if [ "$test_status" -eq 0 ]; then
             npx vitest run tests/db-umh-federation-conformance.test.ts || test_status=$?
           fi
@@ -168,11 +168,11 @@ jobs:
           }
           source_fingerprint="$(schema_fingerprint "$DATABASE_URL")"
           source_migrations="$(psql "$DATABASE_URL" -At -v ON_ERROR_STOP=1 -c 'SELECT string_agg(id, '"'"','"'"' ORDER BY id) FROM lyfeos_schema_migrations')"
-          test "$(psql "$DATABASE_URL" -At -v ON_ERROR_STOP=1 -c 'SELECT count(*) FROM lyfeos_schema_migrations')" = "123"
+          test "$(psql "$DATABASE_URL" -At -v ON_ERROR_STOP=1 -c 'SELECT count(*) FROM lyfeos_schema_migrations')" = "125"
           pg_dump "$DATABASE_URL" --format=custom --no-owner --no-acl --file="$backup"
           test -s "$backup"
           psql "postgresql://postgres:postgres@127.0.0.1:5432/postgres" -v ON_ERROR_STOP=1 -c 'CREATE DATABASE lyfeos_restore_ci' >/dev/null
           pg_restore --dbname="$restored_url" --no-owner --no-acl --exit-on-error "$backup"
           test "$(schema_fingerprint "$restored_url")" = "$source_fingerprint"
           test "$(psql "$restored_url" -At -v ON_ERROR_STOP=1 -c 'SELECT string_agg(id, '"'"','"'"' ORDER BY id) FROM lyfeos_schema_migrations')" = "$source_migrations"
-          test "$(psql "$restored_url" -At -v ON_ERROR_STOP=1 -c 'SELECT count(*) FROM lyfeos_schema_migrations')" = "123"
+          test "$(psql "$restored_url" -At -v ON_ERROR_STOP=1 -c 'SELECT count(*) FROM lyfeos_schema_migrations')" = "125"

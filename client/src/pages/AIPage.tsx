@@ -22,6 +22,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { AIMessage, ChatSession } from "../lib/types";
 import { useIsMobile } from "../hooks/use-mobile";
+import VoiceSessionArchive from "@/components/ai/VoiceSessionArchive";
+import AgentWorkspace from "@/components/ai/AgentWorkspace";
 
 export default function AIPage() {
   // Set the page title
@@ -511,7 +513,8 @@ export default function AIPage() {
               ))}
             </div>
           </div>
-          
+          <VoiceSessionArchive />
+          <AgentWorkspace />
           </div>
         
         {/* Main Chat Window */}
