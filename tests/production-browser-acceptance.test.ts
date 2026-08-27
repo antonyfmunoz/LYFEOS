@@ -54,6 +54,7 @@ describe("production browser acceptance custody", () => {
   it("binds the run to an immutable deployed source and preserves evidence on failure", () => {
     expect(workflow).toContain("ref: ${{ inputs.source }}");
     expect(workflow).toContain("Verify deployed immutable source");
+    expect(workflow).toContain("value.sourceRevision");
     expect(workflow).toContain('test "$reported" = "$expected"');
     expect(workflow).toContain("LYFEOS_ACCEPTANCE_REQUIRE_AUTHENTICATED: ${{ inputs.require_authenticated }}");
     expect(workflow).toContain("LYFEOS_ACCEPTANCE_EMAIL: ${{ secrets.LYFEOS_ACCEPTANCE_EMAIL }}");
