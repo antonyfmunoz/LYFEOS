@@ -56,7 +56,7 @@ export default function LoginPage() {
         <h1 className="text-4xl font-orbitron font-bold mb-2"><span className="text-white">LYFE</span><span style={{ color: accent?.color || 'white' }}>OS</span></h1>
         <p className="text-white">Your personal life operating system</p>
       </div>
-      <div className="flex-1 flex items-center w-full justify-center">
+      <main className="flex-1 flex items-center w-full justify-center">
       <div className="w-full max-w-md rounded-xl p-6 border backdrop-blur-md"
            style={{ backgroundColor: "hsla(0, 0%, 11%, 0.7)", boxShadow: `0 0 20px ${accent?.glow || 'rgba(255,255,255,0.08)'}`, borderColor: accent?.border20 || 'rgba(255,255,255,0.2)' }}>
         <h2 className="text-xl font-orbitron text-center mb-6" style={{ color: accent?.color || 'white' }}>Login</h2>
@@ -168,7 +168,7 @@ export default function LoginPage() {
           </Link>
         </div>
       </div>
-      </div>
+      </main>
     </div>
   );
 }

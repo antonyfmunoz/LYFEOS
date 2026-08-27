@@ -206,6 +206,13 @@ async function auditRoute(page: Page, route: string, kind: RouteKind, viewportNa
     if (message.type() !== "error") return;
     const text = message.text();
     if (/posthog|sentry.*transport|favicon/i.test(text)) return;
+    const locationUrl = message.location().url;
+    if (
+      kind === "public"
+      && /Failed to load resource: the server responded with a status of 401/i.test(text)
+      && locationUrl
+      && new URL(locationUrl).pathname === "/api/auth/me"
+    ) return;
     consoleErrors.push(text.slice(0, 500));
   };
 

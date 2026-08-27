@@ -54,6 +54,19 @@ describe("shared accessibility shell", () => {
     expect(register).toContain('aria-describedby={error ? "registration-error" : undefined}');
   });
 
+  it("keeps login and account recovery landmarks, names, and route titles accessible", () => {
+    const login = readFileSync(resolve(process.cwd(), "client/src/pages/LoginPage.tsx"), "utf8");
+    const forgot = readFileSync(resolve(process.cwd(), "client/src/pages/ForgotPasswordPage.tsx"), "utf8");
+    const brandRuntime = readFileSync(resolve(process.cwd(), "client/src/components/InstallationBrandRuntime.tsx"), "utf8");
+    expect(login).toContain('<main className="flex-1 flex items-center w-full justify-center">');
+    expect(forgot).toContain('<main className="flex-1 flex items-center w-full justify-center">');
+    expect(forgot).toContain('usePageTitle("Reset Password")');
+    expect(forgot).toContain('<label htmlFor="reset-email"');
+    expect(forgot).toContain('id="reset-email"');
+    expect(forgot).toContain('autoComplete="email"');
+    expect(brandRuntime).toContain('if (document.title === "LYFEOS - Dashboard")');
+  });
+
   it("keeps automation loading, failure, selection, and schedule state explicit", () => {
     const automations = readFileSync(resolve(process.cwd(), "client/src/pages/AutomationsPage.tsx"), "utf8");
     expect(automations).not.toContain('<main className="space-y-5">');

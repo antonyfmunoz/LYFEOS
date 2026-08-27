@@ -3,8 +3,10 @@ import { Link, useLocation } from "wouter";
 import { Loader2, ArrowLeft, Mail } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useSignIn } from "@clerk/clerk-react";
+import { usePageTitle } from "@/hooks/use-page-title";
 
 export default function ForgotPasswordPage() {
+  usePageTitle("Reset Password");
   const { signIn } = useSignIn();
   const [, navigate] = useLocation();
   const [email, setEmail] = useState("");
@@ -39,7 +41,7 @@ export default function ForgotPasswordPage() {
         <h1 className="text-4xl font-orbitron font-bold mb-2"><span className="text-white">LYFE</span><span style={{ color: accent?.color || 'white' }}>OS</span></h1>
         <p className="text-white">Your personal life operating system</p>
       </div>
-      <div className="flex-1 flex items-center w-full justify-center">
+      <main className="flex-1 flex items-center w-full justify-center">
       {submitted ? (
         <div className="w-full max-w-md rounded-xl p-6 border backdrop-blur-md text-center space-y-4"
              style={{ backgroundColor: "hsla(0, 0%, 11%, 0.7)", boxShadow: `0 0 20px ${accent?.glow || 'rgba(255,255,255,0.08)'}`, borderColor: accent?.border20 || 'rgba(255,255,255,0.2)' }}>
@@ -81,9 +83,11 @@ export default function ForgotPasswordPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <label className="block text-sm text-white">EMAIL</label>
+              <label htmlFor="reset-email" className="block text-sm text-white">EMAIL</label>
               <Input
+                id="reset-email"
                 type="email"
+                autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full bg-transparent rounded-lg p-3 outline-none text-white"
@@ -120,7 +124,7 @@ export default function ForgotPasswordPage() {
           </div>
         </div>
       )}
-      </div>
+      </main>
     </div>
   );
 }

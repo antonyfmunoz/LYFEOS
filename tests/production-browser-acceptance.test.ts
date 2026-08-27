@@ -48,6 +48,7 @@ describe("production browser acceptance custody", () => {
     expect(script).toContain("failedRequests");
     expect(script).toContain("serverErrors");
     expect(script).toContain("consoleErrors");
+    expect(script).toContain('new URL(locationUrl).pathname === "/api/auth/me"');
     expect(script).toContain("does not substitute for human screen-reader comprehension");
   });
 

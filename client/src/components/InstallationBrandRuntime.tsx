@@ -13,7 +13,11 @@ export default function InstallationBrandRuntime() {
       .then((response) => response.ok ? response.json() : null)
       .then((projection: BrandProjection | null) => {
         if (!projection || projection.productKey !== "lyfeos" || projection.productOwner !== "OST") return;
-        document.title = `${projection.brand.productName} - Dashboard`;
+        // Page-level title hooks own route context. Only brand the untouched
+        // bootstrap title so an asynchronous projection cannot clobber it.
+        if (document.title === "LYFEOS - Dashboard") {
+          document.title = `${projection.brand.productName} - Dashboard`;
+        }
         document.documentElement.dataset.installationBrand = projection.brand.shortName;
         let theme = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
         if (!theme) { theme = document.createElement("meta"); theme.name = "theme-color"; document.head.appendChild(theme); }
