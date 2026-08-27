@@ -1,6 +1,8 @@
 name: Production browser acceptance
 
 on:
+  schedule:
+    - cron: "30 6 * * *"
   workflow_dispatch:
     inputs:
       source:
@@ -29,12 +31,24 @@ jobs:
       LYFEOS_ACCEPTANCE_BASE_URL: https://lyfeos.net
       LYFEOS_ACCEPTANCE_EMAIL: ${{ secrets.LYFEOS_ACCEPTANCE_EMAIL }}
       LYFEOS_ACCEPTANCE_PASSWORD: ${{ secrets.LYFEOS_ACCEPTANCE_PASSWORD }}
-      LYFEOS_ACCEPTANCE_REQUIRE_AUTHENTICATED: ${{ inputs.require_authenticated }}
-      LYFEOS_ACCEPTANCE_SOURCE: ${{ inputs.source }}
+      LYFEOS_ACCEPTANCE_REQUIRE_AUTHENTICATED: ${{ github.event_name == 'workflow_dispatch' && inputs.require_authenticated || 'false' }}
     steps:
+      - name: Resolve deployed immutable source
+        id: release
+        shell: bash
+        env:
+          REQUESTED_SOURCE: ${{ inputs.source }}
+        run: |
+          reported="$(curl --fail --silent --show-error https://lyfeos.net/api/release | jq -r '.sourceRevision')"
+          [[ "$reported" =~ ^[0-9a-f]{40}$ ]]
+          if [ -n "$REQUESTED_SOURCE" ] && [ "$REQUESTED_SOURCE" != "$reported" ]; then
+            echo "Requested source $REQUESTED_SOURCE is not the deployed source $reported" >&2
+            exit 1
+          fi
+          echo "source=$reported" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.source }}
+          ref: ${{ steps.release.outputs.source }}
       - uses: actions/setup-node@v7
         with:
           node-version: 20
@@ -54,13 +68,14 @@ jobs:
       - name: Run production browser acceptance
         env:
           LYFEOS_CHROMIUM_PATH: ${{ steps.chrome.outputs.chrome-path }}
+          LYFEOS_ACCEPTANCE_SOURCE: ${{ steps.release.outputs.source }}
           LYFEOS_ACCEPTANCE_OUTPUT_DIR: ${{ runner.temp }}/lyfeos-browser-acceptance
         run: npm run acceptance:browser
       - name: Upload acceptance evidence
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: lyfeos-production-browser-acceptance-${{ inputs.source }}
+          name: lyfeos-production-browser-acceptance-${{ steps.release.outputs.source }}
           path: ${{ runner.temp }}/lyfeos-browser-acceptance
           if-no-files-found: error
           retention-days: 30

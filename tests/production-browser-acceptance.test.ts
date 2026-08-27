@@ -53,11 +53,14 @@ describe("production browser acceptance custody", () => {
   });
 
   it("binds the run to an immutable deployed source and preserves evidence on failure", () => {
-    expect(workflow).toContain("ref: ${{ inputs.source }}");
+    expect(workflow).toContain('cron: "30 6 * * *"');
+    expect(workflow).toContain("Resolve deployed immutable source");
+    expect(workflow).toContain("ref: ${{ steps.release.outputs.source }}");
     expect(workflow).toContain("Verify deployed immutable source");
     expect(workflow).toContain("value.sourceRevision");
     expect(workflow).toContain('test "$reported" = "$expected"');
-    expect(workflow).toContain("LYFEOS_ACCEPTANCE_REQUIRE_AUTHENTICATED: ${{ inputs.require_authenticated }}");
+    expect(workflow).toContain("github.event_name == 'workflow_dispatch' && inputs.require_authenticated || 'false'");
+    expect(workflow).toContain("LYFEOS_ACCEPTANCE_SOURCE: ${{ steps.release.outputs.source }}");
     expect(workflow).toContain("LYFEOS_ACCEPTANCE_EMAIL: ${{ secrets.LYFEOS_ACCEPTANCE_EMAIL }}");
     expect(workflow).toContain("LYFEOS_ACCEPTANCE_PASSWORD: ${{ secrets.LYFEOS_ACCEPTANCE_PASSWORD }}");
     expect(workflow).toContain("if: always()");
