@@ -31,7 +31,6 @@ jobs:
       LYFEOS_ACCEPTANCE_PASSWORD: ${{ secrets.LYFEOS_ACCEPTANCE_PASSWORD }}
       LYFEOS_ACCEPTANCE_REQUIRE_AUTHENTICATED: ${{ inputs.require_authenticated }}
       LYFEOS_ACCEPTANCE_SOURCE: ${{ inputs.source }}
-      LYFEOS_ACCEPTANCE_OUTPUT_DIR: ${{ runner.temp }}/lyfeos-browser-acceptance
     steps:
       - uses: actions/checkout@v7
         with:
@@ -55,6 +54,7 @@ jobs:
       - name: Run production browser acceptance
         env:
           LYFEOS_CHROMIUM_PATH: ${{ steps.chrome.outputs.chrome-path }}
+          LYFEOS_ACCEPTANCE_OUTPUT_DIR: ${{ runner.temp }}/lyfeos-browser-acceptance
         run: npm run acceptance:browser
       - name: Upload acceptance evidence
         if: always()
