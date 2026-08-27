@@ -1,0 +1,66 @@
+name: Production browser acceptance
+
+on:
+  workflow_dispatch:
+    inputs:
+      source:
+        description: Immutable LyfeOS source revision expected in production
+        required: true
+        type: string
+      require_authenticated:
+        description: Fail unless the protected production suite executes
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lyfeos-production-browser-acceptance
+  cancel-in-progress: false
+
+jobs:
+  production-browser-acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+    env:
+      LYFEOS_ACCEPTANCE_BASE_URL: https://lyfeos.net
+      LYFEOS_ACCEPTANCE_EMAIL: ${{ secrets.LYFEOS_ACCEPTANCE_EMAIL }}
+      LYFEOS_ACCEPTANCE_PASSWORD: ${{ secrets.LYFEOS_ACCEPTANCE_PASSWORD }}
+      LYFEOS_ACCEPTANCE_REQUIRE_AUTHENTICATED: ${{ inputs.require_authenticated }}
+      LYFEOS_ACCEPTANCE_SOURCE: ${{ inputs.source }}
+      LYFEOS_ACCEPTANCE_OUTPUT_DIR: ${{ runner.temp }}/lyfeos-browser-acceptance
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.source }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+          cache: npm
+      - uses: browser-actions/setup-chrome@v2
+        id: chrome
+        with:
+          chrome-version: stable
+      - run: npm ci
+      - name: Verify deployed immutable source
+        shell: bash
+        run: |
+          expected="$(git rev-parse HEAD)"
+          reported="$(curl --fail --silent --show-error https://lyfeos.net/api/release | node -e 'let body=""; process.stdin.on("data", chunk => body += chunk); process.stdin.on("end", () => { const value=JSON.parse(body); process.stdout.write(value.source || value.release?.source || ""); });')"
+          test -n "$reported"
+          test "$reported" = "$expected"
+      - name: Run production browser acceptance
+        env:
+          LYFEOS_CHROMIUM_PATH: ${{ steps.chrome.outputs.chrome-path }}
+        run: npm run acceptance:browser
+      - name: Upload acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: lyfeos-production-browser-acceptance-${{ inputs.source }}
+          path: ${{ runner.temp }}/lyfeos-browser-acceptance
+          if-no-files-found: error
+          retention-days: 30
