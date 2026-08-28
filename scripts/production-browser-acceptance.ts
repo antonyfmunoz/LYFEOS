@@ -288,15 +288,12 @@ async function auditRoute(page: Page, route: string, kind: RouteKind, viewportNa
       }
       const duplicateIds = [...ids.entries()].filter(([, count]) => count > 1).map(([id]) => id).sort();
 
-      const isRendered = (element: HTMLElement) => {
-        const style = window.getComputedStyle(element);
-        return style.display !== "none" && style.visibility !== "hidden" && element.getClientRects().length > 0;
-      };
       const unlabeledControls = [...document.querySelectorAll<HTMLElement>("button,input,select,textarea")]
         .filter((element) => {
           if (element.getAttribute("aria-hidden") === "true") return false;
           if (element instanceof HTMLInputElement && element.type === "hidden") return false;
-          if (!isRendered(element)) return false;
+          const style = window.getComputedStyle(element);
+          if (style.display === "none" || style.visibility === "hidden" || element.getClientRects().length === 0) return false;
           const id = element.id;
           const label = id ? document.querySelector(`label[for="${CSS.escape(id)}"]`) : null;
           const wrappingLabel = element.closest("label");
@@ -328,7 +325,10 @@ async function auditRoute(page: Page, route: string, kind: RouteKind, viewportNa
         unlabeledControls,
         mainCount: document.querySelectorAll("main,[role=main]").length,
         headingCount: document.querySelectorAll("h1,h2,h3,h4,h5,h6,[role=heading]").length,
-        tabbableCount: [...document.querySelectorAll<HTMLElement>('a[href],button:not([disabled]),input:not([disabled]):not([type="hidden"]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])')].filter(isRendered).length,
+        tabbableCount: [...document.querySelectorAll<HTMLElement>('a[href],button:not([disabled]),input:not([disabled]):not([type="hidden"]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])')].filter((element) => {
+          const style = window.getComputedStyle(element);
+          return style.display !== "none" && style.visibility !== "hidden" && element.getClientRects().length > 0;
+        }).length,
         horizontalOverflowPx: Math.max(0, documentWidth - window.innerWidth),
         timings: {
           domContentLoadedMs: navigation?.domContentLoadedEventEnd ?? null,

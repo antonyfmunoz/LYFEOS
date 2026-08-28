@@ -73,6 +73,7 @@ describe("production browser acceptance custody", () => {
     expect(script).toContain("state.remaining <= 50");
     expect(script).toContain('element.closest("label")');
     expect(script).toContain('style.display !== "none"');
+    expect(script).not.toContain("const isRendered");
     expect(script).toContain('document.body.focus()');
     expect(script).toContain("element.getAttribute(\"placeholder\")");
     expect(script).toContain("lucide-");
