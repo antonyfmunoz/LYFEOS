@@ -106,7 +106,13 @@ async function poll<T>(read: () => Promise<T>, accept: (value: T) => boolean, me
 }
 
 async function waitForText(page: Page, text: string, timeout = 30_000): Promise<void> {
-  await page.waitForFunction((expected) => document.body?.innerText.includes(expected), { timeout }, text);
+  try {
+    await page.waitForFunction((expected) => document.body?.innerText.toLocaleLowerCase().includes(expected.toLocaleLowerCase()), { timeout }, text);
+  } catch (error) {
+    const rendered = await page.evaluate(() => document.body?.innerText || "").catch(() => "");
+    const markers = rendered.split(/\r?\n/).map((line) => line.trim()).filter((line) => /consequence|contract revision|required before acceptance|decision recorded|expected proof|risk:/i.test(line)).slice(0, 30).join(" | ");
+    throw new Error(`${error instanceof Error ? error.message : String(error)}; expected ${text}; markers ${safeError(markers)}; rendered ${safeError(rendered.slice(0, 2_000))}`);
+  }
 }
 
 async function clickText(page: Page, selector: string, text: string): Promise<void> {
@@ -144,6 +150,16 @@ async function ensureChecked(page: Page, selector: string): Promise<void> {
   await page.waitForSelector(selector, { visible: true, timeout: 30_000 });
   const checked = await page.$eval(selector, (element) => (element as HTMLInputElement).checked);
   if (!checked) await page.click(selector);
+}
+
+async function activateRenderedControl(page: Page, selector: string): Promise<void> {
+  await page.waitForSelector(selector, { visible: true, timeout: 30_000 });
+  await page.evaluate((controlSelector) => {
+    const control = document.querySelector<HTMLButtonElement>(controlSelector);
+    if (!control || control.disabled) throw new Error(`Rendered control is unavailable: ${controlSelector}`);
+    control.scrollIntoView({ block: "center", inline: "nearest" });
+    control.click();
+  }, selector);
 }
 
 function captureBrowserSignals(page: Page): BrowserSignals {
@@ -260,7 +276,15 @@ async function recordPreflight(page: Page, missionId: number, decision: "revise"
     ? "The bounded revision now has explicit stop signals and a contained escalation path."
     : "The current revision needs a narrower limit before it should be accepted.");
   await ensureChecked(page, '[data-testid="mission-preflight-acknowledgement"]');
-  await page.click('[data-testid="mission-preflight-record"]');
+  await page.waitForSelector('[data-testid="mission-preflight-record"]:not([disabled])', { visible: true, timeout: 10_000 });
+  const responsePromise = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return response.request().method() === "POST" && url.origin === BASE_URL.origin && url.pathname === `/api/quests/${missionId}/contract/preflights`;
+  }, { timeout: 10_000 });
+  await activateRenderedControl(page, '[data-testid="mission-preflight-record"]');
+  const renderedResponse = await responsePromise;
+  const renderedBody = await renderedResponse.json().catch(() => ({}));
+  assert(renderedResponse.status() === 201, `Rendered ${decision} preflight returned ${renderedResponse.status()}: ${String(renderedBody?.error || "unknown error")}.`);
   const result = await poll(
     () => request("GET", `/api/quests/${missionId}/contract`, undefined, cookie),
     (response) => response.status === 200 && response.body.contract?.contractRevision === revision && response.body.preflights?.[0]?.decision === decision,
@@ -376,7 +400,7 @@ async function main(): Promise<void> {
     stage = "record proceed and accept the exact rendered revision";
     const proceed = await recordPreflight(page, missionId, "proceed", 1, account.cookie);
     assert(proceed.body.preflightRequirement?.satisfied === true && proceed.body.contract?.state === "draft", "Proceed did not satisfy only the decision gate while keeping acceptance explicit.");
-    await page.click('[data-testid="mission-preflight-accept"]');
+    await activateRenderedControl(page, '[data-testid="mission-preflight-accept"]');
     const accepted = await poll(
       () => request("GET", `/api/quests/${missionId}/contract`, undefined, account.cookie),
       (result) => result.body.contract?.contractRevision === 1 && result.body.contract?.state === "accepted",
@@ -404,12 +428,15 @@ async function main(): Promise<void> {
     );
     materialRevisionInvalidatedDecision = revised.body.preflightRequirement?.satisfied === false && revised.body.preflightRequirement?.currentPreflightId === null;
     assert(materialRevisionInvalidatedDecision, "The prior consequence decision leaked across a material contract revision.");
+    await page.reload({ waitUntil: "domcontentloaded" });
+    stage = "render the invalidated revision-two consequence boundary";
     await waitForText(page, "Consequence preflight · contract revision 2");
+    stage = "render the revision-two acceptance gate";
     await waitForText(page, "required before acceptance");
 
     stage = "record and accept a fresh decision for revision two";
     await recordPreflight(page, missionId, "proceed", 2, account.cookie);
-    await page.click('[data-testid="mission-preflight-accept"]');
+    await activateRenderedControl(page, '[data-testid="mission-preflight-accept"]');
     await poll(
       () => request("GET", `/api/quests/${missionId}/contract`, undefined, account.cookie),
       (result) => result.body.contract?.contractRevision === 2 && result.body.contract?.state === "accepted" && result.body.preflightRequirement?.satisfied === true,

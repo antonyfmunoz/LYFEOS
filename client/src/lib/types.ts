@@ -117,6 +117,7 @@ export interface MissionPage {
   xpValue: number;
   tags: string[];
   eventId?: string; // Reference to the original calendar event if applicable
+  questId?: string; // Reference to the canonical Mission if this page documents a Quest
   date?: string; // format: "YYYY-MM-DD" - used for filtering by day
 }
 

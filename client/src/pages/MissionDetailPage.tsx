@@ -423,7 +423,7 @@ export default function MissionDetailPage() {
   
   useEffect(() => {
     if (mission) {
-      const existingPage = missionPages.find(page => page.eventId === mission.id);
+      const existingPage = missionPages.find(page => page.questId === mission.id);
       
       if (existingPage) {
         setMissionPage(existingPage);
@@ -433,14 +433,14 @@ export default function MissionDetailPage() {
         const categoryTag = category.charAt(0).toUpperCase() + category.slice(1);
         const newPage = createMissionPage({
           title: mission.title,
-          slug: mission.title.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, '-'),
+          slug: `mission-${mission.id}-${mission.title.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, '-')}`,
           content: `# ${mission.title}\n\n${mission.description || 'Start documenting this mission...'}\n\n## Notes\n\n- [ ] Add your task items here\n- [ ] Use checkboxes for tasks\n\n## Details\n\n* Time: ${mission.startTime}\n* Duration: ${mission.duration}\n* Category: ${categoryTag}`,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
           completed: false,
           xpValue: 15,
           tags: [categoryTag, 'Mission'],
-          eventId: mission.id
+          questId: mission.id
         });
         
         setMissionPage(newPage);

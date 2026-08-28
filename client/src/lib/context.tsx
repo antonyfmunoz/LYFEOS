@@ -633,6 +633,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
                 xpValue: page.xpValue || page.xp_value || 5,
                 tags: Array.isArray(page.tags) ? page.tags : [],
                 eventId: page.eventId ? String(page.eventId) : (page.event_id ? String(page.event_id) : undefined),
+                questId: page.questId ? String(page.questId) : (page.quest_id ? String(page.quest_id) : undefined),
                 date: page.date
               }));
               
@@ -1302,7 +1303,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
     
     // Save to database if authenticated
     if (isAuthenticated && user) {
-      apiRequest('/api/mission-pages', {
+      apiRequest<{ page?: { id?: number; createdAt?: string; updatedAt?: string } }>('/api/mission-pages', {
         method: 'POST',
         body: JSON.stringify({
           userId: user.id,
@@ -1313,10 +1314,10 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
           xpValue: mission.xpValue || 5,
           tags: mission.tags || [],
           eventId: mission.eventId ? parseInt(mission.eventId) : null,
+          questId: mission.questId ? parseInt(mission.questId) : null,
           date: mission.date || null,
         })
       })
-        .then((response) => response.json())
         .then((data) => {
           // Update the mission page with the real ID from the database
           // Server returns { page: { id, ... } } format

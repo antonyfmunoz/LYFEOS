@@ -22,6 +22,8 @@ import {
   spreadsheetRevisions,
   canvases,
   canvasRevisions,
+  quests,
+  missionPages,
 } from "@shared/schema";
 import { createSpreadsheetRequestSchema, spreadsheetRevisionSnapshotSchema, updateSpreadsheetRequestSchema } from "@shared/spreadsheets";
 import { canvasRevisionSnapshotSchema, createCanvasRequestSchema, updateCanvasRequestSchema } from "@shared/canvases";
@@ -168,6 +170,19 @@ export function registerContentRoutes(app: Express): void {
       // Ensure user can only create pages for their own account
       if (pageData.userId !== req.session.userId) {
         return res.status(403).json({ error: "Not authorized to create mission pages for this user" });
+      }
+
+      if (pageData.questId) {
+        const [ownedQuest] = await db.select({ id: quests.id }).from(quests).where(and(
+          eq(quests.id, pageData.questId),
+          eq(quests.userId, req.session.userId!),
+        )).limit(1);
+        if (!ownedQuest) return res.status(404).json({ error: "Mission not found" });
+        const [existingQuestPage] = await db.select().from(missionPages).where(and(
+          eq(missionPages.questId, pageData.questId),
+          eq(missionPages.userId, req.session.userId!),
+        )).limit(1);
+        if (existingQuestPage) return res.status(200).json({ page: existingQuestPage });
       }
       
       // Check if the slug is already taken

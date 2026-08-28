@@ -876,6 +876,7 @@ export const missionPages = pgTable("mission_pages", {
   xpValue: integer("xp_value").notNull().default(5),
   tags: text("tags").array(),
   eventId: integer("event_id").references(() => calendarEvents.id),
+  questId: integer("quest_id").references(() => quests.id, { onDelete: "cascade" }),
   date: text("date"), // format: "YYYY-MM-DD" - used for filtering by day
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -1075,11 +1076,12 @@ export const userIntegrationsRelations = relations(userIntegrations, ({ one }) =
   }),
 }));
 
-export const questsRelations = relations(quests, ({ one }) => ({
+export const questsRelations = relations(quests, ({ one, many }) => ({
   user: one(users, {
     fields: [quests.userId],
     references: [users.id],
   }),
+  missionPages: many(missionPages),
 }));
 
 export const aiMessagesRelations = relations(aiMessages, ({ one }) => ({
@@ -1105,6 +1107,10 @@ export const missionPagesRelations = relations(missionPages, ({ one }) => ({
   event: one(calendarEvents, {
     fields: [missionPages.eventId],
     references: [calendarEvents.id],
+  }),
+  quest: one(quests, {
+    fields: [missionPages.questId],
+    references: [quests.id],
   }),
 }));
 
@@ -1246,6 +1252,7 @@ export const insertMissionPageSchema = createInsertSchema(missionPages).pick({
   xpValue: true,
   tags: true,
   eventId: true,
+  questId: true,
   date: true,
 });
 
