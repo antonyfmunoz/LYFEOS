@@ -29,6 +29,7 @@ type ActionResult = {
   status: "succeeded" | "failed" | "running";
   targetQuestId?: number;
   attemptCount: number;
+  errorCode?: string;
 };
 
 export type AutomationExecutionResult = {
@@ -58,6 +59,7 @@ function publicActionResult(receipt: ActionReceipt): ActionResult {
     status: receipt.status === "succeeded" ? "succeeded" : receipt.status === "running" ? "running" : "failed",
     ...(receipt.targetQuestId ? { targetQuestId: receipt.targetQuestId } : {}),
     attemptCount: receipt.attemptCount,
+    ...(receipt.lastErrorCode ? { errorCode: receipt.lastErrorCode } : {}),
   };
 }
 
@@ -74,6 +76,7 @@ function storedActionResults(value: unknown): ActionResult[] {
       status: row.status,
       ...(typeof row.targetQuestId === "number" ? { targetQuestId: row.targetQuestId } : {}),
       attemptCount: typeof row.attemptCount === "number" ? row.attemptCount : 1,
+      ...(typeof row.errorCode === "string" ? { errorCode: row.errorCode } : {}),
     }];
   });
 }

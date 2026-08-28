@@ -23,7 +23,7 @@ type AutomationRecord = {
 };
 type AutomationRun = {
   id: number; status: string; triggerType: string; triggerQuestId: number | null;
-  actionResults: Array<{ actionIndex: number; type: string; status: string; targetQuestId?: number; attemptCount: number }>;
+  actionResults: Array<{ actionIndex: number; type: string; status: string; targetQuestId?: number; attemptCount: number; errorCode?: string }>;
   errorCode: string | null;
   triggerContext: { scheduledFor?: string; localDate?: string; timeZone?: string; delayed?: boolean; missedOccurrences?: number; consolidatedOccurrences?: number } | null;
   createdAt: string; completedAt: string | null;
@@ -49,6 +49,22 @@ function errorMessage(error: unknown): string {
     const body = error.message.slice(error.message.indexOf("{") || 0);
     return JSON.parse(body).error || error.message;
   } catch { return error.message; }
+}
+
+function readableToken(value: string): string {
+  return value.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function actionLabel(type: string): string {
+  if (type === "set_mission_category") return "Set Mission category";
+  if (type === "schedule_follow_up") return "Create follow-up Mission";
+  return readableToken(type);
+}
+
+function receiptTime(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toLocaleString();
 }
 
 export default function AutomationsPage() {
@@ -190,7 +206,34 @@ export default function AutomationsPage() {
 
         <section className="space-y-4 rounded-xl border border-primary/15 bg-card/35 p-5"><div className="flex items-start gap-2"><ShieldCheck className="mt-0.5 h-5 w-5 text-primary" /><div><strong>Preview and controlled run</strong><p className="text-xs text-muted-foreground">Preview evaluates the last saved rule without writing. “Run now” is available only for an enabled, saved manual rule; schedules run only at their recorded due time.</p></div></div><div className="flex flex-wrap gap-2"><select data-testid="automation-preview-mission" aria-label="Preview mission" className="h-9 min-w-64 flex-1 rounded-md border border-input bg-background px-3 text-sm" value={missionId || ""} onChange={(event) => setMissionId(Number(event.target.value))}><option value="" disabled>Select a mission</option>{missions.data?.missions.map((mission) => <option key={mission.id} value={mission.id}>{mission.completed ? "✓ " : ""}{mission.title}</option>)}</select><Button data-testid="automation-preview" variant="outline" disabled={!missionId || previewMutation.isPending || save.isPending || toggle.isPending} onClick={() => previewMutation.mutate()}>Preview</Button><Button data-testid="automation-run-now" disabled={!missionId || automation.definition.trigger.type !== "manual" || !automation.enabled || run.isPending || save.isPending || toggle.isPending} onClick={() => run.mutate(crypto.randomUUID())}><Play className="mr-1 h-4 w-4" />Run now</Button></div>{preview ? <div data-testid="automation-preview-result" className={`rounded-lg border p-3 text-sm ${preview.matched ? "border-primary/25 bg-primary/5" : "border-amber-500/25 bg-amber-500/5"}`}><p>{preview.disclosure}</p>{preview.actions.map((action, index) => <p key={index} className="mt-1 text-xs text-muted-foreground">{index + 1}. {action.description}</p>)}</div> : null}</section>
 
-        <section data-testid="automation-run-history" className="space-y-3 rounded-xl border border-primary/15 bg-card/35 p-5"><div><strong>Run history</strong><p className="text-xs text-muted-foreground">Receipts contain action types, outcomes, attempts, record IDs, and bounded schedule context—not copied mission descriptions. Repair retries only unfinished actions from the immutable saved rule.</p></div>{detail.data?.runs.length ? <div className="divide-y divide-primary/10">{detail.data.runs.map((receipt) => <div key={receipt.id} className="flex flex-wrap items-center justify-between gap-2 py-3 text-xs"><div><span><strong className="font-medium capitalize">{receipt.status}</strong> · {receipt.triggerType.replaceAll("_", " ")} · {receipt.actionResults.length} action{receipt.actionResults.length === 1 ? "" : "s"}</span><p className="mt-1 text-muted-foreground">{receipt.triggerContext?.scheduledFor ? `Scheduled ${new Date(receipt.triggerContext.scheduledFor).toLocaleString()}${receipt.triggerContext.delayed ? " · delayed" : ""} · ` : ""}{new Date(receipt.createdAt).toLocaleString()}{receipt.actionResults.some((result) => result.attemptCount > 1) ? " · repaired action" : ""}{receipt.errorCode ? ` · ${receipt.errorCode.replaceAll("_", " ").toLowerCase()}` : ""}</p></div>{["failed", "partial", "running"].includes(receipt.status) && receipt.errorCode !== "SCHEDULE_ANCHOR_UNAVAILABLE" ? <Button size="sm" variant="outline" disabled={repair.isPending && repair.variables === receipt.id} onClick={() => repair.mutate(receipt.id)}><RotateCcw className="mr-1 h-3.5 w-3.5" />Repair</Button> : null}</div>)}</div> : <p data-testid="automation-run-history-empty" className="text-sm text-muted-foreground">No actual runs yet. Previews are intentionally not stored as executions.</p>}</section>
+        <section data-testid="automation-run-history" className="space-y-3 rounded-xl border border-primary/15 bg-card/35 p-5">
+          <div><strong>Run history</strong><p className="text-xs text-muted-foreground">Receipts contain action types, outcomes, attempts, record IDs, and bounded schedule context—not copied mission descriptions. Repair retries only unfinished actions from the immutable saved rule and never replays an action that already succeeded.</p></div>
+          {detail.data?.runs.length ? <div className="space-y-3">{detail.data.runs.map((receipt) => {
+            const createdAt = receiptTime(receipt.createdAt);
+            const completedAt = receiptTime(receipt.completedAt);
+            const scheduledFor = receiptTime(receipt.triggerContext?.scheduledFor);
+            const repairable = ["failed", "partial", "running"].includes(receipt.status) && receipt.errorCode !== "SCHEDULE_ANCHOR_UNAVAILABLE";
+            return <article key={receipt.id} data-testid={`automation-run-${receipt.id}`} className="space-y-3 rounded-lg border border-primary/10 p-4 text-xs">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="space-y-1">
+                  <p><strong className="font-medium">{readableToken(receipt.status)}</strong> · Run #{receipt.id} · {readableToken(receipt.triggerType)}</p>
+                  <p data-testid={`automation-run-${receipt.id}-metadata`} className="text-muted-foreground">Started {createdAt || "at an unavailable time"}{completedAt ? ` · completed ${completedAt}` : " · not completed"}{receipt.triggerQuestId ? ` · trigger Mission #${receipt.triggerQuestId}` : ""}</p>
+                  {receipt.errorCode ? <p data-testid={`automation-run-${receipt.id}-error`} className="text-amber-300">Run issue: {readableToken(receipt.errorCode)}</p> : null}
+                </div>
+                {repairable ? <Button data-testid={`automation-run-repair-${receipt.id}`} aria-label={`Retry unfinished actions for run ${receipt.id}`} size="sm" variant="outline" disabled={repair.isPending && repair.variables === receipt.id} onClick={() => repair.mutate(receipt.id)}><RotateCcw className="mr-1 h-3.5 w-3.5" />{repair.isPending && repair.variables === receipt.id ? "Repairing…" : "Repair"}</Button> : null}
+              </div>
+              {receipt.triggerContext ? <div data-testid={`automation-run-${receipt.id}-schedule`} className="rounded-md bg-primary/5 p-3 text-muted-foreground">
+                <p><span className="text-foreground">Schedule context</span>{scheduledFor ? ` · due ${scheduledFor}` : ""}{receipt.triggerContext.localDate ? ` · local date ${receipt.triggerContext.localDate}` : ""}{receipt.triggerContext.timeZone ? ` · ${receipt.triggerContext.timeZone}` : ""}</p>
+                {receipt.triggerContext.delayed || receipt.triggerContext.missedOccurrences || receipt.triggerContext.consolidatedOccurrences ? <p className="mt-1">{receipt.triggerContext.delayed ? "Delayed run" : "On-time run"}{receipt.triggerContext.missedOccurrences ? ` · ${receipt.triggerContext.missedOccurrences} missed occurrence${receipt.triggerContext.missedOccurrences === 1 ? "" : "s"}` : ""}{receipt.triggerContext.consolidatedOccurrences ? ` · ${receipt.triggerContext.consolidatedOccurrences} consolidated` : ""}</p> : null}
+              </div> : null}
+              {receipt.actionResults.length ? <ol aria-label={`Actions for run ${receipt.id}`} className="space-y-2">{[...receipt.actionResults].sort((left, right) => left.actionIndex - right.actionIndex).map((result) => <li key={result.actionIndex} data-testid={`automation-run-${receipt.id}-action-${result.actionIndex}`} className="flex flex-wrap justify-between gap-2 rounded-md border border-primary/10 px-3 py-2">
+                <span><strong className="font-medium">Action {result.actionIndex + 1}: {actionLabel(result.type)}</strong>{result.targetQuestId ? ` · Mission #${result.targetQuestId}` : ""}</span>
+                <span className="text-muted-foreground">{readableToken(result.status)} · {result.attemptCount} attempt{result.attemptCount === 1 ? "" : "s"}{result.errorCode ? ` · ${readableToken(result.errorCode)}` : ""}</span>
+              </li>)}</ol> : <p className="text-muted-foreground">No action was applied for this run.</p>}
+              {receipt.errorCode === "SCHEDULE_ANCHOR_UNAVAILABLE" ? <p role="note" className="text-muted-foreground">Repair is unavailable because the saved anchor Mission no longer exists. Choose an existing Mission, save the schedule, and explicitly enable it.</p> : null}
+            </article>;
+          })}</div> : <p data-testid="automation-run-history-empty" className="text-sm text-muted-foreground">No actual runs yet. Previews are intentionally not stored as executions.</p>}
+        </section>
       </div> : <div className="rounded-xl border border-dashed border-primary/20 p-10 text-center text-sm text-muted-foreground">Create an automation to begin.</div>}
     </div>
   </div>;

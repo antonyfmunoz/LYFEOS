@@ -80,6 +80,16 @@ describeApi("workflow automation execution recovery", () => {
     expect(detail.data.runs[0]).not.toHaveProperty("idempotencyKey");
     expect(detail.data.runs[0]).toMatchObject({ status: "succeeded" });
     expect(detail.data.runs[0].actionResults).toHaveLength(2);
+    expect(detail.data.runs[0].actionResults).toEqual(expect.arrayContaining([
+      expect.objectContaining({ actionIndex: 0, type: "set_mission_category", status: "succeeded", targetQuestId: questId, attemptCount: 1 }),
+      expect.objectContaining({ actionIndex: 1, type: "schedule_follow_up", status: "succeeded", attemptCount: 1 }),
+    ]));
+    for (const action of detail.data.runs[0].actionResults) {
+      expect(Object.keys(action).sort()).toEqual(["actionIndex", "attemptCount", "status", "targetQuestId", "type"]);
+      expect(action).not.toHaveProperty("expectedQuestRevision");
+      expect(action).not.toHaveProperty("lastErrorCode");
+      expect(action).not.toHaveProperty("claimedAt");
+    }
     successfulRunId = detail.data.runs[0].id;
 
     const missions = await request("GET", "/api/automations/missions", undefined, cookie);
@@ -97,6 +107,7 @@ describeApi("workflow automation execution recovery", () => {
       expect.objectContaining({ actionIndex: 0, status: "succeeded", attemptCount: 1 }),
       expect.objectContaining({ actionIndex: 1, status: "succeeded", attemptCount: 2 }),
     ]));
+    expect(repaired.data.result.actionResults.every((action: any) => !action.errorCode)).toBe(true);
     const missions = await request("GET", "/api/automations/missions", undefined, cookie);
     expect(missions.data.missions.filter((row: any) => row.title === "Review the recovered rule")).toHaveLength(1);
   });
@@ -133,6 +144,11 @@ describeApi("workflow automation execution recovery", () => {
 
     const detail = await request("GET", `/api/automations/${automationId}`, undefined, cookie);
     expect(detail.data.automation).toMatchObject({ enabled: false, consecutiveFailures: 3, pauseReason: "REPEATED_ACTION_FAILURE" });
+    expect(detail.data.runs.filter((run: any) => run.status === "failed")).toHaveLength(3);
+    expect(detail.data.runs.filter((run: any) => run.status === "failed").every((run: any) =>
+      run.actionResults[0]?.errorCode === "AUTOMATION_CATEGORY_REPAIR_REVIEW_REQUIRED"
+      && !Object.hasOwn(run.actionResults[0], "lastErrorCode")
+    )).toBe(true);
     const mission = (await request("GET", "/api/automations/missions", undefined, cookie)).data.missions.find((row: any) => row.id === questId);
     expect(mission.category).toBe("user-decision");
   });

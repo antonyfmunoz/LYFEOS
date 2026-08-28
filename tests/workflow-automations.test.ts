@@ -138,5 +138,13 @@ describe("workflow automations", () => {
     ]) expect(page).toContain(`data-testid="${testId}"`);
     expect(page).toContain('data-testid={`automation-editor-${automation.id}`}');
     expect(page).toContain('data-testid={`automation-action-title-${index}`}');
+    expect(page).toContain('data-testid={`automation-run-${receipt.id}`}');
+    expect(page).toContain('data-testid={`automation-run-${receipt.id}-metadata`}');
+    expect(page).toContain('data-testid={`automation-run-${receipt.id}-schedule`}');
+    expect(page).toContain('data-testid={`automation-run-${receipt.id}-action-${result.actionIndex}`}');
+    expect(page).toContain('data-testid={`automation-run-repair-${receipt.id}`}');
+    expect(page).toContain('aria-label={`Retry unfinished actions for run ${receipt.id}`}');
+    expect(page).toContain("never replays an action that already succeeded");
+    expect(page).toContain("not copied mission descriptions");
   });
 });
