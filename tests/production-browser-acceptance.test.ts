@@ -137,6 +137,9 @@ describe("production browser acceptance custody", () => {
     expect(coreLoopScript).toContain('browserApiRequest(page, "/api/transformation-thread/initialize", "POST", {})');
     expect(coreLoopScript).toContain('`/api/transformation-thread/${threadId}/activate`, "POST"');
     expect(coreLoopScript).toContain('Acceptance will not override a Transformation Thread in');
+    expect(coreLoopScript).toContain('Acceptance fixture provisioning is limited to the dedicated completed-onboarding account.');
+    expect(coreLoopScript).toContain('browserApiRequest(page, "/api/profile", "PATCH", { completedOnboardingMissions })');
+    expect(coreLoopScript).toContain('name: "dedicated account fixture prerequisites"');
     expect(coreLoopScript).toContain("async function waitForApiBudget");
     expect(coreLoopScript).toContain("async function archiveStrandedSyntheticMissions");
     expect(coreLoopScript).toContain('await waitForApiBudget(page, 80)');

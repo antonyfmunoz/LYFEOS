@@ -116,24 +116,40 @@ async function browserApiRequest(page: Page, pathname: string, method = "GET", r
   throw new Error(`Unreachable API retry state for ${method} ${pathname}.`);
 }
 
-async function ensureAcceptanceThread(page: Page): Promise<"existing" | "activated"> {
+async function ensureAcceptanceThread(page: Page): Promise<{ state: "existing" | "activated"; fixturePrepared: boolean }> {
   const current = await browserApiRequest(page, "/api/transformation-thread");
   assert(current.status === 200, `Transformation Thread preflight returned ${current.status}.`);
   let thread = (current.body as { thread?: { id?: unknown; status?: unknown } } | null)?.thread;
+  let fixturePrepared = false;
   if (!thread) {
-    const initialized = await browserApiRequest(page, "/api/transformation-thread/initialize", "POST", {});
+    let initialized = await browserApiRequest(page, "/api/transformation-thread/initialize", "POST", {});
+    if (initialized.status === 409) {
+      const missing = (initialized.body as { missing?: unknown } | null)?.missing;
+      assert(Array.isArray(missing) && missing.length > 0 && missing.every((id) => Number.isInteger(id) && Number(id) >= 0 && Number(id) <= 7), "Thread initialization was refused for a reason other than missing acceptance-fixture onboarding Missions.");
+      const profileResponse = await browserApiRequest(page, "/api/profile");
+      const profile = profileResponse.body as { onboardingCompleted?: unknown; completedOnboardingMissions?: unknown } | null;
+      assert(profileResponse.status === 200 && profile?.onboardingCompleted === true, "Acceptance fixture provisioning is limited to the dedicated completed-onboarding account.");
+      const completed = Array.isArray(profile.completedOnboardingMissions)
+        ? profile.completedOnboardingMissions.filter((id): id is number => Number.isInteger(id) && id >= 0 && id <= 7)
+        : [];
+      const completedOnboardingMissions = Array.from(new Set([...completed, ...missing.map(Number)])).sort((left, right) => left - right);
+      const provisioned = await browserApiRequest(page, "/api/profile", "PATCH", { completedOnboardingMissions });
+      assert(provisioned.status === 200, `Acceptance onboarding prerequisite provisioning returned ${provisioned.status}.`);
+      fixturePrepared = true;
+      initialized = await browserApiRequest(page, "/api/transformation-thread/initialize", "POST", {});
+    }
     assert([200, 201].includes(initialized.status), `Onboarding-derived Thread initialization returned ${initialized.status}.`);
     thread = (initialized.body as { thread?: { id?: unknown; status?: unknown } } | null)?.thread;
   }
   const threadId = Number(thread?.id);
   const status = String(thread?.status || "");
   assert(Number.isInteger(threadId), "Transformation Thread preflight did not return an owned Thread identifier.");
-  if (status === "active") return "existing";
+  if (status === "active") return { state: "existing", fixturePrepared };
   assert(status === "draft", `Acceptance will not override a Transformation Thread in ${status || "unknown"} state.`);
   const activated = await browserApiRequest(page, `/api/transformation-thread/${threadId}/activate`, "POST");
   assert(activated.status === 200, `Onboarding-derived Thread activation returned ${activated.status}.`);
   assert((activated.body as { thread?: { status?: unknown } } | null)?.thread?.status === "active", "Transformation Thread activation did not produce an active Thread.");
-  return "activated";
+  return { state: "activated", fixturePrepared };
 }
 
 async function waitForApiBudget(page: Page, floor: number): Promise<void> {
@@ -452,8 +468,11 @@ async function main(): Promise<void> {
     await waitForApiBudget(page, 80);
     const strandedMissionCount = await archiveStrandedSyntheticMissions(page);
     steps.push({ name: "synthetic Mission preflight", status: "passed", detail: strandedMissionCount > 0 ? `Archived ${strandedMissionCount} stranded synthetic Mission(s).` : "No stranded synthetic Missions were present." });
-    const threadState = await ensureAcceptanceThread(page);
-    steps.push({ name: "onboarding-derived Thread preflight", status: "passed", detail: threadState === "existing" ? "The dedicated account already had an active onboarding-derived Thread." : "Activated the dedicated account's onboarding-derived draft Thread using the same product APIs as the rendered onboarding journey." });
+    const threadPreflight = await ensureAcceptanceThread(page);
+    if (threadPreflight.fixturePrepared) {
+      steps.push({ name: "dedicated account fixture prerequisites", status: "passed", detail: "Recorded the missing onboarding Mission IDs on the already completed, dedicated acceptance account before its first truthful Thread initialization." });
+    }
+    steps.push({ name: "onboarding-derived Thread preflight", status: "passed", detail: threadPreflight.state === "existing" ? "The dedicated account already had an active onboarding-derived Thread." : "Activated the dedicated account's onboarding-derived draft Thread using the same product APIs as the rendered onboarding journey." });
     progressionBefore = await readProgression(page);
 
     await page.goto(new URL("/missions", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
