@@ -21,6 +21,7 @@ cookies2.txt
 .vscode
 .idea
 coverage
+.tmp-acceptance-*
 .DS_Store
 *.tsbuildinfo
 *.tar.gz
