@@ -110,6 +110,8 @@ describe("shared accessibility shell", () => {
   it("keeps the canonical Mission proof and evidence controls explicitly named", () => {
     const missions = readFileSync(resolve(process.cwd(), "client/src/pages/QuestsPage.tsx"), "utf8");
     const detail = readFileSync(resolve(process.cwd(), "client/src/pages/MissionDetailPage.tsx"), "utf8");
+    const editor = readFileSync(resolve(process.cwd(), "client/src/components/markdown/MarkdownEditor.tsx"), "utf8");
+    const toast = readFileSync(resolve(process.cwd(), "client/src/components/ui/toast.tsx"), "utf8");
     expect(missions).toContain('data-testid="mission-create-submit"');
     expect(detail).toContain('data-testid="proof-plan-purpose" aria-label="Mission purpose"');
     expect(detail).toContain('data-testid="proof-plan-output" aria-label="Expected mission output"');
@@ -119,5 +121,10 @@ describe("shared accessibility shell", () => {
     expect(detail).toContain('aria-label="Mission escalation path"');
     expect(detail).toContain('data-testid="mission-evidence-reference" aria-label="Evidence source or reference"');
     expect(detail).toContain('data-testid="mission-evidence-summary" aria-label="Mission evidence summary"');
+    expect(detail).toContain('aria-label="Reviewer username search"');
+    expect(detail).toContain('aria-label="Mission self-review summary"');
+    expect(detail).toContain('aria-label="Mission review appeal reason"');
+    expect(editor).toContain('<label className={`task-text ${checked ? \'completed\' : \'\'}`}>{children}</label>');
+    expect(toast).toContain('aria-label="Dismiss notification"');
   });
 });

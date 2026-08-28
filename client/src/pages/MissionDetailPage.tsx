@@ -854,7 +854,7 @@ export default function MissionDetailPage() {
                     </div>
                     <div className="rounded-md border border-primary/10 bg-background/25 p-2 space-y-2">
                       <div className="flex flex-wrap gap-2">
-                        <Input value={selectedReviewer?.displayName || reviewerSearch} onChange={(event) => { setSelectedReviewer(null); setReviewerSearch(event.target.value); }} placeholder="Find a LyfeOS username…" className="min-w-52 flex-1" />
+                        <Input aria-label="Reviewer username search" value={selectedReviewer?.displayName || reviewerSearch} onChange={(event) => { setSelectedReviewer(null); setReviewerSearch(event.target.value); }} placeholder="Find a LyfeOS username…" className="min-w-52 flex-1" />
                         <Button size="sm" disabled={!selectedReviewer || deliverReviewInvitation.isPending} onClick={() => deliverReviewInvitation.mutate()}>{deliverReviewInvitation.isPending ? "Delivering…" : "Send review request"}</Button>
                       </div>
                       {!selectedReviewer && reviewerSearch.trim().length >= 2 && (reviewerQuery.data?.users || []).length > 0 ? <div className="flex flex-wrap gap-1">{reviewerQuery.data!.users.map((reviewer) => <button type="button" key={reviewer.id} onClick={() => setSelectedReviewer(reviewer)} className="rounded border border-primary/15 px-2 py-1 text-xs hover:bg-primary/10">{reviewer.displayName || "LyfeOS user"}</button>)}</div> : null}
@@ -871,7 +871,7 @@ export default function MissionDetailPage() {
                     {mission.completed ? <p className="text-xs leading-relaxed text-muted-foreground">Self-review cannot advance this mission. Progression remains withheld until the invited reviewer accepts the link and records a decision.</p> : null}
                   </div> : null}
                   {mission.completed && contractQuery.data.contract.reviewMode === "self" ? <div className="border-t border-primary/10 pt-3 space-y-2">
-                    <Textarea value={reviewSummary} onChange={(event) => setReviewSummary(event.target.value)} placeholder="What evidence supports completion, and what will you improve next?" className="min-h-20" />
+                    <Textarea aria-label="Mission self-review summary" value={reviewSummary} onChange={(event) => setReviewSummary(event.target.value)} placeholder="What evidence supports completion, and what will you improve next?" className="min-h-20" />
                     {declaredEvidenceRequirements.length > 0 && <div className="space-y-1 rounded-md border border-primary/10 bg-background/30 p-2">
                       <p className="text-xs text-muted-foreground">Confirm each declared requirement against the evidence you attached:</p>
                       {declaredEvidenceRequirements.map((requirement) => <label key={requirement} className="flex items-start gap-2 text-xs text-foreground">
@@ -896,7 +896,7 @@ export default function MissionDetailPage() {
                       <p className="text-amber-100">Appeal open</p><p className="mt-1 text-muted-foreground">{openAppeal.reason}</p>
                       <Button size="sm" variant="ghost" className="mt-1 h-7 px-2 text-xs" disabled={withdrawAppeal.isPending} onClick={() => withdrawAppeal.mutate(openAppeal.id)}>Withdraw appeal</Button>
                     </div> : <>
-                      <Textarea value={appealReason} onChange={(event) => setAppealReason(event.target.value)} placeholder="Identify the evidence or rubric criterion you want the reviewer to reconsider…" className="min-h-20" maxLength={2000} />
+                      <Textarea aria-label="Mission review appeal reason" value={appealReason} onChange={(event) => setAppealReason(event.target.value)} placeholder="Identify the evidence or rubric criterion you want the reviewer to reconsider…" className="min-h-20" maxLength={2000} />
                       <Button size="sm" variant="outline" disabled={appealReason.trim().length < 10 || createAppeal.isPending} onClick={() => createAppeal.mutate()}>{createAppeal.isPending ? "Requesting…" : "Request reconsideration"}</Button>
                     </>}
                     {contractQuery.data.appeals.filter((appeal) => appeal.status !== "open").slice(0, 3).map((appeal) => <p key={appeal.id} className="text-[11px] text-muted-foreground">Appeal {appeal.status.replaceAll("_", " ")}{appeal.resolutionSummary ? ` · ${appeal.resolutionSummary}` : ""}</p>)}

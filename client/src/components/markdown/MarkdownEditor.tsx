@@ -23,10 +23,10 @@ interface MarkdownEditorProps {
 // Create a custom renderer for task lists to match Obsidian style
 const TaskListRenderer = ({ checked, children }: { checked: boolean; children: React.ReactNode }) => (
   <div className="obsidian-task-list-item">
-    <span className={`task-checkbox ${checked ? 'checked' : ''}`}>
+    <span aria-hidden="true" className={`task-checkbox ${checked ? 'checked' : ''}`}>
       {checked ? '✓' : ' '}
     </span>
-    <span className={`task-text ${checked ? 'completed' : ''}`}>{children}</span>
+    <label className={`task-text ${checked ? 'completed' : ''}`}>{children}</label>
   </div>
 );
 
