@@ -411,6 +411,13 @@ async function readRenderedFields(page: Page, fields: RenderedFieldExpectation[]
   })), fields);
 }
 
+async function readRenderedControlValues(page: Page, selectors: string[]): Promise<Record<string, string | null>> {
+  return page.evaluate((controlSelectors) => Object.fromEntries(controlSelectors.map((selector) => {
+    const control = document.querySelector<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(selector);
+    return [selector, control?.value ?? null];
+  })), selectors);
+}
+
 async function stabilizeRenderedFields(page: Page, fields: RenderedFieldExpectation[]): Promise<void> {
   for (let attempt = 0; attempt < 6; attempt += 1) {
     const actual = await readRenderedFields(page, fields);
@@ -587,16 +594,26 @@ async function exerciseNonMutatingAutomationControls(page: Page): Promise<Automa
     await page.select('[data-testid="automation-schedule-anchor"]', String(missionId));
     await page.select('[data-testid="automation-schedule-missed-run-policy"]', "skip");
     await setRenderedInputValue(page, '[data-testid="automation-schedule-max-occurrences"]', "2");
-    await page.waitForFunction((id) => {
-      const value = (selector: string) => document.querySelector<HTMLInputElement | HTMLSelectElement>(selector)?.value || "";
-      return value('[data-testid="automation-schedule-anchor"]') === String(id)
-        && value('[data-testid="automation-schedule-time-zone"]').length > 0
-        && value('[data-testid="automation-schedule-local-time"]').length > 0
-        && value('[data-testid="automation-schedule-cadence"]') === "daily"
-        && value('[data-testid="automation-schedule-start-date"]').length === 10
-        && value('[data-testid="automation-schedule-max-occurrences"]') === "2"
-        && value('[data-testid="automation-schedule-missed-run-policy"]') === "skip";
-    }, { timeout: 30_000 }, missionId);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    const dailyScheduleFields = await readRenderedControlValues(page, [
+      '[data-testid="automation-schedule-anchor"]',
+      '[data-testid="automation-schedule-time-zone"]',
+      '[data-testid="automation-schedule-local-time"]',
+      '[data-testid="automation-schedule-cadence"]',
+      '[data-testid="automation-schedule-start-date"]',
+      '[data-testid="automation-schedule-max-occurrences"]',
+      '[data-testid="automation-schedule-missed-run-policy"]',
+    ]);
+    assert(
+      dailyScheduleFields['[data-testid="automation-schedule-anchor"]'] === String(missionId)
+        && Boolean(dailyScheduleFields['[data-testid="automation-schedule-time-zone"]'])
+        && Boolean(dailyScheduleFields['[data-testid="automation-schedule-local-time"]'])
+        && dailyScheduleFields['[data-testid="automation-schedule-cadence"]'] === "daily"
+        && /^\d{4}-\d{2}-\d{2}$/.test(dailyScheduleFields['[data-testid="automation-schedule-start-date"]'] || "")
+        && dailyScheduleFields['[data-testid="automation-schedule-max-occurrences"]'] === "2"
+        && dailyScheduleFields['[data-testid="automation-schedule-missed-run-policy"]'] === "skip",
+      `Rendered daily schedule fields did not settle exactly: ${JSON.stringify(dailyScheduleFields)}.`,
+    );
 
     stage = "save the disabled daily schedule through the rendered control";
     const dailyScheduleResponsePromise = page.waitForResponse((response) => {
@@ -651,13 +668,20 @@ async function exerciseNonMutatingAutomationControls(page: Page): Promise<Automa
     await activateRenderedControl(page, `[data-testid="automation-schedule-weekday-${addedWeekday}"]`);
     await page.select('[data-testid="automation-schedule-missed-run-policy"]', "run_once");
     await setRenderedInputValue(page, '[data-testid="automation-schedule-max-occurrences"]', "3");
-    await page.waitForFunction((day) => {
-      const cadence = document.querySelector<HTMLSelectElement>('[data-testid="automation-schedule-cadence"]')?.value;
-      const occurrenceCount = document.querySelector<HTMLInputElement>('[data-testid="automation-schedule-max-occurrences"]')?.value;
-      const policy = document.querySelector<HTMLSelectElement>('[data-testid="automation-schedule-missed-run-policy"]')?.value;
-      const added = document.querySelector(`[data-testid="automation-schedule-weekday-${day}"]`)?.getAttribute("aria-pressed");
-      return cadence === "weekly" && occurrenceCount === "3" && policy === "run_once" && added === "true";
-    }, { timeout: 30_000 }, addedWeekday);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    const weeklyScheduleFields = await readRenderedControlValues(page, [
+      '[data-testid="automation-schedule-cadence"]',
+      '[data-testid="automation-schedule-max-occurrences"]',
+      '[data-testid="automation-schedule-missed-run-policy"]',
+    ]);
+    const addedWeekdayPressed = await page.$eval(`[data-testid="automation-schedule-weekday-${addedWeekday}"]`, (element) => element.getAttribute("aria-pressed"));
+    assert(
+      weeklyScheduleFields['[data-testid="automation-schedule-cadence"]'] === "weekly"
+        && weeklyScheduleFields['[data-testid="automation-schedule-max-occurrences"]'] === "3"
+        && weeklyScheduleFields['[data-testid="automation-schedule-missed-run-policy"]'] === "run_once"
+        && addedWeekdayPressed === "true",
+      `Rendered weekly schedule fields did not settle exactly: ${JSON.stringify({ ...weeklyScheduleFields, addedWeekdayPressed })}.`,
+    );
 
     stage = "save the revised disabled weekly schedule through the rendered control";
     const weeklyScheduleResponsePromise = page.waitForResponse((response) => {

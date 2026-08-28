@@ -205,7 +205,12 @@ describe("production browser acceptance custody", () => {
     expect(coreLoopScript).toContain('stage = "save the disabled daily schedule through the rendered control"');
     expect(coreLoopScript).toContain('stage = "set the disabled daily schedule fields"');
     expect(coreLoopScript).toContain('setRenderedInputValue(page, \'[data-testid="automation-schedule-max-occurrences"]\', "2")');
+    expect(coreLoopScript).toContain("const dailyScheduleFields = await readRenderedControlValues");
+    expect(coreLoopScript).toContain("Rendered daily schedule fields did not settle exactly");
     expect(coreLoopScript).toContain('stage = "save the revised disabled weekly schedule through the rendered control"');
+    expect(coreLoopScript).toContain('setRenderedInputValue(page, \'[data-testid="automation-schedule-max-occurrences"]\', "3")');
+    expect(coreLoopScript).toContain("const weeklyScheduleFields = await readRenderedControlValues");
+    expect(coreLoopScript).toContain("Rendered weekly schedule fields did not settle exactly");
     expect(coreLoopScript).toContain('stage = "preview the revised saved schedule without executing it"');
     expect(coreLoopScript).toContain('scheduleSavedAndRevised: true');
     expect(coreLoopScript).toContain('scheduleRunNowDisabled');
