@@ -5,6 +5,7 @@ const script = fs.readFileSync("scripts/production-browser-acceptance.ts", "utf8
 const coreLoopScript = fs.readFileSync("scripts/production-core-loop-acceptance.ts", "utf8");
 const workflow = fs.readFileSync(".github/workflows/production-browser-acceptance.yml", "utf8");
 const packageJson = fs.readFileSync("package.json", "utf8");
+const rootLayout = fs.readFileSync("client/src/components/layout/RootLayout.tsx", "utf8");
 
 describe("production browser acceptance custody", () => {
   it("has no embedded account credentials and fails closed when protected evidence is required", () => {
@@ -175,5 +176,12 @@ describe("production browser acceptance custody", () => {
     expect(workflow).toContain("Run truthful Mission core-loop acceptance");
     expect(workflow).toContain("github.event_name == 'workflow_dispatch' && inputs.require_authenticated");
     expect(workflow).toContain("run: npm run acceptance:core-loop");
+  });
+
+  it("mounts one responsive Mission timer so its state and controls stay unambiguous", () => {
+    expect(rootLayout.match(/<MissionTimer\b/g)).toHaveLength(1);
+    expect(rootLayout).toContain('className="z-30 flex justify-center px-4 lg:px-6 pt-2 pb-2"');
+    expect(rootLayout).not.toContain("lg:hidden flex justify-center");
+    expect(rootLayout).not.toContain("hidden lg:block");
   });
 });

@@ -76,30 +76,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
               </div>
             </div>
             {activeTimerQuest && (
-              <div className="z-30 lg:hidden flex justify-center px-4 pt-2 pb-2">
-                <MissionTimer
-                  timerStartedAt={timerStartedAt}
-                  timerPausedElapsed={timerPausedElapsed}
-                  timerIsPaused={timerIsPaused}
-                  isOnBreak={isOnBreak}
-                  breakStartedAt={breakStartedAt}
-                  breakElapsed={breakElapsed}
-                  onEnd={endMissionTimer}
-                  onPauseResume={pauseResumeTimer}
-                  missionTitle={activeTimerQuest.title}
-                  missionDescription={activeTimerQuest.description}
-                  missionCategory={activeTimerQuest.category}
-                  missionXP={activeTimerQuest.experienceReward}
-                  missionEnergyCost={activeTimerQuest.energyCost}
-                  missionAttentionCost={activeTimerQuest.attentionCost}
-                  missionTimeCost={activeTimerQuest.timeCost}
-                  missionDifficulty={activeTimerQuest.difficulty}
-                />
-              </div>
-            )}
-            
-            {activeTimerQuest && (
-              <div className="z-30 flex justify-center px-6 pt-2 pb-2 hidden lg:block">
+              <div className="z-30 flex justify-center px-4 lg:px-6 pt-2 pb-2">
                 <MissionTimer
                   timerStartedAt={timerStartedAt}
                   timerPausedElapsed={timerPausedElapsed}
