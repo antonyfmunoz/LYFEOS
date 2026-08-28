@@ -623,6 +623,11 @@ async function main(): Promise<void> {
     assert(progressionAfterReview.certifications.length === 0 && progressionAfterReview.entrustedRoles.length === 0, "Self-review created unsupported certification or authority.");
     steps.push({ name: "rendered positive self-review", status: "passed", detail: `Declared evidence review applied exactly ${reviewedSkillExperience} capability XP and no certification or authority.` });
 
+    // The broad protected-route sweep and this evidence journey intentionally
+    // share the production account's aggregate API budget. Refill before the
+    // final rendered mutation so Undo is measuring reversal semantics rather
+    // than the acceptance harness's own traffic volume.
+    await waitForApiBudget(page, 30);
     await page.goto(new URL("/missions", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
     const reopenedBody = await waitForMissionToggle(page, () => activateMissionControl(page, "undo"));
     assert(reopenedBody.quest?.completed === false, "Rendered Mission Undo control did not reopen the Mission.");

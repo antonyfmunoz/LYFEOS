@@ -167,6 +167,7 @@ describe("production browser acceptance custody", () => {
     expect(coreLoopScript).toContain('activateMissionControl(page, "done")');
     expect(coreLoopScript).toContain('page.click(\'[data-testid="mission-self-review-submit"]\')');
     expect(coreLoopScript).toContain('reviewBody.progression?.applied === true && reviewedSkillExperience > 0');
+    expect(coreLoopScript).toContain('await waitForApiBudget(page, 30)');
     expect(coreLoopScript).toContain('activateMissionControl(page, "undo")');
     expect(coreLoopScript).toContain('progressionMatches(progressionBefore, progressionAfterReopen)');
     expect(coreLoopScript).toContain('unlockResult?.state === "declared"');
