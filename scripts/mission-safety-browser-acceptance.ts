@@ -149,7 +149,15 @@ async function selectValue(page: Page, selector: string, value: string): Promise
 async function ensureChecked(page: Page, selector: string): Promise<void> {
   await page.waitForSelector(selector, { visible: true, timeout: 30_000 });
   const checked = await page.$eval(selector, (element) => (element as HTMLInputElement).checked);
-  if (!checked) await page.click(selector);
+  if (!checked) {
+    await page.evaluate((controlSelector) => {
+      const control = document.querySelector<HTMLInputElement>(controlSelector);
+      if (!control) throw new Error(`Rendered checkbox is unavailable: ${controlSelector}`);
+      control.scrollIntoView({ block: "center", inline: "nearest" });
+      control.click();
+    }, selector);
+  }
+  await page.waitForFunction((controlSelector) => document.querySelector<HTMLInputElement>(controlSelector)?.checked === true, { timeout: 10_000 }, selector);
 }
 
 async function activateRenderedControl(page: Page, selector: string): Promise<void> {
