@@ -363,54 +363,63 @@ async function fill(page: Page, selector: string, value: string): Promise<void> 
 async function exerciseNonMutatingAutomationPreview(page: Page): Promise<AutomationPreviewEvidence> {
   assert(missionId !== null, "Cannot qualify automation preview without the synthetic Mission.");
   assert(progressionBefore !== null, "Cannot qualify automation preview without a settled progression baseline.");
-  await waitForApiBudget(page, 55);
-  await page.goto(new URL("/automations", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
-  await page.waitForSelector('[data-testid="automations-page"]', { visible: true, timeout: 30_000 });
-  await page.waitForSelector('[data-testid="automation-create"]:not([disabled])', { visible: true, timeout: 30_000 });
+  let stage = "open the Automations page";
+  try {
+    await waitForApiBudget(page, 55);
+    await page.goto(new URL("/automations", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
+    await page.waitForSelector('[data-testid="automations-page"]', { visible: true, timeout: 30_000 });
+    await page.waitForFunction(() => {
+      const control = document.querySelector<HTMLButtonElement>('[data-testid="automation-create"]');
+      const loading = document.querySelector('[data-testid="automation-list-loading"]');
+      return Boolean(control && !control.disabled && !loading);
+    }, { timeout: 30_000 });
 
-  const createResponsePromise = page.waitForResponse((response) => {
-    const url = new URL(response.url());
-    return url.origin === BASE_URL.origin && url.pathname === "/api/automations" && response.request().method() === "POST";
-  }, { timeout: 30_000 });
-  await page.click('[data-testid="automation-create"]');
-  const createResponse = await createResponsePromise;
-  const createBody = await createResponse.json() as { automation?: { id?: number; enabled?: boolean }; error?: unknown };
-  assert(createResponse.ok() && Number.isInteger(createBody.automation?.id), `Rendered automation creation failed (${createResponse.status()}).`);
-  automationId = createBody.automation!.id!;
-  assert(createBody.automation?.enabled === false, "A newly created automation was not disabled by default.");
-  await page.waitForSelector(`[data-testid="automation-editor-${automationId}"]`, { visible: true, timeout: 30_000 });
+    stage = "activate the rendered New automation control";
+    const createResponsePromise = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return url.origin === BASE_URL.origin && url.pathname === "/api/automations" && response.request().method() === "POST";
+    }, { timeout: 30_000 });
+    await activateRenderedControl(page, '[data-testid="automation-create"]');
+    const createResponse = await createResponsePromise;
+    const createBody = await createResponse.json() as { automation?: { id?: number; enabled?: boolean }; error?: unknown };
+    assert(createResponse.ok() && Number.isInteger(createBody.automation?.id), `Rendered automation creation failed (${createResponse.status()}).`);
+    automationId = createBody.automation!.id!;
+    assert(createBody.automation?.enabled === false, "A newly created automation was not disabled by default.");
+    await page.waitForSelector(`[data-testid="automation-editor-${automationId}"]`, { visible: true, timeout: 30_000 });
 
-  await fill(page, '[data-testid="automation-name"]', AUTOMATION_NAME);
-  await fill(page, '[data-testid="automation-description"]', AUTOMATION_DESCRIPTION);
-  await fill(page, '[data-testid="automation-condition-title"]', SYNTHETIC_MISSION_PREFIX);
-  await fill(page, '[data-testid="automation-action-title-0"]', AUTOMATION_FOLLOW_UP_TITLE);
-  const saveResponsePromise = page.waitForResponse((response) => {
+    stage = "save the disabled bounded automation draft";
+    await fill(page, '[data-testid="automation-name"]', AUTOMATION_NAME);
+    await fill(page, '[data-testid="automation-description"]', AUTOMATION_DESCRIPTION);
+    await fill(page, '[data-testid="automation-condition-title"]', SYNTHETIC_MISSION_PREFIX);
+    await fill(page, '[data-testid="automation-action-title-0"]', AUTOMATION_FOLLOW_UP_TITLE);
+    const saveResponsePromise = page.waitForResponse((response) => {
     const url = new URL(response.url());
     return url.origin === BASE_URL.origin && url.pathname === `/api/automations/${automationId}` && response.request().method() === "PATCH";
   }, { timeout: 30_000 });
-  await page.click('[data-testid="automation-save"]');
-  const saveResponse = await saveResponsePromise;
-  const saveBody = await saveResponse.json() as {
+    await activateRenderedControl(page, '[data-testid="automation-save"]');
+    const saveResponse = await saveResponsePromise;
+    const saveBody = await saveResponse.json() as {
     automation?: {
       enabled?: boolean;
       name?: string;
       definition?: { conditions?: { titleContains?: string | null }; actions?: Array<{ type?: string; title?: string }> };
     };
   };
-  assert(saveResponse.ok(), `Rendered automation save failed (${saveResponse.status()}).`);
-  assert(saveBody.automation?.enabled === false && saveBody.automation?.name === AUTOMATION_NAME, "Saved automation did not remain a disabled named draft.");
-  assert(saveBody.automation?.definition?.conditions?.titleContains === SYNTHETIC_MISSION_PREFIX, "Saved automation omitted its bounded Mission-title condition.");
-  assert(saveBody.automation?.definition?.actions?.[0]?.type === "schedule_follow_up" && saveBody.automation?.definition?.actions?.[0]?.title === AUTOMATION_FOLLOW_UP_TITLE, "Saved automation omitted its declared follow-up preview action.");
+    assert(saveResponse.ok(), `Rendered automation save failed (${saveResponse.status()}).`);
+    assert(saveBody.automation?.enabled === false && saveBody.automation?.name === AUTOMATION_NAME, "Saved automation did not remain a disabled named draft.");
+    assert(saveBody.automation?.definition?.conditions?.titleContains === SYNTHETIC_MISSION_PREFIX, "Saved automation omitted its bounded Mission-title condition.");
+    assert(saveBody.automation?.definition?.actions?.[0]?.type === "schedule_follow_up" && saveBody.automation?.definition?.actions?.[0]?.title === AUTOMATION_FOLLOW_UP_TITLE, "Saved automation omitted its declared follow-up preview action.");
 
-  await page.waitForFunction((id) => Array.from(document.querySelectorAll<HTMLSelectElement>('[data-testid="automation-preview-mission"] option')).some((option) => option.value === String(id)), { timeout: 30_000 }, missionId);
-  await page.select('[data-testid="automation-preview-mission"]', String(missionId));
-  const previewResponsePromise = page.waitForResponse((response) => {
+    stage = "preview the saved rule against the synthetic Mission";
+    await page.waitForFunction((id) => Array.from(document.querySelectorAll<HTMLSelectElement>('[data-testid="automation-preview-mission"] option')).some((option) => option.value === String(id)), { timeout: 30_000 }, missionId);
+    await page.select('[data-testid="automation-preview-mission"]', String(missionId));
+    const previewResponsePromise = page.waitForResponse((response) => {
     const url = new URL(response.url());
     return url.origin === BASE_URL.origin && url.pathname === `/api/automations/${automationId}/preview` && response.request().method() === "POST";
   }, { timeout: 30_000 });
-  await page.click('[data-testid="automation-preview"]');
-  const previewResponse = await previewResponsePromise;
-  const previewBody = await previewResponse.json() as { preview?: { matched?: boolean; disclosure?: string; actions?: Array<{ type?: string; description?: string }> } };
+    await activateRenderedControl(page, '[data-testid="automation-preview"]');
+    const previewResponse = await previewResponsePromise;
+    const previewBody = await previewResponse.json() as { preview?: { matched?: boolean; disclosure?: string; actions?: Array<{ type?: string; description?: string }> } };
   assert(previewResponse.ok(), `Rendered automation preview failed (${previewResponse.status()}).`);
   assert(previewBody.preview?.matched === true, "Saved automation did not match its synthetic Mission during preview.");
   assert(previewBody.preview?.disclosure === "Preview only. No mission was changed and no follow-up was created.", "Automation preview omitted its exact non-mutation disclosure.");
@@ -436,7 +445,7 @@ async function exerciseNonMutatingAutomationPreview(page: Page): Promise<Automat
   const progressionUnchanged = progressionMatches(progressionBefore, progressionAfterPreview);
   assert(progressionUnchanged, "Automation preview changed activity XP, capability XP, badges, or authority.");
 
-  const evidence: AutomationPreviewEvidence = {
+    const evidence: AutomationPreviewEvidence = {
     automationId,
     missionId,
     matched: true,
@@ -448,19 +457,23 @@ async function exerciseNonMutatingAutomationPreview(page: Page): Promise<Automat
     progressionUnchanged,
   };
 
-  const deleteResponsePromise = page.waitForResponse((response) => {
+    stage = "delete the synthetic automation through the rendered control";
+    const deleteResponsePromise = page.waitForResponse((response) => {
     const url = new URL(response.url());
     return url.origin === BASE_URL.origin && url.pathname === `/api/automations/${automationId}` && response.request().method() === "DELETE";
   }, { timeout: 30_000 });
-  page.once("dialog", async (dialog) => dialog.accept());
-  await page.click('[data-testid="automation-delete"]');
-  const deleteResponse = await deleteResponsePromise;
-  assert(deleteResponse.status() === 204, `Rendered automation deletion failed (${deleteResponse.status()}).`);
-  automationDeleted = true;
-  const listAfterDelete = await browserApiRequest(page, "/api/automations");
-  const remaining = (listAfterDelete.body as { automations?: Array<{ id?: unknown }> } | null)?.automations || [];
-  assert(listAfterDelete.status === 200 && !remaining.some((automation) => Number(automation.id) === automationId), "Deleted synthetic automation remained in the owner list.");
-  return evidence;
+    page.once("dialog", async (dialog) => dialog.accept());
+    await activateRenderedControl(page, '[data-testid="automation-delete"]');
+    const deleteResponse = await deleteResponsePromise;
+    assert(deleteResponse.status() === 204, `Rendered automation deletion failed (${deleteResponse.status()}).`);
+    automationDeleted = true;
+    const listAfterDelete = await browserApiRequest(page, "/api/automations");
+    const remaining = (listAfterDelete.body as { automations?: Array<{ id?: unknown }> } | null)?.automations || [];
+    assert(listAfterDelete.status === 200 && !remaining.some((automation) => Number(automation.id) === automationId), "Deleted synthetic automation remained in the owner list.");
+    return evidence;
+  } catch (error) {
+    throw new Error(`Automation preview could not ${stage}: ${sanitizedMessage(error)}`);
+  }
 }
 
 async function activateRenderedControl(page: Page, selector: string): Promise<void> {
