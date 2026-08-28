@@ -19,11 +19,37 @@ describe("production browser acceptance custody", () => {
       '"/"',
       '"/login"',
       '"/register"',
+      '"/forgot-password"',
+      '"/reset-password"',
+      '"/waitlist"',
+      '"/waitlist/thank-you"',
+      '"/subscription"',
       '"/dashboard"',
       '"/missions"',
       '"/calendar"',
       '"/ai"',
+      '"/chronilog"',
+      '"/timeline"',
+      '"/codex"',
+      '"/kanban"',
+      '"/attention"',
+      '"/time"',
+      '"/energy"',
       '"/health"',
+      '"/wealth"',
+      '"/experience"',
+      '"/streak"',
+      '"/efficiency"',
+      '"/profile"',
+      '"/journal-log"',
+      '"/mission-log"',
+      '"/rituals"',
+      '"/knowledge-vault"',
+      '"/goals-archive"',
+      '"/tracker"',
+      '"/subscription/manage"',
+      '"/rolodex"',
+      '"/document-vault"',
       '"/messages"',
       '"/projects"',
       '"/automations"',
@@ -34,6 +60,7 @@ describe("production browser acceptance custody", () => {
     ]) {
       expect(script).toContain(route);
     }
+    expect(script).toContain("Every stable route that can be rendered without a one-time token");
     expect(script).not.toMatch(/fetch\([^)]*,\s*\{[^}]*method:\s*["'](?:POST|PUT|PATCH|DELETE)/s);
   });
 

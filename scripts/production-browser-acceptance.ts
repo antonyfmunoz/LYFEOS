@@ -68,22 +68,54 @@ const THRESHOLDS = {
   horizontalOverflowPx: Number(process.env.LYFEOS_ACCEPTANCE_MAX_OVERFLOW_PX || 2),
 } as const;
 
-const PUBLIC_ROUTES = ["/", "/login", "/register", "/forgot-password"] as const;
+// Every stable route that can be rendered without a one-time token, public ID,
+// or mutable fixture belongs in this inventory. Parameterized editors and
+// review links are qualified by their dedicated authenticated journeys.
+const PUBLIC_ROUTES = [
+  "/",
+  "/login",
+  "/register",
+  "/forgot-password",
+  "/reset-password",
+  "/waitlist",
+  "/waitlist/thank-you",
+  "/subscription",
+] as const;
 const AUTHENTICATED_ROUTES = [
   "/dashboard",
   "/missions",
   "/calendar",
   "/ai",
-  "/health",
-  "/profile",
-  "/messages",
+  "/chronilog",
+  "/timeline",
+  "/codex",
+  "/kanban",
   "/projects",
-  "/automations",
+  "/attention",
+  "/time",
+  "/energy",
+  "/health",
+  "/wealth",
+  "/experience",
+  "/streak",
+  "/efficiency",
+  "/profile",
+  "/journal-log",
+  "/mission-log",
+  "/rituals",
+  "/knowledge-vault",
+  "/goals-archive",
+  "/tracker",
+  "/subscription/manage",
+  "/rolodex",
+  "/document-vault",
+  "/messages",
   "/spreadsheets",
   "/canvases",
   "/databases",
   "/search",
   "/finance",
+  "/automations",
 ] as const;
 
 const VIEWPORTS: Array<{ name: string; value: Viewport; mobile: boolean }> = [
