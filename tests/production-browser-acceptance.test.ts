@@ -132,6 +132,7 @@ describe("production browser acceptance custody", () => {
     expect(coreLoopScript).toContain("[AUTOMATED ACCEPTANCE]");
     expect(coreLoopScript).toContain("async function dismissBlockingTutorial");
     expect(coreLoopScript).toContain('button[aria-label="Skip this tutorial"]');
+    expect(coreLoopScript).toContain("button.click()");
     expect(coreLoopScript).toContain("const tutorialDismissed = await dismissBlockingTutorial(page)");
     expect(coreLoopScript).toContain('page.click(\'[data-tour="create-mission"]\')');
     expect(coreLoopScript).toContain('page.click(\'[data-testid="mission-create-submit"]\')');

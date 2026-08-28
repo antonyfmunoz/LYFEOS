@@ -158,7 +158,13 @@ async function dismissBlockingTutorial(page: Page): Promise<boolean> {
     return style.display !== "none" && style.visibility !== "hidden" && element.getClientRects().length > 0;
   });
   if (!visible) return false;
-  await control.click();
+  // Trigger the control through the DOM so the tutorial's moving spotlight
+  // cannot make Puppeteer's coordinate-based click land on stale geometry.
+  await page.evaluate((tutorialSelector) => {
+    const button = document.querySelector<HTMLButtonElement>(tutorialSelector);
+    if (!button) throw new Error("Tutorial skip control disappeared before dismissal.");
+    button.click();
+  }, selector);
   await page.waitForSelector(selector, { hidden: true, timeout: 10_000 });
   return true;
 }
