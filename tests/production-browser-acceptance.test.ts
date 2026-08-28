@@ -134,7 +134,7 @@ describe("production browser acceptance custody", () => {
 
   it("qualifies the rendered truthful Mission loop separately and always archives its synthetic record", () => {
     expect(packageJson).toContain('"acceptance:core-loop": "tsx scripts/production-core-loop-acceptance.ts"');
-    expect(coreLoopScript).toContain('contract: "lyfeos.production-core-loop-acceptance.v6"');
+    expect(coreLoopScript).toContain('contract: "lyfeos.production-core-loop-acceptance.v7"');
     expect(coreLoopScript).toContain("[AUTOMATED ACCEPTANCE]");
     expect(coreLoopScript).toContain("async function dismissBlockingTutorial");
     expect(coreLoopScript).toContain("async function activateRenderedControl");
@@ -169,6 +169,8 @@ describe("production browser acceptance custody", () => {
     expect(coreLoopScript).toContain('await waitForApiBudget(page, 60)');
     expect(coreLoopScript).toContain('response.headers.get("ratelimit-remaining")');
     expect(coreLoopScript).toContain('response.headers.get("retry-after")');
+    expect(coreLoopScript).toContain('response.status() !== 429 || attempt === 2');
+    expect(coreLoopScript).toContain('Rendered Mission completion change attempt ${attempt + 1}');
     expect(coreLoopScript).toContain('button[aria-label="Skip this tutorial"]');
     expect(coreLoopScript).toContain("button.click()");
     expect(coreLoopScript).toContain("const tutorialDismissed = await dismissBlockingTutorial(page)");
@@ -244,7 +246,7 @@ describe("production browser acceptance custody", () => {
     expect(coreLoopScript).not.toContain("const numberFrom =");
     expect(coreLoopScript).toContain("const renderedProgression = await page.evaluate(`");
     expect(coreLoopScript).toContain('activityExperience: Number((total || "").replace(/[^0-9-]/g, ""))');
-    expect(coreLoopScript).toContain('await waitForApiBudget(page, 30)');
+    expect(coreLoopScript.match(/await waitForApiBudget\(page, 80\)/g)).toHaveLength(2);
     expect(coreLoopScript).toContain('activateMissionControl(page, "undo")');
     expect(coreLoopScript).toContain('progressionMatches(progressionBefore, progressionAfterReopen)');
     expect(coreLoopScript).toContain('unlockResult?.state === "declared"');

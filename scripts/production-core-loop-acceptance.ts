@@ -800,7 +800,7 @@ async function activateMissionControl(page: Page, action: "start" | "done" | "un
     if (!card) return false;
     const control = document.querySelector<HTMLElement>(controlSelector)
       || Array.from(card.querySelectorAll<HTMLButtonElement>("button")).find((button) => button.textContent?.trim() === controlLabel);
-    if (!control || !card.contains(control)) return false;
+    if (!control || !card.contains(control) || (control instanceof HTMLButtonElement && control.disabled)) return false;
     const style = getComputedStyle(control);
     return style.display !== "none" && style.visibility !== "hidden" && control.getClientRects().length > 0;
   }, { timeout: 30_000 }, { cardSelector, controlSelector: selector, controlLabel: label });
@@ -816,15 +816,27 @@ async function activateMissionControl(page: Page, action: "start" | "done" | "un
 
 async function waitForMissionToggle(page: Page, action: () => Promise<void>): Promise<{ quest?: { completed?: boolean }; xpAwarded?: number }> {
   assert(missionId !== null, "Cannot observe a Mission toggle without a synthetic Mission.");
-  const responsePromise = page.waitForResponse((response) => {
-    const url = new URL(response.url());
-    return url.origin === BASE_URL.origin && url.pathname === `/api/quests/${missionId}/toggle` && response.request().method() === "POST";
-  }, { timeout: 30_000 });
-  await action();
-  const response = await responsePromise;
-  const body = await response.json() as { quest?: { completed?: boolean }; xpAwarded?: number; error?: unknown };
-  assert(response.ok(), `Rendered Mission completion change failed (${response.status()}).`);
-  return body;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const responsePromise = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return url.origin === BASE_URL.origin && url.pathname === `/api/quests/${missionId}/toggle` && response.request().method() === "POST";
+    }, { timeout: 30_000 });
+    await action();
+    const response = await responsePromise;
+    const body = await response.json() as { quest?: { completed?: boolean }; xpAwarded?: number; error?: unknown };
+    if (response.ok()) return body;
+    if (response.status() !== 429 || attempt === 2) throw new Error(`Rendered Mission completion change failed (${response.status()}).`);
+    const headers = response.headers();
+    const remainingHeader = headers["ratelimit-remaining"];
+    const resetHeader = headers["ratelimit-reset"] || headers["retry-after"];
+    await waitForRateLimitReset({
+      status: response.status(),
+      remaining: remainingHeader === undefined ? null : Number(remainingHeader),
+      resetSeconds: resetHeader === undefined ? null : Number(resetHeader),
+      body,
+    }, `Rendered Mission completion change attempt ${attempt + 1}`);
+  }
+  throw new Error("Unreachable rendered Mission retry state.");
 }
 
 async function dismissBlockingTutorial(page: Page): Promise<boolean> {
@@ -1084,7 +1096,7 @@ async function cleanupMission(page: Page): Promise<void> {
 
 async function writeReport(): Promise<void> {
   const report = {
-    contract: "lyfeos.production-core-loop-acceptance.v6",
+    contract: "lyfeos.production-core-loop-acceptance.v7",
     generatedAt: new Date().toISOString(),
     baseUrl: BASE_URL.origin,
     source: SOURCE,
@@ -1343,7 +1355,7 @@ async function main(): Promise<void> {
     // share the production account's aggregate API budget. Refill before the
     // final rendered mutation so Undo is measuring reversal semantics rather
     // than the acceptance harness's own traffic volume.
-    await waitForApiBudget(page, 30);
+    await waitForApiBudget(page, 80);
     await page.goto(new URL("/missions", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
     const reopenedBody = await waitForMissionToggle(page, () => activateMissionControl(page, "undo"));
     assert(reopenedBody.quest?.completed === false, "Rendered Mission Undo control did not reopen the Mission.");
