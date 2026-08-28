@@ -147,4 +147,20 @@ describe("workflow automations", () => {
     expect(page).toContain("never replays an action that already succeeded");
     expect(page).toContain("not copied mission descriptions");
   });
+
+  it("qualifies rendered partial-run repair only in disposable isolated CI", () => {
+    const acceptance = source("scripts/automation-recovery-browser-acceptance.ts");
+    const workflow = source(".github/workflows/verify.yml");
+    expect(acceptance).toContain('process.env.LYFEOS_TEST_ENV === "isolated"');
+    expect(acceptance).toContain('["127.0.0.1", "localhost"].includes(BASE_URL.hostname)');
+    expect(acceptance).toContain('status = \'partial\'');
+    expect(acceptance).toContain("Retry unfinished actions for run");
+    expect(acceptance).toContain('actionAttempts.join(",") === "1,2"');
+    expect(acceptance).toContain('followUpCount === 1');
+    expect(acceptance).toContain('confirmation: "DELETE MY ACCOUNT"');
+    expect(acceptance).toContain("accountErased");
+    expect(workflow).toContain("browser-actions/setup-chrome@v2");
+    expect(workflow).toContain("npm run acceptance:automation-recovery");
+    expect(workflow).toContain("Upload isolated automation recovery evidence");
+  });
 });

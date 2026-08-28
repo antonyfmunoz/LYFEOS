@@ -53,6 +53,10 @@ jobs:
         with:
           node-version: 20
           cache: npm
+      - uses: browser-actions/setup-chrome@v2
+        id: isolated-chrome
+        with:
+          chrome-version: stable
       - run: npm ci
       - name: Apply the complete raw migration history
         shell: bash
@@ -108,6 +112,8 @@ jobs:
           PORT: 5099
           LYFEOS_TEST_ENV: isolated
           LYFEOS_TEST_API_URL: http://127.0.0.1:5099
+          LYFEOS_CHROMIUM_PATH: ${{ steps.isolated-chrome.outputs.chrome-path }}
+          LYFEOS_AUTOMATION_RECOVERY_OUTPUT_DIR: ${{ runner.temp }}/lyfeos-automation-recovery-browser
           LYFEOS_EXTENSION_REGISTRY_ADMIN_TOKEN: ci-extension-registry-qualification-token-000001
         run: |
           export CLERK_SECRET_KEY="sk""_test_lyfeoslocalqualification000000000"
@@ -139,11 +145,22 @@ jobs:
           if [ "$test_status" -eq 0 ]; then
             npx vitest run tests/db-umh-federation-conformance.test.ts || test_status=$?
           fi
+          if [ "$test_status" -eq 0 ]; then
+            npm run acceptance:automation-recovery || test_status=$?
+          fi
           if [ "$test_status" -ne 0 ]; then
             echo "Authenticated integration qualification failed. Server log:"
             cat "$server_log"
           fi
           exit "$test_status"
+      - name: Upload isolated automation recovery evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: lyfeos-isolated-automation-recovery-${{ github.sha }}
+          path: ${{ runner.temp }}/lyfeos-automation-recovery-browser
+          if-no-files-found: warn
+          retention-days: 30
       - name: Rehearse logical backup and isolated restore
         shell: bash
         run: |
