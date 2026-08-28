@@ -201,14 +201,17 @@ async function runViewport(browser: Browser, pool: pg.Pool, viewport: { name: st
   const consoleErrors: string[] = [];
   const isolatedProviderResourceErrors: string[] = [];
   const page = await browser.newPage();
+  let stage = "register isolated owner";
   try {
     const registration = await request("POST", "/api/auth/complete-registration", { email, password: PASSWORD, displayName, termsAccepted: true });
     assert(registration.status === 201, `Registration returned ${registration.status}.`);
     cookie = registration.cookie;
     userId = Number(registration.body.user?.id);
     assert(Number.isInteger(userId) && userId > 0 && cookie, "Registration did not create the isolated owner and session.");
+    stage = "complete the first evidence-reviewed focus";
     const first = await createCompletedFocus(pool, cookie, userId, fixtureId);
 
+    stage = "open the no-current-Thread dashboard";
     const session = cookieParts(cookie);
     await page.setCookie({ ...session, url: BASE_URL.origin, path: "/", httpOnly: true, secure: false, sameSite: "Lax" });
     await page.evaluateOnNewDocument((fixtureUser) => localStorage.setItem("lyfeos_user", JSON.stringify(fixtureUser)), { id: userId, displayName });
@@ -229,11 +232,15 @@ async function runViewport(browser: Browser, pool: pg.Pool, viewport: { name: st
     await page.goto(new URL("/dashboard", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
     await page.waitForSelector('[data-testid="transformation-thread-initialization"]', { visible: true, timeout: 60_000 });
     await page.waitForSelector('[data-testid="next-capability-focus"]', { visible: true, timeout: 30_000 });
+    stage = "wait for the durable capability option";
+    await page.waitForFunction((capabilityId) => [...(document.querySelector<HTMLSelectElement>('[data-testid="next-capability-focus"]')?.options || [])]
+      .some((option) => option.value === String(capabilityId)), { timeout: 30_000 }, first.capabilityId);
     const optionText = await page.$eval('[data-testid="next-capability-focus"]', (select, capabilityId) => {
       const option = [...(select as HTMLSelectElement).options].find((candidate) => candidate.value === String(capabilityId));
       return option?.textContent?.trim() || "";
     }, first.capabilityId);
     assert(optionText.includes(`${first.durableReviewedExperience} XP`), `Rendered successor selector omitted durable reviewed XP: ${optionText}.`);
+    stage = "initialize the successor through rendered controls";
     await page.select('[data-testid="next-capability-focus"]', String(first.capabilityId));
     const [initializeResponse] = await Promise.all([
       page.waitForResponse((response) => response.request().method() === "POST" && new URL(response.url()).pathname === "/api/transformation-thread/initialize", { timeout: 30_000 }),
@@ -244,6 +251,7 @@ async function runViewport(browser: Browser, pool: pg.Pool, viewport: { name: st
     const successorThreadId = Number(initializeBody.thread?.id);
     assert(Number.isInteger(successorThreadId) && successorThreadId !== first.firstThreadId && initializeBody.thread?.primaryCapabilityId === first.capabilityId, "Rendered successor initialization did not create a distinct Thread over the same capability.");
 
+    stage = "activate the successor through rendered controls";
     await page.waitForSelector('[data-testid="activate-thread-plan"]', { visible: true, timeout: 30_000 });
     const [activateResponse] = await Promise.all([
       page.waitForResponse((response) => response.request().method() === "POST" && new URL(response.url()).pathname === `/api/transformation-thread/${successorThreadId}/activate`, { timeout: 30_000 }),
@@ -253,6 +261,7 @@ async function runViewport(browser: Browser, pool: pg.Pool, viewport: { name: st
     const activateBody = await activateResponse.json() as { createdMissions?: number };
     assert(activateBody.createdMissions === 3, `Rendered successor activation created ${activateBody.createdMissions} starter Missions.`);
 
+    stage = "verify durable and Thread-local progression separation";
     const current = await request("GET", "/api/transformation-thread", undefined, cookie);
     const primary = current.body.thread?.skills?.find((skill: { kind?: string }) => skill.kind === "primary");
     const graphPrimary = current.body.thread?.skillGraph?.nodes?.find((skill: { kind?: string }) => skill.kind === "primary");
@@ -261,6 +270,7 @@ async function runViewport(browser: Browser, pool: pg.Pool, viewport: { name: st
     assert(primary?.capabilityId === first.capabilityId && Number(primary?.experience) === 0, "Successor primary skill did not begin with zero Thread-local XP over the same durable capability.");
     assert(Number(graphPrimary?.experience) === first.durableReviewedExperience && Number(graphPrimary?.threadExperience) === 0, "Successor graph did not separate durable reviewed XP from zero Thread-local XP.");
 
+    stage = "render both capability focus periods";
     await page.waitForSelector(`[data-testid="capability-history-toggle-${primary.id}"]`, { visible: true, timeout: 30_000 });
     await page.click(`[data-testid="capability-history-toggle-${primary.id}"]`);
     await page.waitForSelector(`[data-testid="capability-focus-${successorThreadId}"]`, { visible: true, timeout: 30_000 });
@@ -273,6 +283,7 @@ async function runViewport(browser: Browser, pool: pg.Pool, viewport: { name: st
     const capabilities = await request("GET", "/api/capabilities", undefined, cookie);
     const capability = capabilities.body.capabilities?.find((item: { id?: number }) => item.id === first.capabilityId);
     assert(capability?.focusCount === 2 && capability?.experience === first.durableReviewedExperience, "Capability summary did not preserve one durable total across two focus periods.");
+    stage = "audit the rendered successor dashboard";
     const rendered = await auditRenderedPage(page);
     assert(rendered.duplicateIds.length === 0, `Rendered ${viewport.name} dashboard has duplicate IDs: ${rendered.duplicateIds.join(", ")}.`);
     assert(rendered.unlabeledControls.length === 0, `Rendered ${viewport.name} dashboard has unlabeled controls: ${rendered.unlabeledControls.join(", ")}.`);
@@ -282,6 +293,7 @@ async function runViewport(browser: Browser, pool: pg.Pool, viewport: { name: st
     await page.screenshot({ path: path.join(OUTPUT_DIR, `${viewport.name}.png`), fullPage: true });
     await page.close();
 
+    stage = "erase the isolated owner and verify zero residue";
     const deletion = await request("DELETE", "/api/account", { confirmation: "DELETE MY ACCOUNT" }, cookie);
     assert(deletion.status === 200, `Account erasure returned ${deletion.status}.`);
     erased = true;
@@ -318,6 +330,9 @@ async function runViewport(browser: Browser, pool: pg.Pool, viewport: { name: st
       isolatedProviderResourceErrors,
       erased,
     };
+  } catch (error) {
+    if (!page.isClosed()) await page.screenshot({ path: path.join(OUTPUT_DIR, `${viewport.name}-failure.png`), fullPage: true }).catch(() => undefined);
+    throw new Error(`${viewport.name} failed while attempting to ${stage}: ${safeError(error)}`);
   } finally {
     if (!page.isClosed()) await page.close().catch(() => undefined);
     if (cookie && !erased) await request("DELETE", "/api/account", { confirmation: "DELETE MY ACCOUNT" }, cookie).catch(() => undefined);
