@@ -132,6 +132,13 @@ describe("production browser acceptance custody", () => {
     expect(coreLoopScript).toContain("[AUTOMATED ACCEPTANCE]");
     expect(coreLoopScript).toContain("async function dismissBlockingTutorial");
     expect(coreLoopScript).toContain("async function activateRenderedControl");
+    expect(coreLoopScript).toContain("async function browserApiRequest");
+    expect(coreLoopScript).toContain("async function waitForApiBudget");
+    expect(coreLoopScript).toContain("async function archiveStrandedSyntheticMissions");
+    expect(coreLoopScript).toContain('await waitForApiBudget(page, 80)');
+    expect(coreLoopScript).toContain('await waitForApiBudget(page, 60)');
+    expect(coreLoopScript).toContain('response.headers.get("ratelimit-remaining")');
+    expect(coreLoopScript).toContain('response.headers.get("retry-after")');
     expect(coreLoopScript).toContain('button[aria-label="Skip this tutorial"]');
     expect(coreLoopScript).toContain("button.click()");
     expect(coreLoopScript).toContain("const tutorialDismissed = await dismissBlockingTutorial(page)");
@@ -140,7 +147,7 @@ describe("production browser acceptance custody", () => {
     expect(coreLoopScript).toContain('page.click(\'[data-testid="proof-plan-save"]\')');
     expect(coreLoopScript).toContain('page.click(\'[data-testid="mission-evidence-add"]\')');
     expect(coreLoopScript).toContain("progressionMatches(progressionBefore, progressionAfterEvidence)");
-    expect(coreLoopScript).toContain('fetch(`/api/quests/${id}`, { method: "DELETE"');
+    expect(coreLoopScript).toContain('browserApiRequest(page, `/api/quests/${id}`, "DELETE")');
     expect(coreLoopScript).toContain("await cleanupMission(page)");
     expect(coreLoopScript).toContain('boundary: "The journey stops before completion or review.');
     expect(coreLoopScript).not.toContain('/toggle"');

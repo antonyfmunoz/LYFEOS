@@ -28,6 +28,13 @@ type StepEvidence = {
   detail: string;
 };
 
+type BrowserApiResponse = {
+  status: number;
+  remaining: number | null;
+  resetSeconds: number | null;
+  body: unknown;
+};
+
 const BASE_URL = new URL(process.env.LYFEOS_ACCEPTANCE_BASE_URL || "https://lyfeos.net");
 const EMAIL = process.env.LYFEOS_ACCEPTANCE_EMAIL?.trim() || "";
 const PASSWORD = process.env.LYFEOS_ACCEPTANCE_PASSWORD || "";
@@ -40,6 +47,7 @@ const PURPOSE = "Verify that real Mission evidence remains separate from progres
 const EXPECTED_OUTPUT = "A synthetic proof-plan receipt and one unreviewed evidence record.";
 const REQUIRED_EVIDENCE = "A bounded browser acceptance receipt for this synthetic Mission.";
 const EVIDENCE_SUMMARY = `Synthetic browser receipt ${RUN_ID.slice(0, 8)}; no competence or authority claim.`;
+const SYNTHETIC_MISSION_PREFIX = "[AUTOMATED ACCEPTANCE]";
 
 const steps: StepEvidence[] = [];
 let missionId: number | null = null;
@@ -60,6 +68,66 @@ function sanitizedMessage(error: unknown): string {
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
+}
+
+async function waitForRateLimitReset(response: BrowserApiResponse, label: string): Promise<void> {
+  assert(response.resetSeconds !== null && Number.isFinite(response.resetSeconds), `${label} did not expose an actionable rate-limit reset.`);
+  const waitMs = Math.min(65_000, Math.max(1_000, (response.resetSeconds + 1) * 1_000));
+  await new Promise((resolve) => setTimeout(resolve, waitMs));
+}
+
+async function browserApiRequest(page: Page, pathname: string, method = "GET"): Promise<BrowserApiResponse> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const result = await page.evaluate(async ({ requestPath, requestMethod }) => {
+      const response = await fetch(requestPath, { method: requestMethod, credentials: "include", cache: "no-store" });
+      const remainingHeader = response.headers.get("ratelimit-remaining");
+      const resetHeader = response.headers.get("ratelimit-reset") || response.headers.get("retry-after");
+      let body: unknown = null;
+      try {
+        body = await response.json();
+      } catch {
+        // Status and headers remain authoritative for responses without JSON.
+      }
+      return {
+        status: response.status,
+        remaining: remainingHeader === null ? null : Number(remainingHeader),
+        resetSeconds: resetHeader === null ? null : Number(resetHeader),
+        body,
+      };
+    }, { requestPath: pathname, requestMethod: method });
+    if (result.status !== 429) return result;
+    if (attempt === 2) return result;
+    await waitForRateLimitReset(result, `${method} ${pathname}`);
+  }
+  throw new Error(`Unreachable API retry state for ${method} ${pathname}.`);
+}
+
+async function waitForApiBudget(page: Page, floor: number): Promise<void> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const state = await browserApiRequest(page, "/api/auth/me");
+    assert(state.status === 200, `API budget probe returned ${state.status}.`);
+    if (state.remaining === null || state.remaining > floor) return;
+    await waitForRateLimitReset(state, "API budget probe");
+  }
+  throw new Error(`API rate-limit budget did not recover above ${floor}.`);
+}
+
+async function archiveStrandedSyntheticMissions(page: Page): Promise<number> {
+  const session = await browserApiRequest(page, "/api/auth/me");
+  const userId = Number((session.body as { user?: { id?: unknown } } | null)?.user?.id);
+  assert(session.status === 200 && Number.isInteger(userId), "Could not resolve the dedicated acceptance account for synthetic cleanup.");
+  const missionsResponse = await browserApiRequest(page, `/api/users/${userId}/quests`);
+  const missions = (missionsResponse.body as { quests?: Array<{ id?: unknown; title?: unknown }> } | null)?.quests || [];
+  assert(missionsResponse.status === 200, `Synthetic Mission preflight returned ${missionsResponse.status}.`);
+  const strandedIds = missions
+    .filter((mission) => typeof mission.title === "string" && mission.title.startsWith(SYNTHETIC_MISSION_PREFIX))
+    .map((mission) => Number(mission.id))
+    .filter((id) => Number.isInteger(id));
+  for (const id of strandedIds) {
+    const archived = await browserApiRequest(page, `/api/quests/${id}`, "DELETE");
+    assert(archived.status === 200, `Stranded synthetic Mission ${id} cleanup returned ${archived.status}.`);
+  }
+  return strandedIds.length;
 }
 
 async function findChromium(): Promise<string> {
@@ -227,14 +295,12 @@ async function requireMissionView(page: Page, viewport: string): Promise<void> {
 async function cleanupMission(page: Page): Promise<void> {
   if (missionId === null) return;
   cleanupAttempted = true;
-  const cleanup = await page.evaluate(async (id) => {
-    const response = await fetch(`/api/quests/${id}`, { method: "DELETE", credentials: "include" });
-    const archivedResponse = await fetch("/api/quests/archived", { credentials: "include", cache: "no-store" });
-    const archived = archivedResponse.ok ? await archivedResponse.json() as Array<{ id: number }> : [];
-    return { deleteStatus: response.status, archivedStatus: archivedResponse.status, found: archived.some((mission) => Number(mission.id) === id) };
-  }, missionId);
-  assert(cleanup.deleteStatus === 200, `Synthetic Mission cleanup returned ${cleanup.deleteStatus}.`);
-  assert(cleanup.archivedStatus === 200 && cleanup.found, "Synthetic Mission was not visible in the recoverable archive after cleanup.");
+  await waitForApiBudget(page, 5);
+  const cleanup = await browserApiRequest(page, `/api/quests/${missionId}`, "DELETE");
+  assert(cleanup.status === 200, `Synthetic Mission cleanup returned ${cleanup.status}.`);
+  const archivedResponse = await browserApiRequest(page, "/api/quests/archived");
+  const archived = Array.isArray(archivedResponse.body) ? archivedResponse.body as Array<{ id?: unknown }> : [];
+  assert(archivedResponse.status === 200 && archived.some((mission) => Number(mission.id) === missionId), "Synthetic Mission was not visible in the recoverable archive after cleanup.");
   cleanupArchived = true;
 }
 
@@ -295,6 +361,9 @@ async function main(): Promise<void> {
   try {
     await login(page);
     steps.push({ name: "authenticated dedicated account", status: "passed", detail: "Session and completed onboarding verified." });
+    await waitForApiBudget(page, 80);
+    const strandedMissionCount = await archiveStrandedSyntheticMissions(page);
+    steps.push({ name: "synthetic Mission preflight", status: "passed", detail: strandedMissionCount > 0 ? `Archived ${strandedMissionCount} stranded synthetic Mission(s).` : "No stranded synthetic Missions were present." });
     progressionBefore = await readProgression(page);
 
     await page.goto(new URL("/missions", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
@@ -316,6 +385,7 @@ async function main(): Promise<void> {
 
     await page.goto(new URL(`/mission/${missionId}`, BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
     await page.waitForFunction((title) => document.body.innerText.includes(title), { timeout: 30_000 }, MISSION_TITLE);
+    await waitForApiBudget(page, 60);
     await fill(page, '[data-testid="proof-plan-purpose"]', PURPOSE);
     await fill(page, '[data-testid="proof-plan-output"]', EXPECTED_OUTPUT);
     await fill(page, '[data-testid="proof-plan-method"]', "Create one bounded synthetic Mission.\nAttach one synthetic browser receipt.\nStop before completion or review.");
