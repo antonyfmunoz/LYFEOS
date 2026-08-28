@@ -3,6 +3,7 @@ import fs from "node:fs";
 
 const onboarding = fs.readFileSync("client/src/pages/OnboardingPage.tsx", "utf8");
 const profile = fs.readFileSync("client/src/pages/ProfilePage.tsx", "utf8");
+const app = fs.readFileSync("client/src/App.tsx", "utf8");
 
 describe("rendered onboarding acceptance contract", () => {
   it("exposes stable, accessible controls without changing the visual flow", () => {
@@ -35,5 +36,10 @@ describe("rendered onboarding acceptance contract", () => {
     expect(onboarding).toContain("persistOnboardingPosition(currentMission + 1, 0)");
     expect(onboarding).toContain("setShowMissionComplete(missionComplete === true)");
     expect(onboarding).toContain("!restoredOnboardingPositionRef.current");
+  });
+
+  it("reveals auth-aware routes after a cached-session reload", () => {
+    expect(app).toMatch(/useEffect\(\(\) => \{\s*if \(!isLoading\) \{\s*hideOAuthPreloader\(\);[\s\S]*?hideAppPreloader\(\);\s*}\s*}, \[isLoading\]\);/);
+    expect(app).toContain('<Route path="/onboarding" component={OnboardingPage} />');
   });
 });

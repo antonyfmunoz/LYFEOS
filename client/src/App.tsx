@@ -215,6 +215,11 @@ function Router() {
   useEffect(() => {
     if (!isLoading) {
       hideOAuthPreloader();
+      // The static app preloader is enabled for any page load that has a
+      // cached user, including /onboarding and /ceremony. Those routes live
+      // outside ProtectedRoute by design, so auth settling at the router is
+      // the shared point where the mounted application must become visible.
+      hideAppPreloader();
     }
   }, [isLoading]);
   
