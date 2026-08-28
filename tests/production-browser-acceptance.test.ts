@@ -69,8 +69,11 @@ describe("production browser acceptance custody", () => {
     expect(script).toContain('const navigation = viewport === desktop && routeIndex === 0 ? "document" : "spa"');
     expect(script).toContain("Do not misattribute the previous document's metrics");
     expect(script).toContain("respectApiRateLimit");
+    expect(script).toContain('route === "/ai"');
+    expect(script).toContain('path: "/api/ai/orchestration-runs", floor: 2');
+    expect(script).toContain("await respectApiRateLimit(authenticatedPage, route)");
     expect(script).toContain('response.headers.get("ratelimit-remaining")');
-    expect(script).toContain("state.remaining <= 50");
+    expect(script).toContain("state.remaining <= target.floor");
     expect(script).toContain('element.closest("label")');
     expect(script).toContain('style.display !== "none"');
     expect(script).not.toContain("const isRendered");

@@ -491,18 +491,27 @@ async function newPage(browser: Browser, viewport: Viewport, mobile: boolean): P
   return page;
 }
 
-async function respectApiRateLimit(page: Page): Promise<void> {
-  const state = await page.evaluate(async () => {
-    const response = await fetch("/api/auth/me", { credentials: "include", cache: "no-store" });
-    return {
-      status: response.status,
-      remaining: Number(response.headers.get("ratelimit-remaining")),
-      resetSeconds: Number(response.headers.get("ratelimit-reset") || response.headers.get("retry-after")),
-    };
-  });
-  if ((state.status === 429 || (Number.isFinite(state.remaining) && state.remaining <= 50)) && Number.isFinite(state.resetSeconds)) {
-    const waitMs = Math.min(65_000, Math.max(1_000, (state.resetSeconds + 1) * 1_000));
-    await new Promise((resolve) => setTimeout(resolve, waitMs));
+async function respectApiRateLimit(page: Page, route: string): Promise<void> {
+  // The orchestration workspace intentionally has a tighter write-protecting
+  // quota than the general API. Probe that bucket before visiting /ai so a
+  // scheduled run never mistakes an inherited test-account window for a UI
+  // regression. This observes production policy; it does not bypass it.
+  const targets = route === "/ai"
+    ? [{ path: "/api/ai/orchestration-runs", floor: 2 }, { path: "/api/auth/me", floor: 50 }]
+    : [{ path: "/api/auth/me", floor: 50 }];
+  for (const target of targets) {
+    const state = await page.evaluate(async ({ path }) => {
+      const response = await fetch(path, { credentials: "include", cache: "no-store" });
+      return {
+        status: response.status,
+        remaining: Number(response.headers.get("ratelimit-remaining")),
+        resetSeconds: Number(response.headers.get("ratelimit-reset") || response.headers.get("retry-after")),
+      };
+    }, target);
+    if ((state.status === 429 || (Number.isFinite(state.remaining) && state.remaining <= target.floor)) && Number.isFinite(state.resetSeconds)) {
+      const waitMs = Math.min(65_000, Math.max(1_000, (state.resetSeconds + 1) * 1_000));
+      await new Promise((resolve) => setTimeout(resolve, waitMs));
+    }
   }
 }
 
@@ -573,8 +582,8 @@ async function main(): Promise<void> {
           }
           for (const [routeIndex, route] of AUTHENTICATED_ROUTES.entries()) {
             const navigation = viewport === desktop && routeIndex === 0 ? "document" : "spa";
+            await respectApiRateLimit(authenticatedPage, route);
             results.push(await auditRouteWithEvidence(authenticatedPage, route, "authenticated", viewport.name, navigation));
-            await respectApiRateLimit(authenticatedPage);
           }
         }
       } finally {
