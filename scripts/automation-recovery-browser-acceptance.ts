@@ -225,13 +225,13 @@ async function main(): Promise<void> {
       await page.goto(new URL("/automations", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
       await page.waitForSelector(`[data-testid="automation-run-${runId}"]`, { visible: true, timeout: 30_000 });
       const view = await inspectRun(page, runId, viewport.name);
+      views.push(view);
       assert(view.status.includes("Partial") && view.status.includes(`Run #${runId}`), `${viewport.name} did not render the partial run identity.`);
       assert(view.status.includes("Action 1: Set Mission category") && view.status.includes("Action 2: Create follow-up Mission"), `${viewport.name} did not render ordered action types.`);
-      assert(view.status.includes("Succeeded · 1 attempt") && view.status.includes("Failed · 1 attempt · Action Failed"), `${viewport.name} did not render action outcomes, attempts and safe failure code.`);
+      assert(view.status.includes("Succeeded") && view.status.includes("Failed") && view.status.includes("Action Failed") && view.actionAttempts.join(",") === "1,1", `${viewport.name} did not render action outcomes, attempts and safe failure code.`);
       assert(view.status.includes(`Mission #${missionId}`) && view.status.includes(`Mission #${followUpId}`), `${viewport.name} did not render bounded record identifiers.`);
       assert(view.repairLabel === `Retry unfinished actions for run ${runId}`, `${viewport.name} did not expose the explicit repair name.`);
       assert(view.duplicateIds.length === 0 && view.unlabeledControls.length === 0 && view.horizontalOverflowPx <= 2, `${viewport.name} failed rendered accessibility or overflow checks.`);
-      views.push(view);
     }
 
     const repairResponse = page.waitForResponse((response) => response.url().endsWith(`/api/automations/${automationId}/runs/${runId}/repair`) && response.request().method() === "POST", { timeout: 30_000 });
