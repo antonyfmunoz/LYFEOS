@@ -213,7 +213,22 @@ export function TransformationThreadPanel() {
     onError: (error: Error) => toast({ title: "Could not defer mission", description: error.message || "Your mission was not changed.", variant: "destructive" }),
   });
   const onboardingComplete = profile?.onboardingCompleted && (profile.completedOnboardingMissions?.length || 0) >= 8;
-  if (isLoading) return null;
+  if (isLoading) {
+    return (
+      <section
+        className="mb-6 min-h-[calc(100vh-15rem)]"
+        aria-label="Loading current Thread"
+        aria-busy="true"
+        data-tour="transformation-thread"
+      >
+        <div className="glassmorphic rounded-xl p-4 neon-border">
+          <div className="h-3 w-32 animate-pulse rounded bg-primary/15" />
+          <div className="mt-3 h-4 w-64 max-w-full animate-pulse rounded bg-primary/10" />
+          <div className="mt-2 h-3 w-full max-w-2xl animate-pulse rounded bg-primary/10" />
+        </div>
+      </section>
+    );
+  }
 
   if (!thread && onboardingComplete) {
     const reusableCapabilities = capabilityData?.capabilities || [];
@@ -523,6 +538,7 @@ export function TransformationThreadPanel() {
               <div className="mt-3 space-y-2">
                 <div className="flex flex-col gap-2 sm:flex-row">
                   <Input
+                    aria-label="Connected skill branch name"
                     value={branchName}
                     onChange={(event) => setBranchName(event.target.value)}
                     placeholder="Add a connected skill branch"

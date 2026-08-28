@@ -41,6 +41,13 @@ describe("private capability registry", () => {
     expect(panel).toContain("Could not remove connection");
   });
 
+  it("keeps the active Thread dashboard stable and labels branch entry", () => {
+    const panel = readFileSync(resolve(process.cwd(), "client/src/components/dashboard/TransformationThreadPanel.tsx"), "utf8");
+    expect(panel).toContain('className="mb-6 min-h-[calc(100vh-15rem)]"');
+    expect(panel).toContain('aria-busy="true"');
+    expect(panel).toContain('aria-label="Connected skill branch name"');
+  });
+
   it("keeps user-stated relationship strength visual rather than a hidden XP multiplier", () => {
     const schema = readFileSync(resolve(process.cwd(), "shared/schema.ts"), "utf8");
     const constellation = readFileSync(resolve(process.cwd(), "client/src/components/dashboard/CapabilityConstellation.tsx"), "utf8");
