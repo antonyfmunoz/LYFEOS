@@ -8,7 +8,7 @@ import puppeteer, { type Browser, type BrowserContext, type Page, type Viewport 
 
 type ApiResult = { status: number; body: any; cookie: string };
 type FixtureAccount = { id: number; displayName: string; email: string; password: string; cookie: string };
-type BrowserSignals = { consoleErrors: string[]; pageErrors: string[]; failedRequests: string[]; serverErrors: string[] };
+type BrowserSignals = { consoleErrors: string[]; pageErrors: string[]; failedRequests: string[]; serverErrors: string[]; isolatedProviderErrors: string[] };
 type ViewResult = {
   account: "sender" | "recipient";
   viewport: string;
@@ -124,19 +124,30 @@ async function clickSelector(page: Page, selector: string): Promise<void> {
 
 async function replaceInput(page: Page, selector: string, value: string): Promise<void> {
   await page.waitForSelector(selector, { visible: true, timeout: 30_000 });
-  await page.click(selector);
-  await page.keyboard.down("Control");
-  await page.keyboard.press("A");
-  await page.keyboard.up("Control");
-  await page.keyboard.type(value);
+  await page.$eval(selector, (element, nextValue) => {
+    const prototype = element instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+    const setter = Object.getOwnPropertyDescriptor(prototype, "value")?.set;
+    if (!setter) throw new Error("Rendered text control has no native value setter.");
+    setter.call(element, nextValue);
+    element.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: nextValue }));
+    element.dispatchEvent(new Event("change", { bubbles: true }));
+  }, value);
 }
 
 function captureBrowserSignals(page: Page): BrowserSignals {
-  const signals: BrowserSignals = { consoleErrors: [], pageErrors: [], failedRequests: [], serverErrors: [] };
+  const signals: BrowserSignals = { consoleErrors: [], pageErrors: [], failedRequests: [], serverErrors: [], isolatedProviderErrors: [] };
   page.on("console", (entry) => {
-    if (entry.type() === "error") signals.consoleErrors.push(entry.text().slice(0, 500));
+    if (entry.type() !== "error") return;
+    const source = entry.location().url;
+    const detail = `${entry.text().slice(0, 500)}${source ? ` @ ${source}` : ""}`;
+    if (entry.text().includes("Failed to load Clerk") || (entry.text().includes("ERR_NAME_NOT_RESOLVED") && source.startsWith("https://local.lyfeos.dev/npm/@clerk/clerk-js@5/"))) signals.isolatedProviderErrors.push(detail);
+    else signals.consoleErrors.push(detail);
   });
-  page.on("pageerror", (error) => signals.pageErrors.push(error.message.slice(0, 500)));
+  page.on("pageerror", (error) => {
+    const detail = error.message.slice(0, 500);
+    if (detail.includes("Clerk: Failed to load Clerk") && detail.includes("https://local.lyfeos.dev/")) signals.isolatedProviderErrors.push(detail);
+    else signals.pageErrors.push(detail);
+  });
   page.on("requestfailed", (failed) => {
     const method = failed.method();
     const errorText = failed.failure()?.errorText || "failed";
@@ -242,9 +253,11 @@ async function main(): Promise<void> {
   let residualCounts = { users: -1, conversations: -1, participants: -1, messages: -1, notes: -1, reactions: -1, receipts: -1 };
   const views: ViewResult[] = [];
   const signals: BrowserSignals[] = [];
+  let stage = "initialize isolated Messages journey";
   let failure: string | null = null;
 
   try {
+    stage = "register disposable sender and recipient";
     const sender = await createAccount("sender");
     const recipient = await createAccount("recipient");
     accounts.push(sender, recipient);
@@ -259,8 +272,10 @@ async function main(): Promise<void> {
     signals.push(senderBrowser.signals);
     const senderPage = senderBrowser.page;
     await senderPage.setViewport(VIEWPORTS[0].value);
+    stage = "open sender Messages surface";
     await openMessages(senderPage);
 
+    stage = "create conversation through rendered controls";
     await replaceInput(senderPage, '[aria-label="Find a LyfeOS user"]', recipient.displayName);
     await clickText(senderPage, "button", `+ ${recipient.displayName}`);
     await clickText(senderPage, "button", "New");
@@ -272,6 +287,7 @@ async function main(): Promise<void> {
     conversationId = listAfterCreate.body.conversations.find((conversation: any) => conversation.participants.some((participant: any) => participant.id === recipient.id)).id;
     await senderPage.waitForSelector(`[data-testid="messages-conversation-${conversationId}"]`, { timeout: 30_000 });
 
+    stage = "send initial message through rendered controls";
     await replaceInput(senderPage, '[data-testid="native-message-composer"]', INITIAL_MESSAGE);
     await clickSelector(senderPage, '[aria-label="Send message"]');
     const initialDetail = await poll(
@@ -282,6 +298,7 @@ async function main(): Promise<void> {
     initialMessageId = initialDetail.body.conversation.messages.find((message: any) => message.body === INITIAL_MESSAGE).id;
     await senderPage.waitForSelector(`[data-testid="native-message-${initialMessageId}"]`, { timeout: 30_000 });
 
+    stage = "open recipient conversation and render read evidence";
     const recipientBrowser = await createPage(browser, recipient);
     recipientContext = recipientBrowser.context;
     signals.push(recipientBrowser.signals);
@@ -300,6 +317,7 @@ async function main(): Promise<void> {
     readReceiptRendered = (await senderPage.$eval(`[data-testid="native-message-${initialMessageId}"]`, (element) => (element as HTMLElement).innerText)).includes("read");
     assert(readReceiptRendered, "The sender UI did not render the recipient read state.");
 
+    stage = "react and reply through recipient controls";
     await clickSelector(recipientPage, `[data-testid="native-message-react-${initialMessageId}-❤️"]`);
     await recipientPage.waitForSelector(`[aria-label="❤️ reaction, 1"]`, { timeout: 30_000 });
     reactionRendered = true;
@@ -318,6 +336,7 @@ async function main(): Promise<void> {
     replyRendered = (await recipientPage.$eval(`[data-testid="native-message-${replyMessageId}"]`, (element) => (element as HTMLElement).innerText)).includes("Reply");
     assert(replyRendered, "The recipient UI did not render the reply reference.");
 
+    stage = "edit the original message through sender controls";
     await senderPage.reload({ waitUntil: "domcontentloaded" });
     await senderPage.waitForSelector(`[data-testid="native-message-${replyMessageId}"]`, { timeout: 30_000 });
     await clickSelector(senderPage, `[data-testid="native-message-edit-${initialMessageId}"]`);
@@ -332,6 +351,7 @@ async function main(): Promise<void> {
     editRendered = (await senderPage.$eval(`[data-testid="native-message-${initialMessageId}"]`, (element) => (element as HTMLElement).innerText)).includes("edited");
     assert(editRendered, "The sender UI did not render the edited marker.");
 
+    stage = "prove author-only rendered private note";
     await clickText(senderPage, "button", "Private note");
     await replaceInput(senderPage, '[data-testid="native-message-composer"]', PRIVATE_NOTE);
     await clickSelector(senderPage, '[aria-label="Save private note"]');
@@ -345,6 +365,7 @@ async function main(): Promise<void> {
       && !(await recipientPage.$eval("body", (element) => (element as HTMLElement).innerText)).includes(PRIVATE_NOTE);
     assert(privateNoteOwnerOnly, "The private note was not confined to its author.");
 
+    stage = "exercise rendered block and unblock lifecycle";
     await clickText(recipientPage, "button", "Block");
     await waitForText(recipientPage, "Unblock");
     await clickText(recipientPage, "button", "Unblock");
@@ -353,6 +374,7 @@ async function main(): Promise<void> {
     blockLifecycleRendered = unblocked.status === 200 && unblocked.body.conversation?.participantStatus === "active" && unblocked.body.conversation?.status === "open";
     assert(blockLifecycleRendered, "The rendered block/unblock lifecycle did not restore the active conversation.");
 
+    stage = "audit populated desktop and mobile Messages semantics";
     for (const viewport of VIEWPORTS) {
       for (const entry of [
         { page: senderPage, account: "sender" as const, expectedMessage: EDITED_MESSAGE },
@@ -370,7 +392,7 @@ async function main(): Promise<void> {
       }
     }
   } catch (error) {
-    failure = safeError(error);
+    failure = `${stage}: ${safeError(error)}`;
   } finally {
     if (senderContext) await senderContext.close().catch(() => undefined);
     if (recipientContext) await recipientContext.close().catch(() => undefined);
@@ -403,8 +425,9 @@ async function main(): Promise<void> {
       pageErrors: [...combined.pageErrors, ...current.pageErrors],
       failedRequests: [...combined.failedRequests, ...current.failedRequests],
       serverErrors: [...combined.serverErrors, ...current.serverErrors],
-    }), { consoleErrors: [], pageErrors: [], failedRequests: [], serverErrors: [] });
-    const browserClean = Object.values(allSignals).every((items) => items.length === 0);
+      isolatedProviderErrors: [...combined.isolatedProviderErrors, ...current.isolatedProviderErrors],
+    }), { consoleErrors: [], pageErrors: [], failedRequests: [], serverErrors: [], isolatedProviderErrors: [] });
+    const browserClean = [allSignals.consoleErrors, allSignals.pageErrors, allSignals.failedRequests, allSignals.serverErrors].every((items) => items.length === 0);
     const passed = failure === null
       && readReceiptRendered
       && reactionRendered
