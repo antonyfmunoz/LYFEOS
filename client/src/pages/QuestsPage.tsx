@@ -1867,6 +1867,8 @@ export default function QuestsPage() {
                       return (
                         <label key={skill.id} className={`flex items-start gap-2 rounded border px-2 py-1.5 text-xs ${locked ? "border-primary/10 opacity-60" : selected ? "border-primary/45 bg-primary/10" : "border-primary/15 bg-card/30"}`}>
                           <Checkbox
+                            data-testid={`mission-skill-${skill.id}`}
+                            data-skill-name={skill.name}
                             checked={selected}
                             disabled={locked}
                             onCheckedChange={(checked) => setCreateFormData((current) => {

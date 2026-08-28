@@ -212,6 +212,7 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
     <div 
       ref={ref}
       data-handler-id={handlerId}
+      data-testid={`mission-card-${quest.id}`}
       className={`glassmorphic rounded-xl p-4 mb-3 hover:shadow-[0_0_5px_var(--primary-glow-light)] transition neon-border ${isDragging ? "opacity-50" : ""}`}
     >
       <div className="flex items-start">
@@ -417,6 +418,7 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
             <div className="flex items-center gap-2 mt-2">
               {!hasBeenStarted && onStart && (
                 <button
+                  data-testid={`mission-start-${quest.id}`}
                   disabled={timerBlocked}
                   className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40"
                   onClick={(e) => {
@@ -429,6 +431,7 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
               )}
               {hasBeenStarted && !isTimerActive && onResume && (
                 <button
+                  data-testid={`mission-resume-${quest.id}`}
                   disabled={timerBlocked}
                   className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40"
                   onClick={(e) => {
@@ -441,6 +444,7 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
               )}
               {hasBeenStarted && !isTimerActive && onDone && (
                 <button
+                  data-testid={`mission-done-${quest.id}`}
                   className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
                   onClick={(e) => {
                     e.stopPropagation();
@@ -465,6 +469,7 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
           )}
           {completed && onUndo && category !== "onboarding" && (
             <button
+              data-testid={`mission-undo-${quest.id}`}
               className="mt-2 text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors inline-flex items-center gap-1.5"
               onClick={(e) => {
                 e.stopPropagation();

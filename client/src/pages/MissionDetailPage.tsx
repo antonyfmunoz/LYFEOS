@@ -871,16 +871,16 @@ export default function MissionDetailPage() {
                     {mission.completed ? <p className="text-xs leading-relaxed text-muted-foreground">Self-review cannot advance this mission. Progression remains withheld until the invited reviewer accepts the link and records a decision.</p> : null}
                   </div> : null}
                   {mission.completed && contractQuery.data.contract.reviewMode === "self" ? <div className="border-t border-primary/10 pt-3 space-y-2">
-                    <Textarea aria-label="Mission self-review summary" value={reviewSummary} onChange={(event) => setReviewSummary(event.target.value)} placeholder="What evidence supports completion, and what will you improve next?" className="min-h-20" />
+                    <Textarea data-testid="mission-self-review-summary" aria-label="Mission self-review summary" value={reviewSummary} onChange={(event) => setReviewSummary(event.target.value)} placeholder="What evidence supports completion, and what will you improve next?" className="min-h-20" />
                     {declaredEvidenceRequirements.length > 0 && <div className="space-y-1 rounded-md border border-primary/10 bg-background/30 p-2">
                       <p className="text-xs text-muted-foreground">Confirm each declared requirement against the evidence you attached:</p>
-                      {declaredEvidenceRequirements.map((requirement) => <label key={requirement} className="flex items-start gap-2 text-xs text-foreground">
-                        <input type="checkbox" checked={evidenceChecks[requirement] === true} onChange={(event) => setEvidenceChecks((current) => ({ ...current, [requirement]: event.target.checked }))} className="mt-0.5" />
+                      {declaredEvidenceRequirements.map((requirement, index) => <label key={requirement} className="flex items-start gap-2 text-xs text-foreground">
+                        <input data-testid={`mission-review-requirement-${index}`} type="checkbox" checked={evidenceChecks[requirement] === true} onChange={(event) => setEvidenceChecks((current) => ({ ...current, [requirement]: event.target.checked }))} className="mt-0.5" />
                         <span>{requirement}</span>
                       </label>)}
                     </div>}
                     <div className="flex flex-wrap gap-2">
-                    <Button size="sm" disabled={reviewSummary.trim().length < 3 || !contractQuery.data.evidence.length || !allEvidenceRequirementsChecked || reviewMission.isPending} onClick={() => reviewMission.mutate("meets_evidence")}>
+                    <Button data-testid="mission-self-review-submit" size="sm" disabled={reviewSummary.trim().length < 3 || !contractQuery.data.evidence.length || !allEvidenceRequirementsChecked || reviewMission.isPending} onClick={() => reviewMission.mutate("meets_evidence")}>
                       {reviewMission.isPending ? "Reviewing…" : "Record self-review"}
                     </Button>
                     <Button size="sm" variant="outline" disabled={reviewSummary.trim().length < 3 || !contractQuery.data.evidence.length || reviewMission.isPending} onClick={() => reviewMission.mutate("revisions_needed")}>

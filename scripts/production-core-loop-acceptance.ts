@@ -9,6 +9,8 @@ type ProgressionSnapshot = {
   activityExperience: number;
   capabilityExperience: number;
   activeBadges: string[];
+  certifications: string[];
+  entrustedRoles: string[];
 };
 
 type ViewEvidence = {
@@ -43,17 +45,23 @@ const OUTPUT_DIR = path.resolve(process.env.LYFEOS_ACCEPTANCE_OUTPUT_DIR || path
 const OUTPUT_FILE = path.join(OUTPUT_DIR, "core-loop-report.json");
 const RUN_ID = randomUUID();
 const MISSION_TITLE = `[AUTOMATED ACCEPTANCE] Truthful evidence ${RUN_ID.slice(0, 8)}`;
-const PURPOSE = "Verify that real Mission evidence remains separate from progression until review.";
-const EXPECTED_OUTPUT = "A synthetic proof-plan receipt and one unreviewed evidence record.";
+const PURPOSE = "Verify that Mission activity and reviewed capability progression remain separate, evidence-backed, and reversible.";
+const EXPECTED_OUTPUT = "A synthetic proof-plan receipt, reviewed evidence record, and exact progression rollback.";
 const REQUIRED_EVIDENCE = "A bounded browser acceptance receipt for this synthetic Mission.";
 const EVIDENCE_SUMMARY = `Synthetic browser receipt ${RUN_ID.slice(0, 8)}; no competence or authority claim.`;
+const REVIEW_SUMMARY = `Self-review ${RUN_ID.slice(0, 8)} confirms only the declared synthetic receipt and one bounded practice contribution.`;
 const SYNTHETIC_MISSION_PREFIX = "[AUTOMATED ACCEPTANCE]";
 
 const steps: StepEvidence[] = [];
 let missionId: number | null = null;
 let progressionBefore: ProgressionSnapshot | null = null;
 let progressionAfterEvidence: ProgressionSnapshot | null = null;
+let progressionAfterCompletion: ProgressionSnapshot | null = null;
+let progressionAfterReview: ProgressionSnapshot | null = null;
+let progressionAfterReopen: ProgressionSnapshot | null = null;
 let progressionAfterCleanup: ProgressionSnapshot | null = null;
+let expectedActivityExperience = 0;
+let reviewedSkillExperience = 0;
 let cleanupAttempted = false;
 let cleanupArchived = false;
 let failureMessage: string | null = null;
@@ -117,17 +125,22 @@ async function archiveStrandedSyntheticMissions(page: Page): Promise<number> {
   const userId = Number((session.body as { user?: { id?: unknown } } | null)?.user?.id);
   assert(session.status === 200 && Number.isInteger(userId), "Could not resolve the dedicated acceptance account for synthetic cleanup.");
   const missionsResponse = await browserApiRequest(page, `/api/users/${userId}/quests`);
-  const missions = (missionsResponse.body as { quests?: Array<{ id?: unknown; title?: unknown }> } | null)?.quests || [];
+  const missions = (missionsResponse.body as { quests?: Array<{ id?: unknown; title?: unknown; completed?: unknown }> } | null)?.quests || [];
   assert(missionsResponse.status === 200, `Synthetic Mission preflight returned ${missionsResponse.status}.`);
-  const strandedIds = missions
+  const strandedMissions = missions
     .filter((mission) => typeof mission.title === "string" && mission.title.startsWith(SYNTHETIC_MISSION_PREFIX))
-    .map((mission) => Number(mission.id))
-    .filter((id) => Number.isInteger(id));
-  for (const id of strandedIds) {
+    .map((mission) => ({ id: Number(mission.id), completed: mission.completed === true }))
+    .filter((mission) => Number.isInteger(mission.id));
+  for (const mission of strandedMissions) {
+    const id = mission.id;
+    if (mission.completed) {
+      const reopened = await browserApiRequest(page, `/api/quests/${id}/toggle`, "POST");
+      assert(reopened.status === 200 && (reopened.body as { quest?: { completed?: unknown } } | null)?.quest?.completed === false, `Stranded synthetic Mission ${id} could not be reopened before cleanup.`);
+    }
     const archived = await browserApiRequest(page, `/api/quests/${id}`, "DELETE");
     assert(archived.status === 200, `Stranded synthetic Mission ${id} cleanup returned ${archived.status}.`);
   }
-  return strandedIds.length;
+  return strandedMissions.length;
 }
 
 async function findChromium(): Promise<string> {
@@ -189,6 +202,7 @@ async function readProgression(page: Page): Promise<ProgressionSnapshot> {
         tracks?: {
           activity?: { totalExperience?: number };
           capability?: { totalVerifiedExperience?: number };
+          authority?: { certifications?: unknown[]; entrustedRoles?: unknown[] };
         };
         badges?: Array<{ key?: string }>;
       };
@@ -197,6 +211,8 @@ async function readProgression(page: Page): Promise<ProgressionSnapshot> {
       activityExperience: body.progression?.tracks?.activity?.totalExperience,
       capabilityExperience: body.progression?.tracks?.capability?.totalVerifiedExperience,
       activeBadges: (body.progression?.badges || []).map((badge) => badge.key).filter((key): key is string => Boolean(key)).sort(),
+      certifications: (body.progression?.tracks?.authority?.certifications || []).map(String).sort(),
+      entrustedRoles: (body.progression?.tracks?.authority?.entrustedRoles || []).map(String).sort(),
     };
   });
   assert(!("error" in result), `Could not read progression: ${"error" in result ? result.error : "unknown response"}.`);
@@ -208,7 +224,9 @@ async function readProgression(page: Page): Promise<ProgressionSnapshot> {
 function progressionMatches(left: ProgressionSnapshot, right: ProgressionSnapshot): boolean {
   return left.activityExperience === right.activityExperience
     && left.capabilityExperience === right.capabilityExperience
-    && JSON.stringify(left.activeBadges) === JSON.stringify(right.activeBadges);
+    && JSON.stringify(left.activeBadges) === JSON.stringify(right.activeBadges)
+    && JSON.stringify(left.certifications) === JSON.stringify(right.certifications)
+    && JSON.stringify(left.entrustedRoles) === JSON.stringify(right.entrustedRoles);
 }
 
 async function fill(page: Page, selector: string, value: string): Promise<void> {
@@ -224,6 +242,26 @@ async function activateRenderedControl(page: Page, selector: string): Promise<vo
     if (!control) throw new Error(`Rendered control disappeared before activation: ${controlSelector}`);
     control.click();
   }, selector);
+}
+
+async function activateMissionControl(page: Page, action: "start" | "done" | "undo"): Promise<void> {
+  assert(missionId !== null, `Cannot activate ${action} without a synthetic Mission.`);
+  const selector = `[data-testid="mission-${action}-${missionId}"]`;
+  await page.waitForSelector(selector, { visible: true, timeout: 30_000 });
+  await activateRenderedControl(page, selector);
+}
+
+async function waitForMissionToggle(page: Page, action: () => Promise<void>): Promise<{ quest?: { completed?: boolean }; xpAwarded?: number }> {
+  assert(missionId !== null, "Cannot observe a Mission toggle without a synthetic Mission.");
+  const responsePromise = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return url.origin === BASE_URL.origin && url.pathname === `/api/quests/${missionId}/toggle` && response.request().method() === "POST";
+  }, { timeout: 30_000 });
+  await action();
+  const response = await responsePromise;
+  const body = await response.json() as { quest?: { completed?: boolean }; xpAwarded?: number; error?: unknown };
+  assert(response.ok(), `Rendered Mission completion change failed (${response.status()}).`);
+  return body;
 }
 
 async function dismissBlockingTutorial(page: Page): Promise<boolean> {
@@ -296,6 +334,17 @@ async function cleanupMission(page: Page): Promise<void> {
   if (missionId === null) return;
   cleanupAttempted = true;
   await waitForApiBudget(page, 5);
+  const session = await browserApiRequest(page, "/api/auth/me");
+  const userId = Number((session.body as { user?: { id?: unknown } } | null)?.user?.id);
+  assert(session.status === 200 && Number.isInteger(userId), "Synthetic Mission cleanup could not resolve its owner.");
+  const missionsResponse = await browserApiRequest(page, `/api/users/${userId}/quests`);
+  const mission = ((missionsResponse.body as { quests?: Array<{ id?: unknown; completed?: unknown }> } | null)?.quests || [])
+    .find((candidate) => Number(candidate.id) === missionId);
+  assert(missionsResponse.status === 200 && mission, "Synthetic Mission cleanup could not resolve the active Mission.");
+  if (mission.completed === true) {
+    const reopened = await browserApiRequest(page, `/api/quests/${missionId}/toggle`, "POST");
+    assert(reopened.status === 200 && (reopened.body as { quest?: { completed?: unknown } } | null)?.quest?.completed === false, "Synthetic Mission cleanup could not reverse its progression before archival.");
+  }
   const cleanup = await browserApiRequest(page, `/api/quests/${missionId}`, "DELETE");
   assert(cleanup.status === 200, `Synthetic Mission cleanup returned ${cleanup.status}.`);
   const archivedResponse = await browserApiRequest(page, "/api/quests/archived");
@@ -306,7 +355,7 @@ async function cleanupMission(page: Page): Promise<void> {
 
 async function writeReport(): Promise<void> {
   const report = {
-    contract: "lyfeos.production-core-loop-acceptance.v1",
+    contract: "lyfeos.production-core-loop-acceptance.v2",
     generatedAt: new Date().toISOString(),
     baseUrl: BASE_URL.origin,
     source: SOURCE,
@@ -315,15 +364,24 @@ async function writeReport(): Promise<void> {
     progression: {
       before: progressionBefore,
       afterUnreviewedEvidence: progressionAfterEvidence,
+      afterCompletion: progressionAfterCompletion,
+      afterPositiveReview: progressionAfterReview,
+      afterRenderedReopen: progressionAfterReopen,
       afterCleanup: progressionAfterCleanup,
       unchangedBeforeReview: Boolean(progressionBefore && progressionAfterEvidence && progressionMatches(progressionBefore, progressionAfterEvidence)),
+      expectedActivityExperience,
+      reviewedSkillExperience,
+      exactActivityAward: Boolean(progressionBefore && progressionAfterCompletion && progressionAfterCompletion.activityExperience - progressionBefore.activityExperience === expectedActivityExperience),
+      reviewedCapabilityAward: Boolean(progressionAfterCompletion && progressionAfterReview && progressionAfterReview.capabilityExperience - progressionAfterCompletion.capabilityExperience === reviewedSkillExperience && reviewedSkillExperience > 0),
+      noAuthorityGranted: Boolean(progressionAfterReview && progressionAfterReview.certifications.length === 0 && progressionAfterReview.entrustedRoles.length === 0),
+      exactRenderedReversal: Boolean(progressionBefore && progressionAfterReopen && progressionMatches(progressionBefore, progressionAfterReopen)),
       unchangedAfterCleanup: Boolean(progressionBefore && progressionAfterCleanup && progressionMatches(progressionBefore, progressionAfterCleanup)),
     },
     views,
     cleanup: { attempted: cleanupAttempted, archived: cleanupArchived },
     steps,
     summary: { passed: failureMessage === null && cleanupArchived, failure: failureMessage },
-    boundary: "The journey stops before completion or review. Unreviewed evidence must not award activity XP, capability XP, badges, certification, or authority.",
+    boundary: "This journey proves one self-reviewed, skill-linked synthetic Mission. Activity XP recognizes completion; capability XP requires declared evidence plus positive self-review; reopening reverses both tracks and supported badges. LyfeOS grants no certification or authority.",
   } as const;
   await fs.mkdir(OUTPUT_DIR, { recursive: true });
   await fs.writeFile(OUTPUT_FILE, `${JSON.stringify(report, null, 2)}\n`, "utf8");
@@ -335,6 +393,10 @@ async function writeReport(): Promise<void> {
       `- Result: ${report.summary.passed ? "PASS" : "FAIL"}`,
       `- Synthetic Mission archived: ${cleanupArchived}`,
       `- Progression unchanged before review: ${report.progression.unchangedBeforeReview}`,
+      `- Exact activity XP awarded: ${report.progression.exactActivityAward}`,
+      `- Reviewed capability XP awarded: ${report.progression.reviewedCapabilityAward}`,
+      `- No certification or authority granted: ${report.progression.noAuthorityGranted}`,
+      `- Rendered reopen restored the exact baseline: ${report.progression.exactRenderedReversal}`,
       `- Desktop/mobile Mission Detail views qualified: ${views.length === 2}`,
       "",
       report.boundary,
@@ -372,23 +434,35 @@ async function main(): Promise<void> {
     steps.push({ name: "first-use tutorial boundary", status: "passed", detail: tutorialDismissed ? "Dismissed the visible tutorial through its named Skip control." : "No blocking tutorial was presented." });
     await activateRenderedControl(page, '[data-tour="create-mission"]');
     await fill(page, "#create-title", MISSION_TITLE);
+    const skillSelector = '[data-testid^="mission-skill-"]:not([disabled])';
+    await page.waitForSelector(skillSelector, { visible: true, timeout: 30_000 });
+    const selectedSkill = await page.$eval(skillSelector, (element) => ({
+      testId: element.getAttribute("data-testid"),
+      name: element.getAttribute("data-skill-name"),
+    }));
+    assert(selectedSkill.testId && selectedSkill.name, "The dedicated acceptance account has no selectable unlocked skill for reviewed progression qualification.");
+    await activateRenderedControl(page, `[data-testid="${selectedSkill.testId}"]`);
+    await page.waitForFunction((testId) => document.querySelector(`[data-testid="${testId}"]`)?.getAttribute("aria-checked") === "true", { timeout: 10_000 }, selectedSkill.testId);
     const createResponsePromise = page.waitForResponse((response) => {
       const url = new URL(response.url());
       return url.origin === BASE_URL.origin && url.pathname === "/api/quests" && response.request().method() === "POST";
     }, { timeout: 30_000 });
     await page.click('[data-testid="mission-create-submit"]');
     const createResponse = await createResponsePromise;
-    const createBody = await createResponse.json() as { quest?: { id?: number }; error?: unknown };
+    const createBody = await createResponse.json() as { quest?: { id?: number; experienceReward?: number; difficulty?: string }; error?: unknown };
     assert(createResponse.ok() && Number.isInteger(createBody.quest?.id), `Rendered Mission creation failed (${createResponse.status()}).`);
     missionId = createBody.quest!.id!;
-    steps.push({ name: "rendered Mission creation", status: "passed", detail: "Canonical UI creation returned one synthetic Mission." });
+    const activityMultiplier = ({ D: 1, C: 1.5, B: 2, A: 3, S: 5 } as Record<string, number>)[createBody.quest?.difficulty || "D"] || 1;
+    expectedActivityExperience = Math.floor(Number(createBody.quest?.experienceReward || 0) * activityMultiplier);
+    assert(expectedActivityExperience > 0, "Created Mission did not expose a positive, difficulty-adjusted activity XP value.");
+    steps.push({ name: "rendered Mission creation", status: "passed", detail: `Canonical UI created one synthetic Mission linked to the unlocked ${selectedSkill.name} skill.` });
 
     await page.goto(new URL(`/mission/${missionId}`, BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
     await page.waitForFunction((title) => document.body.innerText.includes(title), { timeout: 30_000 }, MISSION_TITLE);
     await waitForApiBudget(page, 60);
     await fill(page, '[data-testid="proof-plan-purpose"]', PURPOSE);
     await fill(page, '[data-testid="proof-plan-output"]', EXPECTED_OUTPUT);
-    await fill(page, '[data-testid="proof-plan-method"]', "Create one bounded synthetic Mission.\nAttach one synthetic browser receipt.\nStop before completion or review.");
+    await fill(page, '[data-testid="proof-plan-method"]', "Create one bounded synthetic Mission.\nAttach one synthetic browser receipt.\nComplete through the focus-timer workflow.\nReview only the declared evidence.\nReopen and verify exact reversal.");
     await fill(page, '[data-testid="proof-plan-tools"]', "LyfeOS production browser acceptance");
     await fill(page, '[data-testid="proof-plan-evidence-requirement"]', REQUIRED_EVIDENCE);
     const contractResponsePromise = page.waitForResponse((response) => {
@@ -422,6 +496,51 @@ async function main(): Promise<void> {
     await page.reload({ waitUntil: "domcontentloaded", timeout: 60_000 });
     await requireMissionView(page, "mobile-390x844");
     steps.push({ name: "dynamic Mission Detail rendering", status: "passed", detail: "Saved proof and evidence state passed desktop/mobile semantics and overflow checks." });
+
+    await page.setViewport({ width: 1440, height: 900, deviceScaleFactor: 1, isMobile: false, hasTouch: false });
+    await page.goto(new URL("/missions", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
+    await page.waitForSelector(`[data-testid="mission-card-${missionId}"]`, { visible: true, timeout: 30_000 });
+    await activateMissionControl(page, "start");
+    await page.waitForSelector('[data-testid="mission-timer-stop"]', { visible: true, timeout: 30_000 });
+    await activateRenderedControl(page, '[data-testid="mission-timer-stop"]');
+    const completedBody = await waitForMissionToggle(page, () => activateMissionControl(page, "done"));
+    assert(completedBody.quest?.completed === true, "Rendered Mission Done control did not produce a completed Mission.");
+    assert(completedBody.xpAwarded === expectedActivityExperience, `Mission awarded ${completedBody.xpAwarded ?? "unknown"} activity XP instead of ${expectedActivityExperience}.`);
+    progressionAfterCompletion = await readProgression(page);
+    assert(progressionAfterCompletion.activityExperience - progressionBefore.activityExperience === expectedActivityExperience, "Completion did not produce the exact difficulty-adjusted activity XP delta.");
+    assert(progressionAfterCompletion.capabilityExperience === progressionBefore.capabilityExperience, "Completion awarded capability XP before evidence review.");
+    assert(progressionAfterCompletion.certifications.length === 0 && progressionAfterCompletion.entrustedRoles.length === 0, "Completion created an unsupported certification or authority record.");
+    steps.push({ name: "rendered timer-backed completion", status: "passed", detail: `Start, stop, and Done awarded exactly ${expectedActivityExperience} activity XP while capability XP remained withheld.` });
+
+    await page.goto(new URL(`/mission/${missionId}`, BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
+    await fill(page, '[data-testid="mission-self-review-summary"]', REVIEW_SUMMARY);
+    await page.waitForSelector('[data-testid="mission-review-requirement-0"]', { visible: true, timeout: 30_000 });
+    await page.click('[data-testid="mission-review-requirement-0"]');
+    await page.waitForSelector('[data-testid="mission-self-review-submit"]:not([disabled])', { visible: true, timeout: 10_000 });
+    const reviewResponsePromise = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return url.origin === BASE_URL.origin && url.pathname === `/api/quests/${missionId}/reviews` && response.request().method() === "POST";
+    }, { timeout: 30_000 });
+    await page.click('[data-testid="mission-self-review-submit"]');
+    const reviewResponse = await reviewResponsePromise;
+    const reviewBody = await reviewResponse.json() as { progression?: { applied?: boolean; skillExperienceAwarded?: number }; error?: unknown };
+    assert(reviewResponse.ok(), `Rendered self-review failed (${reviewResponse.status()}).`);
+    reviewedSkillExperience = Number(reviewBody.progression?.skillExperienceAwarded || 0);
+    assert(reviewBody.progression?.applied === true && reviewedSkillExperience > 0, "Positive evidence review did not apply a positive skill contribution.");
+    progressionAfterReview = await readProgression(page);
+    assert(progressionAfterReview.activityExperience === progressionAfterCompletion.activityExperience, "Evidence review changed activity XP after completion.");
+    assert(progressionAfterReview.capabilityExperience - progressionAfterCompletion.capabilityExperience === reviewedSkillExperience, "Capability XP did not match the server-recorded reviewed skill contribution.");
+    assert(progressionAfterReview.certifications.length === 0 && progressionAfterReview.entrustedRoles.length === 0, "Self-review created unsupported certification or authority.");
+    steps.push({ name: "rendered positive self-review", status: "passed", detail: `Declared evidence review applied exactly ${reviewedSkillExperience} capability XP and no certification or authority.` });
+
+    await page.goto(new URL("/missions", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
+    const reopenedBody = await waitForMissionToggle(page, () => activateMissionControl(page, "undo"));
+    assert(reopenedBody.quest?.completed === false, "Rendered Mission Undo control did not reopen the Mission.");
+    progressionAfterReopen = await readProgression(page);
+    assert(progressionMatches(progressionBefore, progressionAfterReopen), "Rendered reopen did not restore activity XP, capability XP, badges, and authority to the exact baseline.");
+    const reopenedContract = await browserApiRequest(page, `/api/quests/${missionId}/contract`);
+    assert(reopenedContract.status === 200 && (reopenedContract.body as { unlockResult?: { state?: unknown } } | null)?.unlockResult?.state === "declared", "Reopened Mission still presented its reviewed skill contribution as applied.");
+    steps.push({ name: "rendered progression reversal", status: "passed", detail: "Undo reopened the Mission and restored the exact pre-journey progression snapshot; reviewed skill XP returned to declared-only state." });
   } catch (error) {
     failureMessage = sanitizedMessage(error);
     steps.push({ name: "core-loop journey", status: "failed", detail: failureMessage });
@@ -450,7 +569,7 @@ async function main(): Promise<void> {
     console.error(failureMessage || "Synthetic Mission cleanup did not complete.");
     process.exitCode = 1;
   } else {
-    console.log("Truthful Mission core-loop acceptance passed; synthetic Mission archived and progression remained unchanged.");
+    console.log("Truthful Mission core-loop acceptance passed; completion and review were awarded accurately, then rendered reopen restored the exact baseline before archival.");
   }
 }
 

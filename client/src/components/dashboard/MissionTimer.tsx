@@ -129,6 +129,8 @@ export default function MissionTimer({
         {isOnBreak ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
       </button>
       <button
+        data-testid="mission-timer-stop"
+        aria-label="Stop mission timer"
         className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors"
         onClick={handleEnd}
         title="Stop timer"

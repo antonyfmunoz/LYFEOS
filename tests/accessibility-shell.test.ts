@@ -125,6 +125,9 @@ describe("shared accessibility shell", () => {
     expect(detail).toContain('data-testid="mission-evidence-summary" aria-label="Mission evidence summary"');
     expect(detail).toContain('aria-label="Reviewer username search"');
     expect(detail).toContain('aria-label="Mission self-review summary"');
+    expect(detail).toContain('data-testid="mission-self-review-summary"');
+    expect(detail).toContain('data-testid={`mission-review-requirement-${index}`}');
+    expect(detail).toContain('data-testid="mission-self-review-submit"');
     expect(detail).toContain('aria-label="Mission review appeal reason"');
     expect(editor).toContain("aria-label={props.type === 'checkbox' ? 'Mission task item' : props['aria-label']}");
     expect(toast).toContain('aria-label="Dismiss notification"');
