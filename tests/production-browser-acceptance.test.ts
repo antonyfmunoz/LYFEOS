@@ -161,6 +161,7 @@ describe("production browser acceptance custody", () => {
     expect(coreLoopScript).toContain("setViewport({ width: 390, height: 844, deviceScaleFactor: 2 })");
     expect(coreLoopScript).not.toContain("isMobile:");
     expect(coreLoopScript).not.toContain("hasTouch:");
+    expect(coreLoopScript).toContain("Refill before the first rendered state change");
     expect(coreLoopScript).toContain('await waitForApiBudget(page, 80)');
     expect(coreLoopScript).toContain('await waitForApiBudget(page, 60)');
     expect(coreLoopScript).toContain('response.headers.get("ratelimit-remaining")');

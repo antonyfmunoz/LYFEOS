@@ -1012,6 +1012,10 @@ async function main(): Promise<void> {
     await requireMissionView(page, "mobile-390x844");
     steps.push({ name: "dynamic Mission Detail rendering", status: "passed", detail: "Saved proof and evidence state passed desktop/mobile semantics and overflow checks." });
 
+    // Responsive rendering and automation preview share the account's aggregate
+    // API window. Refill before the first rendered state change so the result
+    // measures Mission semantics instead of harness traffic volume.
+    await waitForApiBudget(page, 45);
     await page.setViewport({ width: 1440, height: 900, deviceScaleFactor: 1 });
     await page.goto(new URL("/missions", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
     await page.waitForSelector(`[data-testid="mission-card-${missionId}"]`, { visible: true, timeout: 30_000 });
@@ -1027,6 +1031,7 @@ async function main(): Promise<void> {
     assert(progressionAfterCompletion.certifications.length === 0 && progressionAfterCompletion.entrustedRoles.length === 0, "Completion created an unsupported certification or authority record.");
     steps.push({ name: "rendered timer-backed completion", status: "passed", detail: `Start, stop, and Done awarded exactly ${expectedActivityExperience} activity XP while capability XP remained withheld.` });
 
+    await waitForApiBudget(page, 40);
     await page.goto(new URL(`/mission/${missionId}`, BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
     await fill(page, '[data-testid="mission-self-review-summary"]', REVIEW_SUMMARY);
     await page.waitForSelector('[data-testid="mission-review-requirement-0"]', { visible: true, timeout: 30_000 });
