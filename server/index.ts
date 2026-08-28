@@ -129,33 +129,41 @@ app.use(session({
 
 const rateLimitStore = new Map<string, { count: number; windowStart: number }>();
 
-function createRateLimiter(maxRequests: number, windowMs: number, keyByIpOnly = false) {
+function createRateLimiter(scope: string, maxRequests: number, windowMs: number, keyByPrincipalOnly = false) {
   return (req: Request, res: Response, next: NextFunction) => {
     const ip = req.ip || req.socket.remoteAddress || "unknown";
     const principal = req.session?.userId ? `user:${req.session.userId}` : `ip:${ip}`;
-    const key = keyByIpOnly ? `global:${principal}` : `${principal}:${req.path}`;
+    // A scope is part of the bucket identity so a tighter endpoint policy can
+    // never collide with (or inherit traffic from) the aggregate API policy.
+    const key = keyByPrincipalOnly ? `${scope}:${principal}` : `${scope}:${principal}:${req.path}`;
     const now = Date.now();
     const entry = rateLimitStore.get(key);
+    const exposeHeaders = (remaining: number, resetSeconds: number, force = false) => {
+      const existingLimit = Number(res.getHeader("RateLimit-Limit"));
+      // Preserve a tighter upstream endpoint policy when the request also
+      // passes through the broader API limiter. A rejecting limiter always
+      // reports its own actionable window.
+      if (!force && Number.isFinite(existingLimit) && existingLimit <= maxRequests) return;
+      res.set("RateLimit-Limit", String(maxRequests));
+      res.set("RateLimit-Remaining", String(Math.max(0, remaining)));
+      res.set("RateLimit-Reset", String(resetSeconds));
+    };
 
     if (!entry || now - entry.windowStart > windowMs) {
       rateLimitStore.set(key, { count: 1, windowStart: now });
-      res.set("RateLimit-Limit", String(maxRequests));
-      res.set("RateLimit-Remaining", String(Math.max(0, maxRequests - 1)));
-      res.set("RateLimit-Reset", String(Math.ceil(windowMs / 1000)));
+      exposeHeaders(maxRequests - 1, Math.ceil(windowMs / 1000));
       return next();
     }
 
     const retryAfterSeconds = Math.max(1, Math.ceil((entry.windowStart + windowMs - now) / 1000));
-    res.set("RateLimit-Limit", String(maxRequests));
-    res.set("RateLimit-Remaining", String(Math.max(0, maxRequests - entry.count)));
-    res.set("RateLimit-Reset", String(retryAfterSeconds));
     if (entry.count >= maxRequests) {
+      exposeHeaders(0, retryAfterSeconds, true);
       res.set("Retry-After", String(retryAfterSeconds));
       return res.status(429).json({ error: "Too many requests. Please try again later." });
     }
 
     entry.count++;
-    res.set("RateLimit-Remaining", String(Math.max(0, maxRequests - entry.count)));
+    exposeHeaders(maxRequests - entry.count, retryAfterSeconds);
     return next();
   };
 }
@@ -212,16 +220,16 @@ app.use("/api/auth/check-display-name", createDistributedRateLimiter("auth.check
 app.use("/api/auth/sync-email-verified", createDistributedRateLimiter("auth.sync_email_verified", 5));
 app.use("/api/webhooks/clerk", createDistributedRateLimiter("webhook.clerk", 120, false));
 app.use("/api/public/forms", createDistributedRateLimiter("public.forms", 30, false));
-app.use("/api/profile/generate-affirmation", createRateLimiter(qualificationRequestLimit(5), 60 * 1000));
-app.use("/api/voice-command", createRateLimiter(qualificationRequestLimit(20), 60 * 1000));
-app.use("/api/ai/orchestration-runs", createRateLimiter(qualificationRequestLimit(10), 60 * 1000, true));
+app.use("/api/profile/generate-affirmation", createRateLimiter("profile-affirmation", qualificationRequestLimit(5), 60 * 1000));
+app.use("/api/voice-command", createRateLimiter("voice-command", qualificationRequestLimit(20), 60 * 1000));
+app.use("/api/ai/orchestration-runs", createRateLimiter("ai-orchestration", qualificationRequestLimit(10), 60 * 1000, true));
 // The isolated authenticated journey exercises the whole API through one local
 // loopback address. Keep the production ceiling unchanged while preventing the
 // shared CI harness from turning unrelated later tests into 429 cascades.
 // Product pages hydrate several independent, user-owned surfaces. Bound that
 // aggregate traffic per authenticated account rather than pooling every user
 // behind the same proxy IP, while preserving the existing production ceiling.
-app.use("/api", createRateLimiter(qualificationRequestLimit(100), 60 * 1000, true));
+app.use("/api", createRateLimiter("api", qualificationRequestLimit(100), 60 * 1000, true));
 
 const rateLimitCleanupTimer = setInterval(() => {
   deleteExpiredRateLimits(pool).catch((error) => log(`Rate-limit cleanup failed: ${error instanceof Error ? error.message : "unknown error"}`));
