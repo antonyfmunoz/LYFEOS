@@ -6,6 +6,7 @@ const coreLoopScript = fs.readFileSync("scripts/production-core-loop-acceptance.
 const workflow = fs.readFileSync(".github/workflows/production-browser-acceptance.yml", "utf8");
 const packageJson = fs.readFileSync("package.json", "utf8");
 const rootLayout = fs.readFileSync("client/src/components/layout/RootLayout.tsx", "utf8");
+const automationsPage = fs.readFileSync("client/src/pages/AutomationsPage.tsx", "utf8");
 
 describe("production browser acceptance custody", () => {
   it("has no embedded account credentials and fails closed when protected evidence is required", () => {
@@ -133,7 +134,7 @@ describe("production browser acceptance custody", () => {
 
   it("qualifies the rendered truthful Mission loop separately and always archives its synthetic record", () => {
     expect(packageJson).toContain('"acceptance:core-loop": "tsx scripts/production-core-loop-acceptance.ts"');
-    expect(coreLoopScript).toContain('contract: "lyfeos.production-core-loop-acceptance.v4"');
+    expect(coreLoopScript).toContain('contract: "lyfeos.production-core-loop-acceptance.v5"');
     expect(coreLoopScript).toContain("[AUTOMATED ACCEPTANCE]");
     expect(coreLoopScript).toContain("async function dismissBlockingTutorial");
     expect(coreLoopScript).toContain("async function activateRenderedControl");
@@ -149,7 +150,7 @@ describe("production browser acceptance custody", () => {
     expect(coreLoopScript).toContain("async function readStableProgression");
     expect(coreLoopScript).toContain("async function archiveStrandedSyntheticMissions");
     expect(coreLoopScript).toContain("async function deleteStrandedSyntheticAutomations");
-    expect(coreLoopScript).toContain("async function exerciseNonMutatingAutomationPreview");
+    expect(coreLoopScript).toContain("async function exerciseNonMutatingAutomationControls");
     expect(coreLoopScript).toContain("async function cleanupAutomation");
     expect(coreLoopScript).toContain('page.keyboard.press("Backspace")');
     expect(coreLoopScript).toContain('page.type(selector, value, { delay: 15 })');
@@ -177,7 +178,7 @@ describe("production browser acceptance custody", () => {
     expect(coreLoopScript).toContain('page.click(\'[data-testid="mission-evidence-add"]\')');
     expect(coreLoopScript).toContain("progressionMatches(progressionBefore, progressionAfterEvidence)");
     expect(coreLoopScript).toContain('activateRenderedControl(page, \'[data-testid="automation-create"]\')');
-    expect(coreLoopScript).toContain('Automation preview could not ${stage}');
+    expect(coreLoopScript).toContain('Automation control journey could not ${stage}');
     expect(coreLoopScript).toContain('nameInput?.value === "New automation"');
     expect(coreLoopScript).toContain("value: AUTOMATION_NAME");
     expect(coreLoopScript).toContain('activateRenderedControl(page, \'[data-testid="automation-save"]\')');
@@ -186,8 +187,16 @@ describe("production browser acceptance custody", () => {
     expect(coreLoopScript).toContain('runs.length === 0');
     expect(coreLoopScript).toContain('!followUpCreated');
     expect(coreLoopScript).toContain('progressionMatches(progressionBefore, progressionAfterPreview)');
+    expect(automationsPage).toContain('data-testid="automation-toggle"');
+    expect(coreLoopScript).toContain('stage = "enable the saved manual rule through the rendered control"');
+    expect(coreLoopScript).toContain('activateRenderedControl(page, \'[data-testid="automation-toggle"]\')');
+    expect(coreLoopScript).toContain('runNowEnabledWhileRuleEnabled');
+    expect(coreLoopScript).toContain('stage = "pause the enabled rule through the rendered control"');
+    expect(coreLoopScript).toContain('runsAfterPause.length === 0');
+    expect(coreLoopScript).toContain('!followUpCreatedAfterControls');
+    expect(coreLoopScript).toContain('progressionMatches(progressionBefore, progressionAfterControls)');
     expect(coreLoopScript).toContain('activateRenderedControl(page, \'[data-testid="automation-delete"]\')');
-    expect(coreLoopScript).toContain('name: "rendered non-mutating automation preview"');
+    expect(coreLoopScript).toContain('name: "rendered non-mutating automation controls"');
     expect(coreLoopScript).toContain('[data-testid^="mission-skill-"]:not([disabled])');
     expect(coreLoopScript).toContain('activateMissionControl(page, "start")');
     expect(coreLoopScript).toContain('card.contains(control)');
@@ -220,7 +229,7 @@ describe("production browser acceptance custody", () => {
     expect(coreLoopScript).toContain('browserApiRequest(page, `/api/quests/${id}`, "DELETE")');
     expect(coreLoopScript).toContain("await cleanupMission(page)");
     expect(coreLoopScript).toContain("await cleanupAutomation(page)");
-    expect(coreLoopScript).toContain('boundary: "This journey proves one self-reviewed, skill-linked synthetic Mission plus a saved disabled automation preview');
+    expect(coreLoopScript).toContain('boundary: "This journey proves one self-reviewed, skill-linked synthetic Mission plus a saved automation preview and explicit enable/pause control cycle');
     expect(workflow).toContain("Run truthful Mission core-loop acceptance");
     expect(workflow).toContain("github.event_name == 'workflow_dispatch' && inputs.require_authenticated");
     expect(workflow).toContain("run: npm run acceptance:core-loop");

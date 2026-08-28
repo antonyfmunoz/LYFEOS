@@ -58,7 +58,7 @@ type ThreadContinuityEvidence = {
   };
 };
 
-type AutomationPreviewEvidence = {
+type AutomationControlEvidence = {
   automationId: number;
   missionId: number;
   matched: boolean;
@@ -68,6 +68,8 @@ type AutomationPreviewEvidence = {
   runCount: number;
   followUpCreated: boolean;
   progressionUnchanged: boolean;
+  enabledThenPaused: boolean;
+  runNowEnabledWhileRuleEnabled: boolean;
 };
 
 type BrowserApiResponse = {
@@ -92,8 +94,8 @@ const REQUIRED_EVIDENCE = "A bounded browser acceptance receipt for this synthet
 const EVIDENCE_SUMMARY = `Synthetic browser receipt ${RUN_ID.slice(0, 8)}; no competence or authority claim.`;
 const REVIEW_SUMMARY = `Self-review ${RUN_ID.slice(0, 8)} confirms only the declared synthetic receipt and one bounded practice contribution.`;
 const SYNTHETIC_MISSION_PREFIX = "[AUTOMATED ACCEPTANCE]";
-const AUTOMATION_NAME = `[AUTOMATED ACCEPTANCE] Preview ${RUN_ID.slice(0, 8)}`;
-const AUTOMATION_DESCRIPTION = "Verify that a saved, disabled automation preview is inspectable and creates no Mission or execution receipt.";
+const AUTOMATION_NAME = `[AUTOMATED ACCEPTANCE] Controls ${RUN_ID.slice(0, 8)}`;
+const AUTOMATION_DESCRIPTION = "Verify that saved preview and explicit enable/pause controls remain inspectable without creating a Mission or execution receipt.";
 const AUTOMATION_FOLLOW_UP_TITLE = `[AUTOMATED ACCEPTANCE] Must not exist ${RUN_ID.slice(0, 8)}`;
 
 const steps: StepEvidence[] = [];
@@ -110,7 +112,7 @@ let reviewedSkillNodeId: number | null = null;
 let reviewedThreadContinuity: ThreadContinuityEvidence | null = null;
 let reversedThreadContinuity: ThreadContinuityEvidence | null = null;
 let automationId: number | null = null;
-let automationPreviewEvidence: AutomationPreviewEvidence | null = null;
+let automationControlEvidence: AutomationControlEvidence | null = null;
 let automationCleanupAttempted = false;
 let automationDeleted = false;
 let cleanupAttempted = false;
@@ -393,7 +395,7 @@ async function stabilizeRenderedFields(page: Page, fields: RenderedFieldExpectat
   throw new Error(`Rendered automation fields did not settle: ${JSON.stringify(actual)}`);
 }
 
-async function exerciseNonMutatingAutomationPreview(page: Page): Promise<AutomationPreviewEvidence> {
+async function exerciseNonMutatingAutomationControls(page: Page): Promise<AutomationControlEvidence> {
   assert(missionId !== null, "Cannot qualify automation preview without the synthetic Mission.");
   assert(progressionBefore !== null, "Cannot qualify automation preview without a settled progression baseline.");
   let stage = "open the Automations page";
@@ -493,19 +495,68 @@ async function exerciseNonMutatingAutomationPreview(page: Page): Promise<Automat
   const followUpCreated = missions.some((mission) => mission.title === AUTOMATION_FOLLOW_UP_TITLE);
   assert(missionsResponse.status === 200 && !followUpCreated, "Automation preview created the declared follow-up Mission.");
   const progressionAfterPreview = await readProgression(page);
-  const progressionUnchanged = progressionMatches(progressionBefore, progressionAfterPreview);
-  assert(progressionUnchanged, "Automation preview changed activity XP, capability XP, badges, or authority.");
+  assert(progressionMatches(progressionBefore, progressionAfterPreview), "Automation preview changed activity XP, capability XP, badges, or authority.");
 
-    const evidence: AutomationPreviewEvidence = {
+    stage = "refill the API budget before the explicit enable and pause cycle";
+    await waitForApiBudget(page, 35);
+    stage = "enable the saved manual rule through the rendered control";
+    const enableResponsePromise = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return url.origin === BASE_URL.origin && url.pathname === `/api/automations/${automationId}` && response.request().method() === "PATCH";
+    }, { timeout: 30_000 });
+    await activateRenderedControl(page, '[data-testid="automation-toggle"]');
+    const enableResponse = await enableResponsePromise;
+    const enableBody = await enableResponse.json() as { automation?: { enabled?: boolean; definition?: { trigger?: { type?: string } } } };
+    assert(enableResponse.ok() && enableBody.automation?.enabled === true, `Rendered automation enable failed (${enableResponse.status()}).`);
+    assert(enableBody.automation?.definition?.trigger?.type === "manual", "Rendered automation enable changed the saved manual trigger.");
+    await page.waitForFunction(() => {
+      const toggle = document.querySelector<HTMLButtonElement>('[data-testid="automation-toggle"]');
+      const run = document.querySelector<HTMLButtonElement>('[data-testid="automation-run-now"]');
+      return toggle?.textContent?.includes("Save & pause") === true && run?.disabled === false;
+    }, { timeout: 30_000 });
+    const runNowEnabledWhileRuleEnabled = await page.$eval('[data-testid="automation-run-now"]', (element) => !(element as HTMLButtonElement).disabled);
+    assert(runNowEnabledWhileRuleEnabled, "Enabled saved manual automation did not expose its controlled Run now action.");
+    const detailAfterEnable = await browserApiRequest(page, `/api/automations/${automationId}`);
+    const runsAfterEnable = (detailAfterEnable.body as { runs?: unknown[] } | null)?.runs || [];
+    assert(detailAfterEnable.status === 200 && runsAfterEnable.length === 0, "Enabling the saved manual automation created an execution receipt.");
+
+    stage = "pause the enabled rule through the rendered control";
+    const pauseResponsePromise = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return url.origin === BASE_URL.origin && url.pathname === `/api/automations/${automationId}` && response.request().method() === "PATCH";
+    }, { timeout: 30_000 });
+    await activateRenderedControl(page, '[data-testid="automation-toggle"]');
+    const pauseResponse = await pauseResponsePromise;
+    const pauseBody = await pauseResponse.json() as { automation?: { enabled?: boolean } };
+    assert(pauseResponse.ok() && pauseBody.automation?.enabled === false, `Rendered automation pause failed (${pauseResponse.status()}).`);
+    await page.waitForFunction(() => {
+      const toggle = document.querySelector<HTMLButtonElement>('[data-testid="automation-toggle"]');
+      const run = document.querySelector<HTMLButtonElement>('[data-testid="automation-run-now"]');
+      return toggle?.textContent?.includes("Save & enable") === true && run?.disabled === true;
+    }, { timeout: 30_000 });
+    const detailAfterPause = await browserApiRequest(page, `/api/automations/${automationId}`);
+    const runsAfterPause = (detailAfterPause.body as { runs?: unknown[] } | null)?.runs || [];
+    assert(detailAfterPause.status === 200 && runsAfterPause.length === 0, "Pausing the saved manual automation created an execution receipt.");
+    const missionsAfterControlsResponse = await browserApiRequest(page, `/api/users/${userId}/quests`);
+    const missionsAfterControls = (missionsAfterControlsResponse.body as { quests?: Array<{ title?: unknown }> } | null)?.quests || [];
+    const followUpCreatedAfterControls = missionsAfterControls.some((mission) => mission.title === AUTOMATION_FOLLOW_UP_TITLE);
+    assert(missionsAfterControlsResponse.status === 200 && !followUpCreatedAfterControls, "Automation enable/pause controls created the declared follow-up Mission.");
+    const progressionAfterControls = await readProgression(page);
+    const progressionUnchanged = progressionMatches(progressionBefore, progressionAfterControls);
+    assert(progressionUnchanged, "Automation enable/pause controls changed activity XP, capability XP, badges, or authority.");
+
+    const evidence: AutomationControlEvidence = {
     automationId,
     missionId,
     matched: true,
     actionTypes: previewBody.preview.actions.map((action) => String(action.type || "")),
     disclosure: previewBody.preview.disclosure,
     renderedText: rendered,
-    runCount: runs.length,
-    followUpCreated,
+    runCount: runsAfterPause.length,
+    followUpCreated: followUpCreatedAfterControls,
     progressionUnchanged,
+    enabledThenPaused: true,
+    runNowEnabledWhileRuleEnabled,
   };
 
     stage = "delete the synthetic automation through the rendered control";
@@ -523,7 +574,7 @@ async function exerciseNonMutatingAutomationPreview(page: Page): Promise<Automat
     assert(listAfterDelete.status === 200 && !remaining.some((automation) => Number(automation.id) === automationId), "Deleted synthetic automation remained in the owner list.");
     return evidence;
   } catch (error) {
-    throw new Error(`Automation preview could not ${stage}: ${sanitizedMessage(error)}`);
+    throw new Error(`Automation control journey could not ${stage}: ${sanitizedMessage(error)}`);
   }
 }
 
@@ -831,7 +882,7 @@ async function cleanupMission(page: Page): Promise<void> {
 
 async function writeReport(): Promise<void> {
   const report = {
-    contract: "lyfeos.production-core-loop-acceptance.v4",
+    contract: "lyfeos.production-core-loop-acceptance.v5",
     generatedAt: new Date().toISOString(),
     baseUrl: BASE_URL.origin,
     source: SOURCE,
@@ -862,15 +913,15 @@ async function writeReport(): Promise<void> {
         && reviewedThreadContinuity.capability.reviewedExperience - reviewedSkillExperience === reversedThreadContinuity.capability.reviewedExperience
         && reversedThreadContinuity.capability.reversesEventId === reviewedThreadContinuity.capability.eventId),
     },
-    automationPreview: automationPreviewEvidence,
+    automationControls: automationControlEvidence,
     views,
     cleanup: {
       mission: { attempted: cleanupAttempted, archived: cleanupArchived },
       automation: { id: automationId, attempted: automationCleanupAttempted, deleted: automationDeleted },
     },
     steps,
-    summary: { passed: failureMessage === null && cleanupArchived && automationDeleted && automationPreviewEvidence !== null, failure: failureMessage },
-    boundary: "This journey proves one self-reviewed, skill-linked synthetic Mission plus a saved disabled automation preview, its rendered current path, private capability graph, durable focus history, and exact reviewed-capability reversal. The automation preview writes no execution receipt, follow-up Mission, or progression. Activity XP recognizes completion; capability XP requires declared evidence plus positive self-review; reopening reverses both tracks and supported badges. LyfeOS grants no certification or authority.",
+    summary: { passed: failureMessage === null && cleanupArchived && automationDeleted && automationControlEvidence !== null, failure: failureMessage },
+    boundary: "This journey proves one self-reviewed, skill-linked synthetic Mission plus a saved automation preview and explicit enable/pause control cycle, its rendered current path, private capability graph, durable focus history, and exact reviewed-capability reversal. Preview, enable and pause write no execution receipt, follow-up Mission, or progression. The journey does not activate Run now. Activity XP recognizes completion; capability XP requires declared evidence plus positive self-review; reopening reverses both tracks and supported badges. LyfeOS grants no certification or authority.",
   } as const;
   await fs.mkdir(OUTPUT_DIR, { recursive: true });
   await fs.writeFile(OUTPUT_FILE, `${JSON.stringify(report, null, 2)}\n`, "utf8");
@@ -887,7 +938,7 @@ async function writeReport(): Promise<void> {
       `- No certification or authority granted: ${report.progression.noAuthorityGranted}`,
       `- Rendered reopen restored the exact baseline: ${report.progression.exactRenderedReversal}`,
       `- Rendered Thread and capability history reconciled after review and reversal: ${report.threadContinuity.exactCapabilityReversal}`,
-      `- Disabled automation preview created no run, Mission, or progression: ${Boolean(report.automationPreview && report.automationPreview.runCount === 0 && !report.automationPreview.followUpCreated && report.automationPreview.progressionUnchanged)}`,
+      `- Automation preview and enable/pause cycle created no run, Mission, or progression: ${Boolean(report.automationControls && report.automationControls.runCount === 0 && !report.automationControls.followUpCreated && report.automationControls.progressionUnchanged && report.automationControls.enabledThenPaused && report.automationControls.runNowEnabledWhileRuleEnabled)}`,
       `- Synthetic automation deleted: ${automationDeleted}`,
       `- Desktop/mobile Mission Detail views qualified: ${views.length === 2}`,
       "",
@@ -1001,8 +1052,8 @@ async function main(): Promise<void> {
     assert(progressionMatches(progressionBefore, progressionAfterEvidence), "Unreviewed Mission evidence changed activity XP, capability XP, or active badges.");
     steps.push({ name: "unreviewed evidence boundary", status: "passed", detail: "Artifact evidence persisted without changing activity XP, capability XP, or badges." });
 
-    automationPreviewEvidence = await exerciseNonMutatingAutomationPreview(page);
-    steps.push({ name: "rendered non-mutating automation preview", status: "passed", detail: "Created and saved one disabled bounded rule, matched the synthetic Mission in Preview, proved zero run receipts, follow-up Missions, and progression changes, then deleted the rule through the rendered control." });
+    automationControlEvidence = await exerciseNonMutatingAutomationControls(page);
+    steps.push({ name: "rendered non-mutating automation controls", status: "passed", detail: "Created and saved one bounded manual rule, matched the synthetic Mission in Preview, explicitly enabled then paused it, proved Run now was available only while enabled, proved zero run receipts, follow-up Missions, and progression changes, then deleted the rule through the rendered control." });
 
     await page.goto(new URL(`/mission/${missionId}`, BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
     await page.waitForFunction((title) => document.body.innerText.includes(title), { timeout: 30_000 }, MISSION_TITLE);
@@ -1142,11 +1193,11 @@ async function main(): Promise<void> {
   }
 
   console.log(`Wrote ${OUTPUT_FILE}`);
-  if (failureMessage || !cleanupArchived || !automationDeleted || !automationPreviewEvidence) {
+  if (failureMessage || !cleanupArchived || !automationDeleted || !automationControlEvidence) {
     console.error(failureMessage || "Synthetic Mission or automation qualification/cleanup did not complete.");
     process.exitCode = 1;
   } else {
-    console.log("Truthful Mission and automation acceptance passed; preview was non-mutating, completion and review were awarded accurately, and rendered reopen restored the exact baseline before cleanup.");
+    console.log("Truthful Mission and automation acceptance passed; preview plus enable/pause were non-mutating, completion and review were awarded accurately, and rendered reopen restored the exact baseline before cleanup.");
   }
 }
 
