@@ -362,7 +362,7 @@ async function fill(page: Page, selector: string, value: string): Promise<void> 
   await page.keyboard.press("A");
   await page.keyboard.up(modifier);
   await page.keyboard.press("Backspace");
-  await page.type(selector, value);
+  await page.type(selector, value, { delay: 15 });
   await page.waitForFunction(({ inputSelector, expectedValue }) => {
     const control = document.querySelector<HTMLInputElement | HTMLTextAreaElement>(inputSelector);
     return control?.value === expectedValue;
@@ -400,11 +400,15 @@ async function exerciseNonMutatingAutomationPreview(page: Page): Promise<Automat
       return nameInput?.value === "New automation";
     }, { timeout: 30_000 });
 
-    stage = "save the disabled bounded automation draft";
+    stage = "fill the disabled automation name";
     await fill(page, '[data-testid="automation-name"]', AUTOMATION_NAME);
+    stage = "fill the disabled automation description";
     await fill(page, '[data-testid="automation-description"]', AUTOMATION_DESCRIPTION);
+    stage = "fill the bounded automation condition";
     await fill(page, '[data-testid="automation-condition-title"]', SYNTHETIC_MISSION_PREFIX);
+    stage = "fill the bounded follow-up action";
     await fill(page, '[data-testid="automation-action-title-0"]', AUTOMATION_FOLLOW_UP_TITLE);
+    stage = "save the disabled bounded automation draft";
     await page.waitForFunction(({ expectedName, expectedDescription, expectedCondition, expectedAction }) => {
       const value = (selector: string) => document.querySelector<HTMLInputElement | HTMLTextAreaElement>(selector)?.value;
       return value('[data-testid="automation-name"]') === expectedName

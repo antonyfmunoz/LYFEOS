@@ -152,7 +152,9 @@ describe("production browser acceptance custody", () => {
     expect(coreLoopScript).toContain("async function exerciseNonMutatingAutomationPreview");
     expect(coreLoopScript).toContain("async function cleanupAutomation");
     expect(coreLoopScript).toContain('page.keyboard.press("Backspace")');
+    expect(coreLoopScript).toContain('page.type(selector, value, { delay: 15 })');
     expect(coreLoopScript).toContain("control?.value === expectedValue");
+    expect(coreLoopScript).toContain('stage = "fill the bounded follow-up action"');
     expect(coreLoopScript).toContain('await waitForApiBudget(page, 80)');
     expect(coreLoopScript).toContain('await waitForApiBudget(page, 60)');
     expect(coreLoopScript).toContain('response.headers.get("ratelimit-remaining")');
