@@ -273,6 +273,8 @@ function TimezoneDropdown({ value, onChange }: { value: string; onChange: (val: 
     <div className="relative max-w-md mx-auto">
       <button
         ref={buttonRef}
+        data-testid="onboarding-timezone"
+        aria-label="Choose timezone"
         onClick={() => setIsOpen(!isOpen)}
         className="w-full flex items-center justify-between rounded-lg border border-primary/20 bg-card/30 backdrop-blur px-4 py-3 text-sm text-foreground hover:border-primary/50 transition-colors"
       >
@@ -398,6 +400,8 @@ function LocationDropdown({ value, onChange }: { value: string; onChange: (val: 
     <div className="relative max-w-md mx-auto" ref={dropdownRef}>
       <input
         ref={inputRef}
+        data-testid="onboarding-location"
+        aria-label="City or location"
         value={search}
         onChange={handleInputChange}
         onFocus={() => setIsOpen(true)}
@@ -486,6 +490,7 @@ function GradientSlider({
         <div className="absolute inset-0 h-2 rounded-full bg-gradient-to-r from-primary/80 via-primary to-primary/80 top-1/2 -translate-y-1/2" />
         <input
           type="range"
+          aria-label="Archetype response"
           min="0"
           max="100"
           value={value}
@@ -1723,6 +1728,7 @@ export default function OnboardingPage() {
             <p className="text-sm text-muted-foreground text-center">This is how you'll be known in LYFEOS</p>
             <div className="max-w-sm mx-auto space-y-2">
               <Input
+                data-testid="onboarding-display-name"
                 value={onboardingUsername}
                 onChange={(e) => {
                   const val = e.target.value.replace(/[^a-zA-Z0-9_-]/g, '');
@@ -1760,6 +1766,7 @@ export default function OnboardingPage() {
             <p className="text-sm text-muted-foreground text-center">So we know what to call you</p>
             <div className="max-w-sm mx-auto grid grid-cols-2 gap-3">
               <Input
+                data-testid="onboarding-first-name"
                 value={onboardingFirstName}
                 onChange={(e) => setOnboardingFirstName(e.target.value)}
                 placeholder="First name"
@@ -1767,6 +1774,7 @@ export default function OnboardingPage() {
                 className="bg-card/30 border-primary/20"
               />
               <Input
+                data-testid="onboarding-last-name"
                 value={onboardingLastName}
                 onChange={(e) => setOnboardingLastName(e.target.value)}
                 placeholder="Last name"
@@ -1791,7 +1799,7 @@ export default function OnboardingPage() {
                 setBirthMonth(m);
                 if (birthDay > getDaysInMonth(m, birthYear || currentYear)) setBirthDay(0);
               }}>
-                <SelectTrigger className="w-[120px] h-9 text-xs border-primary/30">
+                <SelectTrigger data-testid="onboarding-birth-month" aria-label="Birth month" className="w-[120px] h-9 text-xs border-primary/30">
                   <SelectValue placeholder="Month" />
                 </SelectTrigger>
                 <SelectContent className="max-h-[200px]">
@@ -1801,7 +1809,7 @@ export default function OnboardingPage() {
                 </SelectContent>
               </Select>
               <Select value={birthDay ? String(birthDay) : ""} onValueChange={(val) => setBirthDay(parseInt(val) || 0)}>
-                <SelectTrigger className="w-[80px] h-9 text-xs border-primary/30">
+                <SelectTrigger data-testid="onboarding-birth-day" aria-label="Birth day" className="w-[80px] h-9 text-xs border-primary/30">
                   <SelectValue placeholder="Day" />
                 </SelectTrigger>
                 <SelectContent className="max-h-[200px]">
@@ -1815,7 +1823,7 @@ export default function OnboardingPage() {
                 setBirthYear(y);
                 if (birthDay > getDaysInMonth(birthMonth || 1, y)) setBirthDay(0);
               }}>
-                <SelectTrigger className="w-[90px] h-9 text-xs border-primary/30">
+                <SelectTrigger data-testid="onboarding-birth-year" aria-label="Birth year" className="w-[90px] h-9 text-xs border-primary/30">
                   <SelectValue placeholder="Year" />
                 </SelectTrigger>
                 <SelectContent className="max-h-[200px]">
@@ -1871,6 +1879,8 @@ export default function OnboardingPage() {
                 <button
                   key={color.hex}
                   type="button"
+                  data-testid={`onboarding-theme-${color.label.toLowerCase()}`}
+                  aria-label={`Use ${color.label} theme`}
                   className={`w-12 h-12 rounded-lg transition-all ${
                     selectedThemeColor === color.hex
                       ? 'ring-2 ring-offset-2 ring-offset-background ring-white scale-110'
@@ -1963,7 +1973,7 @@ export default function OnboardingPage() {
       case 3: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What knowledge areas interest you?</h3><Input value={knowledgeAreas} onChange={(e) => setKnowledgeAreas(e.target.value)} placeholder="Comma-separated: AI, Philosophy..." autoComplete="off" className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
       case 4: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What skills do you want to acquire?</h3><Input value={skillsToAcquire} onChange={(e) => setSkillsToAcquire(e.target.value)} placeholder="Comma-separated: Public Speaking..." autoComplete="off" className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
       case 5: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">How do you prefer to learn?</h3><ChipSelect options={["Visual", "Auditory", "Reading/Writing", "Kinesthetic", "Mixed"]} value={learningPreference} onChange={(val) => setLearningPreference(val as string)} /></div>);
-      case 6: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">Hours per week for practice?</h3><div className="max-w-md mx-auto"><input type="range" min="0" max="40" value={practiceHours} onChange={(e) => setPracticeHours(parseInt(e.target.value))} className="w-full accent-primary" /><p className="text-center text-primary font-medium">{practiceHours} hours/week</p></div></div>);
+      case 6: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">Hours per week for practice?</h3><div className="max-w-md mx-auto"><input type="range" aria-label="Practice hours per week" min="0" max="40" value={practiceHours} onChange={(e) => setPracticeHours(parseInt(e.target.value))} className="w-full accent-primary" /><p className="text-center text-primary font-medium">{practiceHours} hours/week</p></div></div>);
       case 7: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What is your career or vocation?</h3><Input value={careerVocation} onChange={(e) => setCareerVocation(e.target.value)} placeholder="e.g., Software Engineer, Teacher..." autoComplete="off" className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
       case 8: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What ventures are you actively working on?</h3><Input value={activeVentures} onChange={(e) => setActiveVentures(e.target.value)} placeholder="Comma-separated: Startup, Side project..." autoComplete="off" className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
       default: return null;
@@ -1973,14 +1983,14 @@ export default function OnboardingPage() {
   const renderMission4 = () => {
     if (currentStep === 0) return renderMissionStartPage();
     switch (currentStep) {
-      case 1: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What's your weekly capacity (hours)?</h3><div className="max-w-md mx-auto"><input type="range" min="10" max="80" value={weeklyCapacity} onChange={(e) => setWeeklyCapacity(parseInt(e.target.value))} className="w-full accent-primary" /><p className="text-center text-primary font-medium">{weeklyCapacity} hours/week</p></div></div>);
+      case 1: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What's your weekly capacity (hours)?</h3><div className="max-w-md mx-auto"><input type="range" aria-label="Weekly capacity hours" min="10" max="80" value={weeklyCapacity} onChange={(e) => setWeeklyCapacity(parseInt(e.target.value))} className="w-full accent-primary" /><p className="text-center text-primary font-medium">{weeklyCapacity} hours/week</p></div></div>);
       case 2: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What drains your energy?</h3><ChipSelect options={["Meetings", "Admin Tasks", "Conflict", "Uncertainty", "Multitasking", "Perfectionism", "Social Obligations", "Poor Sleep"]} value={energyDrains} onChange={(val) => setEnergyDrains(val as string[])} multiple /></div>);
       case 3: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">Describe your physical environment</h3><Textarea value={physicalEnvironment} onChange={(e) => setPhysicalEnvironment(e.target.value)} placeholder="Where do you work, live, create..." autoComplete="off" className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
       case 4: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">How does your environment impact your productivity?</h3><Textarea value={physicalEnvironmentImpact} onChange={(e) => setPhysicalEnvironmentImpact(e.target.value)} placeholder="How your space affects your work..." autoComplete="off" className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
       case 5: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What's your income situation?</h3><Input value={financialIncome} onChange={(e) => setFinancialIncome(e.target.value)} placeholder="Describe your income..." autoComplete="off" className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
       case 6: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What's your savings situation?</h3><Input value={financialSavings} onChange={(e) => setFinancialSavings(e.target.value)} placeholder="Describe your savings..." autoComplete="off" className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
       case 7: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What financial constraints limit you?</h3><ChipSelect options={["Debt", "Low Income", "High Expenses", "No Savings", "Unstable Income", "Dependents", "Student Loans", "Medical Costs"]} value={financialConstraints} onChange={(val) => setFinancialConstraints(val as string[])} multiple /></div>);
-      case 8: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">Rate your money confidence (1-10)</h3><div className="max-w-md mx-auto"><input type="range" min="1" max="10" value={moneyConfidenceScore} onChange={(e) => setMoneyConfidenceScore(parseInt(e.target.value))} className="w-full accent-primary" /><p className="text-center text-primary font-medium">{moneyConfidenceScore} / 10</p></div></div>);
+      case 8: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">Rate your money confidence (1-10)</h3><div className="max-w-md mx-auto"><input type="range" aria-label="Money confidence" min="1" max="10" value={moneyConfidenceScore} onChange={(e) => setMoneyConfidenceScore(parseInt(e.target.value))} className="w-full accent-primary" /><p className="text-center text-primary font-medium">{moneyConfidenceScore} / 10</p></div></div>);
       case 9: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">Describe your relationship with money</h3><Textarea value={moneyRelationship} onChange={(e) => setMoneyRelationship(e.target.value)} placeholder="How do you relate to money..." autoComplete="off" className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
       case 10: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">How do you prefer to collaborate?</h3><ChipSelect options={["Independent", "Pair-based", "Small teams", "Large teams", "Mentoring", "Leading", "Supporting"]} value={collaborationStyle} onChange={(val) => setCollaborationStyle(val as string)} /></div>);
       case 11: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What role do you naturally take?</h3><ChipSelect options={["Leader", "Strategist", "Executor", "Advisor", "Creator", "Mediator", "Specialist"]} value={roleOrientation} onChange={(val) => setRoleOrientation(val as string)} /></div>);
@@ -1992,7 +2002,7 @@ export default function OnboardingPage() {
   const renderMission5 = () => {
     if (currentStep === 0) return renderMissionStartPage();
     switch (currentStep) {
-      case 1: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">How many hours of sleep do you get?</h3><div className="max-w-md mx-auto"><input type="range" min="4" max="10" step="0.5" value={sleepHours} onChange={(e) => setSleepHours(parseFloat(e.target.value))} className="w-full accent-primary" /><p className="text-center text-primary font-medium">{sleepHours} hours/night</p></div></div>);
+      case 1: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">How many hours of sleep do you get?</h3><div className="max-w-md mx-auto"><input type="range" aria-label="Sleep hours per night" min="4" max="10" step="0.5" value={sleepHours} onChange={(e) => setSleepHours(parseFloat(e.target.value))} className="w-full accent-primary" /><p className="text-center text-primary font-medium">{sleepHours} hours/night</p></div></div>);
       case 2: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">How often do you exercise?</h3><ChipSelect options={["Daily", "4-6x/week", "2-3x/week", "Weekly", "Rarely", "Never"]} value={exerciseFrequency} onChange={(val) => setExerciseFrequency(val as string)} /></div>);
       case 3: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What's your nutrition approach?</h3><ChipSelect options={["Clean Eating", "Balanced", "Intuitive", "Keto/Low Carb", "Vegan/Vegetarian", "No Specific Diet"]} value={nutritionApproach} onChange={(val) => setNutritionApproach(val as string)} /></div>);
       case 4: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What habits do you want to reprogram?</h3><ChipSelect options={["Procrastination", "Overthinking", "Poor Sleep", "Unhealthy Eating", "Phone Addiction", "Negative Self-Talk", "Avoidance", "Perfectionism"]} value={habitsToReprogram} onChange={(val) => setHabitsToReprogram(val as string[])} multiple /></div>);
@@ -2056,7 +2066,7 @@ export default function OnboardingPage() {
   if (showMissionComplete) {
     return (
       <div className="min-h-screen bg-background flex flex-col">
-        <div className="flex-1 flex flex-col items-center justify-center p-4">
+        <main className="flex-1 flex flex-col items-center justify-center p-4">
           <div className="text-center mb-8">
             <h1 className="text-4xl font-orbitron font-bold">
               <span className="text-foreground">LYFE</span>
@@ -2078,6 +2088,7 @@ export default function OnboardingPage() {
                 <div className="space-y-3">
                   <Button 
                     onClick={handleContinueToNextMission}
+                    data-testid="onboarding-continue"
                     className="w-full bg-primary/20 border border-primary text-primary hover:bg-primary/30"
                   >
                     Continue to {MISSIONS[currentMission + 1].title}
@@ -2085,6 +2096,7 @@ export default function OnboardingPage() {
                   </Button>
                   <Button
                     onClick={handleSkipToSystem}
+                    data-testid="onboarding-enter-system"
                     className="w-full bg-transparent border-2 border-primary text-primary hover:bg-primary/20"
                   >
                     Enter LYFEOS
@@ -2102,6 +2114,7 @@ export default function OnboardingPage() {
                 <div className="space-y-3">
                   <Button 
                     onClick={handleSkipToSystem}
+                    data-testid="onboarding-enter-system"
                     className="w-full bg-primary/20 border border-primary text-primary hover:bg-primary/30"
                   >
                     Initialize System
@@ -2118,7 +2131,7 @@ export default function OnboardingPage() {
               )}
             </CardContent>
           </Card>
-        </div>
+        </main>
       </div>
     );
   }
@@ -2126,7 +2139,7 @@ export default function OnboardingPage() {
   if (isGeneratingAffirmation) {
     const isFinalMission = currentMission === MISSIONS.length - 1;
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
+      <main className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
         <div className="text-center space-y-4">
           <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
           <h2 className="text-xl font-medium">
@@ -2136,18 +2149,18 @@ export default function OnboardingPage() {
             {isFinalMission ? "Your AI is refining your personalized narrative" : "Your AI is crafting your personalized narrative"}
           </p>
         </div>
-      </div>
+      </main>
     );
   }
 
   if ((authLoading || !user) && !isPendingRegistration) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <main className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="w-12 h-12 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-muted-foreground">Loading...</p>
         </div>
-      </div>
+      </main>
     );
   }
 
@@ -2173,10 +2186,12 @@ export default function OnboardingPage() {
           </Button>
         </div>
       )}
-      <div className="flex-1 flex flex-col items-center justify-center px-4 pb-4">
+      <main className="flex-1 flex flex-col items-center justify-center px-4 pb-4">
         <Card className="w-full max-w-lg border-primary/30 bg-card/50 backdrop-blur shadow-[0_0_30px_var(--primary-bg-subtle)]">
           <CardContent className="p-6">
-            {renderMissionContent()}
+            <div data-testid="onboarding-step" data-mission={currentMission} data-step={currentStep}>
+              {renderMissionContent()}
+            </div>
             <DotNavigation current={currentStep} total={totalSteps} />
           </CardContent>
         </Card>
@@ -2196,6 +2211,7 @@ export default function OnboardingPage() {
             
             <Button 
               onClick={handleNext} 
+              data-testid="onboarding-next"
               disabled={!canProceed() || isLoading}
               className="bg-transparent border-2 border-primary text-primary hover:bg-primary/20"
             >
@@ -2211,7 +2227,7 @@ export default function OnboardingPage() {
             </Button>
           </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

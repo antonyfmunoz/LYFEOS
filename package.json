@@ -12,6 +12,7 @@
     "budget": "node scripts/check-bundle-budget.mjs",
     "acceptance:browser": "tsx scripts/production-browser-acceptance.ts",
     "acceptance:core-loop": "tsx scripts/production-core-loop-acceptance.ts",
+    "acceptance:onboarding": "tsx scripts/production-onboarding-browser-acceptance.ts",
     "acceptance:automation-recovery": "tsx scripts/automation-recovery-browser-acceptance.ts",
     "acceptance:ai-memory": "tsx scripts/ai-memory-browser-acceptance.ts",
     "acceptance:thread-successor": "tsx scripts/thread-successor-browser-acceptance.ts",

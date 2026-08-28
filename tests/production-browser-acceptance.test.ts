@@ -3,6 +3,7 @@ import fs from "node:fs";
 
 const script = fs.readFileSync("scripts/production-browser-acceptance.ts", "utf8");
 const coreLoopScript = fs.readFileSync("scripts/production-core-loop-acceptance.ts", "utf8");
+const onboardingScript = fs.readFileSync("scripts/production-onboarding-browser-acceptance.ts", "utf8");
 const workflow = fs.readFileSync(".github/workflows/production-browser-acceptance.yml", "utf8");
 const packageJson = fs.readFileSync("package.json", "utf8");
 const rootLayout = fs.readFileSync("client/src/components/layout/RootLayout.tsx", "utf8");
@@ -126,10 +127,29 @@ describe("production browser acceptance custody", () => {
     expect(workflow).toContain("LYFEOS_ACCEPTANCE_HARNESS_SOURCE: ${{ github.sha }}");
     expect(script).toContain("harnessSource: HARNESS_SOURCE");
     expect(coreLoopScript).toContain("harnessSource: HARNESS_SOURCE");
+    expect(onboardingScript).toContain("harnessSource: HARNESS_SOURCE");
     expect(workflow).toContain("LYFEOS_ACCEPTANCE_EMAIL: ${{ secrets.LYFEOS_ACCEPTANCE_EMAIL }}");
     expect(workflow).toContain("LYFEOS_ACCEPTANCE_PASSWORD: ${{ secrets.LYFEOS_ACCEPTANCE_PASSWORD }}");
     expect(workflow).toContain("if: always()");
     expect(workflow).toContain("retention-days: 30");
+  });
+
+  it("qualifies disposable rendered registration, full onboarding, session continuity, and erasure", () => {
+    expect(packageJson).toContain('"acceptance:onboarding": "tsx scripts/production-onboarding-browser-acceptance.ts"');
+    expect(onboardingScript).toContain('contract: "lyfeos.production-onboarding-acceptance.v1"');
+    expect(onboardingScript).toContain('"/register"');
+    expect(onboardingScript).toContain('"/api/auth/check-display-name"');
+    expect(onboardingScript).toContain('"/api/auth/me"');
+    expect(onboardingScript).toContain('"/api/transformation-thread"');
+    expect(onboardingScript).toContain('completedMissionIds.join(",") === "0,1,2,3,4,5,6,7"');
+    expect(onboardingScript).toContain('data-testid="account-delete-submit"');
+    expect(onboardingScript).toContain('"DELETE MY ACCOUNT"');
+    expect(onboardingScript).toContain('emailCheck.body?.available === true');
+    expect(onboardingScript).toContain('displayNameCheck.body?.available === true');
+    expect(onboardingScript).toContain('recovery=${evidence.cleanup}');
+    expect(onboardingScript).not.toMatch(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+    expect(workflow).toContain("Run disposable production onboarding acceptance");
+    expect(workflow).toContain("run: npm run acceptance:onboarding");
   });
 
   it("qualifies the rendered truthful Mission loop separately and always archives its synthetic record", () => {

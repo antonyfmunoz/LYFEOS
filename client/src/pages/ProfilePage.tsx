@@ -530,6 +530,7 @@ function PersistentProfileSection({ section, onSave }: { section: { id: string; 
               <span className="text-xs text-muted-foreground min-w-[120px]">{item.label}</span>
               {isEditing && item.fieldKey ? (
                 <Input
+                  data-testid="account-delete-confirmation"
                   value={editValues[item.fieldKey] ?? ""}
                   onChange={(e) => setEditValues({ ...editValues, [item.fieldKey!]: e.target.value })}
                   className="h-7 text-sm flex-1"
@@ -2170,7 +2171,7 @@ export default function ProfilePage() {
                   className="mt-3 border-red-500/30 bg-background/50 text-sm"
                   aria-label="Confirm account deletion"
                 />
-                <Button size="sm" variant="outline" className="mt-2 border-red-500/40 text-red-300 hover:bg-red-500/10" onClick={() => deleteAccountMutation.mutate()} disabled={deleteConfirmation !== "DELETE MY ACCOUNT" || deleteAccountMutation.isPending}>
+                <Button data-testid="account-delete-submit" size="sm" variant="outline" className="mt-2 border-red-500/40 text-red-300 hover:bg-red-500/10" onClick={() => deleteAccountMutation.mutate()} disabled={deleteConfirmation !== "DELETE MY ACCOUNT" || deleteAccountMutation.isPending}>
                   <Trash2 className="mr-2 h-3.5 w-3.5" /> Permanently delete account
                 </Button>
               </div>
