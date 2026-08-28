@@ -149,6 +149,20 @@ async function fill(page: Page, selector: string, value: string): Promise<void> 
   await page.type(selector, value);
 }
 
+async function dismissBlockingTutorial(page: Page): Promise<boolean> {
+  const selector = 'button[aria-label="Skip this tutorial"]';
+  const control = await page.$(selector);
+  if (!control) return false;
+  const visible = await control.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return style.display !== "none" && style.visibility !== "hidden" && element.getClientRects().length > 0;
+  });
+  if (!visible) return false;
+  await control.click();
+  await page.waitForSelector(selector, { hidden: true, timeout: 10_000 });
+  return true;
+}
+
 async function inspectMissionView(page: Page, viewport: string): Promise<ViewEvidence> {
   const evidence = await page.evaluate(({ missionTitle, purpose, evidenceSummary }) => {
     const bodyText = document.body.innerText;
@@ -270,6 +284,8 @@ async function main(): Promise<void> {
 
     await page.goto(new URL("/missions", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
     await page.waitForSelector('[data-tour="create-mission"]', { visible: true, timeout: 30_000 });
+    const tutorialDismissed = await dismissBlockingTutorial(page);
+    steps.push({ name: "first-use tutorial boundary", status: "passed", detail: tutorialDismissed ? "Dismissed the visible tutorial through its named Skip control." : "No blocking tutorial was presented." });
     await page.click('[data-tour="create-mission"]');
     await fill(page, "#create-title", MISSION_TITLE);
     const createResponsePromise = page.waitForResponse((response) => {
