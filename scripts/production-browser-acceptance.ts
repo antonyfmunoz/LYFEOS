@@ -10,6 +10,7 @@ type RouteResult = {
   kind: RouteKind;
   route: string;
   viewport: string;
+  navigation: "document" | "spa";
   finalPath: string;
   title: string;
   timings: {
@@ -226,7 +227,7 @@ async function writeFatalEvidence(message: string): Promise<void> {
   }
 }
 
-async function auditRoute(page: Page, route: string, kind: RouteKind, viewportName: string): Promise<RouteResult> {
+async function auditRoute(page: Page, route: string, kind: RouteKind, viewportName: string, navigation: "document" | "spa" = "document"): Promise<RouteResult> {
   const failedRequests: string[] = [];
   const serverErrors: string[] = [];
   const consoleErrors: string[] = [];
@@ -261,13 +262,21 @@ async function auditRoute(page: Page, route: string, kind: RouteKind, viewportNa
   page.on("console", consoleReceived);
 
   try {
-    await page.goto(new URL(route, BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
+    if (navigation === "document") {
+      await page.goto(new URL(route, BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
+    } else {
+      await page.evaluate((targetRoute) => {
+        window.history.pushState({}, "", targetRoute);
+        window.dispatchEvent(new PopStateEvent("popstate"));
+      }, route);
+    }
     await page.waitForFunction(
-      () => {
+      (expectedPath) => {
         const text = document.body?.innerText || "";
-        return text.length > 20 && !text.includes("Loading LyfeOS…") && !text.includes("Signing you in...");
+        return window.location.pathname === expectedPath && text.length > 20 && !text.includes("Loading LyfeOS…") && !text.includes("Signing you in...");
       },
       { timeout: 30_000 },
+      route,
     );
     await new Promise((resolve) => setTimeout(resolve, 1_000));
 
@@ -343,12 +352,21 @@ async function auditRoute(page: Page, route: string, kind: RouteKind, viewportNa
     if (serverErrors.length) failures.push(`${serverErrors.length} same-origin server error response(s)`);
     if (consoleErrors.length) failures.push(`${consoleErrors.length} console error(s)`);
 
-    const metrics = {
+    // Navigation Timing and paint entries describe document loads, not client-
+    // side route changes. Do not misattribute the previous document's metrics
+    // to SPA navigation evidence.
+    const metrics = navigation === "document" ? {
       domContentLoadedMs: finiteMetric(dom.timings.domContentLoadedMs),
       loadMs: finiteMetric(dom.timings.loadMs),
       firstContentfulPaintMs: finiteMetric(dom.timings.firstContentfulPaintMs),
       largestContentfulPaintMs: finiteMetric(dom.timings.largestContentfulPaintMs),
       cumulativeLayoutShift: finiteMetric(dom.timings.cumulativeLayoutShift),
+    } : {
+      domContentLoadedMs: null,
+      loadMs: null,
+      firstContentfulPaintMs: null,
+      largestContentfulPaintMs: null,
+      cumulativeLayoutShift: null,
     };
     for (const [metric, threshold] of Object.entries(THRESHOLDS)) {
       if (!(metric in metrics)) continue;
@@ -360,6 +378,7 @@ async function auditRoute(page: Page, route: string, kind: RouteKind, viewportNa
       kind,
       route,
       viewport: viewportName,
+      navigation,
       finalPath,
       title: dom.title,
       timings: metrics,
@@ -390,9 +409,9 @@ async function auditRoute(page: Page, route: string, kind: RouteKind, viewportNa
   }
 }
 
-async function auditRouteWithEvidence(page: Page, route: string, kind: RouteKind, viewportName: string): Promise<RouteResult> {
+async function auditRouteWithEvidence(page: Page, route: string, kind: RouteKind, viewportName: string, navigation: "document" | "spa" = "document"): Promise<RouteResult> {
   try {
-    return await auditRoute(page, route, kind, viewportName);
+    return await auditRoute(page, route, kind, viewportName, navigation);
   } catch (error) {
     const message = sanitizedFailureMessage(error);
     const safeRoute = route === "/" ? "root" : route.slice(1).replace(/[^a-z0-9_-]+/gi, "-");
@@ -405,6 +424,7 @@ async function auditRouteWithEvidence(page: Page, route: string, kind: RouteKind
       kind,
       route,
       viewport: viewportName,
+      navigation,
       finalPath: (() => {
         try {
           return new URL(page.url()).pathname;
@@ -459,9 +479,9 @@ async function writeSummary(report: AcceptanceReport): Promise<void> {
     `- Failed: ${report.summary.failed}`,
     `- Authenticated suite executed: ${report.authenticatedExecuted}`,
     "",
-    "| Viewport | Route | Result | LCP | CLS |",
-    "| --- | --- | --- | ---: | ---: |",
-    ...report.results.map((result) => `| ${result.viewport} | ${result.route} | ${result.failures.length ? `FAIL: ${result.failures.join("; ")}` : "PASS"} | ${result.timings.largestContentfulPaintMs ?? "n/a"} | ${result.timings.cumulativeLayoutShift ?? "n/a"} |`),
+    "| Viewport | Route | Navigation | Result | LCP | CLS |",
+    "| --- | --- | --- | --- | ---: | ---: |",
+    ...report.results.map((result) => `| ${result.viewport} | ${result.route} | ${result.navigation} | ${result.failures.length ? `FAIL: ${result.failures.join("; ")}` : "PASS"} | ${result.timings.largestContentfulPaintMs ?? "n/a"} | ${result.timings.cumulativeLayoutShift ?? "n/a"} |`),
     "",
     "This is automated lab evidence. It does not substitute for human screen-reader comprehension, real-field Core Web Vitals, or provider authorization evidence.",
   ];
@@ -513,8 +533,9 @@ async function main(): Promise<void> {
           if (viewport.mobile) {
             await authenticatedPage.setUserAgent("Mozilla/5.0 (Linux; Android 14; LyfeOS acceptance) AppleWebKit/537.36 Chrome/125 Mobile Safari/537.36");
           }
-          for (const route of AUTHENTICATED_ROUTES) {
-            results.push(await auditRouteWithEvidence(authenticatedPage, route, "authenticated", viewport.name));
+          for (const [routeIndex, route] of AUTHENTICATED_ROUTES.entries()) {
+            const navigation = viewport === desktop && routeIndex === 0 ? "document" : "spa";
+            results.push(await auditRouteWithEvidence(authenticatedPage, route, "authenticated", viewport.name, navigation));
           }
         }
       } finally {

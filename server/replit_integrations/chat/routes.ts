@@ -1966,16 +1966,36 @@ Their current data: ${statContextMap[statType]}
 
 Provide 3 concise, personalized, actionable tips to help them improve this stat. Each tip should be 1-2 sentences max. Base your advice on their actual numbers. Be direct, motivating, and specific. No emojis. ${healthBoundary} Format each tip on its own line, numbered 1-3.`;
 
-      const response = await anthropic.messages.create({
-        model: MODEL_HAIKU,
-        max_tokens: 512,
-        messages: [{ role: "user", content: prompt }],
-      });
+      const deterministicTips: Record<string, string> = {
+        experience: `Choose one active mission you can finish next. You are level ${stats.level} with ${completedMissions.length} completed mission${completedMissions.length === 1 ? "" : "s"}, so a concrete completion is the clearest next XP signal.`,
+        energy: `Review the ${activeMissions.length} active mission${activeMissions.length === 1 ? "" : "s"} competing for your Energy Points and keep only the commitments you intend to act on.`,
+        health: "Treat Health Points as a participation game stat, not a health measurement. Log what you actually did and use the history to decide what you want to review next.",
+        wealth: `Use the ${completedMissions.length} completed mission${completedMissions.length === 1 ? "" : "s"} as evidence, then choose one user-defined action that makes the next Wealth Token change observable.`,
+        time: `Check the time cost on each of your ${activeMissions.length} active mission${activeMissions.length === 1 ? "" : "s"} and sequence the smallest finishable block first.`,
+        attention: "Protect one uninterrupted block for the active mission you have deliberately ranked highest, then record the outcome instead of estimating progress.",
+        efficiency: `Your current efficiency score is ${stats.efficiencyScore || 0}%. Improve the evidence by completing or rescheduling one active mission rather than leaving its state ambiguous.`,
+        streak: `Your recorded streak is ${stats.streakDays} day${stats.streakDays === 1 ? "" : "s"}. Keep it meaningful by logging only the action you actually completed.`,
+      };
 
-      const textBlock = response.content.find(b => b.type === "text");
-      const tip = textBlock ? textBlock.text : "Keep pushing forward. Every small action compounds into massive progress.";
+      if (!process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY?.trim()) {
+        return res.json({ tip: deterministicTips[statType], statType, source: "deterministic" });
+      }
 
-      res.json({ tip, statType });
+      try {
+        const response = await anthropic.messages.create({
+          model: MODEL_HAIKU,
+          max_tokens: 512,
+          messages: [{ role: "user", content: prompt }],
+        });
+
+        const textBlock = response.content.find(b => b.type === "text");
+        const tip = textBlock ? textBlock.text : deterministicTips[statType];
+
+        return res.json({ tip, statType, source: "anthropic" });
+      } catch {
+        console.warn("Stat-tip provider unavailable; returning deterministic guidance.");
+        return res.json({ tip: deterministicTips[statType], statType, source: "deterministic" });
+      }
     } catch (error) {
       console.error("Error generating stat tip:", error);
       res.status(500).json({ error: "Failed to generate tip" });
@@ -2010,6 +2030,53 @@ Efficiency: ${stats.efficiencyScore || 0}%, Streak: ${stats.streakDays} days
 Active missions: ${activeMissions.length}, Completed missions: ${completedMissions.length}
 Total energy allocated to missions: ${totalEnergyCost}, Total time allocated: ${totalTimeCost}, Total attention allocated: ${totalAttentionCost}`;
 
+      const deterministicTips = {
+        experience: [
+          `You are level ${stats.level} with ${completedMissions.length} completed mission${completedMissions.length === 1 ? "" : "s"}; choose the smallest active mission you can truthfully finish next.`,
+          "Use completion evidence rather than effort estimates so XP continues to represent demonstrated progress.",
+          "Review the next unlock before adding work, then sequence one mission that advances it.",
+        ],
+        energy: [
+          `${activeMissions.length} active mission${activeMissions.length === 1 ? " is" : "s are"} drawing from your Energy Points; keep only commitments you actually intend to act on.`,
+          `Your active missions currently allocate ${totalEnergyCost} energy units; reschedule an item if that total no longer reflects reality.`,
+          "Record completion or recovery before changing the game stat so the progression remains auditable.",
+        ],
+        health: [
+          "Treat Health Points as a participation game stat, not a health measurement.",
+          "Log what you actually did and use the timeline to choose what you want to review next.",
+          "Use qualified clinical measurements and professionals for health decisions; LyfeOS should preserve your observations without diagnosing you.",
+        ],
+        wealth: [
+          `Use your ${completedMissions.length} completed mission${completedMissions.length === 1 ? "" : "s"} as evidence and choose one user-defined action that makes the next Wealth Token change observable.`,
+          "Separate a planned financial action from a verified outcome so the game layer does not overstate progress.",
+          "Connect the next wealth-related mission to a dated result you can later confirm.",
+        ],
+        time: [
+          `Your active missions allocate ${totalTimeCost} time units; compare that total with the time you can actually protect.`,
+          "Sequence the smallest finishable block first instead of starting several missions at once.",
+          "Reschedule work that no longer has a realistic window so the plan remains trustworthy.",
+        ],
+        attention: [
+          `Your active missions allocate ${totalAttentionCost} attention units; deliberately rank the one that deserves the next uninterrupted block.`,
+          "Record the outcome of that focus block rather than estimating progress from time spent.",
+          "Reduce simultaneous active work when the attention plan exceeds what you can execute cleanly.",
+        ],
+        efficiency: [
+          `Your current efficiency score is ${stats.efficiencyScore || 0}%; make the next signal clearer by completing or rescheduling one active mission.`,
+          "Keep planned, attempted, and completed states distinct so efficiency reflects execution instead of aspiration.",
+          "Review the completion pattern after several missions before drawing a conclusion from a single day.",
+        ],
+        streak: [
+          `Your recorded streak is ${stats.streakDays} day${stats.streakDays === 1 ? "" : "s"}; extend it only with an action you actually completed.`,
+          "Choose a minimum repeatable action that still represents meaningful participation.",
+          "If the streak breaks, preserve the history and restart honestly instead of rewriting the evidence.",
+        ],
+      };
+
+      if (!process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY?.trim()) {
+        return res.json({ tips: deterministicTips, source: "deterministic" });
+      }
+
       const prompt = `You are ${stats.aiAssistantName || "NOVA"}, the user's personal AI life coach.
 
 User data:
@@ -2024,21 +2091,26 @@ Format your response as JSON with this exact structure:
 
 Return ONLY the JSON, no other text.`;
 
-      const response = await anthropic.messages.create({
-        model: MODEL_HAIKU,
-        max_tokens: 2048,
-        messages: [{ role: "user", content: prompt }],
-      });
-
-      const textBlock = response.content.find(b => b.type === "text");
-      const rawText = textBlock ? textBlock.text.trim() : "{}";
-
       try {
-        const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-        const tips = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
-        res.json({ tips });
+        const response = await anthropic.messages.create({
+          model: MODEL_HAIKU,
+          max_tokens: 2048,
+          messages: [{ role: "user", content: prompt }],
+        });
+
+        const textBlock = response.content.find(b => b.type === "text");
+        const rawText = textBlock ? textBlock.text.trim() : "{}";
+
+        try {
+          const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+          const tips = jsonMatch ? JSON.parse(jsonMatch[0]) : deterministicTips;
+          return res.json({ tips, source: "anthropic" });
+        } catch {
+          return res.json({ tips: deterministicTips, source: "deterministic" });
+        }
       } catch {
-        res.json({ tips: {} });
+        console.warn("All-stat-tip provider unavailable; returning deterministic guidance.");
+        return res.json({ tips: deterministicTips, source: "deterministic" });
       }
     } catch (error) {
       console.error("Error generating all stat tips:", error);

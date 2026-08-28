@@ -64,6 +64,10 @@ describe("production browser acceptance custody", () => {
     expect(script).toContain("for (const viewport of VIEWPORTS)");
     expect(script).toContain("await authenticatedPage.setViewport(viewport.value)");
     expect(script).toContain("Authenticate once. Reusing the verified session");
+    expect(script).toContain('navigation: "document" | "spa"');
+    expect(script).toContain('window.dispatchEvent(new PopStateEvent("popstate"))');
+    expect(script).toContain('const navigation = viewport === desktop && routeIndex === 0 ? "document" : "spa"');
+    expect(script).toContain("Do not misattribute the previous document's metrics");
   });
 
   it("binds the run to an immutable deployed source and preserves evidence on failure", () => {

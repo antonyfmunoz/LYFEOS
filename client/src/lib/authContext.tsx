@@ -95,10 +95,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (data.primaryColor) {
             applyPrimaryColor(data.primaryColor);
           }
-        } else {
-          console.log("Not authenticated with server, clearing local user data");
+        } else if (response.status === 401) {
+          console.log("Server session is no longer authenticated, clearing local user data");
           setUser(null);
           localStorage.removeItem("lyfeos_user");
+        } else {
+          // A temporary rate limit or server/provider failure does not revoke a
+          // session. Preserve the last verified local identity and retry on the
+          // next auth sync instead of sending a signed-in user to /login.
+          console.warn(`Server auth check temporarily unavailable (${response.status}); preserving the verified local session.`);
         }
       } catch (error) {
         console.error("Failed to check authentication status:", error);

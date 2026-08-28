@@ -132,7 +132,8 @@ const rateLimitStore = new Map<string, { count: number; windowStart: number }>()
 function createRateLimiter(maxRequests: number, windowMs: number, keyByIpOnly = false) {
   return (req: Request, res: Response, next: NextFunction) => {
     const ip = req.ip || req.socket.remoteAddress || "unknown";
-    const key = keyByIpOnly ? `global:${ip}` : `${ip}:${req.path}`;
+    const principal = req.session?.userId ? `user:${req.session.userId}` : `ip:${ip}`;
+    const key = keyByIpOnly ? `global:${principal}` : `${principal}:${req.path}`;
     const now = Date.now();
     const entry = rateLimitStore.get(key);
 
@@ -209,6 +210,9 @@ app.use("/api/ai/orchestration-runs", createRateLimiter(qualificationRequestLimi
 // The isolated authenticated journey exercises the whole API through one local
 // loopback address. Keep the production ceiling unchanged while preventing the
 // shared CI harness from turning unrelated later tests into 429 cascades.
+// Product pages hydrate several independent, user-owned surfaces. Bound that
+// aggregate traffic per authenticated account rather than pooling every user
+// behind the same proxy IP, while preserving the existing production ceiling.
 app.use("/api", createRateLimiter(qualificationRequestLimit(100), 60 * 1000, true));
 
 const rateLimitCleanupTimer = setInterval(() => {
