@@ -497,6 +497,7 @@ async function exerciseNonMutatingAutomationControls(page: Page): Promise<Automa
     stage = "preview the saved rule against the synthetic Mission";
     await page.waitForFunction((id) => Array.from(document.querySelectorAll<HTMLSelectElement>('[data-testid="automation-preview-mission"] option')).some((option) => option.value === String(id)), { timeout: 30_000 }, missionId);
     await page.select('[data-testid="automation-preview-mission"]', String(missionId));
+    await waitForRenderedControlEnabled(page, '[data-testid="automation-preview"]');
     const previewResponsePromise = page.waitForResponse((response) => {
     const url = new URL(response.url());
     return url.origin === BASE_URL.origin && url.pathname === `/api/automations/${automationId}/preview` && response.request().method() === "POST";
@@ -679,6 +680,7 @@ async function exerciseNonMutatingAutomationControls(page: Page): Promise<Automa
     assert(scheduleRunNowDisabledAfterRevision, "A revised scheduled automation exposed the manual Run now action.");
 
     stage = "preview the revised saved schedule without executing it";
+    await waitForRenderedControlEnabled(page, '[data-testid="automation-preview"]');
     const scheduledPreviewResponsePromise = page.waitForResponse((response) => {
       const url = new URL(response.url());
       return url.origin === BASE_URL.origin && url.pathname === `/api/automations/${automationId}/preview` && response.request().method() === "POST";
@@ -754,6 +756,13 @@ async function activateRenderedControl(page: Page, selector: string): Promise<vo
     if (!control) throw new Error(`Rendered control disappeared before activation: ${controlSelector}`);
     control.click();
   }, selector);
+}
+
+async function waitForRenderedControlEnabled(page: Page, selector: string): Promise<void> {
+  await page.waitForFunction((controlSelector) => {
+    const control = document.querySelector<HTMLButtonElement>(controlSelector);
+    return Boolean(control && !control.disabled);
+  }, { timeout: 30_000 }, selector);
 }
 
 async function activateMissionControl(page: Page, action: "start" | "done" | "undo"): Promise<void> {

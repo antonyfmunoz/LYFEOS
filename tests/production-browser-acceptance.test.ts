@@ -185,6 +185,8 @@ describe("production browser acceptance custody", () => {
     expect(coreLoopScript).toContain("value: AUTOMATION_NAME");
     expect(coreLoopScript).toContain('activateRenderedControl(page, \'[data-testid="automation-save"]\')');
     expect(coreLoopScript).toContain('activateRenderedControl(page, \'[data-testid="automation-preview"]\')');
+    expect(coreLoopScript).toContain('waitForRenderedControlEnabled(page, \'[data-testid="automation-preview"]\')');
+    expect(automationsPage).toContain('previewMutation.isPending || save.isPending || toggle.isPending');
     expect(coreLoopScript).toContain('previewBody.preview?.disclosure === "Preview only. No mission was changed and no follow-up was created."');
     expect(coreLoopScript).toContain('runs.length === 0');
     expect(coreLoopScript).toContain('!followUpCreated');
