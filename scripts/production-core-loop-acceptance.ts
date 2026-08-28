@@ -386,12 +386,28 @@ async function exerciseNonMutatingAutomationPreview(page: Page): Promise<Automat
     automationId = createBody.automation!.id!;
     assert(createBody.automation?.enabled === false, "A newly created automation was not disabled by default.");
     await page.waitForSelector(`[data-testid="automation-editor-${automationId}"]`, { visible: true, timeout: 30_000 });
+    await page.waitForFunction(() => {
+      const nameInput = document.querySelector<HTMLInputElement>('[data-testid="automation-name"]');
+      return nameInput?.value === "New automation";
+    }, { timeout: 30_000 });
 
     stage = "save the disabled bounded automation draft";
     await fill(page, '[data-testid="automation-name"]', AUTOMATION_NAME);
     await fill(page, '[data-testid="automation-description"]', AUTOMATION_DESCRIPTION);
     await fill(page, '[data-testid="automation-condition-title"]', SYNTHETIC_MISSION_PREFIX);
     await fill(page, '[data-testid="automation-action-title-0"]', AUTOMATION_FOLLOW_UP_TITLE);
+    await page.waitForFunction(({ expectedName, expectedDescription, expectedCondition, expectedAction }) => {
+      const value = (selector: string) => document.querySelector<HTMLInputElement | HTMLTextAreaElement>(selector)?.value;
+      return value('[data-testid="automation-name"]') === expectedName
+        && value('[data-testid="automation-description"]') === expectedDescription
+        && value('[data-testid="automation-condition-title"]') === expectedCondition
+        && value('[data-testid="automation-action-title-0"]') === expectedAction;
+    }, { timeout: 10_000 }, {
+      expectedName: AUTOMATION_NAME,
+      expectedDescription: AUTOMATION_DESCRIPTION,
+      expectedCondition: SYNTHETIC_MISSION_PREFIX,
+      expectedAction: AUTOMATION_FOLLOW_UP_TITLE,
+    });
     const saveResponsePromise = page.waitForResponse((response) => {
     const url = new URL(response.url());
     return url.origin === BASE_URL.origin && url.pathname === `/api/automations/${automationId}` && response.request().method() === "PATCH";
@@ -406,7 +422,10 @@ async function exerciseNonMutatingAutomationPreview(page: Page): Promise<Automat
     };
   };
     assert(saveResponse.ok(), `Rendered automation save failed (${saveResponse.status()}).`);
-    assert(saveBody.automation?.enabled === false && saveBody.automation?.name === AUTOMATION_NAME, "Saved automation did not remain a disabled named draft.");
+    assert(
+      saveBody.automation?.enabled === false && saveBody.automation?.name === AUTOMATION_NAME,
+      `Saved automation did not remain a disabled named draft (enabled=${String(saveBody.automation?.enabled)}, name=${JSON.stringify(saveBody.automation?.name || null)}).`,
+    );
     assert(saveBody.automation?.definition?.conditions?.titleContains === SYNTHETIC_MISSION_PREFIX, "Saved automation omitted its bounded Mission-title condition.");
     assert(saveBody.automation?.definition?.actions?.[0]?.type === "schedule_follow_up" && saveBody.automation?.definition?.actions?.[0]?.title === AUTOMATION_FOLLOW_UP_TITLE, "Saved automation omitted its declared follow-up preview action.");
 

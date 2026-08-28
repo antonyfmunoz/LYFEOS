@@ -167,6 +167,8 @@ describe("production browser acceptance custody", () => {
     expect(coreLoopScript).toContain("progressionMatches(progressionBefore, progressionAfterEvidence)");
     expect(coreLoopScript).toContain('activateRenderedControl(page, \'[data-testid="automation-create"]\')');
     expect(coreLoopScript).toContain('Automation preview could not ${stage}');
+    expect(coreLoopScript).toContain('nameInput?.value === "New automation"');
+    expect(coreLoopScript).toContain("expectedName: AUTOMATION_NAME");
     expect(coreLoopScript).toContain('activateRenderedControl(page, \'[data-testid="automation-save"]\')');
     expect(coreLoopScript).toContain('activateRenderedControl(page, \'[data-testid="automation-preview"]\')');
     expect(coreLoopScript).toContain('previewBody.preview?.disclosure === "Preview only. No mission was changed and no follow-up was created."');
