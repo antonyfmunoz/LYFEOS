@@ -149,6 +149,7 @@ describe("production browser acceptance custody", () => {
     expect(onboardingScript).toContain("cachedUser=");
     expect(onboardingScript).toContain('data-testid="account-delete-submit"');
     expect(onboardingScript).not.toContain("const visible =");
+    expect(onboardingScript).toContain('element.closest("label")');
     expect(onboardingScript).toContain('"DELETE MY ACCOUNT"');
     expect(onboardingScript).toContain('emailCheck.body?.available === true');
     expect(onboardingScript).toContain('displayNameCheck.body?.available === true');

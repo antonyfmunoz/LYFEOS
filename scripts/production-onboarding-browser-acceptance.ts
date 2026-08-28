@@ -372,10 +372,12 @@ async function auditRenderedState(page: Page): Promise<Pick<JourneyEvidence, "ma
       .filter((element) => {
         if (element.getAttribute("aria-hidden") === "true") return false;
         const id = element.id;
-        const label = id ? document.querySelector(`label[for="${CSS.escape(id)}"]`)?.textContent?.trim() : "";
+        const explicitLabel = id ? document.querySelector(`label[for="${CSS.escape(id)}"]`)?.textContent?.trim() : "";
+        const implicitLabel = element.closest("label")?.textContent?.trim() || "";
         const name = element.getAttribute("aria-label")
           || element.getAttribute("aria-labelledby")
-          || label
+          || explicitLabel
+          || implicitLabel
           || element.getAttribute("title")
           || element.getAttribute("placeholder")
           || element.textContent?.trim();
