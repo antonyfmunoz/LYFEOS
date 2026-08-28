@@ -693,6 +693,7 @@ export default function TimelinePage() {
               <Button
                 variant="ghost"
                 size="sm"
+                aria-label="Zoom timeline out"
                 disabled={!canZoomOut}
                 onClick={handleZoomOut}
                 className="h-8 w-8 p-0 text-primary hover:bg-primary/10 disabled:opacity-30"
@@ -702,6 +703,7 @@ export default function TimelinePage() {
               <Button
                 variant="ghost"
                 size="sm"
+                aria-label="Zoom timeline in"
                 disabled={!canZoomIn}
                 onClick={handleZoomIn}
                 className="h-8 w-8 p-0 text-primary hover:bg-primary/10 disabled:opacity-30"
@@ -933,6 +935,7 @@ export default function TimelinePage() {
               <Button
                 variant="ghost"
                 size="sm"
+                aria-label="Zoom roadmap out"
                 disabled={!rmCanZoomOut}
                 onClick={handleRmZoomOut}
                 className="h-8 w-8 p-0 text-primary hover:bg-primary/10 disabled:opacity-30"
@@ -942,6 +945,7 @@ export default function TimelinePage() {
               <Button
                 variant="ghost"
                 size="sm"
+                aria-label="Zoom roadmap in"
                 disabled={!rmCanZoomIn}
                 onClick={handleRmZoomIn}
                 className="h-8 w-8 p-0 text-primary hover:bg-primary/10 disabled:opacity-30"

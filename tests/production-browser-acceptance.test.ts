@@ -97,7 +97,7 @@ describe("production browser acceptance custody", () => {
     expect(script).toContain("Do not misattribute the previous document's metrics");
     expect(script).toContain("respectApiRateLimit");
     expect(script).toContain('route === "/ai"');
-    expect(script).toContain('path: "/api/ai/orchestration-runs", floor: 2');
+    expect(script).toContain('path: "/api/ai/orchestration-runs", floor: 8');
     expect(script).toContain("await respectApiRateLimit(authenticatedPage, route)");
     expect(script).toContain('response.headers.get("ratelimit-remaining")');
     expect(script).toContain("state.remaining <= target.floor");

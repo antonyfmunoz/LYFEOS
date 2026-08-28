@@ -73,7 +73,7 @@ export default function ResetPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center p-4 text-white" style={{ backgroundColor: 'hsl(0 0% 7%)' }}>
+    <main className="min-h-screen flex flex-col items-center p-4 text-white" style={{ backgroundColor: 'hsl(0 0% 7%)' }}>
       <div className="text-center pt-[env(safe-area-inset-top)] pb-4">
         <h1 className="text-4xl font-orbitron font-bold mb-2"><span className="text-white">LYFE</span><span style={{ color: accent?.color || 'white' }}>OS</span></h1>
         <p className="text-white">Your personal life operating system</p>
@@ -111,6 +111,8 @@ export default function ResetPasswordPage() {
               <label className="block text-sm text-white">VERIFICATION CODE</label>
               <Input
                 type="text"
+                aria-label="Verification code"
+                autoComplete="one-time-code"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
                 placeholder="Enter code from email"
@@ -125,6 +127,8 @@ export default function ResetPasswordPage() {
               <div className="relative">
                 <Input
                   type={showPassword ? "text" : "password"}
+                  aria-label="New password"
+                  autoComplete="new-password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="At least 6 characters"
@@ -135,6 +139,7 @@ export default function ResetPasswordPage() {
                 />
                 <button
                   type="button"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-white hover:text-white"
                 >
@@ -147,6 +152,8 @@ export default function ResetPasswordPage() {
               <label className="block text-sm text-white">CONFIRM PASSWORD</label>
               <Input
                 type={showPassword ? "text" : "password"}
+                aria-label="Confirm new password"
+                autoComplete="new-password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Re-enter your password"
@@ -185,6 +192,6 @@ export default function ResetPasswordPage() {
         </div>
       )}
       </div>
-    </div>
+    </main>
   );
 }

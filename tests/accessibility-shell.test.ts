@@ -57,6 +57,7 @@ describe("shared accessibility shell", () => {
   it("keeps login and account recovery landmarks, names, and route titles accessible", () => {
     const login = readFileSync(resolve(process.cwd(), "client/src/pages/LoginPage.tsx"), "utf8");
     const forgot = readFileSync(resolve(process.cwd(), "client/src/pages/ForgotPasswordPage.tsx"), "utf8");
+    const reset = readFileSync(resolve(process.cwd(), "client/src/pages/ResetPasswordPage.tsx"), "utf8");
     const brandRuntime = readFileSync(resolve(process.cwd(), "client/src/components/InstallationBrandRuntime.tsx"), "utf8");
     expect(login).toContain('<main className="flex-1 flex items-center w-full justify-center">');
     expect(forgot).toContain('<main className="flex-1 flex items-center w-full justify-center">');
@@ -64,7 +65,34 @@ describe("shared accessibility shell", () => {
     expect(forgot).toContain('<label htmlFor="reset-email"');
     expect(forgot).toContain('id="reset-email"');
     expect(forgot).toContain('autoComplete="email"');
+    expect(reset).toContain('<main className="min-h-screen');
+    expect(reset).toContain('aria-label="Verification code"');
+    expect(reset).toContain('aria-label="New password"');
+    expect(reset).toContain('aria-label="Confirm new password"');
+    expect(reset).toContain('aria-label={showPassword ? "Hide password" : "Show password"}');
     expect(brandRuntime).toContain('if (document.title === "LYFEOS - Dashboard")');
+  });
+
+  it("keeps audited standalone routes and shared controls semantically named", () => {
+    const thankYou = readFileSync(resolve(process.cwd(), "client/src/pages/WaitlistThankYouPage.tsx"), "utf8");
+    const subscription = readFileSync(resolve(process.cwd(), "client/src/pages/SubscriptionPage.tsx"), "utf8");
+    const timeline = readFileSync(resolve(process.cwd(), "client/src/pages/TimelinePage.tsx"), "utf8");
+    const rolodex = readFileSync(resolve(process.cwd(), "client/src/pages/RolodexPage.tsx"), "utf8");
+    const vault = readFileSync(resolve(process.cwd(), "client/src/pages/DocumentVaultPage.tsx"), "utf8");
+    const widget = readFileSync(resolve(process.cwd(), "client/src/components/ui/collapsible-widget.tsx"), "utf8");
+
+    expect(thankYou).toContain('<main className="min-h-[100dvh]');
+    expect(subscription).toContain('<main className="min-h-screen');
+    expect(timeline).toContain('aria-label="Zoom timeline out"');
+    expect(timeline).toContain('aria-label="Zoom timeline in"');
+    expect(timeline).toContain('aria-label="Zoom roadmap out"');
+    expect(timeline).toContain('aria-label="Zoom roadmap in"');
+    expect(rolodex).toContain('aria-label="Search contacts"');
+    expect(rolodex).toContain('aria-label={showFilters ? "Hide contact filters" : "Show contact filters"}');
+    expect(vault).toContain('aria-label="Search documents and folders"');
+    expect(vault).toContain('aria-label={i === 0 ? "Go to vault home" : undefined}');
+    expect(widget).toContain('aria-label={`${isOpen ? "Collapse" : "Expand"} ${title}`}');
+    expect(widget).toContain("aria-expanded={isOpen}");
   });
 
   it("keeps automation loading, failure, selection, and schedule state explicit", () => {

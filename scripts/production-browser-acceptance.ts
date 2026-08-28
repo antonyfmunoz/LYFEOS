@@ -529,7 +529,7 @@ async function respectApiRateLimit(page: Page, route: string): Promise<void> {
   // scheduled run never mistakes an inherited test-account window for a UI
   // regression. This observes production policy; it does not bypass it.
   const targets = route === "/ai"
-    ? [{ path: "/api/ai/orchestration-runs", floor: 2 }, { path: "/api/auth/me", floor: 50 }]
+    ? [{ path: "/api/ai/orchestration-runs", floor: 8 }, { path: "/api/auth/me", floor: 50 }]
     : [{ path: "/api/auth/me", floor: 50 }];
   for (const target of targets) {
     const state = await page.evaluate(async ({ path }) => {

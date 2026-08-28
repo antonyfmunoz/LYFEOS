@@ -544,6 +544,7 @@ export default function RolodexPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
               type="text"
+              aria-label="Search contacts"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search contacts..."
@@ -551,6 +552,9 @@ export default function RolodexPage() {
             />
           </div>
           <button
+            type="button"
+            aria-label={showFilters ? "Hide contact filters" : "Show contact filters"}
+            aria-expanded={showFilters}
             onClick={() => setShowFilters(!showFilters)}
             className={cn(
               "h-9 w-9 inline-flex items-center justify-center rounded-lg border transition-colors",

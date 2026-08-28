@@ -38,7 +38,7 @@ export default function WaitlistThankYouPage() {
   };
 
   return (
-    <div className="min-h-[100dvh] flex flex-col items-center justify-center bg-background p-4 relative overflow-hidden">
+    <main className="min-h-[100dvh] flex flex-col items-center justify-center bg-background p-4 relative overflow-hidden">
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-1/3 left-1/3 w-72 h-72 bg-primary/5 rounded-full blur-3xl" />
         <div className="absolute bottom-1/3 right-1/3 w-80 h-80 bg-primary/3 rounded-full blur-3xl" />
@@ -109,6 +109,6 @@ export default function WaitlistThankYouPage() {
           We respect your privacy. No spam, ever.
         </p>
       </div>
-    </div>
+    </main>
   );
 }

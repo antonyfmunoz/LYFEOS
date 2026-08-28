@@ -11,7 +11,7 @@ export default function SubscriptionPage() {
   const [, navigate] = useLocation();
 
   return (
-    <div className="min-h-screen bg-background">
+    <main className="min-h-screen bg-background">
       <div className="mx-auto max-w-2xl px-4 py-8">
         <button onClick={() => navigate("/dashboard")} className="mb-6 flex items-center gap-2 text-muted-foreground transition-colors hover:text-foreground">
           <ArrowLeft className="h-4 w-4" /> <span className="text-sm">Back to Dashboard</span>
@@ -27,6 +27,6 @@ export default function SubscriptionPage() {
           </p>
         </div>
       </div>
-    </div>
+    </main>
   );
 }

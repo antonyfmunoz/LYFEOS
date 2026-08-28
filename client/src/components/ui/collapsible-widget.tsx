@@ -156,7 +156,16 @@ export const CollapsibleWidget = function CollapsibleWidget({
           <h2 className="text-lg font-orbitron text-foreground">{title}</h2>
         </div>
         <div className="flex items-center">
-          <button className="text-primary/70 hover:text-primary transition-colors p-1 rounded-full hover:bg-primary/10">
+          <button
+            type="button"
+            aria-label={`${isOpen ? "Collapse" : "Expand"} ${title}`}
+            aria-expanded={isOpen}
+            className="text-primary/70 hover:text-primary transition-colors p-1 rounded-full hover:bg-primary/10"
+            onClick={(event) => {
+              event.stopPropagation();
+              setIsOpen(!isOpen);
+            }}
+          >
             {isOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
           </button>
         </div>

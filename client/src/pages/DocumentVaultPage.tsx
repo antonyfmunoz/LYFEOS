@@ -898,6 +898,7 @@ export default function DocumentVaultPage() {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <input
           type="text"
+          aria-label="Search documents and folders"
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
           placeholder="Search documents & folders..."
@@ -905,6 +906,8 @@ export default function DocumentVaultPage() {
         />
         {searchQuery && (
           <button
+            type="button"
+            aria-label="Clear document search"
             className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-foreground transition-colors"
             onClick={() => setSearchQuery('')}
           >
@@ -942,6 +945,8 @@ export default function DocumentVaultPage() {
           {getBreadcrumbs().map((crumb, i, arr) => (
             <span key={crumb.id ?? 'root'} className="flex items-center gap-1 shrink-0">
               <button
+                type="button"
+                aria-label={i === 0 ? "Go to vault home" : undefined}
                 onClick={() => setCurrentFolderId(crumb.id)}
                 className={cn(
                   "hover:text-primary transition-colors font-mono text-xs",
