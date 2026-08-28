@@ -158,6 +158,9 @@ describe("production browser acceptance custody", () => {
     expect(coreLoopScript).toContain("async function stabilizeRenderedFields");
     expect(coreLoopScript).toContain('stage = "stabilize the complete rendered automation draft"');
     expect(coreLoopScript).toContain("Rendered automation fields did not settle");
+    expect(coreLoopScript).toContain("setViewport({ width: 390, height: 844, deviceScaleFactor: 2 })");
+    expect(coreLoopScript).not.toContain("isMobile:");
+    expect(coreLoopScript).not.toContain("hasTouch:");
     expect(coreLoopScript).toContain('await waitForApiBudget(page, 80)');
     expect(coreLoopScript).toContain('await waitForApiBudget(page, 60)');
     expect(coreLoopScript).toContain('response.headers.get("ratelimit-remaining")');

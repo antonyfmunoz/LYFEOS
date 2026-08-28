@@ -1007,12 +1007,12 @@ async function main(): Promise<void> {
     await page.goto(new URL(`/mission/${missionId}`, BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
     await page.waitForFunction((title) => document.body.innerText.includes(title), { timeout: 30_000 }, MISSION_TITLE);
     await requireMissionView(page, "desktop-1440x900");
-    await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+    await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2 });
     await page.reload({ waitUntil: "domcontentloaded", timeout: 60_000 });
     await requireMissionView(page, "mobile-390x844");
     steps.push({ name: "dynamic Mission Detail rendering", status: "passed", detail: "Saved proof and evidence state passed desktop/mobile semantics and overflow checks." });
 
-    await page.setViewport({ width: 1440, height: 900, deviceScaleFactor: 1, isMobile: false, hasTouch: false });
+    await page.setViewport({ width: 1440, height: 900, deviceScaleFactor: 1 });
     await page.goto(new URL("/missions", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
     await page.waitForSelector(`[data-testid="mission-card-${missionId}"]`, { visible: true, timeout: 30_000 });
     await activateMissionControl(page, "start");
