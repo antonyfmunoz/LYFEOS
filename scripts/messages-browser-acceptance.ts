@@ -196,7 +196,7 @@ async function createPage(browser: Browser, account: FixtureAccount): Promise<{ 
 
 async function openMessages(page: Page): Promise<void> {
   await page.goto(new URL("/messages", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
-  await waitForText(page, "Native private communication");
+  await page.waitForFunction(() => [...document.querySelectorAll("h1")].some((heading) => heading.textContent?.trim() === "Messages"), { timeout: 30_000 });
 }
 
 async function inspectView(page: Page, account: "sender" | "recipient", viewport: string): Promise<ViewResult> {
