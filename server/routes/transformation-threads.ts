@@ -234,20 +234,27 @@ export function registerTransformationThreadRoutes(app: Express): void {
           .orderBy(desc(personalCapabilities.experience), personalCapabilities.name),
         db.select({
           id: transformationThreads.id,
-          primaryCapabilityId: transformationThreads.primaryCapabilityId,
+          capabilityId: skillNodes.capabilityId,
           title: transformationThreads.title,
           status: transformationThreads.status,
           createdAt: transformationThreads.createdAt,
           completedAt: transformationThreads.completedAt,
-        }).from(transformationThreads)
-          .where(and(eq(transformationThreads.userId, userId), isNotNull(transformationThreads.primaryCapabilityId)))
+        }).from(skillNodes)
+          .innerJoin(transformationThreads, and(
+            eq(transformationThreads.id, skillNodes.transformationThreadId),
+            eq(transformationThreads.userId, userId),
+          ))
+          .where(and(eq(skillNodes.userId, userId), isNotNull(skillNodes.capabilityId)))
           .orderBy(desc(transformationThreads.createdAt)),
       ]);
-      const focusesByCapability = focusRows.reduce((map, focus) => {
-        if (focus.primaryCapabilityId === null) return map;
-        map.set(focus.primaryCapabilityId, [...(map.get(focus.primaryCapabilityId) || []), focus]);
-        return map;
-      }, new Map<number, typeof focusRows>());
+      const focusesByCapability = new Map<number, typeof focusRows>();
+      for (const focus of focusRows) {
+        if (focus.capabilityId === null) continue;
+        const existing = focusesByCapability.get(focus.capabilityId) || [];
+        if (!existing.some((candidate) => candidate.id === focus.id)) {
+          focusesByCapability.set(focus.capabilityId, [...existing, focus]);
+        }
+      }
       return res.json({
         capabilities: capabilities.map((capability) => {
           const focuses = focusesByCapability.get(capability.id) || [];
@@ -291,16 +298,14 @@ export function registerTransformationThreadRoutes(app: Express): void {
         skillNodeId: skillNodes.id,
         threadExperience: skillNodes.experience,
         threadLevel: skillNodes.level,
-      }).from(transformationThreads)
-        .leftJoin(skillNodes, and(
-          eq(skillNodes.transformationThreadId, transformationThreads.id),
-          eq(skillNodes.userId, userId),
-          eq(skillNodes.capabilityId, capabilityId),
-          eq(skillNodes.kind, "primary"),
+      }).from(skillNodes)
+        .innerJoin(transformationThreads, and(
+          eq(transformationThreads.id, skillNodes.transformationThreadId),
+          eq(transformationThreads.userId, userId),
         ))
         .where(and(
-          eq(transformationThreads.userId, userId),
-          eq(transformationThreads.primaryCapabilityId, capabilityId),
+          eq(skillNodes.userId, userId),
+          eq(skillNodes.capabilityId, capabilityId),
         ))
         .orderBy(desc(transformationThreads.createdAt)),
       db.select({
@@ -324,9 +329,12 @@ export function registerTransformationThreadRoutes(app: Express): void {
         .orderBy(desc(skillProgressionEvents.createdAt))
         .limit(100),
     ]);
+    const uniqueFocuses = focuses.filter((focus, index, rows) => (
+      rows.findIndex((candidate) => candidate.threadId === focus.threadId) === index
+    ));
     return res.json({
       capability,
-      focuses,
+      focuses: uniqueFocuses,
       events,
       disclosure: "Durable capability totals carry across focus periods. Each Thread keeps its own missions, reviews, local XP and completion state; this history is LyfeOS practice evidence, not certification.",
     });

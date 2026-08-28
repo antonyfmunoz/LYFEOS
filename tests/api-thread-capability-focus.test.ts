@@ -30,6 +30,8 @@ describeApi("Thread capability focus authenticated journey", () => {
   let secondThreadId = 0;
   let capabilityId = 0;
   let firstSkillId = 0;
+  let connectedCapabilityId = 0;
+  let connectedSkillId = 0;
 
   afterAll(async () => {
     if (outsiderCookie) await request("DELETE", "/api/account", { confirmation: "DELETE MY ACCOUNT" }, outsiderCookie);
@@ -61,10 +63,26 @@ describeApi("Thread capability focus authenticated journey", () => {
     firstThreadId = ownerThread.data.thread.id;
     capabilityId = ownerThread.data.thread.primaryCapabilityId;
     firstSkillId = ownerThread.data.thread.skills.find((skill: any) => skill.key === "primary").id;
+    const connectedSkill = ownerThread.data.thread.skills.find((skill: any) => skill.key === "capacity");
+    connectedCapabilityId = connectedSkill.capabilityId;
+    connectedSkillId = connectedSkill.id;
     expect(capabilityId).toBeGreaterThan(0);
+    expect(connectedCapabilityId).toBeGreaterThan(0);
+    expect(connectedCapabilityId).not.toBe(capabilityId);
     expect(outsiderThread.data.thread.primaryCapabilityId).not.toBe(capabilityId);
     const denied = await request("POST", "/api/transformation-thread/initialize", { primaryCapabilityId: capabilityId }, outsiderCookie);
     expect(denied.status).toBe(404);
+  });
+
+  it("counts a connected Thread skill as a durable capability focus", async () => {
+    const capabilities = await request("GET", "/api/capabilities", undefined, ownerCookie);
+    const connected = capabilities.data.capabilities.find((item: any) => item.id === connectedCapabilityId);
+    expect(connected).toMatchObject({ focusCount: 1, latestFocus: { threadId: firstThreadId, status: "active" } });
+
+    const history = await request("GET", `/api/capabilities/${connectedCapabilityId}/history`, undefined, ownerCookie);
+    expect(history.status).toBe(200);
+    expect(history.data.focuses).toHaveLength(1);
+    expect(history.data.focuses[0]).toMatchObject({ threadId: firstThreadId, skillNodeId: connectedSkillId, threadExperience: 0 });
   });
 
   it("preserves append-only earning and reversal history on the durable capability", async () => {
