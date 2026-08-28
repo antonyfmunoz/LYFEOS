@@ -628,13 +628,15 @@ async function main(): Promise<void> {
     await page.waitForSelector('[data-testid="activity-total-experience"]', { visible: true, timeout: 30_000 });
     await page.waitForSelector('[data-testid="activity-ledger-history"]', { timeout: 30_000 });
     const renderedProgression = await page.evaluate(() => {
-      const numberFrom = (value: string | null | undefined) => Number((value || "").replace(/[^0-9-]/g, ""));
       const total = document.querySelector('[data-testid="activity-total-experience"]')?.textContent;
       const rows = Array.from(document.querySelectorAll('[data-testid="activity-ledger-history"] tbody tr'));
       const lastCumulative = rows.at(-1)?.querySelector("td:last-child")?.textContent;
       return {
-        activityExperience: numberFrom(total),
-        endingExperience: numberFrom(lastCumulative),
+        // Keep the browser callback self-contained. TypeScript runners may wrap
+        // nested functions with host-only helpers such as `__name`, which do
+        // not exist when Puppeteer serializes the callback into the page.
+        activityExperience: Number((total || "").replace(/[^0-9-]/g, "")),
+        endingExperience: Number((lastCumulative || "").replace(/[^0-9-]/g, "")),
         text: document.body.innerText,
       };
     });

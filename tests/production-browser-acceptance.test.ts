@@ -171,6 +171,8 @@ describe("production browser acceptance custody", () => {
     expect(coreLoopScript).toContain('[data-testid="activity-ledger-history"]');
     expect(coreLoopScript).toContain('renderedProgression.endingExperience === progressionAfterReview.activityExperience');
     expect(coreLoopScript).toContain('name: "rendered progression visualization"');
+    expect(coreLoopScript).not.toContain("const numberFrom =");
+    expect(coreLoopScript).toContain('activityExperience: Number((total || "").replace(/[^0-9-]/g, ""))');
     expect(coreLoopScript).toContain('await waitForApiBudget(page, 30)');
     expect(coreLoopScript).toContain('activateMissionControl(page, "undo")');
     expect(coreLoopScript).toContain('progressionMatches(progressionBefore, progressionAfterReopen)');
