@@ -26,9 +26,17 @@ describe("durable capability focus continuity", () => {
 
   it("keeps the continuity controls inside the existing compact Thread panel", () => {
     const panel = source("client/src/components/dashboard/TransformationThreadPanel.tsx");
+    const constellation = source("client/src/components/dashboard/CapabilityConstellation.tsx");
     expect(panel).toContain('aria-label="Next capability focus"');
     expect(panel).toContain("A Thread is a temporary focus period");
     expect(panel).toContain("View durable history");
     expect(panel).toContain("XP recorded in this Thread");
+    expect(panel).toContain('data-testid="transformation-thread-panel"');
+    expect(panel).toContain('data-testid="thread-current-path"');
+    expect(panel).toContain('data-testid={`capability-history-toggle-${skill.id}`}');
+    expect(panel).toContain('data-testid="capability-history-reviewed-xp"');
+    expect(panel).toContain('data-testid="capability-history-events"');
+    expect(constellation).toContain('data-testid="capability-constellation"');
+    expect(constellation).toContain('data-testid={`capability-constellation-node-${node.id}`}');
   });
 });

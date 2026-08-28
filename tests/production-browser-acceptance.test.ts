@@ -133,7 +133,7 @@ describe("production browser acceptance custody", () => {
 
   it("qualifies the rendered truthful Mission loop separately and always archives its synthetic record", () => {
     expect(packageJson).toContain('"acceptance:core-loop": "tsx scripts/production-core-loop-acceptance.ts"');
-    expect(coreLoopScript).toContain('contract: "lyfeos.production-core-loop-acceptance.v2"');
+    expect(coreLoopScript).toContain('contract: "lyfeos.production-core-loop-acceptance.v3"');
     expect(coreLoopScript).toContain("[AUTOMATED ACCEPTANCE]");
     expect(coreLoopScript).toContain("async function dismissBlockingTutorial");
     expect(coreLoopScript).toContain("async function activateRenderedControl");
@@ -175,6 +175,15 @@ describe("production browser acceptance custody", () => {
     expect(coreLoopScript).toContain('[data-testid="activity-ledger-history"]');
     expect(coreLoopScript).toContain('renderedProgression.endingExperience === progressionAfterReview.activityExperience');
     expect(coreLoopScript).toContain('name: "rendered progression visualization"');
+    expect(coreLoopScript).toContain("async function requireThreadContinuityView");
+    expect(coreLoopScript).toContain('new URL("/dashboard", BASE_URL)');
+    expect(coreLoopScript).toContain('[data-testid="thread-current-path"]');
+    expect(coreLoopScript).toContain('[data-testid="capability-constellation"]');
+    expect(coreLoopScript).toContain('`/api/capabilities/${capabilityId}/history`');
+    expect(coreLoopScript).toContain('expectedEventType = phase === "reviewed" ? "mission_evidence_review" : "mission_evidence_reversal"');
+    expect(coreLoopScript).toContain('reversedThreadContinuity.capability.reversesEventId === reviewedThreadContinuity.capability.eventId');
+    expect(coreLoopScript).toContain('name: "rendered current path and durable capability history"');
+    expect(coreLoopScript).toContain('name: "rendered capability-history reversal"');
     expect(coreLoopScript).not.toContain("const numberFrom =");
     expect(coreLoopScript).toContain("const renderedProgression = await page.evaluate(`");
     expect(coreLoopScript).toContain('activityExperience: Number((total || "").replace(/[^0-9-]/g, ""))');
@@ -184,7 +193,7 @@ describe("production browser acceptance custody", () => {
     expect(coreLoopScript).toContain('unlockResult?.state === "declared"');
     expect(coreLoopScript).toContain('browserApiRequest(page, `/api/quests/${id}`, "DELETE")');
     expect(coreLoopScript).toContain("await cleanupMission(page)");
-    expect(coreLoopScript).toContain('boundary: "This journey proves one self-reviewed, skill-linked synthetic Mission.');
+    expect(coreLoopScript).toContain('boundary: "This journey proves one self-reviewed, skill-linked synthetic Mission plus its rendered current path');
     expect(workflow).toContain("Run truthful Mission core-loop acceptance");
     expect(workflow).toContain("github.event_name == 'workflow_dispatch' && inputs.require_authenticated");
     expect(workflow).toContain("run: npm run acceptance:core-loop");

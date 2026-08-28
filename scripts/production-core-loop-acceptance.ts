@@ -30,6 +30,34 @@ type StepEvidence = {
   detail: string;
 };
 
+type ThreadContinuityEvidence = {
+  phase: "reviewed" | "reversed";
+  threadId: number;
+  threadStatus: string;
+  currentPath: {
+    skillNodeId: number;
+    skillName: string;
+    missionId: number | null;
+    title: string;
+    objective: string;
+  };
+  capability: {
+    id: number;
+    name: string;
+    reviewedExperience: number;
+    focusCount: number;
+    eventId: number;
+    eventType: string;
+    eventDelta: number;
+    reversesEventId: number | null;
+  };
+  rendered: {
+    constellationNodeCount: number;
+    currentPathText: string;
+    capabilityHistoryText: string;
+  };
+};
+
 type BrowserApiResponse = {
   status: number;
   remaining: number | null;
@@ -63,6 +91,9 @@ let progressionAfterReopen: ProgressionSnapshot | null = null;
 let progressionAfterCleanup: ProgressionSnapshot | null = null;
 let expectedActivityExperience = 0;
 let reviewedSkillExperience = 0;
+let reviewedSkillNodeId: number | null = null;
+let reviewedThreadContinuity: ThreadContinuityEvidence | null = null;
+let reversedThreadContinuity: ThreadContinuityEvidence | null = null;
 let cleanupAttempted = false;
 let cleanupArchived = false;
 let failureMessage: string | null = null;
@@ -408,6 +439,156 @@ async function requireMissionView(page: Page, viewport: string): Promise<void> {
   assert(evidence.horizontalOverflowPx <= 2, `${viewport} rendered ${evidence.horizontalOverflowPx}px horizontal overflow.`);
 }
 
+async function requireThreadContinuityView(input: {
+  page: Page;
+  phase: "reviewed" | "reversed";
+  expectedEventDelta: number;
+  expectedCapabilityExperience?: number;
+}): Promise<ThreadContinuityEvidence> {
+  const { page, phase, expectedEventDelta, expectedCapabilityExperience } = input;
+  assert(missionId !== null && reviewedSkillNodeId !== null, "Thread continuity requires the reviewed synthetic Mission and its skill node.");
+  await page.goto(new URL("/dashboard", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
+  await page.waitForSelector('[data-testid="transformation-thread-panel"]', { visible: true, timeout: 30_000 });
+  await page.waitForSelector('[data-testid="thread-current-path"]', { visible: true, timeout: 30_000 });
+  await page.waitForSelector('[data-testid="capability-constellation"]', { visible: true, timeout: 30_000 });
+
+  const threadResponse = await browserApiRequest(page, "/api/transformation-thread");
+  const thread = (threadResponse.body as {
+    thread?: {
+      id?: unknown;
+      status?: unknown;
+      focus?: unknown;
+      skills?: Array<{ id?: unknown; name?: unknown; capabilityId?: unknown }>;
+      skillGraph?: {
+        nodes?: Array<{ id?: unknown }>;
+        nextPractice?: null | { skillNodeId?: unknown; skillName?: unknown; questId?: unknown; title?: unknown };
+      };
+    };
+  } | null)?.thread;
+  assert(threadResponse.status === 200 && thread, `Rendered Thread continuity API returned ${threadResponse.status}.`);
+  const threadId = Number(thread.id);
+  const threadStatus = String(thread.status || "");
+  const objective = String(thread.focus || "");
+  const reviewedSkill = (thread.skills || []).find((skill) => Number(skill.id) === reviewedSkillNodeId);
+  const capabilityId = Number(reviewedSkill?.capabilityId);
+  const nextPractice = thread.skillGraph?.nextPractice;
+  assert(Number.isInteger(threadId) && ["active", "paused"].includes(threadStatus), "Rendered Thread continuity did not resolve an active or paused owned Thread.");
+  assert(reviewedSkill && typeof reviewedSkill.capabilityId === "number" && Number.isInteger(capabilityId) && capabilityId > 0, "Reviewed skill was not linked to a durable private capability.");
+  assert(nextPractice && typeof nextPractice.skillNodeId === "number" && Number.isInteger(nextPractice.skillNodeId), "Current Thread did not expose one canonical next practice.");
+
+  const [capabilitiesResponse, historyResponse] = await Promise.all([
+    browserApiRequest(page, "/api/capabilities"),
+    browserApiRequest(page, `/api/capabilities/${capabilityId}/history`),
+  ]);
+  const capabilitySummary = ((capabilitiesResponse.body as { capabilities?: Array<{ id?: unknown; focusCount?: unknown }> } | null)?.capabilities || [])
+    .find((capability) => Number(capability.id) === capabilityId);
+  const history = historyResponse.body as {
+    capability?: { id?: unknown; name?: unknown; experience?: unknown };
+    focuses?: Array<{ threadId?: unknown }>;
+    events?: Array<{ id?: unknown; questId?: unknown; sourceType?: unknown; reversalOfId?: unknown; experienceDelta?: unknown }>;
+    disclosure?: unknown;
+  } | null;
+  const expectedEventType = phase === "reviewed" ? "mission_evidence_review" : "mission_evidence_reversal";
+  const matchingEvent = (history?.events || []).find((event) => Number(event.questId) === missionId
+    && event.sourceType === expectedEventType
+    && Number(event.experienceDelta) === expectedEventDelta);
+  const capabilityExperience = Number(history?.capability?.experience);
+  const focusCount = Number(capabilitySummary?.focusCount);
+  assert(capabilitiesResponse.status === 200 && capabilitySummary && Number.isInteger(focusCount) && focusCount >= 1, "Capability summary did not preserve an owned focus period.");
+  assert(historyResponse.status === 200 && Number(history?.capability?.id) === capabilityId && Number.isFinite(capabilityExperience), "Durable capability history did not reconcile to its owned capability.");
+  assert((history?.focuses || []).some((focus) => Number(focus.threadId) === threadId), "Durable capability history omitted the current Thread focus period.");
+  assert(typeof history?.disclosure === "string" && history.disclosure.includes("not certification"), "Durable capability history omitted its non-certification boundary.");
+  assert(matchingEvent && typeof matchingEvent.id === "number" && Number.isInteger(matchingEvent.id), `Durable capability history omitted the synthetic Mission's ${expectedEventType} event.`);
+  if (expectedCapabilityExperience !== undefined) {
+    assert(capabilityExperience === expectedCapabilityExperience, `Durable capability history showed ${capabilityExperience} XP instead of the expected ${expectedCapabilityExperience}.`);
+  }
+  if (phase === "reversed") {
+    assert(typeof matchingEvent.reversalOfId === "number" && Number.isInteger(matchingEvent.reversalOfId), "Capability reversal did not reference the reviewed event it reversed.");
+  }
+
+  const historyToggle = `[data-testid="capability-history-toggle-${reviewedSkillNodeId}"]`;
+  await page.waitForSelector(historyToggle, { visible: true, timeout: 30_000 });
+  await page.click(historyToggle);
+  await page.waitForSelector(`[data-testid="capability-history-${capabilityId}"] [data-testid="capability-history-reviewed-xp"]`, { visible: true, timeout: 30_000 });
+  await page.waitForSelector(`[data-testid="capability-history-event-${matchingEvent.id}"]`, { visible: true, timeout: 30_000 });
+  const rendered = await page.evaluate(`
+    (() => {
+      const text = (selector) => document.querySelector(selector)?.textContent?.replace(/\\s+/g, " ").trim() || "";
+      return {
+        constellationNodeCount: document.querySelectorAll('[data-testid^="capability-constellation-node-"]').length,
+        currentPathText: text('[data-testid="thread-current-path"]'),
+        currentPathSkill: text('[data-testid="thread-current-path-skill"]'),
+        currentPathObjective: text('[data-testid="thread-current-path-objective"]'),
+        currentPathTitle: text('[data-testid="thread-current-path-title"]'),
+        method: text('[data-testid="thread-current-path-method"]'),
+        proof: text('[data-testid="thread-current-path-proof"]'),
+        support: text('[data-testid="thread-current-path-support"]'),
+        advancement: text('[data-testid="thread-current-path-advancement"]'),
+        pathDisclosure: text('[data-testid="thread-current-path-disclosure"]'),
+        capabilityName: text('[data-testid="capability-history-name"]'),
+        capabilityExperience: text('[data-testid="capability-history-reviewed-xp"]'),
+        capabilityDisclosure: text('[data-testid="capability-history-disclosure"]'),
+        capabilityHistoryText: text('[data-testid="capability-history-${capabilityId}"]'),
+        focusVisible: Boolean(document.querySelector('[data-testid="capability-focus-${threadId}"]')),
+      };
+    })()
+  `) as {
+    constellationNodeCount: number;
+    currentPathText: string;
+    currentPathSkill: string;
+    currentPathObjective: string;
+    currentPathTitle: string;
+    method: string;
+    proof: string;
+    support: string;
+    advancement: string;
+    pathDisclosure: string;
+    capabilityName: string;
+    capabilityExperience: string;
+    capabilityDisclosure: string;
+    capabilityHistoryText: string;
+    focusVisible: boolean;
+  };
+  const graphNodeCount = thread.skillGraph?.nodes?.length || 0;
+  const nextSkillName = String(nextPractice.skillName || "");
+  const nextTitle = String(nextPractice.title || "");
+  assert(rendered.constellationNodeCount === graphNodeCount && graphNodeCount > 0, "Rendered capability constellation did not match the current Thread graph.");
+  assert(rendered.currentPathSkill.includes(nextSkillName) && rendered.currentPathObjective.includes(objective) && rendered.currentPathTitle === nextTitle, "Rendered current path did not match the authenticated Thread recommendation.");
+  assert(rendered.method.includes("Method and tools") && rendered.proof.includes("Proof standard") && rendered.support.includes("Support and review") && rendered.advancement.includes("Advancement"), "Rendered current path omitted a required execution or evidence answer.");
+  assert(rendered.pathDisclosure.includes("not certification") && rendered.pathDisclosure.includes("authority") && rendered.pathDisclosure.includes("personal worth"), "Rendered current path omitted its evidence and authority boundary.");
+  assert(rendered.capabilityName === String(history?.capability?.name || "") && rendered.capabilityExperience.includes(`${capabilityExperience} reviewed XP`), "Rendered durable capability total did not match its authenticated history.");
+  assert(rendered.capabilityDisclosure.includes("not certification") && rendered.focusVisible, "Rendered capability history omitted its focus or truth boundary.");
+  assert(rendered.capabilityHistoryText.includes(`${expectedEventDelta > 0 ? "+" : ""}${expectedEventDelta} XP`) && rendered.capabilityHistoryText.includes(expectedEventType.replaceAll("_", " ")), "Rendered capability history omitted the expected reviewed progression event.");
+
+  return {
+    phase,
+    threadId,
+    threadStatus,
+    currentPath: {
+      skillNodeId: nextPractice.skillNodeId,
+      skillName: nextSkillName,
+      missionId: typeof nextPractice.questId === "number" && Number.isInteger(nextPractice.questId) ? nextPractice.questId : null,
+      title: nextTitle,
+      objective,
+    },
+    capability: {
+      id: capabilityId,
+      name: String(history?.capability?.name || ""),
+      reviewedExperience: capabilityExperience,
+      focusCount,
+      eventId: matchingEvent.id,
+      eventType: expectedEventType,
+      eventDelta: expectedEventDelta,
+      reversesEventId: typeof matchingEvent.reversalOfId === "number" && Number.isInteger(matchingEvent.reversalOfId) ? matchingEvent.reversalOfId : null,
+    },
+    rendered: {
+      constellationNodeCount: rendered.constellationNodeCount,
+      currentPathText: rendered.currentPathText,
+      capabilityHistoryText: rendered.capabilityHistoryText,
+    },
+  };
+}
+
 async function cleanupMission(page: Page): Promise<void> {
   if (missionId === null) return;
   cleanupAttempted = true;
@@ -433,7 +614,7 @@ async function cleanupMission(page: Page): Promise<void> {
 
 async function writeReport(): Promise<void> {
   const report = {
-    contract: "lyfeos.production-core-loop-acceptance.v2",
+    contract: "lyfeos.production-core-loop-acceptance.v3",
     generatedAt: new Date().toISOString(),
     baseUrl: BASE_URL.origin,
     source: SOURCE,
@@ -456,11 +637,19 @@ async function writeReport(): Promise<void> {
       exactRenderedReversal: Boolean(progressionBefore && progressionAfterReopen && progressionMatches(progressionBefore, progressionAfterReopen)),
       unchangedAfterCleanup: Boolean(progressionBefore && progressionAfterCleanup && progressionMatches(progressionBefore, progressionAfterCleanup)),
     },
+    threadContinuity: {
+      afterPositiveReview: reviewedThreadContinuity,
+      afterRenderedReopen: reversedThreadContinuity,
+      exactCapabilityReversal: Boolean(reviewedThreadContinuity && reversedThreadContinuity
+        && reviewedThreadContinuity.capability.id === reversedThreadContinuity.capability.id
+        && reviewedThreadContinuity.capability.reviewedExperience - reviewedSkillExperience === reversedThreadContinuity.capability.reviewedExperience
+        && reversedThreadContinuity.capability.reversesEventId === reviewedThreadContinuity.capability.eventId),
+    },
     views,
     cleanup: { attempted: cleanupAttempted, archived: cleanupArchived },
     steps,
     summary: { passed: failureMessage === null && cleanupArchived, failure: failureMessage },
-    boundary: "This journey proves one self-reviewed, skill-linked synthetic Mission. Activity XP recognizes completion; capability XP requires declared evidence plus positive self-review; reopening reverses both tracks and supported badges. LyfeOS grants no certification or authority.",
+    boundary: "This journey proves one self-reviewed, skill-linked synthetic Mission plus its rendered current path, private capability graph, durable focus history, and exact reviewed-capability reversal. Activity XP recognizes completion; capability XP requires declared evidence plus positive self-review; reopening reverses both tracks and supported badges. LyfeOS grants no certification or authority.",
   } as const;
   await fs.mkdir(OUTPUT_DIR, { recursive: true });
   await fs.writeFile(OUTPUT_FILE, `${JSON.stringify(report, null, 2)}\n`, "utf8");
@@ -476,6 +665,7 @@ async function writeReport(): Promise<void> {
       `- Reviewed capability XP awarded: ${report.progression.reviewedCapabilityAward}`,
       `- No certification or authority granted: ${report.progression.noAuthorityGranted}`,
       `- Rendered reopen restored the exact baseline: ${report.progression.exactRenderedReversal}`,
+      `- Rendered Thread and capability history reconciled after review and reversal: ${report.threadContinuity.exactCapabilityReversal}`,
       `- Desktop/mobile Mission Detail views qualified: ${views.length === 2}`,
       "",
       report.boundary,
@@ -526,6 +716,9 @@ async function main(): Promise<void> {
       name: element.getAttribute("data-skill-name"),
     }));
     assert(selectedSkill.testId && selectedSkill.name, "The dedicated acceptance account has no selectable unlocked skill for reviewed progression qualification.");
+    const selectedSkillMatch = /^mission-skill-(\d+)$/.exec(selectedSkill.testId);
+    reviewedSkillNodeId = Number(selectedSkillMatch?.[1]);
+    assert(Number.isInteger(reviewedSkillNodeId), "The selected Mission skill did not expose its owned skill-node identifier.");
     await activateRenderedControl(page, `[data-testid="${selectedSkill.testId}"]`);
     await page.waitForFunction((testId) => document.querySelector(`[data-testid="${testId}"]`)?.getAttribute("aria-checked") === "true", { timeout: 10_000 }, selectedSkill.testId);
     const createResponsePromise = page.waitForResponse((response) => {
@@ -625,6 +818,14 @@ async function main(): Promise<void> {
     assert(progressionAfterReview.certifications.length === 0 && progressionAfterReview.entrustedRoles.length === 0, "Self-review created unsupported certification or authority.");
     steps.push({ name: "rendered positive self-review", status: "passed", detail: `Declared evidence review applied exactly ${reviewedSkillExperience} capability XP and no certification or authority.` });
 
+    await waitForApiBudget(page, 45);
+    reviewedThreadContinuity = await requireThreadContinuityView({
+      page,
+      phase: "reviewed",
+      expectedEventDelta: reviewedSkillExperience,
+    });
+    steps.push({ name: "rendered current path and durable capability history", status: "passed", detail: `The dashboard reconciled its canonical current path, ${reviewedThreadContinuity.rendered.constellationNodeCount}-node private capability graph, current focus, and +${reviewedSkillExperience} XP reviewed event to authenticated state.` });
+
     await waitForApiBudget(page, 40);
     await page.goto(new URL("/experience", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
     await page.waitForSelector('[data-testid="activity-total-experience"]', { visible: true, timeout: 30_000 });
@@ -663,6 +864,17 @@ async function main(): Promise<void> {
     const reopenedContract = await browserApiRequest(page, `/api/quests/${missionId}/contract`);
     assert(reopenedContract.status === 200 && (reopenedContract.body as { unlockResult?: { state?: unknown } } | null)?.unlockResult?.state === "declared", "Reopened Mission still presented its reviewed skill contribution as applied.");
     steps.push({ name: "rendered progression reversal", status: "passed", detail: "Undo reopened the Mission and restored the exact pre-journey progression snapshot; reviewed skill XP returned to declared-only state." });
+
+    await waitForApiBudget(page, 35);
+    assert(reviewedThreadContinuity, "Reviewed Thread continuity evidence was unavailable before reversal qualification.");
+    reversedThreadContinuity = await requireThreadContinuityView({
+      page,
+      phase: "reversed",
+      expectedEventDelta: -reviewedSkillExperience,
+      expectedCapabilityExperience: reviewedThreadContinuity.capability.reviewedExperience - reviewedSkillExperience,
+    });
+    assert(reversedThreadContinuity.capability.reversesEventId === reviewedThreadContinuity.capability.eventId, "Rendered capability history reversal did not reference the reviewed event it reversed.");
+    steps.push({ name: "rendered capability-history reversal", status: "passed", detail: `The same durable capability returned to ${reversedThreadContinuity.capability.reviewedExperience} reviewed XP and rendered a -${reviewedSkillExperience} XP reversal linked to the reviewed event.` });
   } catch (error) {
     failureMessage = sanitizedMessage(error);
     steps.push({ name: "core-loop journey", status: "failed", detail: failureMessage });

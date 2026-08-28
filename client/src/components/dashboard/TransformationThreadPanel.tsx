@@ -283,7 +283,7 @@ export function TransformationThreadPanel() {
   const capabilitiesById = new Map((capabilityData?.capabilities || []).map((capability) => [capability.id, capability]));
 
   return (
-    <section className="mb-6" data-tour="transformation-thread">
+    <section className="mb-6" data-tour="transformation-thread" data-testid="transformation-thread-panel">
       <div className="glassmorphic rounded-xl p-4 neon-border">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
@@ -445,7 +445,7 @@ export function TransformationThreadPanel() {
                 const recordedExperience = graphNode?.experience ?? capability?.experience ?? skill.experience;
                 const recordedLevel = graphNode?.level ?? capability?.level ?? skill.level;
                 return (
-                  <div key={skill.id} className={`rounded-md border p-3 ${status === "locked" ? "border-primary/10 bg-card/20 opacity-70" : skill.kind === "primary" ? "border-primary/45 bg-primary/10" : status === "mastered" ? "border-emerald-400/40 bg-emerald-400/5" : "border-primary/15 bg-card/30"}`}>
+                  <div key={skill.id} data-testid={`thread-skill-${skill.id}`} className={`rounded-md border p-3 ${status === "locked" ? "border-primary/10 bg-card/20 opacity-70" : skill.kind === "primary" ? "border-primary/45 bg-primary/10" : status === "mastered" ? "border-emerald-400/40 bg-emerald-400/5" : "border-primary/15 bg-card/30"}`}>
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-[10px] font-mono uppercase tracking-[0.1em] text-primary/80">{status === "locked" ? "Locked" : status === "mastered" ? "Evidence met" : skill.kind === "primary" ? "Focus" : relationship || skill.kind}</span>
                       <span className="text-xs text-muted-foreground">Lv {recordedLevel}</span>
@@ -458,26 +458,26 @@ export function TransformationThreadPanel() {
                     {graphNode && graphNode.threadExperience !== recordedExperience && <p className="mt-1 text-[10px] text-muted-foreground">This Thread: {graphNode.threadExperience} XP</p>}
                     {graphNode && status === "locked" && graphNode.unmetRequirements[0] && <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">{graphNode.unmetRequirements[0]}</p>}
                     {graphNode && status !== "locked" && <p className="mt-1 text-[10px] text-muted-foreground">{graphNode.completedMissionCount}/{graphNode.masteryRequirements.minCompletedMissions} reviewed missions · {thread.skillGraph?.reviewCount || 0}/{graphNode.masteryRequirements.minReviews} reviews</p>}
-                    {skill.capabilityId && <button type="button" className="mt-2 text-[10px] text-primary hover:underline" onClick={() => setHistoryCapabilityId((current) => current === skill.capabilityId ? null : skill.capabilityId!)}>{historyCapabilityId === skill.capabilityId ? "Hide durable history" : "View durable history"}</button>}
+                    {skill.capabilityId && <button type="button" data-testid={`capability-history-toggle-${skill.id}`} className="mt-2 text-[10px] text-primary hover:underline" onClick={() => setHistoryCapabilityId((current) => current === skill.capabilityId ? null : skill.capabilityId!)}>{historyCapabilityId === skill.capabilityId ? "Hide durable history" : "View durable history"}</button>}
                   </div>
                 );
               })}
             </div>
-            {historyCapabilityId && <div className="mt-3 rounded-md border border-primary/15 bg-background/25 p-3">
+            {historyCapabilityId && <div className="mt-3 rounded-md border border-primary/15 bg-background/25 p-3" data-testid={`capability-history-${historyCapabilityId}`}>
               {capabilityHistory.isLoading ? <p className="text-xs text-muted-foreground">Loading capability history…</p> : capabilityHistory.data ? <>
-                <div className="flex flex-wrap items-baseline justify-between gap-2"><p className="text-sm text-foreground">{capabilityHistory.data.capability.name}</p><span className="text-xs text-primary">Lv {capabilityHistory.data.capability.level} · {capabilityHistory.data.capability.experience} reviewed XP</span></div>
-                <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{capabilityHistory.data.disclosure}</p>
+                <div className="flex flex-wrap items-baseline justify-between gap-2"><p className="text-sm text-foreground" data-testid="capability-history-name">{capabilityHistory.data.capability.name}</p><span className="text-xs text-primary" data-testid="capability-history-reviewed-xp">Lv {capabilityHistory.data.capability.level} · {capabilityHistory.data.capability.experience} reviewed XP</span></div>
+                <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground" data-testid="capability-history-disclosure">{capabilityHistory.data.disclosure}</p>
                 <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                  {capabilityHistory.data.focuses.slice(0, 4).map((focus) => <div key={focus.threadId} className="rounded border border-primary/10 p-2 text-[11px] text-muted-foreground"><p className="text-foreground">{focus.title}</p><p>{focus.status.replaceAll("_", " ")} · {focus.threadExperience || 0} XP recorded in this Thread</p></div>)}
+                  {capabilityHistory.data.focuses.slice(0, 4).map((focus) => <div key={focus.threadId} data-testid={`capability-focus-${focus.threadId}`} className="rounded border border-primary/10 p-2 text-[11px] text-muted-foreground"><p className="text-foreground">{focus.title}</p><p>{focus.status.replaceAll("_", " ")} · {focus.threadExperience || 0} XP recorded in this Thread</p></div>)}
                 </div>
-                {capabilityHistory.data.events.length > 0 && <div className="mt-2 space-y-1">{capabilityHistory.data.events.slice(0, 4).map((event) => <p key={event.id} className="text-[10px] text-muted-foreground"><span className={event.experienceDelta < 0 ? "text-amber-200" : "text-primary"}>{event.experienceDelta > 0 ? "+" : ""}{event.experienceDelta} XP</span> · {event.sourceType.replaceAll("_", " ")} · {event.evidenceSummary}</p>)}</div>}
+                {capabilityHistory.data.events.length > 0 && <div className="mt-2 space-y-1" data-testid="capability-history-events">{capabilityHistory.data.events.slice(0, 4).map((event) => <p key={event.id} data-testid={`capability-history-event-${event.id}`} className="text-[10px] text-muted-foreground"><span className={event.experienceDelta < 0 ? "text-amber-200" : "text-primary"}>{event.experienceDelta > 0 ? "+" : ""}{event.experienceDelta} XP</span> · {event.sourceType.replaceAll("_", " ")} · {event.evidenceSummary}</p>)}</div>}
               </> : <p className="text-xs text-destructive">Capability history is unavailable.</p>}
             </div>}
             {nextPractice && (
-              <div className="mt-3 rounded-md border border-primary/20 bg-primary/5 p-3">
-                <p className="text-[10px] font-mono uppercase tracking-[0.12em] text-primary">Current path · {nextPractice.skillName}</p>
-                <p className="mt-1 text-[11px] text-muted-foreground"><span className="text-foreground">Objective:</span> {thread.focus}</p>
-                <p className="mt-1 text-sm text-foreground">{nextPractice.title}</p>
+              <div className="mt-3 rounded-md border border-primary/20 bg-primary/5 p-3" data-testid="thread-current-path">
+                <p className="text-[10px] font-mono uppercase tracking-[0.12em] text-primary" data-testid="thread-current-path-skill">Current path · {nextPractice.skillName}</p>
+                <p className="mt-1 text-[11px] text-muted-foreground" data-testid="thread-current-path-objective"><span className="text-foreground">Objective:</span> {thread.focus}</p>
+                <p className="mt-1 text-sm text-foreground" data-testid="thread-current-path-title">{nextPractice.title}</p>
                 <p className={`mt-1 text-xs ${nextPractice.fitsCurrentCapacity ? "text-muted-foreground" : "text-amber-200"}`}>{nextPractice.description}</p>
                 <div className="mt-2 flex flex-wrap gap-2 text-[10px] text-muted-foreground">
                   <span className="rounded-full border border-primary/20 px-2 py-1">Suggested scope: Rank {nextPractice.difficultyCalibration.recommendedDifficulty}</span>
@@ -485,14 +485,14 @@ export function TransformationThreadPanel() {
                   <span className="rounded-full border border-primary/20 px-2 py-1">Current capacity: {nextPractice.planningContext.capacity.availability}</span>
                 </div>
                 <dl className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-                  <div className="rounded-md border border-primary/15 bg-background/25 p-2">
+                  <div className="rounded-md border border-primary/15 bg-background/25 p-2" data-testid="thread-current-path-method">
                     <dt className="text-[10px] font-mono uppercase tracking-[0.1em] text-primary/80">Method and tools</dt>
                     <dd className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
                       {nextPractice.contract?.methodSteps.length ? nextPractice.contract.methodSteps.slice(0, 2).join(" → ") : "Declare the method in Mission Detail before beginning."}
                       {nextPractice.contract?.toolRequirements.length ? ` Tools: ${nextPractice.contract.toolRequirements.join(" · ")}.` : " No additional tool is declared."}
                     </dd>
                   </div>
-                  <div className="rounded-md border border-primary/15 bg-background/25 p-2">
+                  <div className="rounded-md border border-primary/15 bg-background/25 p-2" data-testid="thread-current-path-proof">
                     <dt className="text-[10px] font-mono uppercase tracking-[0.1em] text-primary/80">Proof standard</dt>
                     <dd className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
                       {nextPractice.contract?.expectedOutput || "Define an observable output before practice."}
@@ -500,14 +500,14 @@ export function TransformationThreadPanel() {
                       {nextPractice.contract?.rubricDefinition[0]?.requirement ? ` Required: ${nextPractice.contract.rubricDefinition[0].requirement}` : ""}
                     </dd>
                   </div>
-                  <div className="rounded-md border border-primary/15 bg-background/25 p-2">
+                  <div className="rounded-md border border-primary/15 bg-background/25 p-2" data-testid="thread-current-path-support">
                     <dt className="text-[10px] font-mono uppercase tracking-[0.1em] text-primary/80">Support and review</dt>
                     <dd className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
                       {nextPractice.contract?.escalationPath || nextPractice.supportPlan?.actions[0]?.explanation || "Pause, defer, or right-size the mission if blocked."}
                       {nextPractice.contract ? ` Review: ${nextPractice.contract.reviewMode === "human" ? "authorized human" : "self-review"}.` : " Review mode is not declared yet."}
                     </dd>
                   </div>
-                  <div className="rounded-md border border-primary/15 bg-background/25 p-2">
+                  <div className="rounded-md border border-primary/15 bg-background/25 p-2" data-testid="thread-current-path-advancement">
                     <dt className="text-[10px] font-mono uppercase tracking-[0.1em] text-primary/80">Advancement</dt>
                     <dd className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
                       {nextPractice.advancement.completedMissionCount}/{nextPractice.advancement.requiredMissionCount} reviewed missions · {nextPractice.advancement.reviewCount}/{nextPractice.advancement.requiredReviewCount} reviews · {nextPractice.advancement.reviewedExperience}/{nextPractice.advancement.requiredExperience} reviewed XP.
@@ -515,7 +515,7 @@ export function TransformationThreadPanel() {
                     </dd>
                   </div>
                 </dl>
-                <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground/80">You own this private plan and may pause, defer, or revise it. {nextPractice.advancement.disclosure}</p>
+                <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground/80" data-testid="thread-current-path-disclosure">You own this private plan and may pause, defer, or revise it. {nextPractice.advancement.disclosure}</p>
                 <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">{nextPractice.selectionBasis}</p>
                 {nextPractice.difficultyCalibration.rationale.slice(0, 2).map((reason) => <p key={reason} className="mt-1 text-[10px] leading-relaxed text-muted-foreground">• {reason}</p>)}
                 {nextPractice.deferralCount >= 2 && <p className="mt-2 text-[11px] leading-relaxed text-amber-200">This mission has been deferred {nextPractice.deferralCount} times. That is a scheduling signal, not a failure—consider reducing its scope, changing its timing, or asking for support.</p>}

@@ -22,7 +22,7 @@ export function CapabilityConstellation({ nodes, edges }: { nodes: Node[]; edges
   const positions = new Map(ordered.map((node, index) => [node.id, positionFor(index, ordered.length, node.kind === "primary")]));
   if (!ordered.length) return null;
   return (
-    <div className="relative mt-3 min-h-60 overflow-hidden rounded-lg border border-primary/15 bg-[radial-gradient(circle_at_center,rgba(var(--primary-rgb),0.1),transparent_62%)]" aria-label="Capability constellation">
+    <div className="relative mt-3 min-h-60 overflow-hidden rounded-lg border border-primary/15 bg-[radial-gradient(circle_at_center,rgba(var(--primary-rgb),0.1),transparent_62%)]" aria-label="Capability constellation" data-testid="capability-constellation">
       <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
         {edges.map((edge) => {
           const source = positions.get(edge.sourceSkillId);
@@ -36,7 +36,7 @@ export function CapabilityConstellation({ nodes, edges }: { nodes: Node[]; edges
         const position = positions.get(node.id)!;
         const tone = node.status === "locked" ? "border-primary/15 bg-card/75 text-muted-foreground" : node.status === "mastered" ? "border-emerald-400/55 bg-emerald-400/10 text-emerald-200" : node.kind === "primary" ? "border-primary/70 bg-primary/20 text-foreground shadow-[0_0_26px_rgba(var(--primary-rgb),0.22)]" : "border-primary/35 bg-card/90 text-foreground";
         return (
-          <div key={node.id} title={`${node.name}: level ${node.level}, ${node.experience} reviewed practice XP`} className={`absolute w-24 -translate-x-1/2 -translate-y-1/2 rounded-md border px-2 py-1.5 text-center backdrop-blur ${tone}`} style={{ left: `${position.x}%`, top: `${position.y}%` }}>
+          <div key={node.id} data-testid={`capability-constellation-node-${node.id}`} title={`${node.name}: level ${node.level}, ${node.experience} reviewed practice XP`} className={`absolute w-24 -translate-x-1/2 -translate-y-1/2 rounded-md border px-2 py-1.5 text-center backdrop-blur ${tone}`} style={{ left: `${position.x}%`, top: `${position.y}%` }}>
             <p className="truncate text-[10px] font-mono uppercase tracking-[0.08em]">{node.status === "mastered" ? "Evidence met" : node.status}</p>
             <p className="mt-0.5 truncate text-xs font-medium">{node.name}</p>
             <p className="mt-0.5 text-[10px] opacity-75">Lv {node.level} · {node.experience} XP</p>
