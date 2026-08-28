@@ -25,7 +25,8 @@ describe("rendered onboarding acceptance contract", () => {
     expect(onboarding).toContain('aria-label={`Use ${color.label} theme`}');
     expect(onboarding).toContain('aria-label="Archetype response"');
     expect(onboarding.match(/<main\b/g)?.length).toBeGreaterThanOrEqual(4);
-    expect(profile).toContain('data-testid="account-delete-confirmation"');
+    expect(profile.match(/data-testid="account-delete-confirmation"/g)).toHaveLength(1);
+    expect(profile).toMatch(/data-testid="account-delete-confirmation"[\s\S]*?value=\{deleteConfirmation\}[\s\S]*?aria-label="Confirm account deletion"/);
     expect(profile).toContain('data-testid="account-delete-submit"');
   });
 

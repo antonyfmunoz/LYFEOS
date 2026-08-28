@@ -530,7 +530,6 @@ function PersistentProfileSection({ section, onSave }: { section: { id: string; 
               <span className="text-xs text-muted-foreground min-w-[120px]">{item.label}</span>
               {isEditing && item.fieldKey ? (
                 <Input
-                  data-testid="account-delete-confirmation"
                   value={editValues[item.fieldKey] ?? ""}
                   onChange={(e) => setEditValues({ ...editValues, [item.fieldKey!]: e.target.value })}
                   className="h-7 text-sm flex-1"
@@ -2182,6 +2181,7 @@ export default function ProfilePage() {
                 <Label className="text-sm text-red-300">Delete account</Label>
                 <p className="mt-1 text-xs text-muted-foreground">This permanently erases your LyfeOS data and account. It cannot be undone.</p>
                 <Input
+                  data-testid="account-delete-confirmation"
                   value={deleteConfirmation}
                   onChange={(event) => setDeleteConfirmation(event.target.value)}
                   placeholder="Type DELETE MY ACCOUNT"
