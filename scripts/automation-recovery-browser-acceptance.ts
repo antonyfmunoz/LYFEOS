@@ -159,7 +159,8 @@ async function main(): Promise<void> {
     cookie = registration.cookie;
     userId = Number(registration.body.user?.id);
     assert(Number.isInteger(userId) && userId > 0 && cookie, "Registration did not create the isolated owner and session.");
-    await pool.query("UPDATE users SET onboarding_completed = true WHERE id = $1", [userId]);
+    const onboarding = await request("PATCH", "/api/profile", { onboardingCompleted: true }, cookie);
+    assert(onboarding.status === 200 && onboarding.body?.onboardingCompleted === true, `Onboarding fixture setup returned ${onboarding.status}.`);
 
     const mission = await request("POST", "/api/quests", {
       userId,
