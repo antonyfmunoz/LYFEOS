@@ -115,6 +115,7 @@ jobs:
           LYFEOS_CHROMIUM_PATH: ${{ steps.isolated-chrome.outputs.chrome-path }}
           LYFEOS_AUTOMATION_RECOVERY_OUTPUT_DIR: ${{ runner.temp }}/lyfeos-automation-recovery-browser
           LYFEOS_AI_MEMORY_OUTPUT_DIR: ${{ runner.temp }}/lyfeos-ai-memory-browser
+          LYFEOS_MESSAGES_OUTPUT_DIR: ${{ runner.temp }}/lyfeos-messages-browser
           LYFEOS_THREAD_SUCCESSOR_OUTPUT_DIR: ${{ runner.temp }}/lyfeos-thread-successor-browser
           LYFEOS_EXTENSION_REGISTRY_ADMIN_TOKEN: ci-extension-registry-qualification-token-000001
         run: |
@@ -156,6 +157,9 @@ jobs:
           if [ "$test_status" -eq 0 ]; then
             npm run acceptance:thread-successor || test_status=$?
           fi
+          if [ "$test_status" -eq 0 ]; then
+            npm run acceptance:messages || test_status=$?
+          fi
           if [ "$test_status" -ne 0 ]; then
             echo "Authenticated integration qualification failed. Server log:"
             cat "$server_log"
@@ -183,6 +187,14 @@ jobs:
         with:
           name: lyfeos-isolated-thread-successor-${{ github.sha }}
           path: ${{ runner.temp }}/lyfeos-thread-successor-browser
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Upload isolated Messages evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: lyfeos-isolated-messages-${{ github.sha }}
+          path: ${{ runner.temp }}/lyfeos-messages-browser
           if-no-files-found: warn
           retention-days: 30
       - name: Rehearse logical backup and isolated restore
