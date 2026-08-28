@@ -622,6 +622,7 @@ export default function OnboardingPage() {
   }, [user, authLoading, navigate, isPendingRegistration]);
   
   const [currentMission, setCurrentMission] = useState(0);
+  const restoredOnboardingPositionRef = useRef(false);
   const missionStartTimeRef = useRef<Date>(new Date());
   const [continuedPastMission0, setContinuedPastMission0] = useState(() => {
     return localStorage.getItem("lyfeos-continued-past-mission0") === "true";
@@ -641,15 +642,19 @@ export default function OnboardingPage() {
     const resumeData = localStorage.getItem("lyfeos-onboarding-resume");
     if (resumeData) {
       try {
-        const { mission, step } = JSON.parse(resumeData);
+        const { mission, step, missionComplete } = JSON.parse(resumeData);
         if (typeof mission === "number" && mission >= 0 && mission <= 7) {
+          restoredOnboardingPositionRef.current = true;
           setCurrentMission(mission);
           setCurrentStep(step || 0);
+          setShowMissionComplete(missionComplete === true);
           missionStartTimeRef.current = new Date();
+          return;
         }
-      } catch {}
+      } catch {
+        // Discard malformed local progress and fall back to the server profile.
+      }
       localStorage.removeItem("lyfeos-onboarding-resume");
-      return;
     }
     
     const params = new URLSearchParams(window.location.search);
@@ -670,7 +675,7 @@ export default function OnboardingPage() {
       setCompletedOnboardingMissions(existingCompleted);
       
       const isPendingRegistration = !!sessionStorage.getItem("lyfeos-pending-registration");
-      if (!isPendingRegistration && !showMissionCompleteRef.current && existingCompleted.length > 0 && !localStorage.getItem("lyfeos-onboarding-resume")) {
+      if (!isPendingRegistration && !showMissionCompleteRef.current && existingCompleted.length > 0 && !restoredOnboardingPositionRef.current) {
         const params = new URLSearchParams(window.location.search);
         if (!params.get("mission")) {
           const nextMission = Array.from({ length: MISSIONS.length }, (_, i) => i)
@@ -685,6 +690,14 @@ export default function OnboardingPage() {
       }
     }
   }, [userProfile]);
+
+  const persistOnboardingPosition = (mission: number, step: number, missionComplete = false) => {
+    localStorage.setItem("lyfeos-onboarding-resume", JSON.stringify({ mission, step, missionComplete }));
+  };
+
+  useEffect(() => {
+    persistOnboardingPosition(currentMission, currentStep, showMissionComplete);
+  }, [currentMission, currentStep, showMissionComplete]);
   
   const STORAGE_KEY = "lyfeos-onboarding-answers";
   
@@ -1252,6 +1265,7 @@ export default function OnboardingPage() {
     const maxSteps = getMaxSteps(currentMission);
     
     if (currentStep < maxSteps - 1) {
+      persistOnboardingPosition(currentMission, currentStep + 1);
       setCurrentStep(currentStep + 1);
     } else {
       if (currentMission === 0 && selectedThemeColor) {
@@ -1264,6 +1278,7 @@ export default function OnboardingPage() {
       const colorToReapply = selectedThemeColor !== "#ffffff" ? selectedThemeColor 
         : localStorage.getItem('lyfeos-primary-color') 
         || (stats?.primaryColor !== "#ffffff" ? stats?.primaryColor : null);
+      persistOnboardingPosition(currentMission, currentStep, true);
       setShowMissionComplete(true);
       saveMissionData(currentMission)
         .then(() => saveCompletedMission(currentMission))
@@ -1280,6 +1295,7 @@ export default function OnboardingPage() {
   
   const handlePrevious = () => {
     if (currentStep > 0) {
+      persistOnboardingPosition(currentMission, currentStep - 1);
       setCurrentStep(currentStep - 1);
     }
   };
@@ -1358,6 +1374,7 @@ export default function OnboardingPage() {
         setSelectedThemeColor(colorToApply);
       }
     }
+    persistOnboardingPosition(currentMission + 1, 0);
     setCurrentMission(currentMission + 1);
     setCurrentStep(0);
     missionStartTimeRef.current = new Date();

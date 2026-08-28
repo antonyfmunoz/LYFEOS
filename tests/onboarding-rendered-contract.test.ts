@@ -27,4 +27,13 @@ describe("rendered onboarding acceptance contract", () => {
     expect(profile).toContain('data-testid="account-delete-confirmation"');
     expect(profile).toContain('data-testid="account-delete-submit"');
   });
+
+  it("persists the exact in-progress Mission position before every rendered transition", () => {
+    expect(onboarding).toContain('localStorage.setItem("lyfeos-onboarding-resume", JSON.stringify({ mission, step, missionComplete }))');
+    expect(onboarding).toContain("persistOnboardingPosition(currentMission, currentStep + 1)");
+    expect(onboarding).toContain("persistOnboardingPosition(currentMission, currentStep, true)");
+    expect(onboarding).toContain("persistOnboardingPosition(currentMission + 1, 0)");
+    expect(onboarding).toContain("setShowMissionComplete(missionComplete === true)");
+    expect(onboarding).toContain("!restoredOnboardingPositionRef.current");
+  });
 });

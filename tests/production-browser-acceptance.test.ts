@@ -136,12 +136,14 @@ describe("production browser acceptance custody", () => {
 
   it("qualifies disposable rendered registration, full onboarding, session continuity, and erasure", () => {
     expect(packageJson).toContain('"acceptance:onboarding": "tsx scripts/production-onboarding-browser-acceptance.ts"');
-    expect(onboardingScript).toContain('contract: "lyfeos.production-onboarding-acceptance.v1"');
+    expect(onboardingScript).toContain('contract: "lyfeos.production-onboarding-acceptance.v2"');
     expect(onboardingScript).toContain('"/register"');
     expect(onboardingScript).toContain('"/api/auth/check-display-name"');
     expect(onboardingScript).toContain('"/api/auth/me"');
     expect(onboardingScript).toContain('"/api/transformation-thread"');
     expect(onboardingScript).toContain('completedMissionIds.join(",") === "0,1,2,3,4,5,6,7"');
+    expect(onboardingScript).toContain("waitForPersistedOnboardingPosition");
+    expect(onboardingScript).toContain("evidence.progressSurvivedReload = true");
     expect(onboardingScript).toContain('data-testid="account-delete-submit"');
     expect(onboardingScript).toContain('"DELETE MY ACCOUNT"');
     expect(onboardingScript).toContain('emailCheck.body?.available === true');

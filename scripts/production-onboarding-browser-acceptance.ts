@@ -18,6 +18,7 @@ type JourneyEvidence = {
   invalidUsernameBlocked: boolean;
   availableUsernameAdvanced: boolean;
   verificationScreenAbsent: boolean;
+  progressSurvivedReload: boolean;
   completedMissionIds: number[];
   onboardingCompleted: boolean;
   activeThread: boolean;
@@ -161,6 +162,19 @@ async function waitForOnboardingStep(page: Page, mission: number, step: number, 
   }
 }
 
+async function waitForPersistedOnboardingPosition(page: Page, mission: number, step: number): Promise<void> {
+  await page.waitForFunction(({ expectedMission, expectedStep }) => {
+    try {
+      const raw = localStorage.getItem("lyfeos-onboarding-resume");
+      if (!raw) return false;
+      const position = JSON.parse(raw) as { mission?: unknown; step?: unknown };
+      return position.mission === expectedMission && position.step === expectedStep;
+    } catch {
+      return false;
+    }
+  }, { timeout: 10_000 }, { expectedMission: mission, expectedStep: step });
+}
+
 async function nextEnabled(page: Page): Promise<boolean> {
   return page.$eval('[data-testid="onboarding-next"]', (element) => !(element as HTMLButtonElement).disabled);
 }
@@ -283,6 +297,12 @@ async function advanceFullOnboarding(page: Page, username: string, evidence: Jou
     for (let step = 0; step < expectedSteps; step++) {
       const state = await currentOnboardingStep(page);
       assert(state.mission === mission && state.step === step, `Expected onboarding Mission ${mission} step ${step}, found ${state.mission}/${state.step}.`);
+      if (mission === 2 && step === 10 && !evidence.progressSurvivedReload) {
+        await waitForPersistedOnboardingPosition(page, mission, step);
+        await page.reload({ waitUntil: "domcontentloaded", timeout: 60_000 });
+        await waitForOnboardingStep(page, mission, step, 30_000);
+        evidence.progressSurvivedReload = true;
+      }
       await prepareStep(page, username, evidence);
       await page.waitForFunction(() => {
         const button = document.querySelector<HTMLButtonElement>('[data-testid="onboarding-next"]');
@@ -397,6 +417,7 @@ async function runJourney(browser: Browser, viewport: ViewportCase): Promise<Jou
     invalidUsernameBlocked: false,
     availableUsernameAdvanced: false,
     verificationScreenAbsent: false,
+    progressSurvivedReload: false,
     completedMissionIds: [],
     onboardingCompleted: false,
     activeThread: false,
@@ -494,6 +515,7 @@ async function writeReport(): Promise<void> {
       && journey.invalidUsernameBlocked
       && journey.availableUsernameAdvanced
       && journey.verificationScreenAbsent
+      && journey.progressSurvivedReload
       && journey.completedMissionIds.join(",") === "0,1,2,3,4,5,6,7"
       && journey.onboardingCompleted
       && journey.activeThread
@@ -512,7 +534,7 @@ async function writeReport(): Promise<void> {
       && journey.unexpectedConsoleErrors.length === 0
       && journey.cleanup === "rendered-erasure");
   const report = {
-    contract: "lyfeos.production-onboarding-acceptance.v1",
+    contract: "lyfeos.production-onboarding-acceptance.v2",
     generatedAt: new Date().toISOString(),
     sourceRevision: SOURCE,
     harnessSource: HARNESS_SOURCE,
@@ -520,7 +542,7 @@ async function writeReport(): Promise<void> {
     passed,
     journeys,
     failure: fatalError,
-    boundary: "This disposable synthetic journey proves the rendered local email/password registration path, username validation and availability, absence of an email-verification ceremony, all eight onboarding Missions, onboarding-derived active Thread, session persistence, and rendered account erasure at desktop and mobile viewport sizes. It does not approve legal terms, exercise Clerk/OAuth or recovery-email delivery, establish human screen-reader comprehension, or validate longitudinal outcomes.",
+    boundary: "This disposable synthetic journey proves the rendered local email/password registration path, username validation and availability, absence of an email-verification ceremony, in-progress answer and Mission continuity through reload, all eight onboarding Missions, onboarding-derived active Thread, session persistence, and rendered account erasure at desktop and mobile viewport sizes. It does not approve legal terms, exercise Clerk/OAuth or recovery-email delivery, establish human screen-reader comprehension, or validate longitudinal outcomes.",
   };
   await fs.mkdir(OUTPUT_DIR, { recursive: true });
   await fs.writeFile(OUTPUT_FILE, `${JSON.stringify(report, null, 2)}\n`, "utf8");
@@ -533,6 +555,7 @@ async function writeReport(): Promise<void> {
       `- Passed: ${passed}`,
       `- Desktop/mobile disposable journeys: ${journeys.length}/${VIEWPORTS.length}`,
       `- All eight rendered onboarding Missions per journey: ${journeys.every((journey) => journey.completedMissionIds.length === 8)}`,
+      `- In-progress Mission and answer state survived reload: ${journeys.every((journey) => journey.progressSurvivedReload)}`,
       `- Rendered account erasure and released identifiers: ${journeys.every((journey) => journey.accountDeletedThroughRenderedControl && journey.emailReleased && journey.displayNameReleased)}`,
       "",
       report.boundary,
