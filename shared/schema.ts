@@ -2755,7 +2755,7 @@ export const aiActionRecords = pgTable("ai_action_records", {
   userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   toolName: text("tool_name").notNull(),
   risk: text("risk").notNull().default("low"),
-  state: text("state").notNull().default("started"), // started | succeeded | rejected | failed
+  state: text("state").notNull().default("started"), // started | pending_approval | executing | succeeded | rejected | failed | expired
   inputSummary: jsonb("input_summary").notNull().default({}),
   planningContextSnapshot: jsonb("planning_context_snapshot").notNull().default({}),
   outcomeSummary: text("outcome_summary"),

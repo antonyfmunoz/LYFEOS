@@ -30,6 +30,9 @@ describe("AI action receipts", () => {
     expect(chat).toContain("function pendingActionPreview");
     expect(chat).toContain("preview: pendingActionPreview");
     expect(profile).toContain("No change has happened. Expires");
+    expect(profile).toContain("onSettled: refreshAiActionState");
+    expect(profile).toContain('["/api/users", user?.id, "daily-logs"]');
+    expect(profile).toContain('["/api/vision-goals"]');
   });
 
   it("does not instruct the model to misrepresent queued changes as complete", () => {

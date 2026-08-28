@@ -5,7 +5,7 @@ import { storage } from "../../storage";
 import { createMissionLifecycle, toggleMissionLifecycle, updateMissionLifecycle } from "../../mission-lifecycle";
 import { db } from "../../db";
 import { aiActionRecords, aiActionRepairs, aiContextReceipts, aiMemoryPolicies, aiPendingActions } from "@shared/schema";
-import { and, eq, gt, inArray, lt } from "drizzle-orm";
+import { and, eq, gt, inArray, lte } from "drizzle-orm";
 import * as cheerio from 'cheerio';
 import { detectRelevantLayers, searchKnowledgeBase, getLayerById, KNOWLEDGE_LAYERS } from "./knowledge-base";
 import { resolveAIContextPreferences, resolveAIVisibleDisplayName } from "../../ai-context-preferences";
@@ -1489,7 +1489,46 @@ Write a 2-3 paragraph affirmation in second person ("You are..."). Make it power
   }
 }
 
-async function executeApprovedPendingAction(actionId: number, userId: number): Promise<{ state: "succeeded" | "rejected" | "failed"; result?: string }> {
+async function expirePendingAction(actionId: number, userId: number): Promise<boolean> {
+  return db.transaction(async (tx) => {
+    const [expired] = await tx.update(aiPendingActions)
+      .set({ state: "expired", updatedAt: new Date() })
+      .where(and(
+        eq(aiPendingActions.id, actionId),
+        eq(aiPendingActions.userId, userId),
+        eq(aiPendingActions.state, "pending"),
+        lte(aiPendingActions.expiresAt, new Date()),
+      ))
+      .returning({ actionRecordId: aiPendingActions.actionRecordId });
+    if (!expired) return false;
+    await tx.update(aiActionRecords)
+      .set({ state: "expired", outcomeSummary: "Approval window expired; no change was made.", completedAt: new Date() })
+      .where(and(eq(aiActionRecords.id, expired.actionRecordId), eq(aiActionRecords.userId, userId)));
+    return true;
+  });
+}
+
+async function expirePendingActionsForUser(userId: number): Promise<void> {
+  await db.transaction(async (tx) => {
+    const expired = await tx.update(aiPendingActions)
+      .set({ state: "expired", updatedAt: new Date() })
+      .where(and(
+        eq(aiPendingActions.userId, userId),
+        eq(aiPendingActions.state, "pending"),
+        lte(aiPendingActions.expiresAt, new Date()),
+      ))
+      .returning({ actionRecordId: aiPendingActions.actionRecordId });
+    if (!expired.length) return;
+    await tx.update(aiActionRecords)
+      .set({ state: "expired", outcomeSummary: "Approval window expired; no change was made.", completedAt: new Date() })
+      .where(and(
+        eq(aiActionRecords.userId, userId),
+        inArray(aiActionRecords.id, expired.map((action) => action.actionRecordId)),
+      ));
+  });
+}
+
+async function executeApprovedPendingAction(actionId: number, userId: number): Promise<{ state: "succeeded" | "rejected" | "failed" | "expired" | "unavailable"; result?: string }> {
   const [pending] = await db.update(aiPendingActions)
     .set({ state: "executing", updatedAt: new Date() })
     .where(and(
@@ -1499,7 +1538,7 @@ async function executeApprovedPendingAction(actionId: number, userId: number): P
       gt(aiPendingActions.expiresAt, new Date()),
     ))
     .returning();
-  if (!pending) return { state: "failed" };
+  if (!pending) return { state: await expirePendingAction(actionId, userId) ? "expired" : "unavailable" };
   await db.update(aiActionRecords)
     .set({ state: "executing", outcomeSummary: "Approved by the user; executing now." })
     .where(eq(aiActionRecords.id, pending.actionRecordId));
@@ -1536,13 +1575,7 @@ export function registerChatRoutes(app: Express): void {
   app.get("/api/ai-actions/pending", isAuthenticated, async (req: Request, res: Response) => {
     const userId = req.session.userId!;
     try {
-      const expired = await db.update(aiPendingActions).set({ state: "expired", updatedAt: new Date() })
-        .where(and(eq(aiPendingActions.userId, userId), eq(aiPendingActions.state, "pending"), lt(aiPendingActions.expiresAt, new Date())))
-        .returning({ actionRecordId: aiPendingActions.actionRecordId });
-      if (expired.length) {
-        await db.update(aiActionRecords).set({ state: "expired", outcomeSummary: "Approval window expired; no change was made.", completedAt: new Date() })
-          .where(inArray(aiActionRecords.id, expired.map((action) => action.actionRecordId)));
-      }
+      await expirePendingActionsForUser(userId);
       const actions = await db.select({
         id: aiPendingActions.id,
         toolName: aiPendingActions.toolName,
@@ -1562,20 +1595,41 @@ export function registerChatRoutes(app: Express): void {
     const actionId = Number(req.params.actionId);
     if (!Number.isInteger(actionId)) return res.status(400).json({ error: "Invalid assistant action." });
     const outcome = await executeApprovedPendingAction(actionId, req.session.userId!);
-    if (outcome.state === "failed") return res.status(409).json({ error: "This approval is no longer available. It may have expired or already been handled." });
+    if (outcome.state === "expired") return res.status(409).json({ error: "This approval expired; no change was made.", state: "expired" });
+    if (outcome.state === "unavailable") return res.status(409).json({ error: "This approval is no longer available.", state: "unavailable" });
+    if (outcome.state === "failed") return res.status(500).json({ error: "The approved assistant action failed.", state: "failed" });
     return res.json({ state: outcome.state, result: outcome.result });
   });
 
   app.post("/api/ai-actions/:actionId/reject", isAuthenticated, async (req: Request, res: Response) => {
     const actionId = Number(req.params.actionId);
     if (!Number.isInteger(actionId)) return res.status(400).json({ error: "Invalid assistant action." });
-    const [pending] = await db.update(aiPendingActions).set({ state: "rejected", updatedAt: new Date() })
-      .where(and(eq(aiPendingActions.id, actionId), eq(aiPendingActions.userId, req.session.userId!), eq(aiPendingActions.state, "pending")))
-      .returning();
-    if (!pending) return res.status(409).json({ error: "This approval is no longer available." });
-    await db.update(aiActionRecords).set({ state: "rejected", outcomeSummary: "User declined the requested change.", completedAt: new Date() })
-      .where(eq(aiActionRecords.id, pending.actionRecordId));
-    return res.json({ state: "rejected" });
+    const userId = req.session.userId!;
+    try {
+      const rejected = await db.transaction(async (tx) => {
+        const [pending] = await tx.update(aiPendingActions)
+          .set({ state: "rejected", updatedAt: new Date() })
+          .where(and(
+            eq(aiPendingActions.id, actionId),
+            eq(aiPendingActions.userId, userId),
+            eq(aiPendingActions.state, "pending"),
+            gt(aiPendingActions.expiresAt, new Date()),
+          ))
+          .returning({ actionRecordId: aiPendingActions.actionRecordId });
+        if (!pending) return false;
+        await tx.update(aiActionRecords)
+          .set({ state: "rejected", outcomeSummary: "User declined the requested change.", completedAt: new Date() })
+          .where(and(eq(aiActionRecords.id, pending.actionRecordId), eq(aiActionRecords.userId, userId)));
+        return true;
+      });
+      if (rejected) return res.json({ state: "rejected" });
+      if (await expirePendingAction(actionId, userId)) {
+        return res.status(409).json({ error: "This approval expired; no change was made.", state: "expired" });
+      }
+      return res.status(409).json({ error: "This approval is no longer available.", state: "unavailable" });
+    } catch {
+      return res.status(500).json({ error: "Could not decline this assistant action." });
+    }
   });
 
   app.get("/api/conversations", isAuthenticated, async (req: Request, res: Response) => {

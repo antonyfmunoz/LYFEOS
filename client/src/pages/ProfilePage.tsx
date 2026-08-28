@@ -875,21 +875,37 @@ export default function ProfilePage() {
     enabled: !!user?.id,
   });
 
+  const refreshAiActionState = () => {
+    queryClient.invalidateQueries({ queryKey: ["/api/account/ai-actions"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/ai-actions/pending"] });
+  };
+
+  const refreshAiAffectedDomains = () => {
+    queryClient.invalidateQueries({ queryKey: ["/api/quests"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/quests/archived"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/user-stats"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/users", user?.id, "profile"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/users", user?.id, "daily-logs"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/vision-goals"] });
+  };
+
   const decideAiActionMutation = useMutation({
     mutationFn: ({ actionId, decision }: { actionId: number; decision: "approve" | "reject" }) =>
       apiRequest(`/api/ai-actions/${actionId}/${decision}`, { method: "POST" }),
     onSuccess: (_, input) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/ai-actions/pending"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/account/ai-actions"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/quests"] });
+      refreshAiAffectedDomains();
       toast({ title: input.decision === "approve" ? "Assistant action approved" : "Assistant action declined", description: input.decision === "approve" ? "LyfeOS executed the exact reviewed action." : "Nothing was changed." });
     },
     onError: (error: Error) => toast({ title: "Could not process approval", description: error.message, variant: "destructive" }),
+    onSettled: refreshAiActionState,
   });
   const repairAiActionMutation = useMutation({
     mutationFn: (actionId: number) => apiRequest(`/api/ai-actions/${actionId}/repair`, { method: "POST" }),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/account/ai-actions"] }); queryClient.invalidateQueries({ queryKey: ["/api/quests"] }); toast({ title: "Assistant action repaired", description: "LyfeOS restored the recorded prior state." }); },
+    onSuccess: () => { refreshAiAffectedDomains(); toast({ title: "Assistant action repaired", description: "LyfeOS restored the recorded prior state." }); },
     onError: (error: Error) => toast({ title: "Repair unavailable", description: error.message, variant: "destructive" }),
+    onSettled: refreshAiActionState,
   });
 
   const clearAiMemoryMutation = useMutation({

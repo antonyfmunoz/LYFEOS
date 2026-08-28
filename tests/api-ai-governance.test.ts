@@ -12,14 +12,38 @@ async function request(method: string, path: string, body?: unknown, cookie = ""
   return { status: response.status, data: await response.json().catch(() => ({})) as any, cookie: (response.headers.get("set-cookie") || "").split(";", 1)[0] };
 }
 
+async function seedPendingAction(input: { userId: number; toolName: string; payload: Record<string, unknown>; expiresAt?: Date }) {
+  const [{ db }, schema] = await Promise.all([import("../server/db"), import("../shared/schema")]);
+  const [record] = await db.insert(schema.aiActionRecords).values({
+    userId: input.userId,
+    toolName: input.toolName,
+    risk: "medium",
+    state: "pending_approval",
+    inputSummary: { fields: Object.keys(input.payload).sort() },
+    planningContextSnapshot: {},
+  }).returning();
+  const [pending] = await db.insert(schema.aiPendingActions).values({
+    userId: input.userId,
+    actionRecordId: record.id,
+    toolName: input.toolName,
+    payload: input.payload,
+    expiresAt: input.expiresAt ?? new Date(Date.now() + 60_000),
+  }).returning();
+  return { record, pending };
+}
+
 describeApi("AI persona and memory governance authenticated journey", () => {
   const stamp = `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
   const account = { email: `ai_governance_${stamp}@example.com`, password: "TestPass123!", displayName: `player_${stamp}` };
   let cookie = "";
+  let otherCookie = "";
   let revision = 0;
   let userId = 0;
 
-  afterAll(async () => { if (cookie) await request("DELETE", "/api/account", { confirmation: "DELETE MY ACCOUNT" }, cookie); });
+  afterAll(async () => {
+    if (otherCookie) await request("DELETE", "/api/account", { confirmation: "DELETE MY ACCOUNT" }, otherCookie);
+    if (cookie) await request("DELETE", "/api/account", { confirmation: "DELETE MY ACCOUNT" }, cookie);
+  });
 
   it("creates a private local persona and rejects anonymous access", async () => {
     expect((await request("GET", "/api/ai/persona")).status).toBe(401);
@@ -83,9 +107,7 @@ describeApi("AI persona and memory governance authenticated journey", () => {
   });
 
   it("executes a human-approved consequential action and repairs its exact prior field", async () => {
-    const [{ db }, schema] = await Promise.all([import("../server/db"), import("../shared/schema")]);
-    const [record] = await db.insert(schema.aiActionRecords).values({ userId, toolName: "update_profile", risk: "medium", state: "pending_approval", inputSummary: { fields: ["primaryCraft"] }, planningContextSnapshot: {} }).returning();
-    const [pending] = await db.insert(schema.aiPendingActions).values({ userId, actionRecordId: record.id, toolName: "update_profile", payload: { primaryCraft: "AI governance qualification" }, expiresAt: new Date(Date.now() + 60_000) }).returning();
+    const { record, pending } = await seedPendingAction({ userId, toolName: "update_profile", payload: { primaryCraft: "AI governance qualification" } });
     const approved = await request("POST", `/api/ai-actions/${pending.id}/approve`, undefined, cookie);
     expect(approved.status).toBe(200);
     expect(approved.data.state).toBe("succeeded");
@@ -96,5 +118,57 @@ describeApi("AI persona and memory governance authenticated journey", () => {
     expect(repaired.data.state).toBe("repaired");
     const restored = await request("GET", "/api/profile", undefined, cookie);
     expect(restored.data.primaryCraft ?? null).toBe(null);
+  });
+
+  it("atomically records decline and expiry without applying the requested change", async () => {
+    const [{ db }, schema, { eq }] = await Promise.all([import("../server/db"), import("../shared/schema"), import("drizzle-orm")]);
+    const declined = await seedPendingAction({ userId, toolName: "update_profile", payload: { primaryCraft: "must not be applied" } });
+    const declinedResponse = await request("POST", `/api/ai-actions/${declined.pending.id}/reject`, undefined, cookie);
+    expect(declinedResponse.status).toBe(200);
+    expect(declinedResponse.data.state).toBe("rejected");
+    const [declinedPending] = await db.select().from(schema.aiPendingActions).where(eq(schema.aiPendingActions.id, declined.pending.id));
+    const [declinedRecord] = await db.select().from(schema.aiActionRecords).where(eq(schema.aiActionRecords.id, declined.record.id));
+    expect(declinedPending.state).toBe("rejected");
+    expect(declinedRecord).toMatchObject({ state: "rejected", outcomeSummary: "User declined the requested change." });
+    expect(declinedRecord.completedAt).toBeInstanceOf(Date);
+
+    const expired = await seedPendingAction({
+      userId,
+      toolName: "update_profile",
+      payload: { primaryCraft: "expired change" },
+      expiresAt: new Date(Date.now() - 1_000),
+    });
+    const expiredResponse = await request("POST", `/api/ai-actions/${expired.pending.id}/approve`, undefined, cookie);
+    expect(expiredResponse.status).toBe(409);
+    expect(expiredResponse.data).toMatchObject({ state: "expired", error: "This approval expired; no change was made." });
+    const [expiredPending] = await db.select().from(schema.aiPendingActions).where(eq(schema.aiPendingActions.id, expired.pending.id));
+    const [expiredRecord] = await db.select().from(schema.aiActionRecords).where(eq(schema.aiActionRecords.id, expired.record.id));
+    expect(expiredPending.state).toBe("expired");
+    expect(expiredRecord).toMatchObject({ state: "expired", outcomeSummary: "Approval window expired; no change was made." });
+    expect(expiredRecord.completedAt).toBeInstanceOf(Date);
+    expect((await request("GET", "/api/profile", undefined, cookie)).data.primaryCraft ?? null).toBe(null);
+  });
+
+  it("does not let another account approve or decline an owner's pending action", async () => {
+    const other = await request("POST", "/api/auth/complete-registration", {
+      email: `ai_governance_other_${stamp}@example.com`,
+      password: account.password,
+      displayName: `other_${stamp}`,
+      termsAccepted: true,
+    });
+    expect(other.status).toBe(201);
+    otherCookie = other.cookie;
+    const ownerAction = await seedPendingAction({ userId, toolName: "update_profile", payload: { primaryCraft: "owner-only change" } });
+    const foreignApprove = await request("POST", `/api/ai-actions/${ownerAction.pending.id}/approve`, undefined, otherCookie);
+    expect(foreignApprove.status).toBe(409);
+    expect(foreignApprove.data.state).toBe("unavailable");
+    const foreignReject = await request("POST", `/api/ai-actions/${ownerAction.pending.id}/reject`, undefined, otherCookie);
+    expect(foreignReject.status).toBe(409);
+    expect(foreignReject.data.state).toBe("unavailable");
+    expect((await request("GET", "/api/profile", undefined, cookie)).data.primaryCraft ?? null).toBe(null);
+    expect((await request("GET", "/api/profile", undefined, otherCookie)).data.primaryCraft ?? null).toBe(null);
+    const ownerReject = await request("POST", `/api/ai-actions/${ownerAction.pending.id}/reject`, undefined, cookie);
+    expect(ownerReject.status).toBe(200);
+    expect(ownerReject.data.state).toBe("rejected");
   });
 });
