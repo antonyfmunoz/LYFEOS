@@ -623,6 +623,27 @@ async function main(): Promise<void> {
     assert(progressionAfterReview.certifications.length === 0 && progressionAfterReview.entrustedRoles.length === 0, "Self-review created unsupported certification or authority.");
     steps.push({ name: "rendered positive self-review", status: "passed", detail: `Declared evidence review applied exactly ${reviewedSkillExperience} capability XP and no certification or authority.` });
 
+    await waitForApiBudget(page, 40);
+    await page.goto(new URL("/experience", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
+    await page.waitForSelector('[data-testid="activity-total-experience"]', { visible: true, timeout: 30_000 });
+    await page.waitForSelector('[data-testid="activity-ledger-history"]', { timeout: 30_000 });
+    const renderedProgression = await page.evaluate(() => {
+      const numberFrom = (value: string | null | undefined) => Number((value || "").replace(/[^0-9-]/g, ""));
+      const total = document.querySelector('[data-testid="activity-total-experience"]')?.textContent;
+      const rows = Array.from(document.querySelectorAll('[data-testid="activity-ledger-history"] tbody tr'));
+      const lastCumulative = rows.at(-1)?.querySelector("td:last-child")?.textContent;
+      return {
+        activityExperience: numberFrom(total),
+        endingExperience: numberFrom(lastCumulative),
+        text: document.body.innerText,
+      };
+    });
+    assert(renderedProgression.activityExperience === progressionAfterReview.activityExperience, "Rendered Experience total did not match the authoritative activity ledger.");
+    assert(renderedProgression.endingExperience === progressionAfterReview.activityExperience, "Rendered activity history did not reconcile to the current activity total.");
+    assert(renderedProgression.text.includes(`${progressionAfterReview.capabilityExperience} reviewed XP`), "Rendered Experience view did not preserve the separate reviewed-capability total.");
+    assert(renderedProgression.text.includes("Certification & authority"), "Rendered Experience view omitted the authority boundary.");
+    steps.push({ name: "rendered progression visualization", status: "passed", detail: "Activity total and bounded reversal-aware ledger history reconciled exactly; reviewed capability and authority remained separate." });
+
     // The broad protected-route sweep and this evidence journey intentionally
     // share the production account's aggregate API budget. Refill before the
     // final rendered mutation so Undo is measuring reversal semantics rather

@@ -28,6 +28,8 @@ export function PlayerProgressPanel({ progression, compact = false }: PlayerProg
   const recentEvents = activity.recentEvents || [];
   const badges = progression.badges || [];
   const badgeProgress = (progression.badgeProgress || []).filter((badge: any) => !badge.active).slice(0, compact ? 1 : 4);
+  const missionActivityExperience = Number(activity.sourceTotals?.mission || 0);
+  const goalActivityExperience = Number(activity.sourceTotals?.vision_goal || 0);
 
   return (
     <section className="glassmorphic rounded-2xl border border-primary/30 p-5 sm:p-6" aria-labelledby="player-progress-title">
@@ -47,7 +49,7 @@ export function PlayerProgressPanel({ progression, compact = false }: PlayerProg
         <MetricCard
           label="Activity"
           value={`Level ${activity.level || 1} · ${activity.rank?.name || "Initiate"}`}
-          detail={`${Number(activity.totalExperience || 0).toLocaleString()} XP from completed missions and goals.`}
+          detail={`${Number(activity.totalExperience || 0).toLocaleString()} XP: ${missionActivityExperience.toLocaleString()} from completed missions and ${goalActivityExperience.toLocaleString()} from completed goals.`}
           icon={Sparkles}
         />
         <MetricCard

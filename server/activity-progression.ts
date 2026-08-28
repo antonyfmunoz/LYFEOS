@@ -1,5 +1,5 @@
 import { and, asc, eq, isNull, sql } from "drizzle-orm";
-import { activityLevelProgress, getNextProgressionRank, getProgressionRank, missionExperience } from "@shared/progression";
+import { activityLevelProgress, buildActivityProgressionHistory, getNextProgressionRank, getProgressionRank, missionExperience } from "@shared/progression";
 import { activityProgressionEvents, quests, visionGoals } from "@shared/schema";
 import { db } from "./db";
 
@@ -110,6 +110,7 @@ export async function getActivityProgressionSnapshot(
   userId: number,
   executor: ProgressionExecutor = db,
   timeZone = "UTC",
+  historyDays = 30,
 ) {
   const events = await executor.select().from(activityProgressionEvents)
     .where(eq(activityProgressionEvents.userId, userId)).orderBy(asc(activityProgressionEvents.id));
@@ -127,6 +128,7 @@ export async function getActivityProgressionSnapshot(
     nextRank,
     levelsToNextRank: nextRank ? nextRank.minLevel - levelProgress.level : 0,
     sourceTotals,
+    history: buildActivityProgressionHistory(events, timeZone, historyDays),
     streak: streakSummary(events, timeZone),
     recentEvents: [...events].reverse().slice(0, 20).map((event) => ({
       id: event.id,

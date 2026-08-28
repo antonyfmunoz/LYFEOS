@@ -12,7 +12,7 @@ import {
   Trophy, BarChart3, Calendar, Swords, FolderOpen
 } from "lucide-react";
 import {
-  AreaChart, Area, BarChart, Bar, ResponsiveContainer, XAxis, YAxis,
+  Area, BarChart, Bar, ComposedChart, ReferenceLine, ResponsiveContainer, XAxis, YAxis,
   Tooltip, CartesianGrid
 } from "recharts";
 
@@ -51,22 +51,28 @@ export default function ExperienceDetailPage() {
     refetchOnMount: 'always',
   });
   const { data: progressionData } = useQuery<any>({
-    queryKey: ["/api/progression"],
+    queryKey: ["/api/progression", { days }],
+    queryFn: () => apiRequest(`/api/progression?days=${days}`),
     enabled: !!user,
     refetchOnMount: "always",
   });
 
-  const currentXP = stats.experience.current;
-  const maxXP = stats.experience.max;
-  const currentLevel = stats.experience.level;
-  const xpProgress = maxXP > 0 ? Math.round((currentXP / maxXP) * 100) : 0;
+  const activity = progressionData?.progression?.tracks?.activity || {};
+  const activityHistory = activity.history?.points || [];
+  const currentXP = Number(activity.currentLevelExperience ?? stats.experience.current ?? 0);
+  const maxXP = Number(activity.nextLevelExperience ?? stats.experience.max ?? 1000);
+  const currentLevel = Number(activity.level ?? stats.experience.level ?? 1);
+  const totalActivityXP = Number(activity.totalExperience ?? stats.experience.totalXP ?? 0);
+  const xpProgress = Number(activity.percent ?? (maxXP > 0 ? Math.round((currentXP / maxXP) * 100) : 0));
 
   const completedMissions = computedStats?.completedMissions ?? 0;
   const totalXpFromCompleted = computedStats?.totalXpFromCompleted ?? 0;
   const completionRate = computedStats?.completionRate ?? 0;
 
-  const avgXpPerMission = data?.summary?.avgXpPerMission ?? (completedMissions > 0 ? totalXpFromCompleted / completedMissions : 25);
-  const xpToNextLevel = data?.summary?.xpToNextLevel ?? (maxXP - currentXP);
+  const missionActivityXP = Number(activity.sourceTotals?.mission ?? totalXpFromCompleted);
+  const goalActivityXP = Number(activity.sourceTotals?.vision_goal ?? 0);
+  const avgXpPerMission = completedMissions > 0 ? missionActivityXP / completedMissions : 0;
+  const xpToNextLevel = Math.max(0, maxXP - currentXP);
   const estimatedMissionsToLevel = avgXpPerMission > 0 ? Math.ceil(xpToNextLevel / avgXpPerMission) : 0;
 
   return (
@@ -115,15 +121,16 @@ export default function ExperienceDetailPage() {
 
         <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="text-center md:text-left">
-            <p className="text-xs font-mono uppercase tracking-widest text-primary mb-2">Current Level</p>
+            <p className="text-xs font-mono uppercase tracking-widest text-primary mb-2">Current activity level</p>
             <div className="flex items-baseline gap-2">
               <span className="text-7xl font-orbitron font-bold text-primary leading-none">
                 {currentLevel}
               </span>
             </div>
             <p className="text-sm text-muted-foreground mt-2">
-              {currentXP.toLocaleString()} / {maxXP.toLocaleString()} XP
+              {currentXP.toLocaleString()} / {maxXP.toLocaleString()} XP within level
             </p>
+            {activity.rank?.name && <p className="mt-1 text-xs text-muted-foreground">{activity.rank.name} activity rank</p>}
           </div>
 
           <div className="flex-1 max-w-md w-full">
@@ -148,8 +155,8 @@ export default function ExperienceDetailPage() {
           <div className="flex flex-col gap-2 text-sm">
             <div className="flex items-center gap-2 bg-background/40 rounded-lg px-3 py-2 border border-muted/20">
               <Star className="h-4 w-4 text-primary" />
-              <span className="text-muted-foreground">Total XP:</span>
-              <span className="font-mono text-primary">{(stats.experience.totalXP ?? 0).toLocaleString()}</span>
+              <span className="text-muted-foreground">Activity XP:</span>
+              <span className="font-mono text-primary" data-testid="activity-total-experience">{totalActivityXP.toLocaleString()}</span>
             </div>
             <div className="flex items-center gap-2 bg-background/40 rounded-lg px-3 py-2 border border-muted/20">
               <Target className="h-4 w-4 text-primary" />
@@ -171,15 +178,16 @@ export default function ExperienceDetailPage() {
         </div>
       ) : (
         <>
-          {data?.xpTrend?.length > 0 && (
+          {activityHistory.length > 0 && (
             <div className="glassmorphic rounded-2xl p-6 mb-8 border border-primary/30">
               <h2 className="font-orbitron text-lg mb-4 text-primary flex items-center gap-2">
                 <TrendingUp className="h-5 w-5" />
-                XP History
+                Activity ledger history
                 <span className="text-xs text-muted-foreground font-mono ml-2">(last {days} days)</span>
               </h2>
+              <p className="mb-4 text-xs leading-relaxed text-muted-foreground">Daily bars show XP earned minus XP reversed on that date. The line includes the opening balance and reconciles to your current activity total. Reviewed capability XP is intentionally separate.</p>
               <ResponsiveContainer width="100%" height={240}>
-                <AreaChart data={data.xpTrend} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+                <ComposedChart data={activityHistory} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                   <XAxis
                     dataKey="date"
@@ -203,17 +211,30 @@ export default function ExperienceDetailPage() {
                     labelStyle={{ color: "#9ca3af", fontSize: 12 }}
                     labelFormatter={formatShortDate}
                   />
+                  <ReferenceLine y={0} stroke="rgba(255,255,255,0.2)" />
+                  <Bar dataKey="net" name="Daily net activity XP" fill="hsl(var(--primary) / 0.35)" radius={[3, 3, 0, 0]} />
                   <Area
-                    type="monotone"
-                    dataKey="xp"
-                    name="XP Earned"
+                    type="stepAfter"
+                    dataKey="cumulative"
+                    name="Cumulative activity XP"
                     stroke="hsl(var(--primary))"
                     strokeWidth={2}
-                    fill="hsl(var(--primary))"
-                    fillOpacity={0.15}
+                    fill="transparent"
+                    fillOpacity={0}
+                    dot={false}
                   />
-                </AreaChart>
+                </ComposedChart>
               </ResponsiveContainer>
+              <details className="mt-3 rounded-lg border border-muted/20 bg-background/20 p-3">
+                <summary className="cursor-pointer text-xs text-muted-foreground">View exact ledger values</summary>
+                <div className="mt-3 overflow-x-auto">
+                  <table className="w-full min-w-[32rem] text-left text-xs" data-testid="activity-ledger-history">
+                    <caption className="sr-only">Daily activity XP ledger history</caption>
+                    <thead className="text-muted-foreground"><tr><th className="py-1 pr-3">Date</th><th className="py-1 pr-3">Earned</th><th className="py-1 pr-3">Reversed</th><th className="py-1 pr-3">Net</th><th className="py-1">Cumulative</th></tr></thead>
+                    <tbody>{activityHistory.map((point: any) => <tr key={point.date} className="border-t border-muted/10"><td className="py-1 pr-3">{point.date}</td><td className="py-1 pr-3">+{point.earned}</td><td className="py-1 pr-3">-{point.reversed}</td><td className="py-1 pr-3">{point.net > 0 ? "+" : ""}{point.net}</td><td className="py-1">{point.cumulative}</td></tr>)}</tbody>
+                  </table>
+                </div>
+              </details>
             </div>
           )}
 
@@ -273,7 +294,7 @@ export default function ExperienceDetailPage() {
             <div className="glassmorphic rounded-2xl p-6 mb-8 border border-primary/30">
               <h2 className="font-orbitron text-lg mb-4 text-primary flex items-center gap-2">
                 <Swords className="h-5 w-5" />
-                XP by Difficulty
+                Active mission XP by difficulty
               </h2>
               <div className="space-y-4">
                 {["D", "C", "B", "A", "S"].map((rank) => {
@@ -321,7 +342,7 @@ export default function ExperienceDetailPage() {
             <div className="glassmorphic rounded-2xl p-6 mb-8 border border-primary/30">
               <h2 className="font-orbitron text-lg mb-4 text-primary flex items-center gap-2">
                 <FolderOpen className="h-5 w-5" />
-                XP by Category
+                Active mission XP by category
               </h2>
               <div className="space-y-4">
                 {Object.entries(data.categoryStats)
@@ -369,7 +390,7 @@ export default function ExperienceDetailPage() {
             <div className="glassmorphic rounded-2xl p-6 mb-8 border border-primary/30">
               <h2 className="font-orbitron text-lg mb-4 text-primary flex items-center gap-2">
                 <Calendar className="h-5 w-5" />
-                Weekday Patterns
+                Active mission XP by completion weekday
               </h2>
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={data.weekdayPatterns} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
@@ -439,6 +460,8 @@ export default function ExperienceDetailPage() {
               </div>
             </div>
 
+            <p className="mt-4 text-xs leading-relaxed text-muted-foreground">Forecast only: the estimate divides remaining activity XP by the current average from completed, still-active missions. It is not a commitment, capability prediction, or incentive to rush work.</p>
+
             <div className="mt-6 p-4 bg-background/30 rounded-xl border border-muted/20">
               <div className="flex items-center justify-between mb-3">
                 <span className="text-sm text-muted-foreground">Progress to Level {currentLevel + 1}</span>
@@ -468,11 +491,12 @@ export default function ExperienceDetailPage() {
               <div className="flex items-center gap-3 p-3 bg-background/30 rounded-lg border border-muted/20">
                 <Star className="h-5 w-5 text-primary flex-shrink-0" />
                 <div>
-                  <p className="text-xs text-muted-foreground">Total XP Earned</p>
-                  <p className="text-sm font-mono text-primary">{totalXpFromCompleted.toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground">Current Activity XP</p>
+                  <p className="text-sm font-mono text-primary">{totalActivityXP.toLocaleString()}</p>
                 </div>
               </div>
             </div>
+            <div className="mt-3 text-xs text-muted-foreground">Current net sources: {missionActivityXP.toLocaleString()} mission XP · {goalActivityXP.toLocaleString()} goal XP.</div>
           </div>
 
           <AIStatTip statType="experience" />

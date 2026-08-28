@@ -70,3 +70,87 @@ export function missionExperience(reward: number, difficulty?: string | null): n
   const multipliers: Record<string, number> = { D: 1, C: 1.5, B: 2, A: 3, S: 5 };
   return Math.floor(Math.max(0, reward || 0) * (multipliers[difficulty || "D"] || 1));
 }
+
+export type ActivityHistoryEvent = {
+  sourceType: string;
+  experienceDelta: number;
+  sourceOccurredAt: Date;
+};
+
+export type ActivityHistoryPoint = {
+  date: string;
+  earned: number;
+  reversed: number;
+  net: number;
+  cumulative: number;
+};
+
+function historyCalendarDate(value: Date, timeZone: string): string {
+  try {
+    return value.toLocaleDateString("en-CA", { timeZone });
+  } catch {
+    return value.toISOString().slice(0, 10);
+  }
+}
+
+function addUtcDays(dateText: string, days: number): string {
+  const date = new Date(`${dateText}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+/**
+ * Builds a bounded, timezone-local view over the append-only activity ledger.
+ * Reversals stay visible on the date they occurred and cumulative XP includes
+ * the opening balance, so the last point reconciles to the authoritative total.
+ */
+export function buildActivityProgressionHistory(
+  events: ActivityHistoryEvent[],
+  timeZone = "UTC",
+  requestedDays = 30,
+  now = new Date(),
+) {
+  const days = Math.min(365, Math.max(7, Math.floor(requestedDays || 30)));
+  const endDate = historyCalendarDate(now, timeZone);
+  const startDate = addUtcDays(endDate, -(days - 1));
+  const buckets = new Map<string, { earned: number; reversed: number; net: number }>();
+  const sourceTotals: Record<string, number> = {};
+  let openingExperience = 0;
+  let eventCount = 0;
+
+  for (const event of events) {
+    const date = historyCalendarDate(event.sourceOccurredAt, timeZone);
+    if (date < startDate) {
+      openingExperience += event.experienceDelta;
+      continue;
+    }
+    if (date > endDate) continue;
+    const bucket = buckets.get(date) || { earned: 0, reversed: 0, net: 0 };
+    if (event.experienceDelta >= 0) bucket.earned += event.experienceDelta;
+    else bucket.reversed += Math.abs(event.experienceDelta);
+    bucket.net += event.experienceDelta;
+    buckets.set(date, bucket);
+    sourceTotals[event.sourceType] = (sourceTotals[event.sourceType] || 0) + event.experienceDelta;
+    eventCount += 1;
+  }
+
+  let cumulative = Math.max(0, openingExperience);
+  const points: ActivityHistoryPoint[] = Array.from({ length: days }, (_, index) => {
+    const date = addUtcDays(startDate, index);
+    const bucket = buckets.get(date) || { earned: 0, reversed: 0, net: 0 };
+    cumulative = Math.max(0, cumulative + bucket.net);
+    return { date, ...bucket, cumulative };
+  });
+
+  return {
+    days,
+    startDate,
+    endDate,
+    eventCount,
+    openingExperience: Math.max(0, openingExperience),
+    endingExperience: cumulative,
+    sourceTotals,
+    points,
+    disclosure: "Daily activity XP comes from the append-only LyfeOS activity ledger. Reversals remain visible and capability XP is excluded.",
+  };
+}

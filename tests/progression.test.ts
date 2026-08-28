@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getProgressionRank, missionExperience } from "@shared/progression";
+import { buildActivityProgressionHistory, getProgressionRank, missionExperience } from "@shared/progression";
 import {
   LYFEOS_COORDINATION_CONTEXT_UPDATED_EVENT,
   LYFEOS_WORK_ITEM_UPDATED_EVENT,
@@ -19,6 +19,25 @@ describe("LyfeOS progression contract", () => {
     expect(missionExperience(20, "B")).toBe(40);
     expect(missionExperience(20, "S")).toBe(100);
     expect(missionExperience(-20, "S")).toBe(0);
+  });
+
+  it("builds a bounded reversal-aware activity history that reconciles its ending total", () => {
+    const history = buildActivityProgressionHistory([
+      { sourceType: "mission", experienceDelta: 100, sourceOccurredAt: new Date("2026-08-01T12:00:00.000Z") },
+      { sourceType: "vision_goal", experienceDelta: 50, sourceOccurredAt: new Date("2026-08-10T12:00:00.000Z") },
+      { sourceType: "mission", experienceDelta: -100, sourceOccurredAt: new Date("2026-08-12T12:00:00.000Z") },
+      { sourceType: "mission", experienceDelta: 999, sourceOccurredAt: new Date("2026-08-13T12:00:00.000Z") },
+    ], "UTC", 3, new Date("2026-08-12T18:00:00.000Z"));
+
+    expect(history.days).toBe(7);
+    expect(history.startDate).toBe("2026-08-06");
+    expect(history.endDate).toBe("2026-08-12");
+    expect(history.openingExperience).toBe(100);
+    expect(history.eventCount).toBe(2);
+    expect(history.sourceTotals).toEqual({ vision_goal: 50, mission: -100 });
+    expect(history.points.find((point) => point.date === "2026-08-10")).toMatchObject({ earned: 50, reversed: 0, net: 50, cumulative: 150 });
+    expect(history.points.at(-1)).toMatchObject({ date: "2026-08-12", earned: 0, reversed: 100, net: -100, cumulative: 50 });
+    expect(history.endingExperience).toBe(50);
   });
 
   it("accepts a coarse, privacy-preserving coordination context event", () => {

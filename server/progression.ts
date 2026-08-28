@@ -192,9 +192,9 @@ async function reconcileBadges(userId: number) {
   return db.insert(progressionBadgeEvents).values(inserts).onConflictDoNothing().returning();
 }
 
-async function buildProgressionSummary(userId: number) {
+async function buildProgressionSummary(userId: number, historyDays = 30) {
   const data = await progressionData(userId);
-  const activity = await getActivityProgressionSnapshot(userId, db, data.profile?.timezone || "UTC");
+  const activity = await getActivityProgressionSnapshot(userId, db, data.profile?.timezone || "UTC", historyDays);
   const healthPractice = await getHealthProgressionSummary(userId);
   const badgeProgress = data.candidates.map((candidate) => ({
     key: candidate.key,
@@ -278,10 +278,10 @@ async function buildProgressionSummary(userId: number) {
   };
 }
 
-export async function getProgressionSummary(userId: number) {
+export async function getProgressionSummary(userId: number, historyDays = 30) {
   await storage.recalculateXP(userId);
   await reconcileBadges(userId);
-  return buildProgressionSummary(userId);
+  return buildProgressionSummary(userId, historyDays);
 }
 
 /** Rebuild deterministic, LyfeOS-local progression after a real action. */

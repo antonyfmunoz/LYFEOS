@@ -167,6 +167,10 @@ describe("production browser acceptance custody", () => {
     expect(coreLoopScript).toContain('activateMissionControl(page, "done")');
     expect(coreLoopScript).toContain('page.click(\'[data-testid="mission-self-review-submit"]\')');
     expect(coreLoopScript).toContain('reviewBody.progression?.applied === true && reviewedSkillExperience > 0');
+    expect(coreLoopScript).toContain('new URL("/experience", BASE_URL)');
+    expect(coreLoopScript).toContain('[data-testid="activity-ledger-history"]');
+    expect(coreLoopScript).toContain('renderedProgression.endingExperience === progressionAfterReview.activityExperience');
+    expect(coreLoopScript).toContain('name: "rendered progression visualization"');
     expect(coreLoopScript).toContain('await waitForApiBudget(page, 30)');
     expect(coreLoopScript).toContain('activateMissionControl(page, "undo")');
     expect(coreLoopScript).toContain('progressionMatches(progressionBefore, progressionAfterReopen)');

@@ -79,6 +79,10 @@ describe("mission lifecycle wiring", () => {
     const experience = readSource("client/src/pages/ExperienceDetailPage.tsx");
     const analytics = readSource("client/src/pages/AnalyticsPage.tsx");
     expect(experience).toContain("Evidence-backed capability progress is tracked separately");
+    expect(experience).toContain("activity.history?.points");
+    expect(experience).toContain("Daily net activity XP");
+    expect(experience).toContain("Current net sources");
+    expect(experience).not.toContain("data?.xpTrend");
     expect(analytics).toContain("not external certification or causal proof");
   });
 
