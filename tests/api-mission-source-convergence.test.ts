@@ -5,11 +5,11 @@ const BASE_URL = process.env.LYFEOS_TEST_API_URL;
 const DATABASE_URL = process.env.DATABASE_URL;
 const describeApi = BASE_URL && DATABASE_URL && process.env.LYFEOS_TEST_ENV === "isolated" ? describe : describe.skip;
 
-async function request(method: string, path: string, body?: unknown, cookie = "") {
+async function request(method: string, path: string, body?: unknown, cookie = "", headers: Record<string, string> = {}) {
   const response = await fetch(`${BASE_URL}${path}`, {
     method,
     signal: AbortSignal.timeout(15_000),
-    headers: { "Content-Type": "application/json", "X-Forwarded-Proto": "https", ...(cookie ? { Cookie: cookie } : {}) },
+    headers: { "Content-Type": "application/json", "X-Forwarded-Proto": "https", ...(cookie ? { Cookie: cookie } : {}), ...headers },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   return {
@@ -24,6 +24,7 @@ describeApi("canonical Mission source convergence", () => {
   const pool = new pg.Pool({ connectionString: DATABASE_URL });
   let cookie = "";
   let userId = 0;
+  let uiMissionId = 0;
 
   afterAll(async () => {
     if (cookie) await request("DELETE", "/api/account", { confirmation: "DELETE MY ACCOUNT" }, cookie);
@@ -91,6 +92,159 @@ describeApi("canonical Mission source convergence", () => {
     expect(receipts.rows.every((row) => row.metadata.source === "inbox")).toBe(true);
   });
 
+  it("keeps UI, onboarding, and automatic To-Do origins distinct while sharing canonical receipts", async () => {
+    const uiMutationId = `source-ui-${stamp}`;
+    const uiPayload = { userId, title: "Create from the Mission UI", description: "Source convergence proof", category: "general", completed: false };
+    const uiCreated = await request("POST", "/api/quests", uiPayload, cookie, { "x-lyfeos-mutation-id": uiMutationId });
+    const uiReplayed = await request("POST", "/api/quests", uiPayload, cookie, { "x-lyfeos-mutation-id": uiMutationId });
+    expect(uiCreated.status).toBe(201);
+    expect(uiReplayed.status).toBe(200);
+    expect(uiReplayed.data).toMatchObject({ replayed: true, quest: { id: uiCreated.data.quest.id } });
+    expect(uiCreated.data.quest.planningDecisionSource).toBe("ui");
+    uiMissionId = uiCreated.data.quest.id;
+
+    const onboardingPayload = {
+      userId,
+      title: "Onboarding: Source convergence",
+      description: "One bounded synthetic onboarding Mission",
+      category: "onboarding",
+      completed: false,
+      experienceReward: 10,
+    };
+    const onboardingCreated = await request("POST", "/api/quests", onboardingPayload, cookie);
+    const onboardingDuplicate = await request("POST", "/api/quests", onboardingPayload, cookie);
+    expect(onboardingCreated.status).toBe(201);
+    expect(onboardingDuplicate.status).toBe(200);
+    expect(onboardingDuplicate.data).toMatchObject({ duplicate: true, quest: { id: onboardingCreated.data.quest.id } });
+    expect(onboardingCreated.data.quest.planningDecisionSource).toBe("onboarding");
+
+    const todoTitle = `Automatic captured idea ${stamp}`;
+    const oldDate = "2000-01-02";
+    const savedLog = await request("POST", `/api/users/${userId}/daily-logs`, { date: oldDate, todoIdeas: todoTitle }, cookie);
+    expect(savedLog.status).toBe(200);
+    const firstList = await request("GET", `/api/users/${userId}/quests?tz=UTC`, undefined, cookie);
+    const secondList = await request("GET", `/api/users/${userId}/quests?tz=UTC`, undefined, cookie);
+    expect(firstList.status).toBe(200);
+    expect(secondList.status).toBe(200);
+    const todoMissions = secondList.data.quests.filter((quest: any) => quest.title === todoTitle);
+    expect(todoMissions).toHaveLength(1);
+    expect(todoMissions[0]).toMatchObject({ category: "todo", planningDecisionSource: "todo", completed: false });
+
+    const expected = [
+      { id: uiCreated.data.quest.id, source: "ui" },
+      { id: onboardingCreated.data.quest.id, source: "onboarding" },
+      { id: todoMissions[0].id, source: "todo" },
+    ];
+    const receipts = await pool.query(
+      `SELECT ("metadata"->>'questId')::int AS "quest_id", "metadata"->>'source' AS "source"
+       FROM "user_activity_events"
+       WHERE "user_id" = $1 AND "event_type" = 'mission_created' AND ("metadata"->>'questId')::int = ANY($2::int[])
+       ORDER BY ("metadata"->>'questId')::int`,
+      [userId, expected.map((entry) => entry.id)],
+    );
+    expect(receipts.rows).toEqual(expected
+      .map((entry) => ({ quest_id: entry.id, source: entry.source }))
+      .sort((left, right) => left.quest_id - right.quest_id));
+  });
+
+  it("routes an approved AI Mission and a replayed automation follow-up through the same authority", async () => {
+    const [{ db }, schema] = await Promise.all([import("../server/db"), import("../shared/schema")]);
+    const [actionRecord] = await db.insert(schema.aiActionRecords).values({
+      userId,
+      toolName: "create_mission",
+      risk: "medium",
+      state: "pending_approval",
+      inputSummary: { fields: ["category", "description", "title"] },
+      planningContextSnapshot: {},
+    }).returning();
+    const aiTitle = `Approved AI Mission ${stamp}`;
+    const [pending] = await db.insert(schema.aiPendingActions).values({
+      userId,
+      actionRecordId: actionRecord.id,
+      toolName: "create_mission",
+      payload: { title: aiTitle, description: "Explicitly approved source convergence proof", category: "general" },
+      expiresAt: new Date(Date.now() + 60_000),
+    }).returning();
+    const approved = await request("POST", `/api/ai-actions/${pending.id}/approve`, undefined, cookie);
+    const duplicateApproval = await request("POST", `/api/ai-actions/${pending.id}/approve`, undefined, cookie);
+    expect(approved.status).toBe(200);
+    expect(approved.data.state).toBe("succeeded");
+    expect(duplicateApproval.status).toBe(409);
+    expect(duplicateApproval.data.state).toBe("unavailable");
+
+    const aiMission = await pool.query(
+      `SELECT "id", "planning_decision_source" FROM "quests" WHERE "user_id" = $1 AND "lifecycle_key" = $2`,
+      [userId, `ai-action:${actionRecord.id}:create-mission`],
+    );
+    expect(aiMission.rows).toHaveLength(1);
+    expect(aiMission.rows[0].planning_decision_source).toBe("ai");
+
+    const followUpTitle = `Automation follow-up ${stamp}`;
+    const definition = {
+      version: 1,
+      trigger: { type: "manual" },
+      conditions: {},
+      actions: [{ type: "schedule_follow_up", title: followUpTitle, description: "Replay-safe source convergence proof", category: "general", delayDays: 1 }],
+      stopOnError: true,
+    };
+    const automation = await request("POST", "/api/automations", { name: `Source convergence ${stamp}`, description: "Provider-independent qualification", definition }, cookie);
+    expect(automation.status).toBe(201);
+    const automationId = automation.data.automation.id;
+    expect((await request("PATCH", `/api/automations/${automationId}`, { enabled: true }, cookie)).status).toBe(200);
+    const mutationId = crypto.randomUUID();
+    const [firstRun, replayedRun] = await Promise.all([
+      request("POST", `/api/automations/${automationId}/run`, { questId: uiMissionId, mutationId }, cookie),
+      request("POST", `/api/automations/${automationId}/run`, { questId: uiMissionId, mutationId }, cookie),
+    ]);
+    expect(firstRun.status).toBe(200);
+    expect(replayedRun.status).toBe(200);
+    expect([firstRun.data.result.duplicate, replayedRun.data.result.duplicate].filter(Boolean)).toHaveLength(1);
+    const automationMissions = await pool.query(
+      `SELECT "id", "planning_decision_source" FROM "quests" WHERE "user_id" = $1 AND "title" = $2`,
+      [userId, followUpTitle],
+    );
+    expect(automationMissions.rows).toHaveLength(1);
+    expect(automationMissions.rows[0].planning_decision_source).toBe("automation");
+
+    const sourceReceipts = await pool.query(
+      `SELECT "metadata"->>'source' AS "source", count(*)::int AS "count"
+       FROM "user_activity_events"
+       WHERE "user_id" = $1 AND "event_type" = 'mission_created'
+         AND ("metadata"->>'questId')::int = ANY($2::int[])
+       GROUP BY "metadata"->>'source' ORDER BY "source"`,
+      [userId, [aiMission.rows[0].id, automationMissions.rows[0].id]],
+    );
+    expect(sourceReceipts.rows).toEqual([{ source: "ai", count: 1 }, { source: "automation", count: 1 }]);
+  });
+
+  it("creates one transaction-bound Thread starter set with explicit system provenance", async () => {
+    const profile = await request("PATCH", "/api/profile", { completedOnboardingMissions: [0, 1, 2, 3, 4, 5, 6, 7] }, cookie);
+    expect(profile.status).toBe(200);
+    const initialized = await request("POST", "/api/transformation-thread/initialize", {}, cookie);
+    expect([200, 201]).toContain(initialized.status);
+    const threadId = initialized.data.thread.id;
+    const activated = await request("POST", `/api/transformation-thread/${threadId}/activate`, undefined, cookie);
+    const replayedActivation = await request("POST", `/api/transformation-thread/${threadId}/activate`, undefined, cookie);
+    expect(activated.status).toBe(200);
+    expect(activated.data.createdMissions).toBeGreaterThan(0);
+    expect(replayedActivation.status).toBe(200);
+    expect(replayedActivation.data.createdMissions).toBe(0);
+
+    const starters = await pool.query(
+      `SELECT "id", "planning_decision_source" FROM "quests" WHERE "user_id" = $1 AND "transformation_thread_id" = $2 ORDER BY "id"`,
+      [userId, threadId],
+    );
+    expect(starters.rows).toHaveLength(activated.data.createdMissions);
+    expect(starters.rows.every((row) => row.planning_decision_source === "system")).toBe(true);
+    const receipts = await pool.query(
+      `SELECT count(*)::int AS "count" FROM "user_activity_events"
+       WHERE "user_id" = $1 AND "event_type" = 'mission_created' AND "metadata"->>'source' = 'system'
+         AND ("metadata"->>'questId')::int = ANY($2::int[])`,
+      [userId, starters.rows.map((row) => row.id)],
+    );
+    expect(receipts.rows[0].count).toBe(starters.rows.length);
+  });
+
   it("exports the source receipts and erases every locally owned record", async () => {
     const exported = await request("GET", "/api/account/export", undefined, cookie);
     expect(exported.status).toBe(200);
@@ -98,6 +252,12 @@ describeApi("canonical Mission source convergence", () => {
     const sourceReceipts = exported.data.data.user_activity_events.filter((event: any) => event.event_type === "mission_created" && event.metadata?.source === "inbox");
     expect(sourceMissions).toHaveLength(3);
     expect(sourceReceipts).toHaveLength(3);
+    expect(exported.data.data.quests.some((quest: any) => quest.planning_decision_source === "ui")).toBe(true);
+    expect(exported.data.data.quests.some((quest: any) => quest.planning_decision_source === "onboarding")).toBe(true);
+    expect(exported.data.data.quests.some((quest: any) => quest.planning_decision_source === "todo")).toBe(true);
+    expect(exported.data.data.quests.some((quest: any) => quest.planning_decision_source === "ai")).toBe(true);
+    expect(exported.data.data.quests.some((quest: any) => quest.planning_decision_source === "automation")).toBe(true);
+    expect(exported.data.data.quests.some((quest: any) => quest.planning_decision_source === "system")).toBe(true);
 
     const deleted = await request("DELETE", "/api/account", { confirmation: "DELETE MY ACCOUNT" }, cookie);
     expect(deleted.status).toBe(200);

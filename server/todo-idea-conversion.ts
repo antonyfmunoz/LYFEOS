@@ -45,7 +45,7 @@ export async function convertTodoIdeasToMissions(input: {
         experienceReward: 50,
         createdAt: input.createdAtForLog(log.date),
         lifecycleKey: `todo-idea:${log.id}:${lineIndex}`,
-        source: "system",
+        source: "todo",
       });
       existingTitles.add(normalizedTitle);
       if (result.replayed) duplicatesSkipped++;

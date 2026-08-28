@@ -16,7 +16,7 @@ import { calibrateMissionDifficulty } from "./transformation-intelligence";
 import { hashUMHPayload } from "./umh/crypto";
 
 /** The sole completion/reopening path for a LyfeOS mission. */
-export type MissionLifecycleSource = "ui" | "ai" | "onboarding" | "umh" | "system" | "google" | "inbox" | "automation";
+export type MissionLifecycleSource = "ui" | "ai" | "onboarding" | "todo" | "umh" | "system" | "google" | "inbox" | "automation";
 
 export class MissionLifecycleError extends Error {
   constructor(readonly status: number, message: string, readonly currentQuest?: Quest) {

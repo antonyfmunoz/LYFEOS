@@ -143,8 +143,10 @@ describe("mission lifecycle wiring", () => {
   it("uses one lifecycle-backed conversion path for captured todo ideas", () => {
     const profile = readSource("server/routes/profile.ts");
     const quests = readSource("server/routes/quests.ts");
+    const conversion = readSource("server/todo-idea-conversion.ts");
     expect(profile).toContain("convertTodoIdeasToMissions");
     expect(quests).toContain("convertTodoIdeasToMissions");
+    expect(conversion).toContain('source: "todo"');
     expect(profile).not.toContain("Auto-created from To-Do Ideas");
     expect(quests).not.toContain("Auto-created from To-Do Ideas");
   });
