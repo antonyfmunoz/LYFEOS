@@ -15,11 +15,10 @@ describe("Clerk server bootstrap", () => {
     expect(source).toContain("secretKey: process.env.CLERK_SECRET_KEY");
   });
 
-  it("does not let an unavailable Clerk principal terminate local session authentication", () => {
+  it("keeps fake-provider middleware out of the explicitly isolated local-session environment", () => {
     const source = fs.readFileSync(path.resolve("server/routes/auth.ts"), "utf8");
-    expect(source).toContain("try {");
-    expect(source).toContain("({ userId } = getAuth(req));");
-    expect(source).toContain("continuing with verified local session authentication");
-    expect(source).toContain("return next();");
+    expect(source).toContain('if (process.env.LYFEOS_TEST_ENV !== "isolated")');
+    expect(source).toContain("app.use(clerkMiddleware({");
+    expect(source).toContain("app.use(bindAuthenticatedPrincipal);");
   });
 });

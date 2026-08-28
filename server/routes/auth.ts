@@ -68,13 +68,7 @@ async function provisionLocalUser(seed: LocalUserSeed) {
 }
 
 export const bindAuthenticatedPrincipal = async (req: Request, res: Response, next: NextFunction) => {
-  let userId: string | null | undefined;
-  try {
-    ({ userId } = getAuth(req));
-  } catch (error) {
-    logger.warn("Clerk principal was unavailable; continuing with verified local session authentication.");
-    return next();
-  }
+  const { userId } = getAuth(req);
   if (!userId) return next();
   let user = await storage.getUserByClerkId(userId);
   if (!user) {
@@ -136,11 +130,13 @@ function verifyClerkWebhook(req: Request): { ok: true; body: Record<string, any>
 }
 
 export function registerAuthRoutes(app: Express): void {
-  app.use(clerkMiddleware({
-    publishableKey: process.env.VITE_CLERK_PUBLISHABLE_KEY,
-    secretKey: process.env.CLERK_SECRET_KEY,
-  }));
-  app.use(bindAuthenticatedPrincipal);
+  if (process.env.LYFEOS_TEST_ENV !== "isolated") {
+    app.use(clerkMiddleware({
+      publishableKey: process.env.VITE_CLERK_PUBLISHABLE_KEY,
+      secretKey: process.env.CLERK_SECRET_KEY,
+    }));
+    app.use(bindAuthenticatedPrincipal);
+  }
 
   const bindSession = (req: Request, user: { id: number; displayName: string | null }) => {
     req.session.userId = user.id;
