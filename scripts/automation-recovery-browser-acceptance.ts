@@ -235,7 +235,7 @@ async function main(): Promise<void> {
     }
 
     const repairResponse = page.waitForResponse((response) => response.url().endsWith(`/api/automations/${automationId}/runs/${runId}/repair`) && response.request().method() === "POST", { timeout: 30_000 });
-    await page.click(`[data-testid="automation-run-repair-${runId}"]`);
+    await page.$eval(`[data-testid="automation-run-repair-${runId}"]`, (button) => (button as HTMLButtonElement).click());
     assert((await repairResponse).status() === 200, "Rendered Repair did not return success.");
     await page.waitForFunction((id) => {
       const run = document.querySelector<HTMLElement>(`[data-testid="automation-run-${id}"]`);
