@@ -718,12 +718,30 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
   // Load chat conversations when user logs in
   useEffect(() => {
     if (isAuthenticated && user) {
-      const fetchConversations = async () => {
+      let activeController = new AbortController();
+
+      const resetChatHistoryState = () => {
+        const now = new Date();
+        const emptySession: ChatSession = {
+          id: `chat-${now.getTime()}`,
+          title: "New Chat",
+          messages: [],
+          createdAt: now,
+          updatedAt: now,
+        };
+        setChatSessions([emptySession]);
+        setSessionToDbIdMap({});
+        setActiveChatSessionId(emptySession.id);
+        setMessages([]);
+      };
+
+      const fetchConversations = async (signal: AbortSignal) => {
         try {
           console.log("Fetching conversations for user:", user.id);
-          const response = await fetch('/api/conversations', { credentials: "include" });
+          const response = await fetch('/api/conversations', { credentials: "include", signal });
           if (response.ok) {
             const conversations = await response.json();
+            if (signal.aborted) return;
             if (Array.isArray(conversations) && conversations.length > 0) {
               console.log("Conversations loaded successfully:", conversations.length, "conversations");
               
@@ -733,7 +751,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
               
               for (const conv of conversations) {
                 // Fetch messages for each conversation
-                const messagesResponse = await fetch(`/api/conversations/${conv.id}`, { credentials: "include" });
+                const messagesResponse = await fetch(`/api/conversations/${conv.id}`, { credentials: "include", signal });
                 let chatMessages: AIMessage[] = [];
                 
                 if (messagesResponse.ok) {
@@ -759,6 +777,8 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
                 
                 newSessionToDbIdMap[sessionId] = conv.id;
               }
+
+              if (signal.aborted) return;
               
               setChatSessions(transformedSessions);
               setSessionToDbIdMap(newSessionToDbIdMap);
@@ -775,11 +795,33 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
             console.error("Failed to fetch conversations, status:", response.status);
           }
         } catch (error) {
+          if (error instanceof DOMException && error.name === "AbortError") return;
           console.error("Failed to fetch conversations:", error);
         }
       };
-      
-      fetchConversations();
+
+      const handleChatErasureStart = () => {
+        activeController.abort();
+      };
+      const handleChatErasureComplete = () => {
+        resetChatHistoryState();
+      };
+      const handleChatErasureFailed = () => {
+        activeController = new AbortController();
+        void fetchConversations(activeController.signal);
+      };
+
+      window.addEventListener("lyfeos:ai-memory-chat-erasure-start", handleChatErasureStart);
+      window.addEventListener("lyfeos:ai-memory-chat-erasure-complete", handleChatErasureComplete);
+      window.addEventListener("lyfeos:ai-memory-chat-erasure-failed", handleChatErasureFailed);
+      void fetchConversations(activeController.signal);
+
+      return () => {
+        activeController.abort();
+        window.removeEventListener("lyfeos:ai-memory-chat-erasure-start", handleChatErasureStart);
+        window.removeEventListener("lyfeos:ai-memory-chat-erasure-complete", handleChatErasureComplete);
+        window.removeEventListener("lyfeos:ai-memory-chat-erasure-failed", handleChatErasureFailed);
+      };
     }
   }, [isAuthenticated, user]);
   

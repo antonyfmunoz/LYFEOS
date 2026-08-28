@@ -924,10 +924,27 @@ export default function ProfilePage() {
   });
 
   const clearAiMemoryMutation = useMutation({
-    mutationFn: (scope: "chat-history" | "assistant-profile" | "context-sources" | "action-history" | "all-ai-memory") => apiRequest("/api/account/ai-memory", {
-      method: "DELETE",
-      body: JSON.stringify({ scope }),
-    }),
+    mutationFn: async (scope: "chat-history" | "assistant-profile" | "context-sources" | "action-history" | "all-ai-memory") => {
+      const clearsChatHistory = scope === "chat-history" || scope === "all-ai-memory";
+      if (clearsChatHistory) {
+        window.dispatchEvent(new Event("lyfeos:ai-memory-chat-erasure-start"));
+      }
+      try {
+        const result = await apiRequest("/api/account/ai-memory", {
+          method: "DELETE",
+          body: JSON.stringify({ scope }),
+        });
+        if (clearsChatHistory) {
+          window.dispatchEvent(new Event("lyfeos:ai-memory-chat-erasure-complete"));
+        }
+        return result;
+      } catch (error) {
+        if (clearsChatHistory) {
+          window.dispatchEvent(new Event("lyfeos:ai-memory-chat-erasure-failed"));
+        }
+        throw error;
+      }
+    },
     onSuccess: (result: { retained?: { activeActionReceipts?: number } }, scope) => {
       queryClient.invalidateQueries({ queryKey: ["/api/account/ai-memory"] });
       queryClient.invalidateQueries({ queryKey: ["/api/ai/context-receipts"] });

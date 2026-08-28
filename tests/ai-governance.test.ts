@@ -77,6 +77,7 @@ describe("AI and memory governance", () => {
 
   it("requires disposable rendered proof for retention, erasure, truthful active receipts, and cleanup", () => {
     const profilePage = readSource("client/src/pages/ProfilePage.tsx");
+    const appContext = readSource("client/src/lib/context.tsx");
     const acceptance = readSource("scripts/ai-memory-browser-acceptance.ts");
     const workflow = readSource(".github/workflows/verify.yml");
     const packageJson = readSource("package.json");
@@ -84,6 +85,16 @@ describe("AI and memory governance", () => {
     expect(profilePage).toContain('data-testid="ai-memory-retention-chats"');
     expect(profilePage).toContain('data-testid="ai-memory-clear-actions"');
     expect(profilePage).toContain('aria-live="polite"');
+    expect(profilePage).toContain('new Event("lyfeos:ai-memory-chat-erasure-start")');
+    expect(profilePage).toContain('new Event("lyfeos:ai-memory-chat-erasure-complete")');
+    expect(profilePage).toContain('new Event("lyfeos:ai-memory-chat-erasure-failed")');
+    expect(appContext).toContain("let activeController = new AbortController()");
+    expect(appContext).toContain('credentials: "include", signal');
+    expect(appContext).toContain("fetchConversations(activeController.signal)");
+    expect(appContext).toContain('error.name === "AbortError"');
+    expect(appContext).toContain('window.addEventListener("lyfeos:ai-memory-chat-erasure-start"');
+    expect(appContext).toContain('window.addEventListener("lyfeos:ai-memory-chat-erasure-complete"');
+    expect(appContext).toContain('window.addEventListener("lyfeos:ai-memory-chat-erasure-failed"');
     expect(acceptance).toContain('LYFEOS_TEST_ENV === "isolated"');
     expect(acceptance).toContain('["127.0.0.1", "localhost"].includes(BASE_URL.hostname)');
     expect(acceptance).toContain('"lyfeos.ai-memory-browser-acceptance.v1"');
