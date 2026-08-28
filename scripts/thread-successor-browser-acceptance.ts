@@ -93,6 +93,24 @@ function cookieParts(cookie: string): { name: string; value: string } {
   return { name: cookie.slice(0, separator), value: cookie.slice(separator + 1) };
 }
 
+async function dismissBlockingTutorial(page: Page): Promise<boolean> {
+  const selector = 'button[aria-label="Skip this tutorial"]';
+  const control = await page.$(selector);
+  if (!control) return false;
+  const visible = await control.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return style.display !== "none" && style.visibility !== "hidden" && element.getClientRects().length > 0;
+  });
+  if (!visible) return false;
+  await page.evaluate((tutorialSelector) => {
+    const button = document.querySelector<HTMLButtonElement>(tutorialSelector);
+    if (!button) throw new Error("Tutorial skip control disappeared before dismissal.");
+    button.click();
+  }, selector);
+  await page.waitForSelector(selector, { hidden: true, timeout: 10_000 });
+  return true;
+}
+
 async function auditRenderedPage(page: Page) {
   return page.evaluate(() => {
     const ids = new Map<string, number>();
@@ -232,6 +250,7 @@ async function runViewport(browser: Browser, pool: pg.Pool, viewport: { name: st
     await page.goto(new URL("/dashboard", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
     await page.waitForSelector('[data-testid="transformation-thread-initialization"]', { visible: true, timeout: 60_000 });
     await page.waitForSelector('[data-testid="next-capability-focus"]', { visible: true, timeout: 30_000 });
+    await dismissBlockingTutorial(page);
     stage = "wait for the durable capability option";
     await page.waitForFunction((capabilityId) => [...(document.querySelector<HTMLSelectElement>('[data-testid="next-capability-focus"]')?.options || [])]
       .some((option) => option.value === String(capabilityId)), { timeout: 30_000 }, first.capabilityId);
@@ -310,7 +329,8 @@ async function runViewport(browser: Browser, pool: pg.Pool, viewport: { name: st
         (SELECT count(*)::int FROM quests WHERE user_id = $1) AS missions,
         (SELECT count(*)::int FROM mission_contracts WHERE user_id = $1) AS contracts,
         (SELECT count(*)::int FROM mission_evidence WHERE user_id = $1) AS evidence,
-        (SELECT count(*)::int FROM mission_reviews WHERE user_id = $1) AS reviews`,
+        (SELECT count(*)::int FROM mission_reviews WHERE user_id = $1) AS reviews,
+        (SELECT count(*)::int FROM widget_states WHERE user_id = $1) AS widget_states`,
       [userId],
     );
     assert(Object.values(residue.rows[0]).every((count) => count === 0), `Account erasure left successor-focus residue: ${JSON.stringify(residue.rows[0])}.`);
