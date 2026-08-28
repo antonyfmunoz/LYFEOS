@@ -82,6 +82,9 @@ describe("mission lifecycle wiring", () => {
     expect(experience).toContain("activity.history?.points");
     expect(experience).toContain("Daily net activity XP");
     expect(experience).toContain("Current net sources");
+    expect(experience.indexOf("{activityHistory.length > 0")).toBeLessThan(
+      experience.indexOf("{isLoading ? (")
+    );
     expect(experience).not.toContain("data?.xpTrend");
     expect(analytics).toContain("not external certification or causal proof");
   });

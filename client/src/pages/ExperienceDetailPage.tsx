@@ -172,72 +172,72 @@ export default function ExperienceDetailPage() {
         </div>
       </div>
 
+      {activityHistory.length > 0 && (
+        <div className="glassmorphic rounded-2xl p-6 mb-8 border border-primary/30">
+          <h2 className="font-orbitron text-lg mb-4 text-primary flex items-center gap-2">
+            <TrendingUp className="h-5 w-5" />
+            Activity ledger history
+            <span className="text-xs text-muted-foreground font-mono ml-2">(last {days} days)</span>
+          </h2>
+          <p className="mb-4 text-xs leading-relaxed text-muted-foreground">Daily bars show XP earned minus XP reversed on that date. The line includes the opening balance and reconciles to your current activity total. Reviewed capability XP is intentionally separate.</p>
+          <ResponsiveContainer width="100%" height={240}>
+            <ComposedChart data={activityHistory} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+              <XAxis
+                dataKey="date"
+                tick={{ fill: "#9ca3af", fontSize: 11 }}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={formatShortDate}
+              />
+              <YAxis
+                tick={{ fill: "#9ca3af", fontSize: 11 }}
+                tickLine={false}
+                axisLine={false}
+                allowDecimals={false}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "rgba(0,0,0,0.9)",
+                  border: "1px solid hsl(var(--primary) / 0.3)",
+                  borderRadius: 8,
+                }}
+                labelStyle={{ color: "#9ca3af", fontSize: 12 }}
+                labelFormatter={formatShortDate}
+              />
+              <ReferenceLine y={0} stroke="rgba(255,255,255,0.2)" />
+              <Bar dataKey="net" name="Daily net activity XP" fill="hsl(var(--primary) / 0.35)" radius={[3, 3, 0, 0]} />
+              <Area
+                type="stepAfter"
+                dataKey="cumulative"
+                name="Cumulative activity XP"
+                stroke="hsl(var(--primary))"
+                strokeWidth={2}
+                fill="transparent"
+                fillOpacity={0}
+                dot={false}
+              />
+            </ComposedChart>
+          </ResponsiveContainer>
+          <details className="mt-3 rounded-lg border border-muted/20 bg-background/20 p-3">
+            <summary className="cursor-pointer text-xs text-muted-foreground">View exact ledger values</summary>
+            <div className="mt-3 overflow-x-auto">
+              <table className="w-full min-w-[32rem] text-left text-xs" data-testid="activity-ledger-history">
+                <caption className="sr-only">Daily activity XP ledger history</caption>
+                <thead className="text-muted-foreground"><tr><th className="py-1 pr-3">Date</th><th className="py-1 pr-3">Earned</th><th className="py-1 pr-3">Reversed</th><th className="py-1 pr-3">Net</th><th className="py-1">Cumulative</th></tr></thead>
+                <tbody>{activityHistory.map((point: any) => <tr key={point.date} className="border-t border-muted/10"><td className="py-1 pr-3">{point.date}</td><td className="py-1 pr-3">+{point.earned}</td><td className="py-1 pr-3">-{point.reversed}</td><td className="py-1 pr-3">{point.net > 0 ? "+" : ""}{point.net}</td><td className="py-1">{point.cumulative}</td></tr>)}</tbody>
+              </table>
+            </div>
+          </details>
+        </div>
+      )}
+
       {isLoading ? (
         <div className="flex items-center justify-center py-16">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       ) : (
         <>
-          {activityHistory.length > 0 && (
-            <div className="glassmorphic rounded-2xl p-6 mb-8 border border-primary/30">
-              <h2 className="font-orbitron text-lg mb-4 text-primary flex items-center gap-2">
-                <TrendingUp className="h-5 w-5" />
-                Activity ledger history
-                <span className="text-xs text-muted-foreground font-mono ml-2">(last {days} days)</span>
-              </h2>
-              <p className="mb-4 text-xs leading-relaxed text-muted-foreground">Daily bars show XP earned minus XP reversed on that date. The line includes the opening balance and reconciles to your current activity total. Reviewed capability XP is intentionally separate.</p>
-              <ResponsiveContainer width="100%" height={240}>
-                <ComposedChart data={activityHistory} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                  <XAxis
-                    dataKey="date"
-                    tick={{ fill: "#9ca3af", fontSize: 11 }}
-                    tickLine={false}
-                    axisLine={false}
-                    tickFormatter={formatShortDate}
-                  />
-                  <YAxis
-                    tick={{ fill: "#9ca3af", fontSize: 11 }}
-                    tickLine={false}
-                    axisLine={false}
-                    allowDecimals={false}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "rgba(0,0,0,0.9)",
-                      border: "1px solid hsl(var(--primary) / 0.3)",
-                      borderRadius: 8,
-                    }}
-                    labelStyle={{ color: "#9ca3af", fontSize: 12 }}
-                    labelFormatter={formatShortDate}
-                  />
-                  <ReferenceLine y={0} stroke="rgba(255,255,255,0.2)" />
-                  <Bar dataKey="net" name="Daily net activity XP" fill="hsl(var(--primary) / 0.35)" radius={[3, 3, 0, 0]} />
-                  <Area
-                    type="stepAfter"
-                    dataKey="cumulative"
-                    name="Cumulative activity XP"
-                    stroke="hsl(var(--primary))"
-                    strokeWidth={2}
-                    fill="transparent"
-                    fillOpacity={0}
-                    dot={false}
-                  />
-                </ComposedChart>
-              </ResponsiveContainer>
-              <details className="mt-3 rounded-lg border border-muted/20 bg-background/20 p-3">
-                <summary className="cursor-pointer text-xs text-muted-foreground">View exact ledger values</summary>
-                <div className="mt-3 overflow-x-auto">
-                  <table className="w-full min-w-[32rem] text-left text-xs" data-testid="activity-ledger-history">
-                    <caption className="sr-only">Daily activity XP ledger history</caption>
-                    <thead className="text-muted-foreground"><tr><th className="py-1 pr-3">Date</th><th className="py-1 pr-3">Earned</th><th className="py-1 pr-3">Reversed</th><th className="py-1 pr-3">Net</th><th className="py-1">Cumulative</th></tr></thead>
-                    <tbody>{activityHistory.map((point: any) => <tr key={point.date} className="border-t border-muted/10"><td className="py-1 pr-3">{point.date}</td><td className="py-1 pr-3">+{point.earned}</td><td className="py-1 pr-3">-{point.reversed}</td><td className="py-1 pr-3">{point.net > 0 ? "+" : ""}{point.net}</td><td className="py-1">{point.cumulative}</td></tr>)}</tbody>
-                  </table>
-                </div>
-              </details>
-            </div>
-          )}
-
           {data?.topMissions?.length > 0 && (
             <div className="glassmorphic rounded-2xl p-6 mb-8 border border-primary/30">
               <h2 className="font-orbitron text-lg mb-4 text-primary flex items-center gap-2">
