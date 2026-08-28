@@ -41,6 +41,7 @@ const BASE_URL = new URL(process.env.LYFEOS_ACCEPTANCE_BASE_URL || "https://lyfe
 const EMAIL = process.env.LYFEOS_ACCEPTANCE_EMAIL?.trim() || "";
 const PASSWORD = process.env.LYFEOS_ACCEPTANCE_PASSWORD || "";
 const SOURCE = process.env.LYFEOS_ACCEPTANCE_SOURCE?.trim() || "";
+const HARNESS_SOURCE = process.env.LYFEOS_ACCEPTANCE_HARNESS_SOURCE?.trim() || "";
 const OUTPUT_DIR = path.resolve(process.env.LYFEOS_ACCEPTANCE_OUTPUT_DIR || path.join(os.tmpdir(), "lyfeos-browser-acceptance"));
 const OUTPUT_FILE = path.join(OUTPUT_DIR, "core-loop-report.json");
 const RUN_ID = randomUUID();
@@ -436,6 +437,7 @@ async function writeReport(): Promise<void> {
     generatedAt: new Date().toISOString(),
     baseUrl: BASE_URL.origin,
     source: SOURCE,
+    harnessSource: HARNESS_SOURCE,
     runId: RUN_ID,
     syntheticMissionId: missionId,
     progression: {

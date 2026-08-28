@@ -40,6 +40,7 @@ type AcceptanceReport = {
   generatedAt: string;
   baseUrl: string;
   source: string | null;
+  harnessSource: string | null;
   authenticatedRequested: boolean;
   authenticatedExecuted: boolean;
   thresholds: typeof THRESHOLDS;
@@ -56,6 +57,7 @@ const REQUIRE_AUTHENTICATED = process.env.LYFEOS_ACCEPTANCE_REQUIRE_AUTHENTICATE
 const EMAIL = process.env.LYFEOS_ACCEPTANCE_EMAIL?.trim() || "";
 const PASSWORD = process.env.LYFEOS_ACCEPTANCE_PASSWORD || "";
 const SOURCE = process.env.LYFEOS_ACCEPTANCE_SOURCE?.trim() || null;
+const HARNESS_SOURCE = process.env.LYFEOS_ACCEPTANCE_HARNESS_SOURCE?.trim() || null;
 const OUTPUT_DIR = path.resolve(process.env.LYFEOS_ACCEPTANCE_OUTPUT_DIR || path.join(os.tmpdir(), "lyfeos-browser-acceptance"));
 const OUTPUT_FILE = path.join(OUTPUT_DIR, "report.json");
 
@@ -250,6 +252,7 @@ async function writeFatalEvidence(message: string): Promise<void> {
     generatedAt: new Date().toISOString(),
     baseUrl: BASE_URL.origin,
     source: SOURCE,
+    harnessSource: HARNESS_SOURCE,
     authenticatedRequested: REQUIRE_AUTHENTICATED,
     message,
   } as const;
@@ -631,6 +634,7 @@ async function main(): Promise<void> {
     generatedAt: new Date().toISOString(),
     baseUrl: BASE_URL.origin,
     source: SOURCE,
+    harnessSource: HARNESS_SOURCE,
     authenticatedRequested: REQUIRE_AUTHENTICATED,
     authenticatedExecuted,
     thresholds: THRESHOLDS,

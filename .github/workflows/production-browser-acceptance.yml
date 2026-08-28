@@ -48,7 +48,9 @@ jobs:
           echo "source=$reported" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v7
         with:
-          ref: ${{ steps.release.outputs.source }}
+          # Run the reviewed harness from the workflow revision. Production
+          # identity stays pinned independently through /api/release below.
+          ref: ${{ github.sha }}
       - uses: actions/setup-node@v7
         with:
           node-version: 20
@@ -60,15 +62,20 @@ jobs:
       - run: npm ci
       - name: Verify deployed immutable source
         shell: bash
+        env:
+          EXPECTED_SOURCE: ${{ steps.release.outputs.source }}
+          EXPECTED_HARNESS_SOURCE: ${{ github.sha }}
         run: |
-          expected="$(git rev-parse HEAD)"
+          harness="$(git rev-parse HEAD)"
           reported="$(curl --fail --silent --show-error https://lyfeos.net/api/release | node -e 'let body=""; process.stdin.on("data", chunk => body += chunk); process.stdin.on("end", () => { const value=JSON.parse(body); process.stdout.write(value.sourceRevision || ""); });')"
           test -n "$reported"
-          test "$reported" = "$expected"
+          test "$harness" = "$EXPECTED_HARNESS_SOURCE"
+          test "$reported" = "$EXPECTED_SOURCE"
       - name: Run production browser acceptance
         env:
           LYFEOS_CHROMIUM_PATH: ${{ steps.chrome.outputs.chrome-path }}
           LYFEOS_ACCEPTANCE_SOURCE: ${{ steps.release.outputs.source }}
+          LYFEOS_ACCEPTANCE_HARNESS_SOURCE: ${{ github.sha }}
           LYFEOS_ACCEPTANCE_OUTPUT_DIR: ${{ runner.temp }}/lyfeos-browser-acceptance
         run: npm run acceptance:browser
       - name: Run truthful Mission core-loop acceptance
@@ -76,6 +83,7 @@ jobs:
         env:
           LYFEOS_CHROMIUM_PATH: ${{ steps.chrome.outputs.chrome-path }}
           LYFEOS_ACCEPTANCE_SOURCE: ${{ steps.release.outputs.source }}
+          LYFEOS_ACCEPTANCE_HARNESS_SOURCE: ${{ github.sha }}
           LYFEOS_ACCEPTANCE_OUTPUT_DIR: ${{ runner.temp }}/lyfeos-browser-acceptance
         run: npm run acceptance:core-loop
       - name: Upload acceptance evidence
