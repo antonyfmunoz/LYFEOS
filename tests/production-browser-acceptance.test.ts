@@ -152,6 +152,8 @@ describe("production browser acceptance custody", () => {
     expect(coreLoopScript).toContain("const tutorialDismissed = await dismissBlockingTutorial(page)");
     expect(coreLoopScript).toContain('activateRenderedControl(page, \'[data-tour="create-mission"]\')');
     expect(coreLoopScript).toContain('page.click(\'[data-testid="mission-create-submit"]\')');
+    expect(coreLoopScript).toContain('document.querySelector(\'[data-testid="proof-plan-edit"]\')');
+    expect(coreLoopScript).toContain('activateRenderedControl(page, \'[data-testid="proof-plan-edit"]\')');
     expect(coreLoopScript).toContain('page.click(\'[data-testid="proof-plan-save"]\')');
     expect(coreLoopScript).toContain('page.click(\'[data-testid="mission-evidence-add"]\')');
     expect(coreLoopScript).toContain("progressionMatches(progressionBefore, progressionAfterEvidence)");

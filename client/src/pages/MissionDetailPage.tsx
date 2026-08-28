@@ -168,6 +168,7 @@ export default function MissionDetailPage() {
   const [reviewMode, setReviewMode] = useState<"self" | "human">("self");
   const [stopCondition, setStopCondition] = useState("");
   const [escalationPath, setEscalationPath] = useState("");
+  const [isEditingContract, setIsEditingContract] = useState(false);
   const [evidenceSummary, setEvidenceSummary] = useState("");
   const [evidenceSourceType, setEvidenceSourceType] = useState<"self_report" | "artifact" | "observation" | "provider">("self_report");
   const [evidenceSourceReference, setEvidenceSourceReference] = useState("");
@@ -213,6 +214,19 @@ export default function MissionDetailPage() {
     setContextConstraints(context.constraints.join("\n"));
     setContextReason("");
   }, [contractQuery.data?.planningDecision?.contextRevision, questId]);
+  useEffect(() => {
+    const contract = contractQuery.data?.contract;
+    if (!contract || isEditingContract) return;
+    setPurpose(contract.purpose);
+    setExpectedOutput(contract.expectedOutput);
+    setMethodStepsText(contract.methodSteps.join("\n"));
+    setToolRequirementsText(contract.toolRequirements.join("\n"));
+    setEvidenceRequirement(contract.requiredEvidence[0] || "");
+    setRiskLevel(contract.riskLevel);
+    setReviewMode(contract.reviewMode);
+    setStopCondition(contract.stopConditions[0] || "");
+    setEscalationPath(contract.escalationPath || "");
+  }, [contractQuery.data?.contract?.contractRevision, isEditingContract, questId]);
   const amendPlanningContext = useMutation({
     mutationFn: () => apiRequest(`/api/quests/${questId}/planning-context/amendments`, {
       method: "POST",
@@ -246,7 +260,7 @@ export default function MissionDetailPage() {
         state: "accepted",
       }),
     }),
-    onSuccess: (result: MissionContractBundle) => { refreshContract(); toast({ title: "Proof plan saved", description: result.preflightRequirement?.required ? "High-risk plans remain draft until you record and accept a consequence preflight." : "This mission now has a purpose and declared evidence." }); },
+    onSuccess: (result: MissionContractBundle) => { setIsEditingContract(false); refreshContract(); toast({ title: "Proof plan saved", description: result.preflightRequirement?.required ? "High-risk plans remain draft until you record and accept a consequence preflight." : "This mission now has a purpose and declared evidence." }); },
   });
   const recordConsequencePreflight = useMutation({
     mutationFn: () => apiRequest(`/api/quests/${questId}/contract/preflights`, {
@@ -599,7 +613,7 @@ export default function MissionDetailPage() {
                   <Zap className="h-4 w-4 text-primary mr-2" />
                   <span className="text-sm">Energy Cost</span>
                 </div>
-                <span className="text-primary font-mono">-5</span>
+                <span className="text-primary font-mono">-{mission.energyCost || 0}</span>
               </div>
               
               <div className="flex justify-between items-center">
@@ -607,7 +621,7 @@ export default function MissionDetailPage() {
                   <Award className="h-4 w-4 text-primary mr-2" />
                   <span className="text-sm">XP Reward</span>
                 </div>
-                <span className="text-primary font-mono">+15</span>
+                <span className="text-primary font-mono">+{Math.floor((mission.experienceReward || 0) * (({ D: 1, C: 1.5, B: 2, A: 3, S: 5 } as Record<string, number>)[mission.difficulty || "D"] || 1))}</span>
               </div>
             </div>
           </div>
@@ -725,7 +739,7 @@ export default function MissionDetailPage() {
                   </div>
                 </details>
               </div>}
-              {contractQuery.isLoading ? <p className="text-sm text-muted-foreground">Loading proof plan…</p> : !contractQuery.data?.contract ? (
+              {contractQuery.isLoading ? <p className="text-sm text-muted-foreground">Loading proof plan…</p> : !contractQuery.data?.contract || isEditingContract ? (
                 <div className="grid gap-2">
                   <Input data-testid="proof-plan-purpose" aria-label="Mission purpose" value={purpose} onChange={(event) => setPurpose(event.target.value)} placeholder="Why does this mission matter?" />
                   <Input data-testid="proof-plan-output" aria-label="Expected mission output" value={expectedOutput} onChange={(event) => setExpectedOutput(event.target.value)} placeholder="What observable output will show progress?" />
@@ -745,12 +759,16 @@ export default function MissionDetailPage() {
                     <Input aria-label="Mission stop condition" value={stopCondition} onChange={(event) => setStopCondition(event.target.value)} placeholder="When should you stop? (optional)" />
                     <Input aria-label="Mission escalation path" value={escalationPath} onChange={(event) => setEscalationPath(event.target.value)} placeholder="Who or what helps if blocked? (optional)" />
                   </div>
-                  <Button data-testid="proof-plan-save" size="sm" className="w-fit" disabled={purpose.trim().length < 3 || expectedOutput.trim().length < 3 || saveContract.isPending} onClick={() => saveContract.mutate()}>
-                    {saveContract.isPending ? "Saving…" : "Save proof plan"}
-                  </Button>
+                  <div className="flex flex-wrap gap-2">
+                    <Button data-testid="proof-plan-save" size="sm" className="w-fit" disabled={purpose.trim().length < 3 || expectedOutput.trim().length < 3 || saveContract.isPending} onClick={() => saveContract.mutate()}>
+                      {saveContract.isPending ? "Saving…" : "Save proof plan"}
+                    </Button>
+                    {contractQuery.data?.contract && <Button size="sm" variant="outline" disabled={saveContract.isPending} onClick={() => setIsEditingContract(false)}>Cancel</Button>}
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-3 text-sm">
+                  {!mission.completed && <Button data-testid="proof-plan-edit" size="sm" variant="outline" className="float-right ml-3" onClick={() => setIsEditingContract(true)}>Revise proof plan</Button>}
                   <p><span className="text-muted-foreground">Purpose:</span> {contractQuery.data.contract.purpose}</p>
                   {contractQuery.data.contract.methodSteps.length ? <div><p><span className="text-muted-foreground">Method:</span></p><ol className="mt-1 list-decimal space-y-1 pl-5 text-xs text-muted-foreground">{contractQuery.data.contract.methodSteps.map((step, index) => <li key={`${index}-${step}`}>{step}</li>)}</ol></div> : null}
                   {contractQuery.data.contract.toolRequirements.length ? <p><span className="text-muted-foreground">Tools:</span> {contractQuery.data.contract.toolRequirements.join(" · ")}</p> : null}

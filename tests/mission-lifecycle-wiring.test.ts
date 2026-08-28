@@ -65,6 +65,16 @@ describe("mission lifecycle wiring", () => {
     expect(detail).toContain("escalationPath: escalationPath");
   });
 
+  it("lets users revise automatic proof plans and displays canonical Mission costs and rewards", () => {
+    const detail = readSource("client/src/pages/MissionDetailPage.tsx");
+    expect(detail).toContain('data-testid="proof-plan-edit"');
+    expect(detail).toContain("setIsEditingContract(true)");
+    expect(detail).toContain("setPurpose(contract.purpose)");
+    expect(detail).toContain("mission.energyCost || 0");
+    expect(detail).toContain("mission.experienceReward || 0");
+    expect(detail).not.toContain('<span className="text-primary font-mono">+15</span>');
+  });
+
   it("keeps activity XP distinct from evidence-backed capability claims on analytics surfaces", () => {
     const experience = readSource("client/src/pages/ExperienceDetailPage.tsx");
     const analytics = readSource("client/src/pages/AnalyticsPage.tsx");

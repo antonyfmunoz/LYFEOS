@@ -543,6 +543,13 @@ async function main(): Promise<void> {
     await page.goto(new URL(`/mission/${missionId}`, BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
     await page.waitForFunction((title) => document.body.innerText.includes(title), { timeout: 30_000 }, MISSION_TITLE);
     await waitForApiBudget(page, 60);
+    await page.waitForFunction(() => Boolean(
+      document.querySelector('[data-testid="proof-plan-purpose"]')
+      || document.querySelector('[data-testid="proof-plan-edit"]'),
+    ), { timeout: 30_000 });
+    if (await page.$('[data-testid="proof-plan-edit"]')) {
+      await activateRenderedControl(page, '[data-testid="proof-plan-edit"]');
+    }
     await fill(page, '[data-testid="proof-plan-purpose"]', PURPOSE);
     await fill(page, '[data-testid="proof-plan-output"]', EXPECTED_OUTPUT);
     await fill(page, '[data-testid="proof-plan-method"]', "Create one bounded synthetic Mission.\nAttach one synthetic browser receipt.\nComplete through the focus-timer workflow.\nReview only the declared evidence.\nReopen and verify exact reversal.");
