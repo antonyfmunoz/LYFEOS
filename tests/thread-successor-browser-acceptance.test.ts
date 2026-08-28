@@ -16,8 +16,9 @@ describe("isolated rendered successor-focus evidence custody", () => {
     expect(script).toContain('decision: "meets_evidence"');
     expect(script).toContain('`/api/transformation-thread/${firstThreadId}/review`');
     expect(script).toContain('`/api/transformation-thread/${firstThreadId}/complete`');
-    expect(script).toContain('page.click(\'[data-testid="prepare-thread-focus"]\')');
-    expect(script).toContain('page.click(\'[data-testid="activate-thread-plan"]\')');
+    expect(script).toContain('async function activateRenderedControl');
+    expect(script).toContain('activateRenderedControl(page, \'[data-testid="prepare-thread-focus"]\')');
+    expect(script).toContain('activateRenderedControl(page, \'[data-testid="activate-thread-plan"]\')');
     expect(script).toContain('async function dismissBlockingTutorial');
     expect(script).toContain('button[aria-label="Skip this tutorial"]');
     expect(script).toContain('Number(graphPrimary?.threadExperience) === 0');

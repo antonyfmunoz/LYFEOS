@@ -111,6 +111,16 @@ async function dismissBlockingTutorial(page: Page): Promise<boolean> {
   return true;
 }
 
+async function activateRenderedControl(page: Page, selector: string): Promise<void> {
+  await page.waitForSelector(selector, { visible: true, timeout: 30_000 });
+  await page.evaluate((controlSelector) => {
+    const control = document.querySelector<HTMLButtonElement>(controlSelector);
+    if (!control || control.disabled) throw new Error(`Rendered control is unavailable: ${controlSelector}`);
+    control.scrollIntoView({ block: "center", inline: "nearest" });
+    control.click();
+  }, selector);
+}
+
 async function auditRenderedPage(page: Page) {
   return page.evaluate(() => {
     const ids = new Map<string, number>();
@@ -263,7 +273,7 @@ async function runViewport(browser: Browser, pool: pg.Pool, viewport: { name: st
     await page.select('[data-testid="next-capability-focus"]', String(first.capabilityId));
     const [initializeResponse] = await Promise.all([
       page.waitForResponse((response) => response.request().method() === "POST" && new URL(response.url()).pathname === "/api/transformation-thread/initialize", { timeout: 30_000 }),
-      page.click('[data-testid="prepare-thread-focus"]'),
+      activateRenderedControl(page, '[data-testid="prepare-thread-focus"]'),
     ]);
     assert(initializeResponse.status() === 201, `Rendered successor initialization returned ${initializeResponse.status()}.`);
     const initializeBody = await initializeResponse.json() as { thread?: { id?: number; primaryCapabilityId?: number } };
@@ -274,7 +284,7 @@ async function runViewport(browser: Browser, pool: pg.Pool, viewport: { name: st
     await page.waitForSelector('[data-testid="activate-thread-plan"]', { visible: true, timeout: 30_000 });
     const [activateResponse] = await Promise.all([
       page.waitForResponse((response) => response.request().method() === "POST" && new URL(response.url()).pathname === `/api/transformation-thread/${successorThreadId}/activate`, { timeout: 30_000 }),
-      page.click('[data-testid="activate-thread-plan"]'),
+      activateRenderedControl(page, '[data-testid="activate-thread-plan"]'),
     ]);
     assert(activateResponse.status() === 200, `Rendered successor activation returned ${activateResponse.status()}.`);
     const activateBody = await activateResponse.json() as { createdMissions?: number };
