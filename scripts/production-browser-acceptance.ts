@@ -254,7 +254,7 @@ async function auditRoute(page: Page, route: string, kind: RouteKind, viewportNa
       && locationUrl
       && new URL(locationUrl).pathname === "/api/auth/me"
     ) return;
-    consoleErrors.push(text.slice(0, 500));
+    consoleErrors.push(`${text.slice(0, 500)}${locationUrl ? ` @ ${locationUrl}` : ""}`);
   };
 
   page.on("requestfailed", requestFailed);
@@ -288,14 +288,20 @@ async function auditRoute(page: Page, route: string, kind: RouteKind, viewportNa
       }
       const duplicateIds = [...ids.entries()].filter(([, count]) => count > 1).map(([id]) => id).sort();
 
+      const isRendered = (element: HTMLElement) => {
+        const style = window.getComputedStyle(element);
+        return style.display !== "none" && style.visibility !== "hidden" && element.getClientRects().length > 0;
+      };
       const unlabeledControls = [...document.querySelectorAll<HTMLElement>("button,input,select,textarea")]
         .filter((element) => {
           if (element.getAttribute("aria-hidden") === "true") return false;
           if (element instanceof HTMLInputElement && element.type === "hidden") return false;
+          if (!isRendered(element)) return false;
           const id = element.id;
           const label = id ? document.querySelector(`label[for="${CSS.escape(id)}"]`) : null;
+          const wrappingLabel = element.closest("label");
           const name = element.getAttribute("aria-label") || element.getAttribute("aria-labelledby") || element.getAttribute("title") || element.textContent?.trim();
-          return !label && !name;
+          return !label && !wrappingLabel && !name;
         })
         .slice(0, 20)
         .map((element) => {
@@ -322,7 +328,7 @@ async function auditRoute(page: Page, route: string, kind: RouteKind, viewportNa
         unlabeledControls,
         mainCount: document.querySelectorAll("main,[role=main]").length,
         headingCount: document.querySelectorAll("h1,h2,h3,h4,h5,h6,[role=heading]").length,
-        tabbableCount: document.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]):not([type="hidden"]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])').length,
+        tabbableCount: [...document.querySelectorAll<HTMLElement>('a[href],button:not([disabled]),input:not([disabled]):not([type="hidden"]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])')].filter(isRendered).length,
         horizontalOverflowPx: Math.max(0, documentWidth - window.innerWidth),
         timings: {
           domContentLoadedMs: navigation?.domContentLoadedEventEnd ?? null,
@@ -334,6 +340,13 @@ async function auditRoute(page: Page, route: string, kind: RouteKind, viewportNa
       };
     });
 
+    await page.evaluate(() => {
+      const originalTabIndex = document.body.getAttribute("tabindex");
+      document.body.setAttribute("tabindex", "-1");
+      document.body.focus();
+      if (originalTabIndex === null) document.body.removeAttribute("tabindex");
+      else document.body.setAttribute("tabindex", originalTabIndex);
+    });
     await page.keyboard.press("Tab");
     const firstTabReachedControl = await page.evaluate(() => {
       const active = document.activeElement as HTMLElement | null;
@@ -487,7 +500,7 @@ async function respectApiRateLimit(page: Page): Promise<void> {
       resetSeconds: Number(response.headers.get("ratelimit-reset") || response.headers.get("retry-after")),
     };
   });
-  if ((state.status === 429 || (Number.isFinite(state.remaining) && state.remaining <= 25)) && Number.isFinite(state.resetSeconds)) {
+  if ((state.status === 429 || (Number.isFinite(state.remaining) && state.remaining <= 50)) && Number.isFinite(state.resetSeconds)) {
     const waitMs = Math.min(65_000, Math.max(1_000, (state.resetSeconds + 1) * 1_000));
     await new Promise((resolve) => setTimeout(resolve, waitMs));
   }

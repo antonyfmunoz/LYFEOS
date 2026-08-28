@@ -63,7 +63,7 @@ export default function SpreadsheetsPage() {
       </div>
     </div>
     <div className="grid gap-2 sm:grid-cols-[1fr_180px]">
-      <div className="relative"><Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search sheets" className="pl-9" /></div>
+      <div className="relative"><Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><Input aria-label="Search spreadsheets" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search sheets" className="pl-9" /></div>
       <select aria-label="Sheet category" value={category} onChange={(event) => setCategory(event.target.value)} className="h-9 rounded-md border border-primary/20 bg-background px-2 text-sm">
         <option value="all">All categories</option>
         {categories.map((item) => <option key={item} value={item}>{item}</option>)}

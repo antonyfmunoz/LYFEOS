@@ -190,6 +190,7 @@ export function CustomTimePicker({ value, onChange, className }: CustomTimePicke
     >
       <div className="relative">
         <Input
+          aria-label="Mission time"
           type="text"
           readOnly
           inputMode="none"
@@ -201,6 +202,7 @@ export function CustomTimePicker({ value, onChange, className }: CustomTimePicke
           placeholder="HH:MM AM"
         />
         <Button
+          aria-label={isOpen ? "Close mission time picker" : "Open mission time picker"}
           type="button"
           variant="ghost"
           size="icon"

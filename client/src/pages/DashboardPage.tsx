@@ -1366,6 +1366,7 @@ export default function DashboardPage() {
               </label>
               <input
                 type="text"
+                aria-label="Source author"
                 placeholder="Author name..."
                 value={reflection.sourceAuthor}
                 onChange={(e) => updateReflection("sourceAuthor", e.target.value)}
@@ -1381,6 +1382,7 @@ export default function DashboardPage() {
               </label>
               <input
                 type="text"
+                aria-label="Source material"
                 placeholder="URL, book title, article, video, or reference..."
                 value={reflection.sourceMaterial}
                 onChange={(e) => updateReflection("sourceMaterial", e.target.value)}

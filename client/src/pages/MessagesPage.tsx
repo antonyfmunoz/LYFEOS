@@ -200,8 +200,8 @@ export default function MessagesPage() {
 
       <section className="rounded-xl border border-primary/15 bg-card/35 p-3">
         <div className="grid gap-2 md:grid-cols-[minmax(220px,1fr)_minmax(220px,1fr)_auto]">
-          <div className="relative"><Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Find a LyfeOS username…" className="pl-9" /></div>
-          <Input value={groupTitle} onChange={(event) => setGroupTitle(event.target.value)} placeholder={selectedPeople.length > 1 ? "Group name" : "Select people for a new conversation"} disabled={selectedPeople.length < 2} />
+          <div className="relative"><Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><Input aria-label="Find a LyfeOS user" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Find a LyfeOS username…" className="pl-9" /></div>
+          <Input aria-label="Conversation name" value={groupTitle} onChange={(event) => setGroupTitle(event.target.value)} placeholder={selectedPeople.length > 1 ? "Group name" : "Select people for a new conversation"} disabled={selectedPeople.length < 2} />
           <Button onClick={() => createConversation.mutate()} disabled={!selectedPeople.length || (selectedPeople.length > 1 && !groupTitle.trim()) || createConversation.isPending}><Plus className="mr-1 h-4 w-4" />New</Button>
         </div>
         {selectedPeople.length > 0 && <div className="mt-2 flex flex-wrap gap-2">{selectedPeople.map((person) => <button key={person.id} onClick={() => setSelectedPeople((current) => current.filter((item) => item.id !== person.id))} className="inline-flex items-center gap-1 rounded-full border border-primary/25 bg-primary/10 px-2 py-1 text-xs text-primary">{person.displayName}<X className="h-3 w-3" /></button>)}</div>}

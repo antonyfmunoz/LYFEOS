@@ -410,6 +410,7 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete, on
           </div>
           <button
             onClick={handleSkip}
+            aria-label="Skip this tutorial"
             className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-primary/10"
           >
             <X className="h-4 w-4" />

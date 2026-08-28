@@ -26,6 +26,9 @@ export function StatInfoDialog({
   hideMoreDetails = false,
 }: StatInfoDialogProps) {
   const [open, setOpen] = useState(false);
+  const labelledTrigger = React.isValidElement<{ "aria-label"?: string }>(trigger) && !trigger.props["aria-label"]
+    ? React.cloneElement(trigger, { "aria-label": `About ${title}` })
+    : trigger;
   
   const getDetailUrl = () => {
     switch (statType) {
@@ -116,7 +119,7 @@ export function StatInfoDialog({
   return (
     <>
       <div onClick={(e) => { e.stopPropagation(); setOpen(true); }}>
-        {trigger}
+        {labelledTrigger}
       </div>
       {dialogContent}
     </>

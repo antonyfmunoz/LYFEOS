@@ -312,6 +312,7 @@ export default function AIPage() {
       <div className={cn("flex items-center justify-between mb-4 pb-4 border-b border-primary/20", isTutorialLoading && "invisible")} data-tour="ai-header">
         <div className="flex items-center">
           <Button
+            aria-label={sidebarOpen ? "Close chat list" : "Open chat list"}
             variant="ghost"
             size="sm"
             onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -328,6 +329,7 @@ export default function AIPage() {
             {isEditingName ? (
               <>
                 <Input
+                  aria-label="Assistant name"
                   ref={nameInputRef}
                   value={nameInput}
                   onChange={(e) => setNameInput(e.target.value)}
@@ -336,6 +338,7 @@ export default function AIPage() {
                   maxLength={20}
                 />
                 <Button
+                  aria-label="Save assistant name"
                   type="button"
                   size="sm"
                   variant="ghost"
@@ -345,6 +348,7 @@ export default function AIPage() {
                   <Check className="h-3.5 w-3.5 text-primary" />
                 </Button>
                 <Button
+                  aria-label="Cancel assistant name edit"
                   type="button"
                   size="sm"
                   variant="ghost"
@@ -361,6 +365,7 @@ export default function AIPage() {
               <>
                 <span className="text-sm text-primary mr-1">{aiCompanionName}</span>
                 <Button
+                  aria-label="Edit assistant name"
                   type="button"
                   size="sm"
                   variant="ghost"
@@ -399,6 +404,7 @@ export default function AIPage() {
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold text-foreground">Chats</h3>
               <Button
+                aria-label="Create a new chat"
                 variant="ghost"
                 size="sm"
                 className="h-7 w-7 p-0 text-primary hover:bg-primary/10 rounded-full"
@@ -414,6 +420,7 @@ export default function AIPage() {
                   {isEditingChatTitle && editingChatId === chat.id ? (
                     <div className="flex items-center mb-1">
                       <Input
+                        aria-label="Chat name"
                         ref={editChatInputRef}
                         value={chatTitleInput}
                         onChange={(e) => setChatTitleInput(e.target.value)}
@@ -431,6 +438,7 @@ export default function AIPage() {
                         }}
                       />
                       <Button
+                        aria-label="Save chat name"
                         type="button"
                         size="sm"
                         variant="ghost"
@@ -440,6 +448,7 @@ export default function AIPage() {
                         <Check className="h-4 w-4 text-primary" />
                       </Button>
                       <Button
+                        aria-label="Cancel chat name edit"
                         type="button"
                         size="sm"
                         variant="ghost"
@@ -468,6 +477,7 @@ export default function AIPage() {
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
+                            aria-label={`Actions for ${chat.title}`}
                             variant="ghost"
                             size="sm"
                             className="h-6 w-6 p-0 text-primary hover:bg-primary/10 rounded-full"
@@ -603,7 +613,7 @@ export default function AIPage() {
                   <div key={img.id} className="flex items-center gap-1 px-2 py-1 rounded-lg bg-primary/10 border border-primary/20 text-xs text-primary">
                     <ImagePlus className="h-3 w-3" />
                     <span className="max-w-[100px] truncate">{img.name}</span>
-                    <button type="button" onClick={() => removeAttachedImage(img.id)} className="hover:text-destructive">
+                    <button type="button" onClick={() => removeAttachedImage(img.id)} aria-label={`Remove attached image: ${img.name}`} className="hover:text-destructive">
                       <X className="h-3 w-3" />
                     </button>
                   </div>
@@ -611,6 +621,7 @@ export default function AIPage() {
               </div>
             )}
             <input
+              aria-label="Attach an image to this message"
               ref={chatImageInputRef}
               type="file"
               accept="image/*"
@@ -623,6 +634,7 @@ export default function AIPage() {
             <div className="relative rounded-2xl border border-primary/30 bg-card/30 shadow-inner overflow-hidden">
               <Input 
                 id="messageInput"
+                aria-label={`Message ${aiCompanionName}`}
                 placeholder={`Message ${aiCompanionName}...`}
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
@@ -651,6 +663,7 @@ export default function AIPage() {
               />
               <button
                 type="button"
+                aria-label="Attach image"
                 onClick={() => chatImageInputRef.current?.click()}
                 disabled={isUploadingImage}
                 className="absolute right-[88px] bottom-2 h-8 w-8 rounded border bg-card/50 border-primary/30 text-primary hover:bg-primary/20 transition-colors disabled:opacity-40 inline-flex items-center justify-center"
@@ -661,6 +674,7 @@ export default function AIPage() {
               </button>
               <button
                 type="button"
+                aria-label="Start voice input"
                 onClick={() => window.dispatchEvent(new CustomEvent('toggle-voice-control'))}
                 className="absolute right-12 bottom-2 h-8 w-8 rounded border bg-card/50 border-primary/30 text-primary hover:bg-primary/20 transition-colors inline-flex items-center justify-center"
                 title="Voice input"
@@ -670,6 +684,7 @@ export default function AIPage() {
               </button>
               <button 
                 type="submit"
+                aria-label={`Send message to ${aiCompanionName}`}
                 disabled={!inputText.trim() && attachedImageIds.length === 0}
                 className="absolute right-2 bottom-2 h-8 w-8 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center"
               >

@@ -174,6 +174,7 @@ function IntegrationsSection({ userId }: { userId?: number }) {
       <div className="relative mb-3">
         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
         <Input
+          aria-label="Search apps"
           placeholder="Search apps..."
           value={appSearchQuery}
           onChange={(e) => setAppSearchQuery(e.target.value)}
@@ -2211,6 +2212,7 @@ export default function ProfilePage() {
                     (userProfileData as any)?.blueLightFilter ? 'bg-primary/30' : 'bg-card'
                   }`}
                   aria-pressed={(userProfileData as any)?.blueLightFilter === true}
+                  aria-label="Enable blue light filter"
                   role="switch"
                 >
                   <div
@@ -2258,6 +2260,7 @@ export default function ProfilePage() {
                     (userProfileData as any)?.hapticFeedback !== false ? 'bg-primary/30' : 'bg-card'
                   }`}
                   aria-pressed={(userProfileData as any)?.hapticFeedback !== false}
+                  aria-label="Enable haptic feedback"
                   role="switch"
                 >
                   <div
@@ -2305,6 +2308,7 @@ export default function ProfilePage() {
                     (userProfileData as any)?.soundEffects !== false ? 'bg-primary/30' : 'bg-card'
                   }`}
                   aria-pressed={(userProfileData as any)?.soundEffects !== false}
+                  aria-label="Enable sound effects"
                   role="switch"
                 >
                   <div
@@ -2357,6 +2361,7 @@ export default function ProfilePage() {
                     ((userProfileData as any)?.completedTutorials || []).length === 0 ? 'bg-primary/30' : 'bg-card'
                   }`}
                   aria-pressed={((userProfileData as any)?.completedTutorials || []).length === 0}
+                  aria-label="Show page tutorials"
                   role="switch"
                 >
                   <div

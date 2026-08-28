@@ -70,6 +70,10 @@ describe("production browser acceptance custody", () => {
     expect(script).toContain("Do not misattribute the previous document's metrics");
     expect(script).toContain("respectApiRateLimit");
     expect(script).toContain('response.headers.get("ratelimit-remaining")');
+    expect(script).toContain("state.remaining <= 50");
+    expect(script).toContain('element.closest("label")');
+    expect(script).toContain('style.display !== "none"');
+    expect(script).toContain('document.body.focus()');
     expect(script).toContain("element.getAttribute(\"placeholder\")");
     expect(script).toContain("lucide-");
   });
