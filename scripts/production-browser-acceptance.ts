@@ -174,15 +174,55 @@ async function login(page: Page): Promise<void> {
     ),
   ]);
 
-  const session = await page.evaluate(async () => {
-    const response = await fetch("/api/auth/me", { credentials: "include", cache: "no-store" });
-    return { ok: response.ok, status: response.status };
+  const accountState = await page.evaluate(async () => {
+    const [sessionResponse, profileResponse] = await Promise.all([
+      fetch("/api/auth/me", { credentials: "include", cache: "no-store" }),
+      fetch("/api/profile", { credentials: "include", cache: "no-store" }),
+    ]);
+    const profile = profileResponse.ok ? await profileResponse.json() as { onboardingCompleted?: boolean } : null;
+    return {
+      session: { ok: sessionResponse.ok, status: sessionResponse.status },
+      profile: { ok: profileResponse.ok, status: profileResponse.status, onboardingCompleted: profile?.onboardingCompleted === true },
+    };
   });
-  if (!session.ok) throw new Error(`Login completed without an authenticated LyfeOS session (${session.status}).`);
+  if (!accountState.session.ok) throw new Error(`Login completed without an authenticated LyfeOS session (${accountState.session.status}).`);
+  if (!accountState.profile.ok) throw new Error(`Login completed without an accessible LyfeOS profile (${accountState.profile.status}).`);
+  if (!accountState.profile.onboardingCompleted) {
+    throw new Error("The acceptance account has not completed onboarding; use a dedicated completed production test account.");
+  }
 
   const pathName = new URL(page.url()).pathname;
-  if (pathName.startsWith("/onboarding") || pathName.startsWith("/ceremony")) {
+  if (pathName.startsWith("/onboarding")) {
     throw new Error("The acceptance account has not completed onboarding; use a dedicated completed production test account.");
+  }
+  // Returning users normally pass through /login-success and a once-daily welcome
+  // ceremony. That transition is not unfinished onboarding, so enter the protected
+  // product only after the authoritative profile check above succeeds.
+  if (pathName.startsWith("/login-success") || pathName.startsWith("/ceremony")) {
+    await page.goto(new URL("/dashboard", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
+  }
+}
+
+function sanitizedFailureMessage(error: unknown): string {
+  let message = error instanceof Error ? error.message : String(error);
+  if (EMAIL) message = message.replaceAll(EMAIL, "[redacted acceptance account]");
+  if (PASSWORD) message = message.replaceAll(PASSWORD, "[redacted acceptance credential]");
+  return message.slice(0, 1_000);
+}
+
+async function writeFatalEvidence(message: string): Promise<void> {
+  await fs.mkdir(OUTPUT_DIR, { recursive: true });
+  const failure = {
+    contract: "lyfeos.production-browser-acceptance.failure.v1",
+    generatedAt: new Date().toISOString(),
+    baseUrl: BASE_URL.origin,
+    source: SOURCE,
+    authenticatedRequested: REQUIRE_AUTHENTICATED,
+    message,
+  } as const;
+  await fs.writeFile(path.join(OUTPUT_DIR, "failure.json"), `${JSON.stringify(failure, null, 2)}\n`, "utf8");
+  if (process.env.GITHUB_STEP_SUMMARY) {
+    await fs.appendFile(process.env.GITHUB_STEP_SUMMARY, `## LyfeOS production browser acceptance\n\n- Source: ${SOURCE || "not supplied"}\n- Fatal setup failure: ${message}\n`, "utf8");
   }
 }
 
@@ -442,7 +482,13 @@ async function main(): Promise<void> {
   if (report.summary.failed > 0) process.exitCode = 1;
 }
 
-main().catch((error) => {
-  console.error(error instanceof Error ? error.message : error);
+main().catch(async (error) => {
+  const message = sanitizedFailureMessage(error);
+  try {
+    await writeFatalEvidence(message);
+  } catch (evidenceError) {
+    console.error(`Could not preserve fatal acceptance evidence: ${sanitizedFailureMessage(evidenceError)}`);
+  }
+  console.error(message);
   process.exitCode = 1;
 });

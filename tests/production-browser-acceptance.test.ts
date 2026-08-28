@@ -50,6 +50,11 @@ describe("production browser acceptance custody", () => {
     expect(script).toContain("consoleErrors");
     expect(script).toContain('new URL(locationUrl).pathname === "/api/auth/me"');
     expect(script).toContain("does not substitute for human screen-reader comprehension");
+    expect(script).toContain('fetch("/api/profile"');
+    expect(script).toContain("accountState.profile.onboardingCompleted");
+    expect(script).toContain('pathName.startsWith("/login-success") || pathName.startsWith("/ceremony")');
+    expect(script).toContain('"failure.json"');
+    expect(script).toContain('contract: "lyfeos.production-browser-acceptance.failure.v1"');
   });
 
   it("binds the run to an immutable deployed source and preserves evidence on failure", () => {
