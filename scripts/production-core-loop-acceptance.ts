@@ -58,6 +58,18 @@ type ThreadContinuityEvidence = {
   };
 };
 
+type AutomationPreviewEvidence = {
+  automationId: number;
+  missionId: number;
+  matched: boolean;
+  actionTypes: string[];
+  disclosure: string;
+  renderedText: string;
+  runCount: number;
+  followUpCreated: boolean;
+  progressionUnchanged: boolean;
+};
+
 type BrowserApiResponse = {
   status: number;
   remaining: number | null;
@@ -80,6 +92,9 @@ const REQUIRED_EVIDENCE = "A bounded browser acceptance receipt for this synthet
 const EVIDENCE_SUMMARY = `Synthetic browser receipt ${RUN_ID.slice(0, 8)}; no competence or authority claim.`;
 const REVIEW_SUMMARY = `Self-review ${RUN_ID.slice(0, 8)} confirms only the declared synthetic receipt and one bounded practice contribution.`;
 const SYNTHETIC_MISSION_PREFIX = "[AUTOMATED ACCEPTANCE]";
+const AUTOMATION_NAME = `[AUTOMATED ACCEPTANCE] Preview ${RUN_ID.slice(0, 8)}`;
+const AUTOMATION_DESCRIPTION = "Verify that a saved, disabled automation preview is inspectable and creates no Mission or execution receipt.";
+const AUTOMATION_FOLLOW_UP_TITLE = `[AUTOMATED ACCEPTANCE] Must not exist ${RUN_ID.slice(0, 8)}`;
 
 const steps: StepEvidence[] = [];
 let missionId: number | null = null;
@@ -94,6 +109,10 @@ let reviewedSkillExperience = 0;
 let reviewedSkillNodeId: number | null = null;
 let reviewedThreadContinuity: ThreadContinuityEvidence | null = null;
 let reversedThreadContinuity: ThreadContinuityEvidence | null = null;
+let automationId: number | null = null;
+let automationPreviewEvidence: AutomationPreviewEvidence | null = null;
+let automationCleanupAttempted = false;
+let automationDeleted = false;
 let cleanupAttempted = false;
 let cleanupArchived = false;
 let failureMessage: string | null = null;
@@ -217,6 +236,21 @@ async function archiveStrandedSyntheticMissions(page: Page): Promise<number> {
   return strandedMissions.length;
 }
 
+async function deleteStrandedSyntheticAutomations(page: Page): Promise<number> {
+  const response = await browserApiRequest(page, "/api/automations");
+  const automations = (response.body as { automations?: Array<{ id?: unknown; name?: unknown }> } | null)?.automations || [];
+  assert(response.status === 200, `Synthetic automation preflight returned ${response.status}.`);
+  const strandedIds = automations
+    .filter((automation) => typeof automation.name === "string" && automation.name.startsWith(SYNTHETIC_MISSION_PREFIX))
+    .map((automation) => Number(automation.id))
+    .filter((id) => Number.isInteger(id) && id > 0);
+  for (const id of strandedIds) {
+    const deleted = await browserApiRequest(page, `/api/automations/${id}`, "DELETE");
+    assert(deleted.status === 204, `Stranded synthetic automation ${id} cleanup returned ${deleted.status}.`);
+  }
+  return strandedIds.length;
+}
+
 async function findChromium(): Promise<string> {
   const configured = process.env.LYFEOS_CHROMIUM_PATH || process.env.CHROME_PATH || process.env.CHROMIUM_PATH;
   const candidates = [
@@ -324,6 +358,109 @@ async function fill(page: Page, selector: string, value: string): Promise<void> 
   await page.waitForSelector(selector, { visible: true, timeout: 30_000 });
   await page.click(selector, { clickCount: 3 });
   await page.type(selector, value);
+}
+
+async function exerciseNonMutatingAutomationPreview(page: Page): Promise<AutomationPreviewEvidence> {
+  assert(missionId !== null, "Cannot qualify automation preview without the synthetic Mission.");
+  assert(progressionBefore !== null, "Cannot qualify automation preview without a settled progression baseline.");
+  await waitForApiBudget(page, 55);
+  await page.goto(new URL("/automations", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
+  await page.waitForSelector('[data-testid="automations-page"]', { visible: true, timeout: 30_000 });
+  await page.waitForSelector('[data-testid="automation-create"]:not([disabled])', { visible: true, timeout: 30_000 });
+
+  const createResponsePromise = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return url.origin === BASE_URL.origin && url.pathname === "/api/automations" && response.request().method() === "POST";
+  }, { timeout: 30_000 });
+  await page.click('[data-testid="automation-create"]');
+  const createResponse = await createResponsePromise;
+  const createBody = await createResponse.json() as { automation?: { id?: number; enabled?: boolean }; error?: unknown };
+  assert(createResponse.ok() && Number.isInteger(createBody.automation?.id), `Rendered automation creation failed (${createResponse.status()}).`);
+  automationId = createBody.automation!.id!;
+  assert(createBody.automation?.enabled === false, "A newly created automation was not disabled by default.");
+  await page.waitForSelector(`[data-testid="automation-editor-${automationId}"]`, { visible: true, timeout: 30_000 });
+
+  await fill(page, '[data-testid="automation-name"]', AUTOMATION_NAME);
+  await fill(page, '[data-testid="automation-description"]', AUTOMATION_DESCRIPTION);
+  await fill(page, '[data-testid="automation-condition-title"]', SYNTHETIC_MISSION_PREFIX);
+  await fill(page, '[data-testid="automation-action-title-0"]', AUTOMATION_FOLLOW_UP_TITLE);
+  const saveResponsePromise = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return url.origin === BASE_URL.origin && url.pathname === `/api/automations/${automationId}` && response.request().method() === "PATCH";
+  }, { timeout: 30_000 });
+  await page.click('[data-testid="automation-save"]');
+  const saveResponse = await saveResponsePromise;
+  const saveBody = await saveResponse.json() as {
+    automation?: {
+      enabled?: boolean;
+      name?: string;
+      definition?: { conditions?: { titleContains?: string | null }; actions?: Array<{ type?: string; title?: string }> };
+    };
+  };
+  assert(saveResponse.ok(), `Rendered automation save failed (${saveResponse.status()}).`);
+  assert(saveBody.automation?.enabled === false && saveBody.automation?.name === AUTOMATION_NAME, "Saved automation did not remain a disabled named draft.");
+  assert(saveBody.automation?.definition?.conditions?.titleContains === SYNTHETIC_MISSION_PREFIX, "Saved automation omitted its bounded Mission-title condition.");
+  assert(saveBody.automation?.definition?.actions?.[0]?.type === "schedule_follow_up" && saveBody.automation?.definition?.actions?.[0]?.title === AUTOMATION_FOLLOW_UP_TITLE, "Saved automation omitted its declared follow-up preview action.");
+
+  await page.waitForFunction((id) => Array.from(document.querySelectorAll<HTMLSelectElement>('[data-testid="automation-preview-mission"] option')).some((option) => option.value === String(id)), { timeout: 30_000 }, missionId);
+  await page.select('[data-testid="automation-preview-mission"]', String(missionId));
+  const previewResponsePromise = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return url.origin === BASE_URL.origin && url.pathname === `/api/automations/${automationId}/preview` && response.request().method() === "POST";
+  }, { timeout: 30_000 });
+  await page.click('[data-testid="automation-preview"]');
+  const previewResponse = await previewResponsePromise;
+  const previewBody = await previewResponse.json() as { preview?: { matched?: boolean; disclosure?: string; actions?: Array<{ type?: string; description?: string }> } };
+  assert(previewResponse.ok(), `Rendered automation preview failed (${previewResponse.status()}).`);
+  assert(previewBody.preview?.matched === true, "Saved automation did not match its synthetic Mission during preview.");
+  assert(previewBody.preview?.disclosure === "Preview only. No mission was changed and no follow-up was created.", "Automation preview omitted its exact non-mutation disclosure.");
+  assert(previewBody.preview?.actions?.length === 1 && previewBody.preview.actions[0]?.type === "schedule_follow_up", "Automation preview did not expose exactly its declared bounded action.");
+  await page.waitForSelector('[data-testid="automation-preview-result"]', { visible: true, timeout: 30_000 });
+  await page.waitForSelector('[data-testid="automation-run-history-empty"]', { visible: true, timeout: 30_000 });
+  const rendered = await page.$eval('[data-testid="automation-preview-result"]', (element) => element.textContent?.replace(/\s+/g, " ").trim() || "");
+  assert(rendered.includes(previewBody.preview.disclosure) && rendered.includes(AUTOMATION_FOLLOW_UP_TITLE), "Rendered automation preview did not match its authenticated response.");
+  const runDisabled = await page.$eval('[data-testid="automation-run-now"]', (element) => (element as HTMLButtonElement).disabled);
+  assert(runDisabled, "Disabled automation draft exposed an executable Run now control.");
+
+  const detailResponse = await browserApiRequest(page, `/api/automations/${automationId}`);
+  const runs = (detailResponse.body as { runs?: unknown[] } | null)?.runs || [];
+  assert(detailResponse.status === 200 && runs.length === 0, "Automation preview created an execution receipt.");
+  const session = await browserApiRequest(page, "/api/auth/me");
+  const userId = Number((session.body as { user?: { id?: unknown } } | null)?.user?.id);
+  assert(session.status === 200 && Number.isInteger(userId), "Automation preview could not resolve the dedicated acceptance account.");
+  const missionsResponse = await browserApiRequest(page, `/api/users/${userId}/quests`);
+  const missions = (missionsResponse.body as { quests?: Array<{ title?: unknown }> } | null)?.quests || [];
+  const followUpCreated = missions.some((mission) => mission.title === AUTOMATION_FOLLOW_UP_TITLE);
+  assert(missionsResponse.status === 200 && !followUpCreated, "Automation preview created the declared follow-up Mission.");
+  const progressionAfterPreview = await readProgression(page);
+  const progressionUnchanged = progressionMatches(progressionBefore, progressionAfterPreview);
+  assert(progressionUnchanged, "Automation preview changed activity XP, capability XP, badges, or authority.");
+
+  const evidence: AutomationPreviewEvidence = {
+    automationId,
+    missionId,
+    matched: true,
+    actionTypes: previewBody.preview.actions.map((action) => String(action.type || "")),
+    disclosure: previewBody.preview.disclosure,
+    renderedText: rendered,
+    runCount: runs.length,
+    followUpCreated,
+    progressionUnchanged,
+  };
+
+  const deleteResponsePromise = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return url.origin === BASE_URL.origin && url.pathname === `/api/automations/${automationId}` && response.request().method() === "DELETE";
+  }, { timeout: 30_000 });
+  page.once("dialog", async (dialog) => dialog.accept());
+  await page.click('[data-testid="automation-delete"]');
+  const deleteResponse = await deleteResponsePromise;
+  assert(deleteResponse.status() === 204, `Rendered automation deletion failed (${deleteResponse.status()}).`);
+  automationDeleted = true;
+  const listAfterDelete = await browserApiRequest(page, "/api/automations");
+  const remaining = (listAfterDelete.body as { automations?: Array<{ id?: unknown }> } | null)?.automations || [];
+  assert(listAfterDelete.status === 200 && !remaining.some((automation) => Number(automation.id) === automationId), "Deleted synthetic automation remained in the owner list.");
+  return evidence;
 }
 
 async function activateRenderedControl(page: Page, selector: string): Promise<void> {
@@ -589,6 +726,22 @@ async function requireThreadContinuityView(input: {
   };
 }
 
+async function cleanupAutomation(page: Page): Promise<void> {
+  if (automationId === null) return;
+  automationCleanupAttempted = true;
+  const list = await browserApiRequest(page, "/api/automations");
+  const automations = (list.body as { automations?: Array<{ id?: unknown }> } | null)?.automations || [];
+  assert(list.status === 200, `Synthetic automation cleanup preflight returned ${list.status}.`);
+  if (automations.some((automation) => Number(automation.id) === automationId)) {
+    const deleted = await browserApiRequest(page, `/api/automations/${automationId}`, "DELETE");
+    assert(deleted.status === 204, `Synthetic automation cleanup returned ${deleted.status}.`);
+  }
+  const verification = await browserApiRequest(page, "/api/automations");
+  const remaining = (verification.body as { automations?: Array<{ id?: unknown }> } | null)?.automations || [];
+  assert(verification.status === 200 && !remaining.some((automation) => Number(automation.id) === automationId), "Synthetic automation still existed after cleanup.");
+  automationDeleted = true;
+}
+
 async function cleanupMission(page: Page): Promise<void> {
   if (missionId === null) return;
   cleanupAttempted = true;
@@ -614,7 +767,7 @@ async function cleanupMission(page: Page): Promise<void> {
 
 async function writeReport(): Promise<void> {
   const report = {
-    contract: "lyfeos.production-core-loop-acceptance.v3",
+    contract: "lyfeos.production-core-loop-acceptance.v4",
     generatedAt: new Date().toISOString(),
     baseUrl: BASE_URL.origin,
     source: SOURCE,
@@ -645,11 +798,15 @@ async function writeReport(): Promise<void> {
         && reviewedThreadContinuity.capability.reviewedExperience - reviewedSkillExperience === reversedThreadContinuity.capability.reviewedExperience
         && reversedThreadContinuity.capability.reversesEventId === reviewedThreadContinuity.capability.eventId),
     },
+    automationPreview: automationPreviewEvidence,
     views,
-    cleanup: { attempted: cleanupAttempted, archived: cleanupArchived },
+    cleanup: {
+      mission: { attempted: cleanupAttempted, archived: cleanupArchived },
+      automation: { id: automationId, attempted: automationCleanupAttempted, deleted: automationDeleted },
+    },
     steps,
-    summary: { passed: failureMessage === null && cleanupArchived, failure: failureMessage },
-    boundary: "This journey proves one self-reviewed, skill-linked synthetic Mission plus its rendered current path, private capability graph, durable focus history, and exact reviewed-capability reversal. Activity XP recognizes completion; capability XP requires declared evidence plus positive self-review; reopening reverses both tracks and supported badges. LyfeOS grants no certification or authority.",
+    summary: { passed: failureMessage === null && cleanupArchived && automationDeleted && automationPreviewEvidence !== null, failure: failureMessage },
+    boundary: "This journey proves one self-reviewed, skill-linked synthetic Mission plus a saved disabled automation preview, its rendered current path, private capability graph, durable focus history, and exact reviewed-capability reversal. The automation preview writes no execution receipt, follow-up Mission, or progression. Activity XP recognizes completion; capability XP requires declared evidence plus positive self-review; reopening reverses both tracks and supported badges. LyfeOS grants no certification or authority.",
   } as const;
   await fs.mkdir(OUTPUT_DIR, { recursive: true });
   await fs.writeFile(OUTPUT_FILE, `${JSON.stringify(report, null, 2)}\n`, "utf8");
@@ -666,6 +823,8 @@ async function writeReport(): Promise<void> {
       `- No certification or authority granted: ${report.progression.noAuthorityGranted}`,
       `- Rendered reopen restored the exact baseline: ${report.progression.exactRenderedReversal}`,
       `- Rendered Thread and capability history reconciled after review and reversal: ${report.threadContinuity.exactCapabilityReversal}`,
+      `- Disabled automation preview created no run, Mission, or progression: ${Boolean(report.automationPreview && report.automationPreview.runCount === 0 && !report.automationPreview.followUpCreated && report.automationPreview.progressionUnchanged)}`,
+      `- Synthetic automation deleted: ${automationDeleted}`,
       `- Desktop/mobile Mission Detail views qualified: ${views.length === 2}`,
       "",
       report.boundary,
@@ -695,6 +854,8 @@ async function main(): Promise<void> {
     await waitForApiBudget(page, 80);
     const strandedMissionCount = await archiveStrandedSyntheticMissions(page);
     steps.push({ name: "synthetic Mission preflight", status: "passed", detail: strandedMissionCount > 0 ? `Archived ${strandedMissionCount} stranded synthetic Mission(s).` : "No stranded synthetic Missions were present." });
+    const strandedAutomationCount = await deleteStrandedSyntheticAutomations(page);
+    steps.push({ name: "synthetic automation preflight", status: "passed", detail: strandedAutomationCount > 0 ? `Deleted ${strandedAutomationCount} stranded synthetic automation(s).` : "No stranded synthetic automations were present." });
     const threadPreflight = await ensureAcceptanceThread(page);
     if (threadPreflight.fixturePrepared) {
       steps.push({ name: "dedicated account fixture prerequisites", status: "passed", detail: "Recorded the missing onboarding Mission IDs on the already completed, dedicated acceptance account before its first truthful Thread initialization." });
@@ -776,6 +937,11 @@ async function main(): Promise<void> {
     assert(progressionMatches(progressionBefore, progressionAfterEvidence), "Unreviewed Mission evidence changed activity XP, capability XP, or active badges.");
     steps.push({ name: "unreviewed evidence boundary", status: "passed", detail: "Artifact evidence persisted without changing activity XP, capability XP, or badges." });
 
+    automationPreviewEvidence = await exerciseNonMutatingAutomationPreview(page);
+    steps.push({ name: "rendered non-mutating automation preview", status: "passed", detail: "Created and saved one disabled bounded rule, matched the synthetic Mission in Preview, proved zero run receipts, follow-up Missions, and progression changes, then deleted the rule through the rendered control." });
+
+    await page.goto(new URL(`/mission/${missionId}`, BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
+    await page.waitForFunction((title) => document.body.innerText.includes(title), { timeout: 30_000 }, MISSION_TITLE);
     await requireMissionView(page, "desktop-1440x900");
     await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
     await page.reload({ waitUntil: "domcontentloaded", timeout: 60_000 });
@@ -885,6 +1051,14 @@ async function main(): Promise<void> {
     }
   } finally {
     try {
+      await cleanupAutomation(page);
+      if (automationId !== null) steps.push({ name: "synthetic automation cleanup", status: "passed", detail: "Automation was absent after the rendered deletion or idempotent owner-scoped cleanup." });
+    } catch (cleanupError) {
+      const message = sanitizedMessage(cleanupError);
+      failureMessage = failureMessage ? `${failureMessage}; automation cleanup: ${message}` : `automation cleanup: ${message}`;
+      steps.push({ name: "synthetic automation cleanup", status: "failed", detail: message });
+    }
+    try {
       await cleanupMission(page);
       if (missionId !== null) steps.push({ name: "synthetic Mission cleanup", status: "passed", detail: "Mission archived through the canonical recoverable deletion route." });
       progressionAfterCleanup = await readProgression(page);
@@ -899,11 +1073,11 @@ async function main(): Promise<void> {
   }
 
   console.log(`Wrote ${OUTPUT_FILE}`);
-  if (failureMessage || !cleanupArchived) {
-    console.error(failureMessage || "Synthetic Mission cleanup did not complete.");
+  if (failureMessage || !cleanupArchived || !automationDeleted || !automationPreviewEvidence) {
+    console.error(failureMessage || "Synthetic Mission or automation qualification/cleanup did not complete.");
     process.exitCode = 1;
   } else {
-    console.log("Truthful Mission core-loop acceptance passed; completion and review were awarded accurately, then rendered reopen restored the exact baseline before archival.");
+    console.log("Truthful Mission and automation acceptance passed; preview was non-mutating, completion and review were awarded accurately, and rendered reopen restored the exact baseline before cleanup.");
   }
 }
 

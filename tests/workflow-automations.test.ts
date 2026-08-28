@@ -119,4 +119,24 @@ describe("workflow automations", () => {
     expect(app).toContain('<Route path="/automations">');
     expect(vault).toContain("navigate('/automations')");
   });
+
+  it("exposes stable non-visual hooks for the bounded rendered preview journey", () => {
+    const page = source("client/src/pages/AutomationsPage.tsx");
+    for (const testId of [
+      "automations-page",
+      "automation-create",
+      "automation-save",
+      "automation-delete",
+      "automation-name",
+      "automation-description",
+      "automation-condition-title",
+      "automation-preview-mission",
+      "automation-preview",
+      "automation-run-now",
+      "automation-preview-result",
+      "automation-run-history-empty",
+    ]) expect(page).toContain(`data-testid="${testId}"`);
+    expect(page).toContain('data-testid={`automation-editor-${automation.id}`}');
+    expect(page).toContain('data-testid={`automation-action-title-${index}`}');
+  });
 });
