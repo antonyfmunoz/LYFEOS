@@ -271,6 +271,23 @@ function progressionMatches(left: ProgressionSnapshot, right: ProgressionSnapsho
     && JSON.stringify(left.entrustedRoles) === JSON.stringify(right.entrustedRoles);
 }
 
+async function readStableProgression(page: Page): Promise<ProgressionSnapshot> {
+  let previous = await readProgression(page);
+  let consecutiveMatches = 0;
+  for (let attempt = 0; attempt < 10; attempt++) {
+    await new Promise((resolve) => setTimeout(resolve, 1_000));
+    const current = await readProgression(page);
+    if (progressionMatches(previous, current)) {
+      consecutiveMatches += 1;
+      if (consecutiveMatches >= 3) return current;
+    } else {
+      consecutiveMatches = 0;
+    }
+    previous = current;
+  }
+  throw new Error("Progression did not settle after onboarding-derived fixture reconciliation.");
+}
+
 async function fill(page: Page, selector: string, value: string): Promise<void> {
   await page.waitForSelector(selector, { visible: true, timeout: 30_000 });
   await page.click(selector, { clickCount: 3 });
@@ -288,9 +305,27 @@ async function activateRenderedControl(page: Page, selector: string): Promise<vo
 
 async function activateMissionControl(page: Page, action: "start" | "done" | "undo"): Promise<void> {
   assert(missionId !== null, `Cannot activate ${action} without a synthetic Mission.`);
+  const cardSelector = `[data-testid="mission-card-${missionId}"]`;
   const selector = `[data-testid="mission-${action}-${missionId}"]`;
-  await page.waitForSelector(selector, { visible: true, timeout: 30_000 });
-  await activateRenderedControl(page, selector);
+  const label = ({ start: "Start", done: "Done", undo: "Undo" } as const)[action];
+  await page.waitForSelector(cardSelector, { visible: true, timeout: 30_000 });
+  await page.waitForFunction(({ cardSelector: ownedCard, controlSelector, controlLabel }) => {
+    const card = document.querySelector<HTMLElement>(ownedCard);
+    if (!card) return false;
+    const control = document.querySelector<HTMLElement>(controlSelector)
+      || Array.from(card.querySelectorAll<HTMLButtonElement>("button")).find((button) => button.textContent?.trim() === controlLabel);
+    if (!control || !card.contains(control)) return false;
+    const style = getComputedStyle(control);
+    return style.display !== "none" && style.visibility !== "hidden" && control.getClientRects().length > 0;
+  }, { timeout: 30_000 }, { cardSelector, controlSelector: selector, controlLabel: label });
+  await page.evaluate(({ cardSelector: ownedCard, controlSelector, controlLabel }) => {
+    const card = document.querySelector<HTMLElement>(ownedCard);
+    const control = document.querySelector<HTMLElement>(controlSelector)
+      || Array.from(card?.querySelectorAll<HTMLButtonElement>("button") || []).find((button) => button.textContent?.trim() === controlLabel);
+    if (!card || !control || !card.contains(control)) throw new Error(`Rendered ${controlLabel} control disappeared before activation.`);
+    control.scrollIntoView({ block: "center", inline: "nearest" });
+    control.click();
+  }, { cardSelector, controlSelector: selector, controlLabel: label });
 }
 
 async function waitForMissionToggle(page: Page, action: () => Promise<void>): Promise<{ quest?: { completed?: boolean }; xpAwarded?: number }> {
@@ -473,10 +508,11 @@ async function main(): Promise<void> {
       steps.push({ name: "dedicated account fixture prerequisites", status: "passed", detail: "Recorded the missing onboarding Mission IDs on the already completed, dedicated acceptance account before its first truthful Thread initialization." });
     }
     steps.push({ name: "onboarding-derived Thread preflight", status: "passed", detail: threadPreflight.state === "existing" ? "The dedicated account already had an active onboarding-derived Thread." : "Activated the dedicated account's onboarding-derived draft Thread using the same product APIs as the rendered onboarding journey." });
-    progressionBefore = await readProgression(page);
-
     await page.goto(new URL("/missions", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
     await page.waitForSelector('[data-tour="create-mission"]', { visible: true, timeout: 30_000 });
+    await new Promise((resolve) => setTimeout(resolve, 2_000));
+    progressionBefore = await readStableProgression(page);
+    steps.push({ name: "settled progression baseline", status: "passed", detail: "Captured a stable baseline after any legitimate one-time onboarding reconciliation completed." });
     const tutorialDismissed = await dismissBlockingTutorial(page);
     steps.push({ name: "first-use tutorial boundary", status: "passed", detail: tutorialDismissed ? "Dismissed the visible tutorial through its named Skip control." : "No blocking tutorial was presented." });
     await activateRenderedControl(page, '[data-tour="create-mission"]');

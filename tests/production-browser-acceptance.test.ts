@@ -141,6 +141,7 @@ describe("production browser acceptance custody", () => {
     expect(coreLoopScript).toContain('browserApiRequest(page, "/api/profile", "PATCH", { completedOnboardingMissions })');
     expect(coreLoopScript).toContain('name: "dedicated account fixture prerequisites"');
     expect(coreLoopScript).toContain("async function waitForApiBudget");
+    expect(coreLoopScript).toContain("async function readStableProgression");
     expect(coreLoopScript).toContain("async function archiveStrandedSyntheticMissions");
     expect(coreLoopScript).toContain('await waitForApiBudget(page, 80)');
     expect(coreLoopScript).toContain('await waitForApiBudget(page, 60)');
@@ -156,6 +157,9 @@ describe("production browser acceptance custody", () => {
     expect(coreLoopScript).toContain("progressionMatches(progressionBefore, progressionAfterEvidence)");
     expect(coreLoopScript).toContain('[data-testid^="mission-skill-"]:not([disabled])');
     expect(coreLoopScript).toContain('activateMissionControl(page, "start")');
+    expect(coreLoopScript).toContain('card.contains(control)');
+    expect(coreLoopScript).toContain('control.scrollIntoView({ block: "center", inline: "nearest" })');
+    expect(coreLoopScript).toContain('name: "settled progression baseline"');
     expect(coreLoopScript).toContain('activateRenderedControl(page, \'[data-testid="mission-timer-stop"]\')');
     expect(coreLoopScript).toContain('activateMissionControl(page, "done")');
     expect(coreLoopScript).toContain('page.click(\'[data-testid="mission-self-review-submit"]\')');
