@@ -446,6 +446,12 @@ export default function MarkdownEditor({
                   remarkPlugins={[remarkGfm, remarkMath]}
                   rehypePlugins={[rehypeKatex]}
                   components={{
+                    input: ({ node: _node, ...props }: any) => (
+                      <input
+                        {...props}
+                        aria-label={props.type === 'checkbox' ? 'Mission task item' : props['aria-label']}
+                      />
+                    ),
                     li: ({ node, className, children, ...props }: any) => {
                       if (props.checked !== undefined) {
                         return <TaskListRenderer checked={props.checked}>{children}</TaskListRenderer>;
