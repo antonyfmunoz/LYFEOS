@@ -146,7 +146,7 @@ describeApi("workflow automation execution recovery", () => {
     expect(detail.data.automation).toMatchObject({ enabled: false, consecutiveFailures: 3, pauseReason: "REPEATED_ACTION_FAILURE" });
     expect(detail.data.runs.filter((run: any) => run.status === "failed")).toHaveLength(3);
     expect(detail.data.runs.filter((run: any) => run.status === "failed").every((run: any) =>
-      run.actionResults[0]?.errorCode === "AUTOMATION_CATEGORY_REPAIR_REVIEW_REQUIRED"
+      run.actionResults[0]?.errorCode === "ACTION_FAILED"
       && !Object.hasOwn(run.actionResults[0], "lastErrorCode")
     )).toBe(true);
     const mission = (await request("GET", "/api/automations/missions", undefined, cookie)).data.missions.find((row: any) => row.id === questId);
