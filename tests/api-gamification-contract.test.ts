@@ -39,6 +39,13 @@ describeApi("unified gamification authenticated journey", () => {
     expect(result.cacheControl).toContain("no-store");
     expect(result.data.progression.version).toBe("lyfeos-gamification.v1");
     expect(result.data.progression.tracks.activity.totalExperience).toBe(0);
+    expect(result.data.progression.tracks.activity.history).toMatchObject({
+      days: 30,
+      eventCount: 0,
+      openingExperience: 0,
+      endingExperience: 0,
+    });
+    expect(result.data.progression.tracks.activity.history.points).toHaveLength(30);
     expect(result.data.progression.tracks.capability.totalVerifiedExperience).toBe(0);
     expect(result.data.progression.tracks.authority).toMatchObject({ certifications: [], entrustedRoles: [] });
   });
@@ -69,6 +76,8 @@ describeApi("unified gamification authenticated journey", () => {
     expect(result.data.progression.tracks.authority.certifications).toEqual([]);
     expect(result.data.progression.badges).toEqual(expect.arrayContaining([expect.objectContaining({ key: "first-real-action" })]));
     expect(result.data.progression.tracks.activity.recentEvents[0]).toMatchObject({ action: "earned", experienceDelta: 1000 });
+    expect(result.data.progression.tracks.activity.history.endingExperience).toBe(1000);
+    expect(result.data.progression.tracks.activity.history.points.at(-1).cumulative).toBe(1000);
   });
 
   it("rejects client-forged XP, levels, streaks, and efficiency", async () => {
@@ -104,5 +113,8 @@ describeApi("unified gamification authenticated journey", () => {
     expect(result.data.progression.tracks.activity.totalExperience).toBe(1000);
     expect(result.data.progression.recentBadgeEvents.slice(0, 3).map((event: any) => event.action)).toEqual(["awarded", "reversed", "awarded"]);
     expect(result.data.progression.tracks.activity.recentEvents.slice(0, 3).map((event: any) => event.experienceDelta)).toEqual([1000, -1000, 1000]);
+    expect(result.data.progression.tracks.activity.history.endingExperience).toBe(1000);
+    expect(result.data.progression.tracks.activity.history.points.at(-1).cumulative).toBe(1000);
+    expect(result.data.progression.tracks.activity.history.points.at(-1)).toMatchObject({ earned: 2000, reversed: 1000, net: 1000 });
   });
 });

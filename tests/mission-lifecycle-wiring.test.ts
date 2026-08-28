@@ -78,10 +78,12 @@ describe("mission lifecycle wiring", () => {
   it("keeps activity XP distinct from evidence-backed capability claims on analytics surfaces", () => {
     const experience = readSource("client/src/pages/ExperienceDetailPage.tsx");
     const analytics = readSource("client/src/pages/AnalyticsPage.tsx");
+    const progression = readSource("server/progression.ts");
     expect(experience).toContain("Evidence-backed capability progress is tracked separately");
     expect(experience).toContain("activity.history?.points");
     expect(experience).toContain("Daily net activity XP");
     expect(experience).toContain("Current net sources");
+    expect(progression).toContain("history: activity.history");
     expect(experience.indexOf("{activityHistory.length > 0")).toBeLessThan(
       experience.indexOf("{isLoading ? (")
     );

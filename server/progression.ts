@@ -227,6 +227,7 @@ async function buildProgressionSummary(userId: number, historyDays = 30) {
         nextRank: activity.nextRank,
         levelsToNextRank: activity.levelsToNextRank,
         sourceTotals: activity.sourceTotals,
+        history: activity.history,
         recentEvents: activity.recentEvents,
         disclosure: "Activity XP, levels, and rank recognize completed LyfeOS missions and goals. They do not prove skill, certification, authority, or personal worth.",
       },
