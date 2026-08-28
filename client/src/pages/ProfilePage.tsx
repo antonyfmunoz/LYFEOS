@@ -2188,14 +2188,18 @@ export default function ProfilePage() {
                 <div>
                   <p className="text-sm text-foreground">Share content-free usage events</p>
                   <p className="mt-1 text-[11px] text-muted-foreground">
-                    {productAnalytics?.configured
-                      ? (productAnalytics.enabled ? "Enabled with your explicit consent." : "Disabled. No PostHog events are sent.")
-                      : "Unavailable until the privacy and deletion credentials are configured."}
+                    {productAnalytics?.enabled && productAnalytics.configured
+                      ? "Enabled with your explicit consent."
+                      : productAnalytics?.enabled
+                        ? "Capture is paused because provider privacy controls are unavailable. Turn this off to revoke consent and queue deletion."
+                        : productAnalytics?.configured
+                          ? "Disabled. No PostHog events are sent."
+                          : "Unavailable until the privacy, retention, and deletion controls are verified."}
                   </p>
                 </div>
                 <button
                   onClick={() => productAnalyticsMutation.mutate(!productAnalytics?.enabled)}
-                  disabled={!productAnalytics?.configured || productAnalyticsMutation.isPending}
+                  disabled={(!productAnalytics?.configured && !productAnalytics?.enabled) || productAnalyticsMutation.isPending}
                   className={`w-10 h-5 shrink-0 rounded-full relative transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-50 ${productAnalytics?.enabled ? 'bg-primary/30' : 'bg-card'}`}
                   aria-pressed={productAnalytics?.enabled === true}
                   aria-label="Share optional product analytics"

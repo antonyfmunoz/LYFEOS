@@ -7,6 +7,7 @@ import {
   latestProductAnalyticsConsent,
   processProductAnalyticsDeletionQueue,
   productAnalyticsConfig,
+  productAnalyticsProviderReadiness,
   productAnalyticsStatus,
   PRODUCT_ANALYTICS_POLICY_VERSION,
 } from "../product-analytics";
@@ -23,7 +24,8 @@ export function registerProductAnalyticsRoutes(app: Express): void {
     res.setHeader("Cache-Control", "private, no-store");
     try {
       const row = await latestProductAnalyticsConsent(req.session.userId!);
-      return res.json(productAnalyticsStatus(row));
+      const readiness = await productAnalyticsProviderReadiness();
+      return res.json(productAnalyticsStatus(row, readiness.ready));
     } catch (error) {
       logger.error("Could not read product analytics consent", error);
       return res.status(500).json({ error: "Could not read product analytics settings." });
@@ -34,8 +36,14 @@ export function registerProductAnalyticsRoutes(app: Express): void {
     res.setHeader("Cache-Control", "private, no-store");
     const parsed = consentSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: "Confirm the current product analytics choice." });
-    if (parsed.data.enabled && !productAnalyticsConfig()) {
-      return res.status(409).json({ error: "Product analytics is not configured, so LyfeOS will not enable capture." });
+    if (parsed.data.enabled) {
+      if (!productAnalyticsConfig()) {
+        return res.status(409).json({ error: "Product analytics is not configured, so LyfeOS will not enable capture." });
+      }
+      const readiness = await productAnalyticsProviderReadiness();
+      if (!readiness.ready) {
+        return res.status(409).json({ error: "Product analytics privacy controls are not ready, so LyfeOS will not enable capture." });
+      }
     }
 
     const userId = req.session.userId!;
@@ -68,7 +76,8 @@ export function registerProductAnalyticsRoutes(app: Express): void {
 
       if (!parsed.data.enabled) void processProductAnalyticsDeletionQueue();
       const row = await latestProductAnalyticsConsent(userId);
-      return res.json(productAnalyticsStatus(row));
+      const readiness = await productAnalyticsProviderReadiness();
+      return res.json(productAnalyticsStatus(row, readiness.ready));
     } catch (error) {
       logger.error("Could not update product analytics consent", error);
       return res.status(500).json({ error: "Could not update product analytics settings." });

@@ -21,6 +21,13 @@ SENTRY_RELEASE=git-commit-or-semantic-release
 # Use the same random 32+ character value in Fly and the GitHub Actions
 # LYFEOS_MONITOR_TOKEN repository secret. Never expose it to the browser.
 LYFEOS_MONITOR_TOKEN=generate-a-random-32-byte-or-longer-value
+# Optional product analytics remains unavailable until all five values are set
+# and LyfeOS verifies provider-side IP discard, capture defaults, and retention.
+POSTHOG_PROJECT_KEY=phc_public-project-token
+POSTHOG_HOST=https://us.i.posthog.com
+POSTHOG_PROJECT_ID=numeric-project-id
+POSTHOG_PERSONAL_API_KEY=least-privilege-project-read-and-person-read-write-key
+POSTHOG_ADMIN_HOST=https://us.posthog.com
 # Optional licensed food-catalog gateway. Keep the token server-side. Plain
 # HTTP is accepted only for localhost fixtures; production must use HTTPS.
 # FOOD_CATALOG_GATEWAY_URL=https://catalog-gateway.example.com

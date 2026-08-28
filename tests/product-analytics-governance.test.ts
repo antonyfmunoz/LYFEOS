@@ -26,7 +26,8 @@ describe("privacy-safe product analytics", () => {
     for (const key of ["POSTHOG_PROJECT_KEY", "POSTHOG_PERSONAL_API_KEY", "POSTHOG_PROJECT_ID", "POSTHOG_HOST", "POSTHOG_ADMIN_HOST"]) {
       expect(service).toContain(key);
     }
-    expect(route).toContain("if (parsed.data.enabled && !productAnalyticsConfig())");
+    expect(route).toContain("!productAnalyticsConfig()");
+    expect(route).toContain("productAnalyticsProviderReadiness()");
     expect(route).toContain("crypto.randomUUID()");
     expect(route).toContain("ON CONFLICT (\"subject_id\") DO NOTHING");
     expect(service).toContain(PRODUCT_ANALYTICS_POLICY_VERSION);
@@ -80,6 +81,8 @@ describe("privacy-safe product analytics", () => {
     expect(profile).toContain("Optional Product Analytics");
     expect(profile).toContain("This is off by default");
     expect(profile).toContain("No PostHog events are sent");
+    expect(profile).toContain("Turn this off to revoke consent and queue deletion");
+    expect(profile).toContain("(!productAnalytics?.configured && !productAnalytics?.enabled)");
     expect(app).toContain("<ProductAnalytics />");
     expect(app).not.toContain('path="/product-analytics"');
     expect(source(".github/workflows/verify.yml")).toContain("tests/api-product-analytics.test.ts");

@@ -1,6 +1,10 @@
 import { db } from "./db";
 import { sql } from "drizzle-orm";
 import { logger } from "./utils";
+import {
+  inspectProductAnalyticsProvider,
+  type ProductAnalyticsProviderReadiness,
+} from "./product-analytics-provider";
 
 export const PRODUCT_ANALYTICS_POLICY_VERSION = "lyfeos.product-analytics.v1" as const;
 
@@ -16,7 +20,7 @@ export const PRODUCT_ANALYTICS_EVENT_CATALOG = [
   "transformation_thread_completed",
 ] as const;
 
-type ProductAnalyticsConfig = {
+export type ProductAnalyticsConfig = {
   projectKey: string;
   ingestionHost: string;
   personalApiKey: string;
@@ -45,6 +49,39 @@ export function productAnalyticsConfig(): ProductAnalyticsConfig | null {
   return { projectKey, personalApiKey, projectId, ingestionHost, adminHost };
 }
 
+const PROVIDER_READINESS_TTL_MS = 5 * 60_000;
+let providerReadinessCache: {
+  key: string;
+  checkedAt: number;
+  result: ProductAnalyticsProviderReadiness;
+} | null = null;
+let providerReadinessInFlight: {
+  key: string;
+  promise: Promise<ProductAnalyticsProviderReadiness>;
+} | null = null;
+
+export async function productAnalyticsProviderReadiness(): Promise<ProductAnalyticsProviderReadiness> {
+  const config = productAnalyticsConfig();
+  if (!config) return { ready: false, violations: ["configuration_incomplete"] };
+  const key = `${config.adminHost}\n${config.projectId}\n${config.personalApiKey}`;
+  const now = Date.now();
+  if (providerReadinessCache?.key === key && now - providerReadinessCache.checkedAt < PROVIDER_READINESS_TTL_MS) {
+    return providerReadinessCache.result;
+  }
+  if (providerReadinessInFlight?.key === key) return providerReadinessInFlight.promise;
+  const promise = inspectProductAnalyticsProvider(config).then((result) => {
+    providerReadinessCache = { key, checkedAt: Date.now(), result };
+    if (!result.ready) logger.warn("Product analytics capture remains disabled by provider privacy preflight.", { violations: result.violations });
+    return result;
+  });
+  providerReadinessInFlight = { key, promise };
+  try {
+    return await promise;
+  } finally {
+    if (providerReadinessInFlight?.promise === promise) providerReadinessInFlight = null;
+  }
+}
+
 type ConsentRow = {
   subject_id: string;
   state: "enabled" | "revoked";
@@ -63,12 +100,12 @@ export async function latestProductAnalyticsConsent(userId: number): Promise<Con
   return ((result as unknown as { rows?: ConsentRow[] }).rows || [])[0] || null;
 }
 
-export function productAnalyticsStatus(row: ConsentRow | null) {
-  const config = productAnalyticsConfig();
+export function productAnalyticsStatus(row: ConsentRow | null, providerReady = false) {
+  const config = providerReady ? productAnalyticsConfig() : null;
   const enabled = row?.state === "enabled";
   return {
     policyVersion: PRODUCT_ANALYTICS_POLICY_VERSION,
-    configured: Boolean(config),
+    configured: Boolean(config) && providerReady,
     enabled,
     consentedAt: enabled ? new Date(row!.created_at).toISOString() : null,
     capture: enabled && config ? {
