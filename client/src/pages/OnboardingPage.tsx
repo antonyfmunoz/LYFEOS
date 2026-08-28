@@ -1026,6 +1026,10 @@ export default function OnboardingPage() {
           completedOnboardingMissions: [...baseCompleted, missionId].filter((v, i, a) => a.indexOf(v) === i)
         })
       });
+      if (!profileResponse.ok) {
+        const body = await profileResponse.text().catch(() => "");
+        throw new Error(`Mission ${missionId} completion was not saved (${profileResponse.status})${body ? `: ${body}` : ""}`);
+      }
       
       const effectiveUserId = user?.id || registeredUser?.id;
       if (effectiveUserId) {
@@ -1113,15 +1117,14 @@ export default function OnboardingPage() {
         }
       }
       
-      if (profileResponse.ok) {
-        setCompletedOnboardingMissions(prev => [...(prev || []), missionId].filter((v, i, a) => a.indexOf(v) === i));
-        queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
-        if (missionId === MISSIONS.length - 1) {
-          await activateOnboardingThread().catch((error) => console.error("Failed to activate onboarding transformation thread:", error));
-        }
+      setCompletedOnboardingMissions(prev => [...(prev || []), missionId].filter((v, i, a) => a.indexOf(v) === i));
+      queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+      if (missionId === MISSIONS.length - 1) {
+        await activateOnboardingThread();
       }
     } catch (error: any) {
       console.error("Failed to save completed mission:", error?.message || error);
+      throw error;
     }
   };
 
@@ -1278,18 +1281,32 @@ export default function OnboardingPage() {
       const colorToReapply = selectedThemeColor !== "#ffffff" ? selectedThemeColor 
         : localStorage.getItem('lyfeos-primary-color') 
         || (stats?.primaryColor !== "#ffffff" ? stats?.primaryColor : null);
-      persistOnboardingPosition(currentMission, currentStep, true);
-      setShowMissionComplete(true);
-      saveMissionData(currentMission)
-        .then(() => saveCompletedMission(currentMission))
-        .then(() => {
-          if (colorToReapply && colorToReapply !== "#ffffff") {
-            applyPrimaryColor(colorToReapply);
-            setPrimaryColor(colorToReapply);
-            localStorage.setItem('lyfeos-primary-color', colorToReapply);
-          }
-        })
-        .catch(err => console.error("Error saving mission:", err));
+      setIsLoading(true);
+      try {
+        // A Mission is not complete until its profile and completion records
+        // are committed. Serializing this boundary prevents fast clicks from
+        // letting the final Thread initializer observe an earlier Mission
+        // write that is still in flight.
+        await saveMissionData(currentMission);
+        await saveCompletedMission(currentMission);
+        if (colorToReapply && colorToReapply !== "#ffffff") {
+          applyPrimaryColor(colorToReapply);
+          setPrimaryColor(colorToReapply);
+          localStorage.setItem('lyfeos-primary-color', colorToReapply);
+        }
+        persistOnboardingPosition(currentMission, currentStep, true);
+        setShowMissionComplete(true);
+      } catch (err) {
+        console.error("Error saving mission:", err);
+        persistOnboardingPosition(currentMission, currentStep, false);
+        toast({
+          title: "Mission not saved yet",
+          description: "Your answers are still here. Try again to finish this Mission.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
   
@@ -1674,6 +1691,7 @@ export default function OnboardingPage() {
       }
     } catch (error) {
       console.error(`Error saving mission ${missionId} data:`, error);
+      throw error;
     }
   };
   
