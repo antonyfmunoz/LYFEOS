@@ -36,4 +36,27 @@ describe("Mission consequence preflight", () => {
     expect(detail).toContain("LyfeOS has not verified these assumptions");
     expect(profile).toContain('"mission_consequence_preflights"');
   });
+
+  it("archives isolated rendered evidence for the exact-revision safety journey", () => {
+    const acceptance = source("scripts/mission-safety-browser-acceptance.ts");
+    const workflow = source(".github/workflows/verify.yml");
+    const packageJson = source("package.json");
+    const detail = source("client/src/pages/MissionDetailPage.tsx");
+    expect(acceptance).toContain('contract: "lyfeos.isolated-mission-safety-browser.v1"');
+    expect(acceptance).toContain('process.env.GITHUB_SHA');
+    expect(acceptance).toContain('recordPreflight(page, missionId, "revise", 1');
+    expect(acceptance).toContain('recordPreflight(page, missionId, "proceed", 2');
+    expect(acceptance).toContain('materialRevisionInvalidatedDecision');
+    expect(acceptance).toContain('prerequisiteBlockedCompletion');
+    expect(acceptance).toContain('DELETE", "/api/account"');
+    expect(acceptance).toContain('desktop-1440x900');
+    expect(acceptance).toContain('mobile-390x844');
+    expect(detail).toContain('data-testid="mission-preflight-acknowledgement"');
+    expect(detail).toContain('data-testid="mission-preflight-record"');
+    expect(detail).toContain('data-testid="mission-preflight-accept"');
+    expect(packageJson).toContain('"acceptance:mission-safety": "tsx scripts/mission-safety-browser-acceptance.ts"');
+    expect(workflow).toContain('npm run acceptance:mission-safety');
+    expect(workflow).toContain('name: lyfeos-isolated-mission-safety-${{ github.sha }}');
+    expect(workflow).toContain('path: ${{ runner.temp }}/lyfeos-mission-safety-browser');
+  });
 });
