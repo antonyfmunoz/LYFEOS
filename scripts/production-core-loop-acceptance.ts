@@ -70,6 +70,20 @@ type AutomationControlEvidence = {
   progressionUnchanged: boolean;
   enabledThenPaused: boolean;
   runNowEnabledWhileRuleEnabled: boolean;
+  scheduleSavedAndRevised: boolean;
+  scheduleRunNowDisabled: boolean;
+  scheduleNextRunAt: string;
+  scheduleTrigger: {
+    questId: number;
+    timeZone: string;
+    localTime: string;
+    cadence: "weekly";
+    weekdays: number[];
+    startDate: string;
+    endDate: string | null;
+    maxOccurrences: number;
+    missedRunPolicy: "run_once";
+  };
 };
 
 type BrowserApiResponse = {
@@ -545,6 +559,129 @@ async function exerciseNonMutatingAutomationControls(page: Page): Promise<Automa
     const progressionUnchanged = progressionMatches(progressionBefore, progressionAfterControls);
     assert(progressionUnchanged, "Automation enable/pause controls changed activity XP, capability XP, badges, or authority.");
 
+    stage = "refill the API budget before the disabled schedule authoring cycle";
+    await waitForApiBudget(page, 45);
+    stage = "open the rendered bounded schedule editor";
+    await page.select('[data-testid="automation-trigger"]', "schedule");
+    await page.waitForSelector('[data-testid="automation-schedule-editor"]', { visible: true, timeout: 30_000 });
+    await page.waitForFunction((id) => Array.from(document.querySelectorAll<HTMLSelectElement>('[data-testid="automation-schedule-anchor"] option')).some((option) => option.value === String(id)), { timeout: 30_000 }, missionId);
+    await page.select('[data-testid="automation-schedule-anchor"]', String(missionId));
+    await page.select('[data-testid="automation-schedule-missed-run-policy"]', "skip");
+    await fill(page, '[data-testid="automation-schedule-max-occurrences"]', "2");
+    await page.waitForFunction((id) => {
+      const value = (selector: string) => document.querySelector<HTMLInputElement | HTMLSelectElement>(selector)?.value || "";
+      return value('[data-testid="automation-schedule-anchor"]') === String(id)
+        && value('[data-testid="automation-schedule-time-zone"]').length > 0
+        && value('[data-testid="automation-schedule-local-time"]').length > 0
+        && value('[data-testid="automation-schedule-cadence"]') === "daily"
+        && value('[data-testid="automation-schedule-start-date"]').length === 10
+        && value('[data-testid="automation-schedule-max-occurrences"]') === "2"
+        && value('[data-testid="automation-schedule-missed-run-policy"]') === "skip";
+    }, { timeout: 30_000 }, missionId);
+
+    stage = "save the disabled daily schedule through the rendered control";
+    const dailyScheduleResponsePromise = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return url.origin === BASE_URL.origin && url.pathname === `/api/automations/${automationId}` && response.request().method() === "PATCH";
+    }, { timeout: 30_000 });
+    await activateRenderedControl(page, '[data-testid="automation-save"]');
+    const dailyScheduleResponse = await dailyScheduleResponsePromise;
+    const dailyScheduleBody = await dailyScheduleResponse.json() as {
+      automation?: {
+        enabled?: boolean;
+        scheduleNextRunAt?: string | null;
+        definition?: {
+          version?: number;
+          trigger?: {
+            type?: string;
+            questId?: number;
+            timeZone?: string;
+            localTime?: string;
+            cadence?: string;
+            weekdays?: number[];
+            startDate?: string;
+            endDate?: string | null;
+            maxOccurrences?: number;
+            missedRunPolicy?: string;
+          };
+        };
+      };
+    };
+    const dailyTrigger = dailyScheduleBody.automation?.definition?.trigger;
+    const dailyNextRunAt = String(dailyScheduleBody.automation?.scheduleNextRunAt || "");
+    assert(dailyScheduleResponse.ok(), `Rendered daily schedule save failed (${dailyScheduleResponse.status()}).`);
+    assert(dailyScheduleBody.automation?.enabled === false, "Saving a bounded schedule unexpectedly enabled the rule.");
+    assert(dailyScheduleBody.automation?.definition?.version === 2 && dailyTrigger?.type === "schedule", "Saved bounded schedule omitted its version-two schedule trigger.");
+    assert(dailyTrigger?.questId === missionId && dailyTrigger.cadence === "daily" && dailyTrigger.weekdays?.length === 0, "Saved daily schedule omitted its owner Mission anchor or cadence.");
+    assert(dailyTrigger?.maxOccurrences === 2 && dailyTrigger.missedRunPolicy === "skip", "Saved daily schedule omitted its bounded occurrence or missed-run policy.");
+    assert(dailyNextRunAt.length > 0 && Number.isFinite(new Date(dailyNextRunAt).getTime()) && new Date(dailyNextRunAt).getTime() > Date.now(), "Saved daily schedule did not retain a future next occurrence.");
+    await page.waitForFunction((timeZone) => {
+      const status = document.querySelector('[data-testid="automation-schedule-status"]')?.textContent || "";
+      return status.includes("Consumed 0 occurrences") && status.includes("next") && status.includes(`(${timeZone})`);
+    }, { timeout: 30_000 }, dailyTrigger?.timeZone || "");
+    const scheduleRunNowDisabled = await page.$eval('[data-testid="automation-run-now"]', (element) => (element as HTMLButtonElement).disabled);
+    assert(scheduleRunNowDisabled, "A disabled scheduled automation exposed the manual Run now action.");
+
+    stage = "revise the disabled schedule to selected weekdays";
+    const startWeekday = new Date(`${dailyTrigger?.startDate || ""}T00:00:00.000Z`).getUTCDay();
+    assert(Number.isInteger(startWeekday) && startWeekday >= 0 && startWeekday <= 6, "Saved daily schedule returned an invalid start date.");
+    const addedWeekday = (startWeekday + 1) % 7;
+    await page.select('[data-testid="automation-schedule-cadence"]', "weekly");
+    await page.waitForSelector(`[data-testid="automation-schedule-weekday-${startWeekday}"]`, { visible: true, timeout: 30_000 });
+    await page.waitForFunction((day) => document.querySelector(`[data-testid="automation-schedule-weekday-${day}"]`)?.getAttribute("aria-pressed") === "true", { timeout: 30_000 }, startWeekday);
+    await activateRenderedControl(page, `[data-testid="automation-schedule-weekday-${addedWeekday}"]`);
+    await page.select('[data-testid="automation-schedule-missed-run-policy"]', "run_once");
+    await fill(page, '[data-testid="automation-schedule-max-occurrences"]', "3");
+    await page.waitForFunction((day) => {
+      const cadence = document.querySelector<HTMLSelectElement>('[data-testid="automation-schedule-cadence"]')?.value;
+      const occurrenceCount = document.querySelector<HTMLInputElement>('[data-testid="automation-schedule-max-occurrences"]')?.value;
+      const policy = document.querySelector<HTMLSelectElement>('[data-testid="automation-schedule-missed-run-policy"]')?.value;
+      const added = document.querySelector(`[data-testid="automation-schedule-weekday-${day}"]`)?.getAttribute("aria-pressed");
+      return cadence === "weekly" && occurrenceCount === "3" && policy === "run_once" && added === "true";
+    }, { timeout: 30_000 }, addedWeekday);
+
+    stage = "save the revised disabled weekly schedule through the rendered control";
+    const weeklyScheduleResponsePromise = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return url.origin === BASE_URL.origin && url.pathname === `/api/automations/${automationId}` && response.request().method() === "PATCH";
+    }, { timeout: 30_000 });
+    await activateRenderedControl(page, '[data-testid="automation-save"]');
+    const weeklyScheduleResponse = await weeklyScheduleResponsePromise;
+    const weeklyScheduleBody = await weeklyScheduleResponse.json() as typeof dailyScheduleBody;
+    const weeklyTrigger = weeklyScheduleBody.automation?.definition?.trigger;
+    const weeklyNextRunAt = String(weeklyScheduleBody.automation?.scheduleNextRunAt || "");
+    const expectedWeekdays = [startWeekday, addedWeekday].sort((left, right) => left - right);
+    assert(weeklyScheduleResponse.ok(), `Rendered weekly schedule save failed (${weeklyScheduleResponse.status()}).`);
+    assert(weeklyScheduleBody.automation?.enabled === false, "Revising a bounded schedule unexpectedly enabled the rule.");
+    assert(weeklyTrigger?.type === "schedule" && weeklyTrigger.cadence === "weekly", "Revised schedule did not retain its weekly trigger.");
+    assert(JSON.stringify(weeklyTrigger.weekdays) === JSON.stringify(expectedWeekdays), `Revised schedule retained unexpected weekdays (${JSON.stringify(weeklyTrigger?.weekdays || [])}).`);
+    assert(weeklyTrigger.maxOccurrences === 3 && weeklyTrigger.missedRunPolicy === "run_once", "Revised weekly schedule omitted its bounded occurrence or consolidation policy.");
+    assert(weeklyNextRunAt.length > 0 && Number.isFinite(new Date(weeklyNextRunAt).getTime()) && new Date(weeklyNextRunAt).getTime() > Date.now(), "Revised weekly schedule did not retain a future next occurrence.");
+    const scheduleRunNowDisabledAfterRevision = await page.$eval('[data-testid="automation-run-now"]', (element) => (element as HTMLButtonElement).disabled);
+    assert(scheduleRunNowDisabledAfterRevision, "A revised scheduled automation exposed the manual Run now action.");
+
+    stage = "preview the revised saved schedule without executing it";
+    const scheduledPreviewResponsePromise = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return url.origin === BASE_URL.origin && url.pathname === `/api/automations/${automationId}/preview` && response.request().method() === "POST";
+    }, { timeout: 30_000 });
+    await activateRenderedControl(page, '[data-testid="automation-preview"]');
+    const scheduledPreviewResponse = await scheduledPreviewResponsePromise;
+    const scheduledPreviewBody = await scheduledPreviewResponse.json() as typeof previewBody;
+    assert(scheduledPreviewResponse.ok() && scheduledPreviewBody.preview?.matched === true, `Rendered scheduled preview failed (${scheduledPreviewResponse.status()}).`);
+    assert(scheduledPreviewBody.preview?.disclosure === previewBody.preview.disclosure, "Scheduled preview changed the exact non-mutation disclosure.");
+    const detailAfterSchedule = await browserApiRequest(page, `/api/automations/${automationId}`);
+    const runsAfterSchedule = (detailAfterSchedule.body as { runs?: unknown[] } | null)?.runs || [];
+    assert(detailAfterSchedule.status === 200 && runsAfterSchedule.length === 0, "Disabled schedule authoring or preview created an execution receipt.");
+    const missionsAfterScheduleResponse = await browserApiRequest(page, `/api/users/${userId}/quests`);
+    const missionsAfterSchedule = (missionsAfterScheduleResponse.body as { quests?: Array<{ title?: unknown }> } | null)?.quests || [];
+    const followUpCreatedAfterSchedule = missionsAfterSchedule.some((mission) => mission.title === AUTOMATION_FOLLOW_UP_TITLE);
+    assert(missionsAfterScheduleResponse.status === 200 && !followUpCreatedAfterSchedule, "Disabled schedule authoring or preview created the declared follow-up Mission.");
+    const progressionAfterSchedule = await readProgression(page);
+    const progressionUnchangedAfterSchedule = progressionMatches(progressionBefore, progressionAfterSchedule);
+    assert(progressionUnchangedAfterSchedule, "Disabled schedule authoring or preview changed activity XP, capability XP, badges, or authority.");
+    assert(weeklyTrigger?.questId === missionId && typeof weeklyTrigger.timeZone === "string" && typeof weeklyTrigger.localTime === "string" && typeof weeklyTrigger.startDate === "string", "Revised schedule omitted its required trigger fields.");
+
     const evidence: AutomationControlEvidence = {
     automationId,
     missionId,
@@ -552,11 +689,25 @@ async function exerciseNonMutatingAutomationControls(page: Page): Promise<Automa
     actionTypes: previewBody.preview.actions.map((action) => String(action.type || "")),
     disclosure: previewBody.preview.disclosure,
     renderedText: rendered,
-    runCount: runsAfterPause.length,
-    followUpCreated: followUpCreatedAfterControls,
-    progressionUnchanged,
+    runCount: runsAfterSchedule.length,
+    followUpCreated: followUpCreatedAfterSchedule,
+    progressionUnchanged: progressionUnchanged && progressionUnchangedAfterSchedule,
     enabledThenPaused: true,
     runNowEnabledWhileRuleEnabled,
+    scheduleSavedAndRevised: true,
+    scheduleRunNowDisabled: scheduleRunNowDisabled && scheduleRunNowDisabledAfterRevision,
+    scheduleNextRunAt: weeklyNextRunAt,
+    scheduleTrigger: {
+      questId: weeklyTrigger.questId,
+      timeZone: weeklyTrigger.timeZone,
+      localTime: weeklyTrigger.localTime,
+      cadence: "weekly",
+      weekdays: weeklyTrigger.weekdays || [],
+      startDate: weeklyTrigger.startDate,
+      endDate: weeklyTrigger.endDate || null,
+      maxOccurrences: weeklyTrigger.maxOccurrences || 0,
+      missedRunPolicy: "run_once",
+    },
   };
 
     stage = "delete the synthetic automation through the rendered control";
@@ -882,7 +1033,7 @@ async function cleanupMission(page: Page): Promise<void> {
 
 async function writeReport(): Promise<void> {
   const report = {
-    contract: "lyfeos.production-core-loop-acceptance.v5",
+    contract: "lyfeos.production-core-loop-acceptance.v6",
     generatedAt: new Date().toISOString(),
     baseUrl: BASE_URL.origin,
     source: SOURCE,
@@ -921,7 +1072,7 @@ async function writeReport(): Promise<void> {
     },
     steps,
     summary: { passed: failureMessage === null && cleanupArchived && automationDeleted && automationControlEvidence !== null, failure: failureMessage },
-    boundary: "This journey proves one self-reviewed, skill-linked synthetic Mission plus a saved automation preview and explicit enable/pause control cycle, its rendered current path, private capability graph, durable focus history, and exact reviewed-capability reversal. Preview, enable and pause write no execution receipt, follow-up Mission, or progression. The journey does not activate Run now. Activity XP recognizes completion; capability XP requires declared evidence plus positive self-review; reopening reverses both tracks and supported badges. LyfeOS grants no certification or authority.",
+    boundary: "This journey proves one self-reviewed, skill-linked synthetic Mission plus a saved manual automation preview and explicit enable/pause cycle followed by disabled daily-schedule authoring, weekly revision, and preview, its rendered current path, private capability graph, durable focus history, and exact reviewed-capability reversal. Preview, enable, pause, and disabled schedule authoring write no execution receipt, follow-up Mission, or progression. The journey does not activate Run now or enable the scheduled rule. Activity XP recognizes completion; capability XP requires declared evidence plus positive self-review; reopening reverses both tracks and supported badges. LyfeOS grants no certification or authority.",
   } as const;
   await fs.mkdir(OUTPUT_DIR, { recursive: true });
   await fs.writeFile(OUTPUT_FILE, `${JSON.stringify(report, null, 2)}\n`, "utf8");
@@ -938,7 +1089,7 @@ async function writeReport(): Promise<void> {
       `- No certification or authority granted: ${report.progression.noAuthorityGranted}`,
       `- Rendered reopen restored the exact baseline: ${report.progression.exactRenderedReversal}`,
       `- Rendered Thread and capability history reconciled after review and reversal: ${report.threadContinuity.exactCapabilityReversal}`,
-      `- Automation preview and enable/pause cycle created no run, Mission, or progression: ${Boolean(report.automationControls && report.automationControls.runCount === 0 && !report.automationControls.followUpCreated && report.automationControls.progressionUnchanged && report.automationControls.enabledThenPaused && report.automationControls.runNowEnabledWhileRuleEnabled)}`,
+      `- Manual preview/enable/pause plus disabled schedule save/revision/preview created no run, Mission, or progression: ${Boolean(report.automationControls && report.automationControls.runCount === 0 && !report.automationControls.followUpCreated && report.automationControls.progressionUnchanged && report.automationControls.enabledThenPaused && report.automationControls.runNowEnabledWhileRuleEnabled && report.automationControls.scheduleSavedAndRevised && report.automationControls.scheduleRunNowDisabled && report.automationControls.scheduleNextRunAt)}`,
       `- Synthetic automation deleted: ${automationDeleted}`,
       `- Desktop/mobile Mission Detail views qualified: ${views.length === 2}`,
       "",
@@ -1053,7 +1204,7 @@ async function main(): Promise<void> {
     steps.push({ name: "unreviewed evidence boundary", status: "passed", detail: "Artifact evidence persisted without changing activity XP, capability XP, or badges." });
 
     automationControlEvidence = await exerciseNonMutatingAutomationControls(page);
-    steps.push({ name: "rendered non-mutating automation controls", status: "passed", detail: "Created and saved one bounded manual rule, matched the synthetic Mission in Preview, explicitly enabled then paused it, proved Run now was available only while enabled, proved zero run receipts, follow-up Missions, and progression changes, then deleted the rule through the rendered control." });
+    steps.push({ name: "rendered non-mutating automation controls", status: "passed", detail: "Created and saved one bounded manual rule, matched the synthetic Mission in Preview, explicitly enabled then paused it, proved Run now was available only while enabled, converted the paused rule to a disabled daily schedule, revised it to selected weekdays, proved a future next occurrence and unavailable Run now, previewed again, proved zero run receipts, follow-up Missions, and progression changes, then deleted the rule through the rendered control." });
 
     await page.goto(new URL(`/mission/${missionId}`, BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
     await page.waitForFunction((title) => document.body.innerText.includes(title), { timeout: 30_000 }, MISSION_TITLE);

@@ -134,7 +134,7 @@ describe("production browser acceptance custody", () => {
 
   it("qualifies the rendered truthful Mission loop separately and always archives its synthetic record", () => {
     expect(packageJson).toContain('"acceptance:core-loop": "tsx scripts/production-core-loop-acceptance.ts"');
-    expect(coreLoopScript).toContain('contract: "lyfeos.production-core-loop-acceptance.v5"');
+    expect(coreLoopScript).toContain('contract: "lyfeos.production-core-loop-acceptance.v6"');
     expect(coreLoopScript).toContain("[AUTOMATED ACCEPTANCE]");
     expect(coreLoopScript).toContain("async function dismissBlockingTutorial");
     expect(coreLoopScript).toContain("async function activateRenderedControl");
@@ -195,6 +195,17 @@ describe("production browser acceptance custody", () => {
     expect(coreLoopScript).toContain('runsAfterPause.length === 0');
     expect(coreLoopScript).toContain('!followUpCreatedAfterControls');
     expect(coreLoopScript).toContain('progressionMatches(progressionBefore, progressionAfterControls)');
+    expect(automationsPage).toContain('data-testid="automation-schedule-editor"');
+    expect(automationsPage).toContain('data-testid="automation-schedule-anchor"');
+    expect(automationsPage).toContain('data-testid="automation-schedule-status"');
+    expect(coreLoopScript).toContain('stage = "save the disabled daily schedule through the rendered control"');
+    expect(coreLoopScript).toContain('stage = "save the revised disabled weekly schedule through the rendered control"');
+    expect(coreLoopScript).toContain('stage = "preview the revised saved schedule without executing it"');
+    expect(coreLoopScript).toContain('scheduleSavedAndRevised: true');
+    expect(coreLoopScript).toContain('scheduleRunNowDisabled');
+    expect(coreLoopScript).toContain('runsAfterSchedule.length === 0');
+    expect(coreLoopScript).toContain('!followUpCreatedAfterSchedule');
+    expect(coreLoopScript).toContain('progressionMatches(progressionBefore, progressionAfterSchedule)');
     expect(coreLoopScript).toContain('activateRenderedControl(page, \'[data-testid="automation-delete"]\')');
     expect(coreLoopScript).toContain('name: "rendered non-mutating automation controls"');
     expect(coreLoopScript).toContain('[data-testid^="mission-skill-"]:not([disabled])');
@@ -229,7 +240,7 @@ describe("production browser acceptance custody", () => {
     expect(coreLoopScript).toContain('browserApiRequest(page, `/api/quests/${id}`, "DELETE")');
     expect(coreLoopScript).toContain("await cleanupMission(page)");
     expect(coreLoopScript).toContain("await cleanupAutomation(page)");
-    expect(coreLoopScript).toContain('boundary: "This journey proves one self-reviewed, skill-linked synthetic Mission plus a saved automation preview and explicit enable/pause control cycle');
+    expect(coreLoopScript).toContain('boundary: "This journey proves one self-reviewed, skill-linked synthetic Mission plus a saved manual automation preview and explicit enable/pause cycle followed by disabled daily-schedule authoring');
     expect(workflow).toContain("Run truthful Mission core-loop acceptance");
     expect(workflow).toContain("github.event_name == 'workflow_dispatch' && inputs.require_authenticated");
     expect(workflow).toContain("run: npm run acceptance:core-loop");
