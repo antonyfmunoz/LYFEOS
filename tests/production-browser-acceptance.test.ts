@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import fs from "node:fs";
 
 const script = fs.readFileSync("scripts/production-browser-acceptance.ts", "utf8");
+const coreLoopScript = fs.readFileSync("scripts/production-core-loop-acceptance.ts", "utf8");
 const workflow = fs.readFileSync(".github/workflows/production-browser-acceptance.yml", "utf8");
+const packageJson = fs.readFileSync("package.json", "utf8");
 
 describe("production browser acceptance custody", () => {
   it("has no embedded account credentials and fails closed when protected evidence is required", () => {
@@ -122,5 +124,24 @@ describe("production browser acceptance custody", () => {
     expect(workflow).toContain("LYFEOS_ACCEPTANCE_PASSWORD: ${{ secrets.LYFEOS_ACCEPTANCE_PASSWORD }}");
     expect(workflow).toContain("if: always()");
     expect(workflow).toContain("retention-days: 30");
+  });
+
+  it("qualifies the rendered truthful Mission loop separately and always archives its synthetic record", () => {
+    expect(packageJson).toContain('"acceptance:core-loop": "tsx scripts/production-core-loop-acceptance.ts"');
+    expect(coreLoopScript).toContain('contract: "lyfeos.production-core-loop-acceptance.v1"');
+    expect(coreLoopScript).toContain("[AUTOMATED ACCEPTANCE]");
+    expect(coreLoopScript).toContain('page.click(\'[data-tour="create-mission"]\')');
+    expect(coreLoopScript).toContain('page.click(\'[data-testid="mission-create-submit"]\')');
+    expect(coreLoopScript).toContain('page.click(\'[data-testid="proof-plan-save"]\')');
+    expect(coreLoopScript).toContain('page.click(\'[data-testid="mission-evidence-add"]\')');
+    expect(coreLoopScript).toContain("progressionMatches(progressionBefore, progressionAfterEvidence)");
+    expect(coreLoopScript).toContain('fetch(`/api/quests/${id}`, { method: "DELETE"');
+    expect(coreLoopScript).toContain("await cleanupMission(page)");
+    expect(coreLoopScript).toContain('boundary: "The journey stops before completion or review.');
+    expect(coreLoopScript).not.toContain('/toggle"');
+    expect(coreLoopScript).not.toContain('/reviews"');
+    expect(workflow).toContain("Run truthful Mission core-loop acceptance");
+    expect(workflow).toContain("github.event_name == 'workflow_dispatch' && inputs.require_authenticated");
+    expect(workflow).toContain("run: npm run acceptance:core-loop");
   });
 });

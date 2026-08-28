@@ -106,4 +106,18 @@ describe("shared accessibility shell", () => {
     expect(automations).toContain("detail.refetch()");
     expect(automations).toContain('<Button asChild variant="outline"><Link href="/document-vault">Data Vault</Link></Button>');
   });
+
+  it("keeps the canonical Mission proof and evidence controls explicitly named", () => {
+    const missions = readFileSync(resolve(process.cwd(), "client/src/pages/QuestsPage.tsx"), "utf8");
+    const detail = readFileSync(resolve(process.cwd(), "client/src/pages/MissionDetailPage.tsx"), "utf8");
+    expect(missions).toContain('data-testid="mission-create-submit"');
+    expect(detail).toContain('data-testid="proof-plan-purpose" aria-label="Mission purpose"');
+    expect(detail).toContain('data-testid="proof-plan-output" aria-label="Expected mission output"');
+    expect(detail).toContain('data-testid="proof-plan-method" aria-label="Mission method steps"');
+    expect(detail).toContain('data-testid="proof-plan-evidence-requirement" aria-label="Required mission evidence"');
+    expect(detail).toContain('aria-label="Mission stop condition"');
+    expect(detail).toContain('aria-label="Mission escalation path"');
+    expect(detail).toContain('data-testid="mission-evidence-reference" aria-label="Evidence source or reference"');
+    expect(detail).toContain('data-testid="mission-evidence-summary" aria-label="Mission evidence summary"');
+  });
 });

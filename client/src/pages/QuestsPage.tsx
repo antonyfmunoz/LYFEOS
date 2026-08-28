@@ -2376,6 +2376,7 @@ export default function QuestsPage() {
               </Collapsible>
 
               <button 
+                data-testid="mission-create-submit"
                 onClick={handleCreateMission} 
                 className="w-full mt-4 text-sm font-mono px-4 py-2.5 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40 inline-flex items-center justify-center"
                 disabled={!createFormData.title.trim() || isSubmitting || (createFormData.isRitualized && createFormData.repeatFrequency === "weekly" && createFormData.repeatDays.length === 0)}

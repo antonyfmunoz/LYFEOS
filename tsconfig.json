@@ -1,5 +1,5 @@
 {
-  "include": ["client/src/**/*", "shared/**/*", "server/**/*", "scripts/health-integrity-drill.ts"],
+  "include": ["client/src/**/*", "shared/**/*", "server/**/*", "scripts/health-integrity-drill.ts", "scripts/production-core-loop-acceptance.ts"],
   "exclude": ["node_modules", "build", "dist", "**/*.test.ts"],
   "compilerOptions": {
     "incremental": true,

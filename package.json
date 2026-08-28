@@ -11,6 +11,7 @@
     "test": "vitest run",
     "budget": "node scripts/check-bundle-budget.mjs",
     "acceptance:browser": "tsx scripts/production-browser-acceptance.ts",
+    "acceptance:core-loop": "tsx scripts/production-core-loop-acceptance.ts",
     "verify": "npm run check && npm test && npm run build && npm run budget",
     "ops:health-integrity": "tsx scripts/health-integrity-drill.ts",
     "db:push": "drizzle-kit push"

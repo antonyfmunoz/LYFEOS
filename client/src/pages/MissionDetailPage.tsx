@@ -727,11 +727,11 @@ export default function MissionDetailPage() {
               </div>}
               {contractQuery.isLoading ? <p className="text-sm text-muted-foreground">Loading proof plan…</p> : !contractQuery.data?.contract ? (
                 <div className="grid gap-2">
-                  <Input value={purpose} onChange={(event) => setPurpose(event.target.value)} placeholder="Why does this mission matter?" />
-                  <Input value={expectedOutput} onChange={(event) => setExpectedOutput(event.target.value)} placeholder="What observable output will show progress?" />
-                  <Textarea value={methodStepsText} onChange={(event) => setMethodStepsText(event.target.value)} placeholder={"Method steps, one per line (optional)\nExample: Complete one bounded attempt"} className="min-h-20" maxLength={3400} />
-                  <Textarea value={toolRequirementsText} onChange={(event) => setToolRequirementsText(event.target.value)} placeholder={"Tools or references, one per line (optional)"} className="min-h-16" maxLength={3400} />
-                  <Input value={evidenceRequirement} onChange={(event) => setEvidenceRequirement(event.target.value)} placeholder="What proof will you attach? (optional)" />
+                  <Input data-testid="proof-plan-purpose" aria-label="Mission purpose" value={purpose} onChange={(event) => setPurpose(event.target.value)} placeholder="Why does this mission matter?" />
+                  <Input data-testid="proof-plan-output" aria-label="Expected mission output" value={expectedOutput} onChange={(event) => setExpectedOutput(event.target.value)} placeholder="What observable output will show progress?" />
+                  <Textarea data-testid="proof-plan-method" aria-label="Mission method steps" value={methodStepsText} onChange={(event) => setMethodStepsText(event.target.value)} placeholder={"Method steps, one per line (optional)\nExample: Complete one bounded attempt"} className="min-h-20" maxLength={3400} />
+                  <Textarea data-testid="proof-plan-tools" aria-label="Mission tools and references" value={toolRequirementsText} onChange={(event) => setToolRequirementsText(event.target.value)} placeholder={"Tools or references, one per line (optional)"} className="min-h-16" maxLength={3400} />
+                  <Input data-testid="proof-plan-evidence-requirement" aria-label="Required mission evidence" value={evidenceRequirement} onChange={(event) => setEvidenceRequirement(event.target.value)} placeholder="What proof will you attach? (optional)" />
                   <div className="grid gap-2 sm:grid-cols-2">
                     <select aria-label="Mission risk level" value={riskLevel} onChange={(event) => setRiskLevel(event.target.value as typeof riskLevel)} className="h-9 rounded-md border border-primary/20 bg-background/40 px-2 text-sm text-foreground">
                       <option value="low">low risk</option>
@@ -742,10 +742,10 @@ export default function MissionDetailPage() {
                       <option value="self">self review</option>
                       <option value="human">authorized human review</option>
                     </select>
-                    <Input value={stopCondition} onChange={(event) => setStopCondition(event.target.value)} placeholder="When should you stop? (optional)" />
-                    <Input value={escalationPath} onChange={(event) => setEscalationPath(event.target.value)} placeholder="Who or what helps if blocked? (optional)" />
+                    <Input aria-label="Mission stop condition" value={stopCondition} onChange={(event) => setStopCondition(event.target.value)} placeholder="When should you stop? (optional)" />
+                    <Input aria-label="Mission escalation path" value={escalationPath} onChange={(event) => setEscalationPath(event.target.value)} placeholder="Who or what helps if blocked? (optional)" />
                   </div>
-                  <Button size="sm" className="w-fit" disabled={purpose.trim().length < 3 || expectedOutput.trim().length < 3 || saveContract.isPending} onClick={() => saveContract.mutate()}>
+                  <Button data-testid="proof-plan-save" size="sm" className="w-fit" disabled={purpose.trim().length < 3 || expectedOutput.trim().length < 3 || saveContract.isPending} onClick={() => saveContract.mutate()}>
                     {saveContract.isPending ? "Saving…" : "Save proof plan"}
                   </Button>
                 </div>
@@ -820,7 +820,7 @@ export default function MissionDetailPage() {
                     {contractQuery.data.reviews.map((item) => <span key={item.id} className="rounded border border-primary/20 px-2 py-1">{item.reviewerType === "human" ? "Human review" : "Self-review"}: {item.decision.replaceAll("_", " ")}</span>)}
                   </div>
                   <div className={`grid gap-2 ${evidenceSourceType === "provider" ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
-                    <select aria-label="Evidence source" value={evidenceSourceType} onChange={(event) => setEvidenceSourceType(event.target.value as typeof evidenceSourceType)} className="h-9 rounded-md border border-primary/20 bg-background/40 px-2 text-sm text-foreground">
+                    <select data-testid="mission-evidence-source" aria-label="Evidence source" value={evidenceSourceType} onChange={(event) => setEvidenceSourceType(event.target.value as typeof evidenceSourceType)} className="h-9 rounded-md border border-primary/20 bg-background/40 px-2 text-sm text-foreground">
                       <option value="self_report">self report</option>
                       <option value="artifact">artifact</option>
                       <option value="observation">observation</option>
@@ -830,18 +830,18 @@ export default function MissionDetailPage() {
                       <option value="">Choose an imported record…</option>
                       {(providerRecordsQuery.data?.records || []).map((record) => <option key={record.id} value={record.id}>{record.provider} · {record.recordType} · {new Date(record.observedAt).toLocaleDateString()}</option>)}
                     </select> : <>
-                      <select aria-label="Evidence confidence" value={evidenceConfidence} onChange={(event) => setEvidenceConfidence(event.target.value as typeof evidenceConfidence)} className="h-9 rounded-md border border-primary/20 bg-background/40 px-2 text-sm text-foreground">
+                      <select data-testid="mission-evidence-confidence" aria-label="Evidence confidence" value={evidenceConfidence} onChange={(event) => setEvidenceConfidence(event.target.value as typeof evidenceConfidence)} className="h-9 rounded-md border border-primary/20 bg-background/40 px-2 text-sm text-foreground">
                         <option value="self_reported">self-reported</option>
                         <option value="low">low confidence</option>
                         <option value="medium">medium confidence</option>
                         <option value="high">high confidence</option>
                       </select>
-                      <Input value={evidenceSourceReference} onChange={(event) => setEvidenceSourceReference(event.target.value)} placeholder="Optional source or link" />
+                      <Input data-testid="mission-evidence-reference" aria-label="Evidence source or reference" value={evidenceSourceReference} onChange={(event) => setEvidenceSourceReference(event.target.value)} placeholder="Optional source or link" />
                     </>}
                   </div>
                   {evidenceSourceType === "provider" ? <p className="text-[11px] leading-relaxed text-muted-foreground">{providerRecordsQuery.data?.disclosure || "Loading current imported records…"}{providerRecordsQuery.data && !providerRecordsQuery.data.records.length ? <> No imported records are available. <Link href="/health" className="text-primary underline">Open Health connections</Link>.</> : null}</p> : <p className="text-[11px] text-muted-foreground">Source and confidence are review context you provide; LyfeOS does not infer proof quality from them.</p>}
-                  <Textarea value={evidenceSummary} onChange={(event) => setEvidenceSummary(event.target.value)} placeholder="Add a concise description of the proof you produced…" className="min-h-20" />
-                  <Button size="sm" variant="outline" disabled={evidenceSummary.trim().length < 3 || (evidenceSourceType === "provider" && !providerSourceRecordId) || addEvidence.isPending} onClick={() => addEvidence.mutate()}>
+                  <Textarea data-testid="mission-evidence-summary" aria-label="Mission evidence summary" value={evidenceSummary} onChange={(event) => setEvidenceSummary(event.target.value)} placeholder="Add a concise description of the proof you produced…" className="min-h-20" />
+                  <Button data-testid="mission-evidence-add" size="sm" variant="outline" disabled={evidenceSummary.trim().length < 3 || (evidenceSourceType === "provider" && !providerSourceRecordId) || addEvidence.isPending} onClick={() => addEvidence.mutate()}>
                     {addEvidence.isPending ? "Adding…" : "Add evidence"}
                   </Button>
                   {contractQuery.data.contract.reviewMode === "human" ? <div className="border-t border-primary/10 pt-3 space-y-2">
