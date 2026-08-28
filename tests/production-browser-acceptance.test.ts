@@ -148,6 +148,8 @@ describe("production browser acceptance custody", () => {
     expect(onboardingScript).toContain("Onboarding step unavailable at");
     expect(onboardingScript).toContain("cachedUser=");
     expect(onboardingScript).toContain('data-testid="account-delete-submit"');
+    expect(onboardingScript).toContain("async function activateRenderedControl");
+    expect(onboardingScript).toContain('activateRenderedControl(page, \'[data-testid="account-delete-submit"]\')');
     expect(onboardingScript).not.toContain("const visible =");
     expect(onboardingScript).toContain('element.closest("label")');
     expect(onboardingScript).toContain('"DELETE MY ACCOUNT"');

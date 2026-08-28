@@ -394,6 +394,16 @@ async function auditRenderedState(page: Page): Promise<Pick<JourneyEvidence, "ma
   });
 }
 
+async function activateRenderedControl(page: Page, selector: string): Promise<void> {
+  await page.waitForSelector(selector, { visible: true, timeout: 30_000 });
+  await page.evaluate((controlSelector) => {
+    const control = document.querySelector<HTMLButtonElement>(controlSelector);
+    if (!control || control.disabled) throw new Error(`Rendered control is unavailable: ${controlSelector}`);
+    control.scrollIntoView({ block: "center", inline: "nearest" });
+    control.click();
+  }, selector);
+}
+
 async function deleteRenderedAccount(page: Page, evidence: JourneyEvidence): Promise<void> {
   await page.goto(new URL("/profile", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
   await page.waitForSelector('[data-testid="account-delete-confirmation"]', { visible: true, timeout: 30_000 });
@@ -415,7 +425,7 @@ async function deleteRenderedAccount(page: Page, evidence: JourneyEvidence): Pro
     const url = new URL(response.url());
     return url.origin === BASE_URL.origin && url.pathname === "/api/account" && response.request().method() === "DELETE";
   }, { timeout: 60_000 });
-  await page.click('[data-testid="account-delete-submit"]');
+  await activateRenderedControl(page, '[data-testid="account-delete-submit"]');
   const response = await deletionResponse;
   assert(response.ok(), `Rendered account erasure returned ${response.status()}.`);
   evidence.accountDeletedThroughRenderedControl = true;
