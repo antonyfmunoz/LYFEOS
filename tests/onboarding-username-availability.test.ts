@@ -25,4 +25,13 @@ describe("onboarding username availability", () => {
     expect(onboarding).toContain("We couldn't check that display name. Please try again.");
     expect(onboarding).toContain('role="alert"');
   });
+
+  it("activates the onboarding-derived Thread after the final mission", () => {
+    const onboarding = source("client/src/pages/OnboardingPage.tsx");
+    expect(onboarding).toContain("const activateOnboardingThread = async () =>");
+    expect(onboarding).toContain('"/api/transformation-thread/initialize"');
+    expect(onboarding).toContain('`/api/transformation-thread/${thread.id}/activate`');
+    expect(onboarding).toContain("if (missionId === MISSIONS.length - 1)");
+    expect(onboarding).toContain("await activateOnboardingThread()");
+  });
 });

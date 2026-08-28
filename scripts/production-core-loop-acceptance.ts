@@ -84,15 +84,21 @@ async function waitForRateLimitReset(response: BrowserApiResponse, label: string
   await new Promise((resolve) => setTimeout(resolve, waitMs));
 }
 
-async function browserApiRequest(page: Page, pathname: string, method = "GET"): Promise<BrowserApiResponse> {
+async function browserApiRequest(page: Page, pathname: string, method = "GET", requestBody?: unknown): Promise<BrowserApiResponse> {
   for (let attempt = 0; attempt < 3; attempt++) {
-    const result = await page.evaluate(async ({ requestPath, requestMethod }) => {
-      const response = await fetch(requestPath, { method: requestMethod, credentials: "include", cache: "no-store" });
+    const result = await page.evaluate(async ({ requestPath, requestMethod, body }) => {
+      const response = await fetch(requestPath, {
+        method: requestMethod,
+        credentials: "include",
+        cache: "no-store",
+        headers: body === undefined ? undefined : { "Content-Type": "application/json" },
+        body: body === undefined ? undefined : JSON.stringify(body),
+      });
       const remainingHeader = response.headers.get("ratelimit-remaining");
       const resetHeader = response.headers.get("ratelimit-reset") || response.headers.get("retry-after");
-      let body: unknown = null;
+      let responseBody: unknown = null;
       try {
-        body = await response.json();
+        responseBody = await response.json();
       } catch {
         // Status and headers remain authoritative for responses without JSON.
       }
@@ -100,14 +106,34 @@ async function browserApiRequest(page: Page, pathname: string, method = "GET"): 
         status: response.status,
         remaining: remainingHeader === null ? null : Number(remainingHeader),
         resetSeconds: resetHeader === null ? null : Number(resetHeader),
-        body,
+        body: responseBody,
       };
-    }, { requestPath: pathname, requestMethod: method });
+    }, { requestPath: pathname, requestMethod: method, body: requestBody });
     if (result.status !== 429) return result;
     if (attempt === 2) return result;
     await waitForRateLimitReset(result, `${method} ${pathname}`);
   }
   throw new Error(`Unreachable API retry state for ${method} ${pathname}.`);
+}
+
+async function ensureAcceptanceThread(page: Page): Promise<"existing" | "activated"> {
+  const current = await browserApiRequest(page, "/api/transformation-thread");
+  assert(current.status === 200, `Transformation Thread preflight returned ${current.status}.`);
+  let thread = (current.body as { thread?: { id?: unknown; status?: unknown } } | null)?.thread;
+  if (!thread) {
+    const initialized = await browserApiRequest(page, "/api/transformation-thread/initialize", "POST", {});
+    assert([200, 201].includes(initialized.status), `Onboarding-derived Thread initialization returned ${initialized.status}.`);
+    thread = (initialized.body as { thread?: { id?: unknown; status?: unknown } } | null)?.thread;
+  }
+  const threadId = Number(thread?.id);
+  const status = String(thread?.status || "");
+  assert(Number.isInteger(threadId), "Transformation Thread preflight did not return an owned Thread identifier.");
+  if (status === "active") return "existing";
+  assert(status === "draft", `Acceptance will not override a Transformation Thread in ${status || "unknown"} state.`);
+  const activated = await browserApiRequest(page, `/api/transformation-thread/${threadId}/activate`, "POST");
+  assert(activated.status === 200, `Onboarding-derived Thread activation returned ${activated.status}.`);
+  assert((activated.body as { thread?: { status?: unknown } } | null)?.thread?.status === "active", "Transformation Thread activation did not produce an active Thread.");
+  return "activated";
 }
 
 async function waitForApiBudget(page: Page, floor: number): Promise<void> {
@@ -426,6 +452,8 @@ async function main(): Promise<void> {
     await waitForApiBudget(page, 80);
     const strandedMissionCount = await archiveStrandedSyntheticMissions(page);
     steps.push({ name: "synthetic Mission preflight", status: "passed", detail: strandedMissionCount > 0 ? `Archived ${strandedMissionCount} stranded synthetic Mission(s).` : "No stranded synthetic Missions were present." });
+    const threadState = await ensureAcceptanceThread(page);
+    steps.push({ name: "onboarding-derived Thread preflight", status: "passed", detail: threadState === "existing" ? "The dedicated account already had an active onboarding-derived Thread." : "Activated the dedicated account's onboarding-derived draft Thread using the same product APIs as the rendered onboarding journey." });
     progressionBefore = await readProgression(page);
 
     await page.goto(new URL("/missions", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });

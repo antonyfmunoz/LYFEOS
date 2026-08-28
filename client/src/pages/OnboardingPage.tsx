@@ -908,6 +908,20 @@ export default function OnboardingPage() {
     };
   };
 
+  const activateOnboardingThread = async () => {
+    const initialized = await apiRequest<{ thread?: { id?: number; status?: string } }>(
+      "/api/transformation-thread/initialize",
+      { method: "POST", body: JSON.stringify({}) },
+    );
+    const thread = initialized?.thread;
+    if (!thread?.id) throw new Error("The onboarding plan was prepared without a Thread identifier.");
+    if (thread.status === "draft") {
+      await apiRequest(`/api/transformation-thread/${thread.id}/activate`, { method: "POST" });
+    }
+    queryClient.invalidateQueries({ queryKey: ["/api/transformation-thread"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/quests"] });
+  };
+
   const saveCompletedMission = async (missionId: number) => {
     try {
       const mission = MISSIONS.find(m => m.id === missionId);
@@ -1085,9 +1099,7 @@ export default function OnboardingPage() {
         setCompletedOnboardingMissions(prev => [...(prev || []), missionId].filter((v, i, a) => a.indexOf(v) === i));
         queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
         if (missionId === MISSIONS.length - 1) {
-          apiRequest("/api/transformation-thread/initialize", { method: "POST" })
-            .then(() => queryClient.invalidateQueries({ queryKey: ["/api/transformation-thread"] }))
-            .catch((error) => console.error("Failed to initialize transformation thread:", error));
+          await activateOnboardingThread().catch((error) => console.error("Failed to activate onboarding transformation thread:", error));
         }
       }
     } catch (error: any) {

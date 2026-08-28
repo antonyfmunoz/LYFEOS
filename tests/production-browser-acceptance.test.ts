@@ -133,6 +133,10 @@ describe("production browser acceptance custody", () => {
     expect(coreLoopScript).toContain("async function dismissBlockingTutorial");
     expect(coreLoopScript).toContain("async function activateRenderedControl");
     expect(coreLoopScript).toContain("async function browserApiRequest");
+    expect(coreLoopScript).toContain("async function ensureAcceptanceThread");
+    expect(coreLoopScript).toContain('browserApiRequest(page, "/api/transformation-thread/initialize", "POST", {})');
+    expect(coreLoopScript).toContain('`/api/transformation-thread/${threadId}/activate`, "POST"');
+    expect(coreLoopScript).toContain('Acceptance will not override a Transformation Thread in');
     expect(coreLoopScript).toContain("async function waitForApiBudget");
     expect(coreLoopScript).toContain("async function archiveStrandedSyntheticMissions");
     expect(coreLoopScript).toContain('await waitForApiBudget(page, 80)');
