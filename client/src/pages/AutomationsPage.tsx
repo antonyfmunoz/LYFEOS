@@ -52,7 +52,7 @@ function errorMessage(error: unknown): string {
 }
 
 function readableToken(value: string): string {
-  return value.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+  return value.toLowerCase().replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function actionLabel(type: string): string {

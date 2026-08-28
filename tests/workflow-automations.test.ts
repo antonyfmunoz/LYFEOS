@@ -146,6 +146,7 @@ describe("workflow automations", () => {
     expect(page).toContain('aria-label={`Retry unfinished actions for run ${receipt.id}`}');
     expect(page).toContain("never replays an action that already succeeded");
     expect(page).toContain("not copied mission descriptions");
+    expect(page).toContain('value.toLowerCase().replaceAll("_", " ")');
   });
 
   it("qualifies rendered partial-run repair only in disposable isolated CI", () => {
