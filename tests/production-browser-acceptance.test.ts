@@ -55,6 +55,15 @@ describe("production browser acceptance custody", () => {
     expect(script).toContain('pathName.startsWith("/login-success") || pathName.startsWith("/ceremony")');
     expect(script).toContain('"failure.json"');
     expect(script).toContain('contract: "lyfeos.production-browser-acceptance.failure.v1"');
+    expect(script).toContain("auditRouteWithEvidence");
+    expect(script).toContain("route audit failed:");
+  });
+
+  it("authenticates once and reuses the verified session across responsive viewports", () => {
+    expect(script.match(/await login\(authenticatedPage\)/g)).toHaveLength(1);
+    expect(script).toContain("for (const viewport of VIEWPORTS)");
+    expect(script).toContain("await authenticatedPage.setViewport(viewport.value)");
+    expect(script).toContain("Authenticate once. Reusing the verified session");
   });
 
   it("binds the run to an immutable deployed source and preserves evidence on failure", () => {

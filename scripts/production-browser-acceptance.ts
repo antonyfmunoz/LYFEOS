@@ -390,6 +390,53 @@ async function auditRoute(page: Page, route: string, kind: RouteKind, viewportNa
   }
 }
 
+async function auditRouteWithEvidence(page: Page, route: string, kind: RouteKind, viewportName: string): Promise<RouteResult> {
+  try {
+    return await auditRoute(page, route, kind, viewportName);
+  } catch (error) {
+    const message = sanitizedFailureMessage(error);
+    const safeRoute = route === "/" ? "root" : route.slice(1).replace(/[^a-z0-9_-]+/gi, "-");
+    try {
+      await page.screenshot({ path: path.join(OUTPUT_DIR, `${viewportName}-${safeRoute}-audit-error.png`), fullPage: true });
+    } catch {
+      // The structured route result remains useful even if Chromium cannot capture the page.
+    }
+    return {
+      kind,
+      route,
+      viewport: viewportName,
+      finalPath: (() => {
+        try {
+          return new URL(page.url()).pathname;
+        } catch {
+          return "";
+        }
+      })(),
+      title: "",
+      timings: {
+        domContentLoadedMs: null,
+        loadMs: null,
+        firstContentfulPaintMs: null,
+        largestContentfulPaintMs: null,
+        cumulativeLayoutShift: null,
+      },
+      accessibility: {
+        duplicateIds: [],
+        unlabeledControls: [],
+        mainCount: 0,
+        headingCount: 0,
+        tabbableCount: 0,
+        firstTabReachedControl: false,
+      },
+      horizontalOverflowPx: 0,
+      failedRequests: [],
+      serverErrors: [],
+      consoleErrors: [],
+      failures: [`route audit failed: ${message}`],
+    };
+  }
+}
+
 async function newPage(browser: Browser, viewport: Viewport, mobile: boolean): Promise<Page> {
   const page = await browser.newPage();
   await page.setViewport(viewport);
@@ -440,16 +487,37 @@ async function main(): Promise<void> {
   const results: RouteResult[] = [];
   let authenticatedExecuted = false;
   try {
+    // Qualify every signed-out surface before creating a session so a shared
+    // browser context cannot turn public-route checks into authenticated redirects.
     for (const viewport of VIEWPORTS) {
       const publicPage = await newPage(browser, viewport.value, viewport.mobile);
-      for (const route of PUBLIC_ROUTES) results.push(await auditRoute(publicPage, route, "public", viewport.name));
+      for (const route of PUBLIC_ROUTES) results.push(await auditRouteWithEvidence(publicPage, route, "public", viewport.name));
       await publicPage.close();
+    }
 
-      if (EMAIL && PASSWORD) {
-        const authenticatedPage = await newPage(browser, viewport.value, viewport.mobile);
-        await login(authenticatedPage);
+    if (EMAIL && PASSWORD) {
+      const desktop = VIEWPORTS[0];
+      const authenticatedPage = await newPage(browser, desktop.value, desktop.mobile);
+      try {
+        // Authenticate once. Reusing the verified session across responsive
+        // viewports avoids a second artificial login and exercises the same
+        // session continuity expected when a real user resizes or rotates a device.
+        try {
+          await login(authenticatedPage);
+        } catch (error) {
+          throw new Error(`authenticated login (${desktop.name}) failed: ${sanitizedFailureMessage(error)}`);
+        }
         authenticatedExecuted = true;
-        for (const route of AUTHENTICATED_ROUTES) results.push(await auditRoute(authenticatedPage, route, "authenticated", viewport.name));
+        for (const viewport of VIEWPORTS) {
+          await authenticatedPage.setViewport(viewport.value);
+          if (viewport.mobile) {
+            await authenticatedPage.setUserAgent("Mozilla/5.0 (Linux; Android 14; LyfeOS acceptance) AppleWebKit/537.36 Chrome/125 Mobile Safari/537.36");
+          }
+          for (const route of AUTHENTICATED_ROUTES) {
+            results.push(await auditRouteWithEvidence(authenticatedPage, route, "authenticated", viewport.name));
+          }
+        }
+      } finally {
         await authenticatedPage.close();
       }
     }
