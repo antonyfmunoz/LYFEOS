@@ -77,7 +77,7 @@ describeApi("Thread capability focus authenticated journey", () => {
   it("counts a connected Thread skill as a durable capability focus", async () => {
     const capabilities = await request("GET", "/api/capabilities", undefined, ownerCookie);
     const connected = capabilities.data.capabilities.find((item: any) => item.id === connectedCapabilityId);
-    expect(connected).toMatchObject({ focusCount: 1, latestFocus: { threadId: firstThreadId, status: "active" } });
+    expect(connected).toMatchObject({ focusCount: 1, latestFocus: { threadId: firstThreadId, status: "draft" } });
 
     const history = await request("GET", `/api/capabilities/${connectedCapabilityId}/history`, undefined, ownerCookie);
     expect(history.status).toBe(200);
