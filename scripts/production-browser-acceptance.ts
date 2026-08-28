@@ -298,7 +298,17 @@ async function auditRoute(page: Page, route: string, kind: RouteKind, viewportNa
           return !label && !name;
         })
         .slice(0, 20)
-        .map((element) => `${element.tagName.toLowerCase()}${element.id ? `#${element.id}` : ""}${element.getAttribute("data-testid") ? `[data-testid=${element.getAttribute("data-testid")}]` : ""}`);
+        .map((element) => {
+          const attributes = [
+            element.id ? `#${element.id}` : "",
+            element.getAttribute("data-testid") ? `[data-testid=${element.getAttribute("data-testid")}]` : "",
+            element.getAttribute("type") ? `[type=${element.getAttribute("type")}]` : "",
+            element.getAttribute("placeholder") ? `[placeholder=${JSON.stringify(element.getAttribute("placeholder"))}]` : "",
+          ].filter(Boolean).join("");
+          const iconClass = element.querySelector("svg")?.getAttribute("class")?.split(/\s+/).find((value) => value.startsWith("lucide-") && value !== "lucide-icon");
+          const classHint = [...element.classList].filter((value) => !value.includes(":" )).slice(0, 2).join(".");
+          return `${element.tagName.toLowerCase()}${attributes}${iconClass ? `[icon=${iconClass}]` : ""}${classHint ? `.${classHint}` : ""}`.slice(0, 240);
+        });
 
       const navigation = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
       const fcp = performance.getEntriesByName("first-contentful-paint")[0];
@@ -468,6 +478,21 @@ async function newPage(browser: Browser, viewport: Viewport, mobile: boolean): P
   return page;
 }
 
+async function respectApiRateLimit(page: Page): Promise<void> {
+  const state = await page.evaluate(async () => {
+    const response = await fetch("/api/auth/me", { credentials: "include", cache: "no-store" });
+    return {
+      status: response.status,
+      remaining: Number(response.headers.get("ratelimit-remaining")),
+      resetSeconds: Number(response.headers.get("ratelimit-reset") || response.headers.get("retry-after")),
+    };
+  });
+  if ((state.status === 429 || (Number.isFinite(state.remaining) && state.remaining <= 25)) && Number.isFinite(state.resetSeconds)) {
+    const waitMs = Math.min(65_000, Math.max(1_000, (state.resetSeconds + 1) * 1_000));
+    await new Promise((resolve) => setTimeout(resolve, waitMs));
+  }
+}
+
 async function writeSummary(report: AcceptanceReport): Promise<void> {
   const lines = [
     "## LyfeOS production browser acceptance",
@@ -536,6 +561,7 @@ async function main(): Promise<void> {
           for (const [routeIndex, route] of AUTHENTICATED_ROUTES.entries()) {
             const navigation = viewport === desktop && routeIndex === 0 ? "document" : "spa";
             results.push(await auditRouteWithEvidence(authenticatedPage, route, "authenticated", viewport.name, navigation));
+            await respectApiRateLimit(authenticatedPage);
           }
         }
       } finally {

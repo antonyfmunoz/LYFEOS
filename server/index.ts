@@ -139,15 +139,23 @@ function createRateLimiter(maxRequests: number, windowMs: number, keyByIpOnly = 
 
     if (!entry || now - entry.windowStart > windowMs) {
       rateLimitStore.set(key, { count: 1, windowStart: now });
+      res.set("RateLimit-Limit", String(maxRequests));
+      res.set("RateLimit-Remaining", String(Math.max(0, maxRequests - 1)));
+      res.set("RateLimit-Reset", String(Math.ceil(windowMs / 1000)));
       return next();
     }
 
+    const retryAfterSeconds = Math.max(1, Math.ceil((entry.windowStart + windowMs - now) / 1000));
+    res.set("RateLimit-Limit", String(maxRequests));
+    res.set("RateLimit-Remaining", String(Math.max(0, maxRequests - entry.count)));
+    res.set("RateLimit-Reset", String(retryAfterSeconds));
     if (entry.count >= maxRequests) {
-      res.set("Retry-After", String(Math.ceil((entry.windowStart + windowMs - now) / 1000)));
+      res.set("Retry-After", String(retryAfterSeconds));
       return res.status(429).json({ error: "Too many requests. Please try again later." });
     }
 
     entry.count++;
+    res.set("RateLimit-Remaining", String(Math.max(0, maxRequests - entry.count)));
     return next();
   };
 }

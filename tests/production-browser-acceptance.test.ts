@@ -68,6 +68,10 @@ describe("production browser acceptance custody", () => {
     expect(script).toContain('window.dispatchEvent(new PopStateEvent("popstate"))');
     expect(script).toContain('const navigation = viewport === desktop && routeIndex === 0 ? "document" : "spa"');
     expect(script).toContain("Do not misattribute the previous document's metrics");
+    expect(script).toContain("respectApiRateLimit");
+    expect(script).toContain('response.headers.get("ratelimit-remaining")');
+    expect(script).toContain("element.getAttribute(\"placeholder\")");
+    expect(script).toContain("lucide-");
   });
 
   it("binds the run to an immutable deployed source and preserves evidence on failure", () => {

@@ -10,6 +10,7 @@ describe("production session and optional-provider resilience", () => {
     expect(server).toContain('const principal = req.session?.userId ? `user:${req.session.userId}` : `ip:${ip}`');
     expect(server).toContain("createRateLimiter(qualificationRequestLimit(100), 60 * 1000, true)");
     expect(server).toContain('res.set("Retry-After"');
+    expect(server).toContain('res.set("RateLimit-Remaining"');
   });
 
   it("clears a locally verified identity only when the session endpoint confirms 401", () => {
