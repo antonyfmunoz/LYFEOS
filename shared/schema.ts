@@ -215,6 +215,7 @@ export const userProfile = pgTable("user_profile", {
   
   // === CHARACTER AFFIRMATION ===
   characterAffirmation: text("character_affirmation"), // AI-generated third-person narrative
+  affirmationAutoGenerationEnabled: boolean("affirmation_auto_generation_enabled").notNull().default(true),
   
   // === CUSTOM REFLECTION PROMPTS ===
   customReflectionPrompts: jsonb("custom_reflection_prompts").default({

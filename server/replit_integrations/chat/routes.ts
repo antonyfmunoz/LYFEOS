@@ -1154,7 +1154,7 @@ Write a 2-3 paragraph affirmation in second person ("You are..."). Make it power
           });
           const textBlock = affirmationResponse.content.find(b => b.type === "text");
           const affirmation = textBlock?.text || "You are a force of nature.";
-          await storage.upsertUserProfile(userId, { characterAffirmation: affirmation } as any);
+          await storage.upsertUserProfile(userId, { characterAffirmation: affirmation, affirmationAutoGenerationEnabled: true } as any);
           return JSON.stringify({ success: true, action: "generate_affirmation", affirmationText: affirmation, message: "New affirmation generated and saved." });
         } catch (err: any) {
           return JSON.stringify({ success: false, message: "Failed to generate affirmation: " + (err.message || "Unknown error") });

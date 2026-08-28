@@ -400,6 +400,9 @@ export function registerProfileRoutes(app: Express): void {
         if (!parsed.success) return res.status(400).json({ error: "Choose valid AI context preferences." });
         updateData.aiContextPreferences = parsed.data;
       }
+      if (typeof updateData.characterAffirmation === "string" && updateData.characterAffirmation.trim()) {
+        updateData.affirmationAutoGenerationEnabled = true;
+      }
       updateData.updatedAt = new Date();
       
       if (updateData.primaryColor && !updateData.primaryThemeColor) {
@@ -641,7 +644,7 @@ export function registerProfileRoutes(app: Express): void {
           removed.legacyMessages = ((await tx.execute(sql`DELETE FROM "ai_messages" WHERE "user_id" = ${userId} RETURNING "id"`)) as { rows?: unknown[] }).rows?.length || 0;
         }
         if (forgetProfile) {
-          await tx.execute(sql`UPDATE "user_profile" SET "character_affirmation" = NULL, "ai_personality_profile" = '{}'::jsonb, "updated_at" = now() WHERE "user_id" = ${userId}`);
+          await tx.execute(sql`UPDATE "user_profile" SET "character_affirmation" = NULL, "ai_personality_profile" = '{}'::jsonb, "affirmation_auto_generation_enabled" = false, "updated_at" = now() WHERE "user_id" = ${userId}`);
           removed.personaProfiles = ((await tx.execute(sql`DELETE FROM "ai_persona_profiles" WHERE "user_id" = ${userId} RETURNING "id"`)) as { rows?: unknown[] }).rows?.length || 0;
           await tx.execute(sql`UPDATE "user_stats" SET "ai_assistant_name" = 'NOVA', "updated_at" = now() WHERE "user_id" = ${userId}`);
         }
@@ -851,7 +854,7 @@ Generate the complete affirmation now:`;
           vision5Year,
           primaryCraft,
         });
-        await storage.upsertUserProfile(req.session.userId!, { characterAffirmation: affirmation } as any);
+        await storage.upsertUserProfile(req.session.userId!, { characterAffirmation: affirmation, affirmationAutoGenerationEnabled: true } as any);
         logger.warn("Affirmation AI provider is not configured; stored foundational affirmation", {
           userId: req.session.userId,
         });
@@ -877,7 +880,7 @@ Generate the complete affirmation now:`;
         throw new Error("Affirmation provider returned empty content");
       }
 
-      await storage.upsertUserProfile(req.session.userId!, { characterAffirmation: affirmation } as any);
+      await storage.upsertUserProfile(req.session.userId!, { characterAffirmation: affirmation, affirmationAutoGenerationEnabled: true } as any);
       res.json({ affirmation, generation: "ai" });
     } catch (error) {
       logger.error("Error generating affirmation:", error);

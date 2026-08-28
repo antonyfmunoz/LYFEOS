@@ -114,6 +114,7 @@ jobs:
           LYFEOS_TEST_API_URL: http://127.0.0.1:5099
           LYFEOS_CHROMIUM_PATH: ${{ steps.isolated-chrome.outputs.chrome-path }}
           LYFEOS_AUTOMATION_RECOVERY_OUTPUT_DIR: ${{ runner.temp }}/lyfeos-automation-recovery-browser
+          LYFEOS_AI_MEMORY_OUTPUT_DIR: ${{ runner.temp }}/lyfeos-ai-memory-browser
           LYFEOS_EXTENSION_REGISTRY_ADMIN_TOKEN: ci-extension-registry-qualification-token-000001
         run: |
           export CLERK_SECRET_KEY="sk""_test_lyfeoslocalqualification000000000"
@@ -148,6 +149,9 @@ jobs:
           if [ "$test_status" -eq 0 ]; then
             npm run acceptance:automation-recovery || test_status=$?
           fi
+          if [ "$test_status" -eq 0 ]; then
+            npm run acceptance:ai-memory || test_status=$?
+          fi
           if [ "$test_status" -ne 0 ]; then
             echo "Authenticated integration qualification failed. Server log:"
             cat "$server_log"
@@ -159,6 +163,14 @@ jobs:
         with:
           name: lyfeos-isolated-automation-recovery-${{ github.sha }}
           path: ${{ runner.temp }}/lyfeos-automation-recovery-browser
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Upload isolated AI-memory evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: lyfeos-isolated-ai-memory-${{ github.sha }}
+          path: ${{ runner.temp }}/lyfeos-ai-memory-browser
           if-no-files-found: warn
           retention-days: 30
       - name: Rehearse logical backup and isolated restore
@@ -186,11 +198,11 @@ jobs:
           }
           source_fingerprint="$(schema_fingerprint "$DATABASE_URL")"
           source_migrations="$(psql "$DATABASE_URL" -At -v ON_ERROR_STOP=1 -c 'SELECT string_agg(id, '"'"','"'"' ORDER BY id) FROM lyfeos_schema_migrations')"
-          test "$(psql "$DATABASE_URL" -At -v ON_ERROR_STOP=1 -c 'SELECT count(*) FROM lyfeos_schema_migrations')" = "130"
+          test "$(psql "$DATABASE_URL" -At -v ON_ERROR_STOP=1 -c 'SELECT count(*) FROM lyfeos_schema_migrations')" = "131"
           pg_dump "$DATABASE_URL" --format=custom --no-owner --no-acl --file="$backup"
           test -s "$backup"
           psql "postgresql://postgres:postgres@127.0.0.1:5432/postgres" -v ON_ERROR_STOP=1 -c 'CREATE DATABASE lyfeos_restore_ci' >/dev/null
           pg_restore --dbname="$restored_url" --no-owner --no-acl --exit-on-error "$backup"
           test "$(schema_fingerprint "$restored_url")" = "$source_fingerprint"
           test "$(psql "$restored_url" -At -v ON_ERROR_STOP=1 -c 'SELECT string_agg(id, '"'"','"'"' ORDER BY id) FROM lyfeos_schema_migrations')" = "$source_migrations"
-          test "$(psql "$restored_url" -At -v ON_ERROR_STOP=1 -c 'SELECT count(*) FROM lyfeos_schema_migrations')" = "130"
+          test "$(psql "$restored_url" -At -v ON_ERROR_STOP=1 -c 'SELECT count(*) FROM lyfeos_schema_migrations')" = "131"

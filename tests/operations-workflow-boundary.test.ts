@@ -10,7 +10,7 @@ describe("production operations workflow boundary", () => {
     expect(monitor).toContain("Verify immutable release and migration identity");
     expect(monitor).toContain(".sourceRevision");
     expect(monitor).toContain(".migrations.status");
-    expect(monitor).toContain("0138_ai_memory_lifecycle");
+    expect(monitor).toContain("0139_affirmation_reset_choice");
   });
 
   it("rehearses a real isolated logical restore and structural comparison", () => {
@@ -20,6 +20,6 @@ describe("production operations workflow boundary", () => {
     expect(verify).toContain("pg_restore");
     expect(verify).toContain("schema_fingerprint");
     expect(verify).toContain("lyfeos_restore_ci");
-    expect(verify.match(/= "130"/g)).toHaveLength(2);
+    expect(verify.match(/= "131"/g)).toHaveLength(2);
   });
 });

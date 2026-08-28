@@ -471,6 +471,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!isAuthenticated || !user || !userProfile || affirmationRecoveryAttempted.current) return;
     if (userProfile.characterAffirmation) return;
+    if (userProfile.affirmationAutoGenerationEnabled === false) return;
 
     const completedMissions = Array.isArray(userProfile.completedOnboardingMissions)
       ? userProfile.completedOnboardingMissions

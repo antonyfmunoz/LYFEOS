@@ -131,6 +131,9 @@ describeApi("AI persona and memory governance authenticated journey", () => {
     const reset = await request("DELETE", "/api/account/ai-memory", { scope: "assistant-profile" }, cookie);
     expect(reset.status).toBe(200);
     expect(reset.data.removed.personaProfiles).toBe(1);
+    const profile = await request("GET", "/api/profile", undefined, cookie);
+    expect(profile.status).toBe(200);
+    expect(profile.data).toMatchObject({ characterAffirmation: null, aiPersonalityProfile: {}, affirmationAutoGenerationEnabled: false });
     const persona = await request("GET", "/api/ai/persona", undefined, cookie);
     expect(persona.status).toBe(200);
     expect(persona.data.persona).toMatchObject({ name: "NOVA", ecosystemSharingEnabled: false, allowedDestinations: [], revision: 1 });

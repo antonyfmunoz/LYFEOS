@@ -50,8 +50,10 @@ describe("AI and memory governance", () => {
     const profilePage = readSource("client/src/pages/ProfilePage.tsx");
     const migration = readSource("migrations/0102_ai_memory_governance.sql");
     const lifecycleMigration = readSource("migrations/0138_ai_memory_lifecycle.sql");
+    const resetChoiceMigration = readSource("migrations/0139_affirmation_reset_choice.sql");
     const retentionWorker = readSource("server/ai-memory-retention-worker.ts");
     const server = readSource("server/index.ts");
+    const appContext = readSource("client/src/lib/context.tsx");
     expect(chat).toContain("CONTEXT SOURCE LEDGER");
     expect(chat).toContain("External sending is disabled");
     expect(chat).toContain('"/api/ai-actions/:actionId/repair"');
@@ -62,11 +64,34 @@ describe("AI and memory governance", () => {
     expect(migration).toContain('CREATE TABLE IF NOT EXISTS "ai_context_receipts"');
     expect(migration).toContain('CREATE TABLE IF NOT EXISTS "ai_action_repairs"');
     expect(lifecycleMigration).toContain('"ai_memory_policies_revision_valid"');
+    expect(resetChoiceMigration).toContain('"affirmation_auto_generation_enabled" boolean NOT NULL DEFAULT true');
     expect(profileRoute).toContain('DELETE FROM "ai_voice_sessions"');
     expect(profileRoute).toContain('"ai_assistant_name" = \'NOVA\'');
+    expect(profileRoute).toContain('"affirmation_auto_generation_enabled" = false');
+    expect(profilePage).toContain("profile.affirmationAutoGenerationEnabled === false");
+    expect(appContext).toContain("userProfile.affirmationAutoGenerationEnabled === false");
     expect(retentionWorker).toContain("pg_try_advisory_xact_lock");
     expect(retentionWorker).toContain('voice."status" <> \'active\'');
     expect(server).toContain("startAIMemoryRetentionWorker()");
+  });
+
+  it("requires disposable rendered proof for retention, erasure, truthful active receipts, and cleanup", () => {
+    const profilePage = readSource("client/src/pages/ProfilePage.tsx");
+    const acceptance = readSource("scripts/ai-memory-browser-acceptance.ts");
+    const workflow = readSource(".github/workflows/verify.yml");
+    const packageJson = readSource("package.json");
+    expect(profilePage).toContain('data-testid="ai-memory-settings"');
+    expect(profilePage).toContain('data-testid="ai-memory-retention-chats"');
+    expect(profilePage).toContain('data-testid="ai-memory-clear-actions"');
+    expect(profilePage).toContain('aria-live="polite"');
+    expect(acceptance).toContain('LYFEOS_TEST_ENV === "isolated"');
+    expect(acceptance).toContain('["127.0.0.1", "localhost"].includes(BASE_URL.hostname)');
+    expect(acceptance).toContain('"lyfeos.ai-memory-browser-acceptance.v1"');
+    expect(acceptance).toContain("1 active action receipt will remain until execution finishes.");
+    expect(acceptance).toContain("verified-zero-residue");
+    expect(workflow).toContain("npm run acceptance:ai-memory");
+    expect(workflow).toContain("lyfeos-isolated-ai-memory-${{ github.sha }}");
+    expect(packageJson).toContain('"acceptance:ai-memory"');
   });
 
   it("blocks assistant webpage reads from private networks and unsafe schemes", async () => {

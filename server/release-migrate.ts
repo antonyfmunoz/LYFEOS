@@ -3205,6 +3205,13 @@ const migrations = [
       ALTER TABLE "ai_memory_policies" ADD CONSTRAINT "ai_memory_policies_revision_valid" CHECK ("revision" > 0);
     `,
   },
+  {
+    id: "0139_affirmation_reset_choice",
+    sql: `
+      ALTER TABLE "user_profile"
+        ADD COLUMN IF NOT EXISTS "affirmation_auto_generation_enabled" boolean NOT NULL DEFAULT true;
+    `,
+  },
 ];
 
 async function run(): Promise<void> {

@@ -837,8 +837,14 @@ export default function ProfilePage() {
     mutationFn: (changes: Partial<{ chatHistoryDays: number | null; contextReceiptDays: number; actionReceiptDays: number }>) => {
       const current = aiMemoryPolicy?.policy;
       if (!current) throw new Error("Memory policy is still loading.");
-      const { revision, ...settings } = current;
-      return apiRequest("/api/account/ai-memory-policy", { method: "PATCH", body: JSON.stringify({ ...settings, ...changes, expectedRevision: revision }) });
+      return apiRequest("/api/account/ai-memory-policy", { method: "PATCH", body: JSON.stringify({
+        chatHistoryDays: changes.chatHistoryDays !== undefined ? changes.chatHistoryDays : current.chatHistoryDays,
+        contextReceiptDays: changes.contextReceiptDays ?? current.contextReceiptDays,
+        actionReceiptDays: changes.actionReceiptDays ?? current.actionReceiptDays,
+        crossProductMemoryEnabled: current.crossProductMemoryEnabled,
+        allowedDestinations: current.allowedDestinations,
+        expectedRevision: current.revision,
+      }) });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/account/ai-memory-policy"] });
@@ -1255,6 +1261,7 @@ export default function ProfilePage() {
     if (isProfileSchemaLoading || !userProfileData) return;
     const profile = userProfileData as any;
     if (profile.characterAffirmation) return;
+    if (profile.affirmationAutoGenerationEnabled === false) return;
     if (!profile.onboardingCompleted && !(profile.completedOnboardingMissions?.length > 0)) return;
     autoGenerateTriggered.current = true;
     setIsGeneratingAffirmation(true);
@@ -1540,7 +1547,7 @@ export default function ProfilePage() {
         return (
           <>
             {/* Account Settings */}
-            <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
+            <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4" data-testid="ai-memory-settings">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <Lock className="h-4 w-4 text-primary" />
@@ -2060,17 +2067,17 @@ export default function ProfilePage() {
                 Your named AI uses only the context you authorize. Native Messages and external sending are always excluded.
               </p>
               <div className="mb-3 flex gap-2">
-                <Input value={personaName} onChange={(event) => setPersonaName(event.target.value)} maxLength={32} aria-label="AI persona name" className="h-8 bg-background/50 text-xs" />
-                <Button size="sm" variant="outline" className="h-8 border-primary/30 text-primary" onClick={() => savePersonaMutation.mutate(undefined)} disabled={!personaName.trim() || savePersonaMutation.isPending}>Save name</Button>
+                <Input value={personaName} onChange={(event) => setPersonaName(event.target.value)} maxLength={32} aria-label="AI persona name" data-testid="ai-memory-persona-name" className="h-8 bg-background/50 text-xs" />
+                <Button size="sm" variant="outline" className="h-8 border-primary/30 text-primary" data-testid="ai-memory-save-persona" onClick={() => savePersonaMutation.mutate(undefined)} disabled={!personaName.trim() || savePersonaMutation.isPending}>Save name</Button>
               </div>
               <div className="mb-3 flex items-center justify-between gap-3 rounded-md bg-card/40 px-3 py-2">
                 <div><p className="text-xs text-foreground">Portable persona via UMH</p><p className="text-[11px] text-muted-foreground">Shares only the AI name and interaction style—not chats, health data, or native Messages.</p></div>
                 <button type="button" onClick={() => { const enabled = !aiPersona?.persona.ecosystemSharingEnabled; savePersonaMutation.mutate({ ecosystemSharingEnabled: enabled, allowedDestinations: enabled ? ["umh"] : [] }); }} className={`h-5 w-10 shrink-0 rounded-full relative transition-colors ${aiPersona?.persona.ecosystemSharingEnabled ? "bg-primary/30" : "bg-card"}`} aria-pressed={aiPersona?.persona.ecosystemSharingEnabled || false} aria-label="Share portable AI persona through UMH" role="switch"><span className={`absolute top-0.5 h-4 w-4 rounded-full transition-all ${aiPersona?.persona.ecosystemSharingEnabled ? "left-5 bg-primary" : "left-0.5 bg-muted-foreground"}`} /></button>
               </div>
-              <div className="space-y-2 text-xs text-muted-foreground">
-                <p>{aiMemory?.conversationCount || 0} saved text conversations, {aiMemory?.voiceSessionCount || 0} voice sessions, and {aiMemory?.legacyMessageCount || 0} legacy messages.</p>
-                <p>{aiMemory?.affirmationStored || aiMemory?.profileContextStored ? "A generated assistant profile is stored." : "No generated assistant profile is stored."}</p>
-                <p>{aiMemory?.contextReceiptCount || 0} context-source receipts and {aiMemory?.actionReceiptCount || 0} action receipts.</p>
+              <div className="space-y-2 text-xs text-muted-foreground" aria-live="polite">
+                <p data-testid="ai-memory-chat-summary">{aiMemory?.conversationCount || 0} saved text conversations, {aiMemory?.voiceSessionCount || 0} voice sessions, and {aiMemory?.legacyMessageCount || 0} legacy messages.</p>
+                <p data-testid="ai-memory-profile-summary">{aiMemory?.affirmationStored || aiMemory?.profileContextStored ? "A generated assistant profile is stored." : "No generated assistant profile is stored."}</p>
+                <p data-testid="ai-memory-receipt-summary">{aiMemory?.contextReceiptCount || 0} context-source receipts and {aiMemory?.actionReceiptCount || 0} action receipts.</p>
                 <p className="text-[11px]">Cross-product memory: off by default · Native Messages: excluded · External sending: disabled</p>
               </div>
               <div className="mt-3 space-y-2 border-t border-primary/10 pt-3">
@@ -2092,17 +2099,17 @@ export default function ProfilePage() {
               </div>
               {aiMemoryPolicy?.policy && <div className="mt-3 grid gap-2 border-t border-primary/10 pt-3 sm:grid-cols-3">
                 <label className="text-[11px] text-muted-foreground">Chats
-                  <select className="mt-1 w-full rounded-md border border-primary/20 bg-background px-2 py-1.5 text-xs text-foreground" value={aiMemoryPolicy.policy.chatHistoryDays ?? "until_deleted"} onChange={(event) => updateMemoryPolicyMutation.mutate({ chatHistoryDays: event.target.value === "until_deleted" ? null : Number(event.target.value) })}>
+                  <select className="mt-1 w-full rounded-md border border-primary/20 bg-background px-2 py-1.5 text-xs text-foreground" data-testid="ai-memory-retention-chats" value={aiMemoryPolicy.policy.chatHistoryDays ?? "until_deleted"} onChange={(event) => updateMemoryPolicyMutation.mutate({ chatHistoryDays: event.target.value === "until_deleted" ? null : Number(event.target.value) })}>
                     <option value="until_deleted">Until deleted</option><option value="30">30 days</option><option value="90">90 days</option><option value="365">1 year</option>
                   </select>
                 </label>
                 <label className="text-[11px] text-muted-foreground">Context receipts
-                  <select className="mt-1 w-full rounded-md border border-primary/20 bg-background px-2 py-1.5 text-xs text-foreground" value={aiMemoryPolicy.policy.contextReceiptDays} onChange={(event) => updateMemoryPolicyMutation.mutate({ contextReceiptDays: Number(event.target.value) })}>
+                  <select className="mt-1 w-full rounded-md border border-primary/20 bg-background px-2 py-1.5 text-xs text-foreground" data-testid="ai-memory-retention-context" value={aiMemoryPolicy.policy.contextReceiptDays} onChange={(event) => updateMemoryPolicyMutation.mutate({ contextReceiptDays: Number(event.target.value) })}>
                     <option value="30">30 days</option><option value="90">90 days</option><option value="365">1 year</option>
                   </select>
                 </label>
                 <label className="text-[11px] text-muted-foreground">Action receipts
-                  <select className="mt-1 w-full rounded-md border border-primary/20 bg-background px-2 py-1.5 text-xs text-foreground" value={aiMemoryPolicy.policy.actionReceiptDays} onChange={(event) => updateMemoryPolicyMutation.mutate({ actionReceiptDays: Number(event.target.value) })}>
+                  <select className="mt-1 w-full rounded-md border border-primary/20 bg-background px-2 py-1.5 text-xs text-foreground" data-testid="ai-memory-retention-actions" value={aiMemoryPolicy.policy.actionReceiptDays} onChange={(event) => updateMemoryPolicyMutation.mutate({ actionReceiptDays: Number(event.target.value) })}>
                     <option value="90">90 days</option><option value="365">1 year</option><option value="1095">3 years</option>
                   </select>
                 </label>
@@ -2115,14 +2122,14 @@ export default function ProfilePage() {
                 </div>)}
               </div>}
               <div className="mt-3 flex flex-wrap gap-2">
-                <Button size="sm" variant="outline" className="border-primary/30 text-primary hover:bg-primary/10" onClick={() => clearAiMemoryMutation.mutate("chat-history")} disabled={clearAiMemoryMutation.isPending}>
+                <Button size="sm" variant="outline" className="border-primary/30 text-primary hover:bg-primary/10" data-testid="ai-memory-clear-chat" onClick={() => clearAiMemoryMutation.mutate("chat-history")} disabled={clearAiMemoryMutation.isPending}>
                   Clear chat history
                 </Button>
-                <Button size="sm" variant="outline" className="border-primary/30 text-primary hover:bg-primary/10" onClick={() => clearAiMemoryMutation.mutate("assistant-profile")} disabled={clearAiMemoryMutation.isPending}>
+                <Button size="sm" variant="outline" className="border-primary/30 text-primary hover:bg-primary/10" data-testid="ai-memory-reset-profile" onClick={() => clearAiMemoryMutation.mutate("assistant-profile")} disabled={clearAiMemoryMutation.isPending}>
                   Reset AI identity & profile
                 </Button>
-                <Button size="sm" variant="outline" className="border-primary/30 text-primary hover:bg-primary/10" onClick={() => clearAiMemoryMutation.mutate("context-sources")} disabled={clearAiMemoryMutation.isPending}>Clear context receipts</Button>
-                <Button size="sm" variant="outline" className="border-primary/30 text-primary hover:bg-primary/10" onClick={() => clearAiMemoryMutation.mutate("action-history")} disabled={clearAiMemoryMutation.isPending}>Clear action receipts</Button>
+                <Button size="sm" variant="outline" className="border-primary/30 text-primary hover:bg-primary/10" data-testid="ai-memory-clear-context" onClick={() => clearAiMemoryMutation.mutate("context-sources")} disabled={clearAiMemoryMutation.isPending}>Clear context receipts</Button>
+                <Button size="sm" variant="outline" className="border-primary/30 text-primary hover:bg-primary/10" data-testid="ai-memory-clear-actions" onClick={() => clearAiMemoryMutation.mutate("action-history")} disabled={clearAiMemoryMutation.isPending}>Clear action receipts</Button>
               </div>
             </div>
 
