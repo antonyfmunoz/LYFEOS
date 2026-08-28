@@ -20,5 +20,6 @@ describe("production operations workflow boundary", () => {
     expect(verify).toContain("pg_restore");
     expect(verify).toContain("schema_fingerprint");
     expect(verify).toContain("lyfeos_restore_ci");
+    expect(verify.match(/= "130"/g)).toHaveLength(2);
   });
 });
