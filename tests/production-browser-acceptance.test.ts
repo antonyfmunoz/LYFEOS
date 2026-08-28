@@ -157,6 +157,8 @@ describe("production browser acceptance custody", () => {
     expect(coreLoopScript).toContain("control?.value === expectedValue");
     expect(coreLoopScript).toContain('stage = "fill the bounded follow-up action"');
     expect(coreLoopScript).toContain("async function stabilizeRenderedFields");
+    expect(coreLoopScript).toContain("async function setRenderedInputValue");
+    expect(coreLoopScript).toContain('Object.getOwnPropertyDescriptor(prototype, "value")?.set');
     expect(coreLoopScript).toContain('stage = "stabilize the complete rendered automation draft"');
     expect(coreLoopScript).toContain("Rendered automation fields did not settle");
     expect(coreLoopScript).toContain("setViewport({ width: 390, height: 844, deviceScaleFactor: 2 })");
@@ -199,6 +201,8 @@ describe("production browser acceptance custody", () => {
     expect(automationsPage).toContain('data-testid="automation-schedule-anchor"');
     expect(automationsPage).toContain('data-testid="automation-schedule-status"');
     expect(coreLoopScript).toContain('stage = "save the disabled daily schedule through the rendered control"');
+    expect(coreLoopScript).toContain('stage = "set the disabled daily schedule fields"');
+    expect(coreLoopScript).toContain('setRenderedInputValue(page, \'[data-testid="automation-schedule-max-occurrences"]\', "2")');
     expect(coreLoopScript).toContain('stage = "save the revised disabled weekly schedule through the rendered control"');
     expect(coreLoopScript).toContain('stage = "preview the revised saved schedule without executing it"');
     expect(coreLoopScript).toContain('scheduleSavedAndRevised: true');

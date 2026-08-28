@@ -385,6 +385,23 @@ async function fill(page: Page, selector: string, value: string): Promise<void> 
   }, { timeout: 10_000 }, { inputSelector: selector, expectedValue: value });
 }
 
+async function setRenderedInputValue(page: Page, selector: string, value: string): Promise<void> {
+  await page.waitForSelector(selector, { visible: true, timeout: 30_000 });
+  await page.$eval(selector, (element, nextValue) => {
+    if (!(element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement)) throw new Error("Rendered value target is not an input control.");
+    const prototype = element instanceof HTMLInputElement ? HTMLInputElement.prototype : HTMLTextAreaElement.prototype;
+    const setter = Object.getOwnPropertyDescriptor(prototype, "value")?.set;
+    if (!setter) throw new Error("Rendered input value setter is unavailable.");
+    setter.call(element, nextValue);
+    element.dispatchEvent(new Event("input", { bubbles: true }));
+    element.dispatchEvent(new Event("change", { bubbles: true }));
+  }, value);
+  await page.waitForFunction(({ inputSelector, expectedValue }) => {
+    const control = document.querySelector<HTMLInputElement | HTMLTextAreaElement>(inputSelector);
+    return control?.value === expectedValue;
+  }, { timeout: 10_000 }, { inputSelector: selector, expectedValue: value });
+}
+
 type RenderedFieldExpectation = { selector: string; value: string };
 
 async function readRenderedFields(page: Page, fields: RenderedFieldExpectation[]): Promise<Record<string, string | null>> {
@@ -564,10 +581,11 @@ async function exerciseNonMutatingAutomationControls(page: Page): Promise<Automa
     stage = "open the rendered bounded schedule editor";
     await page.select('[data-testid="automation-trigger"]', "schedule");
     await page.waitForSelector('[data-testid="automation-schedule-editor"]', { visible: true, timeout: 30_000 });
+    stage = "set the disabled daily schedule fields";
     await page.waitForFunction((id) => Array.from(document.querySelectorAll<HTMLSelectElement>('[data-testid="automation-schedule-anchor"] option')).some((option) => option.value === String(id)), { timeout: 30_000 }, missionId);
     await page.select('[data-testid="automation-schedule-anchor"]', String(missionId));
     await page.select('[data-testid="automation-schedule-missed-run-policy"]', "skip");
-    await fill(page, '[data-testid="automation-schedule-max-occurrences"]', "2");
+    await setRenderedInputValue(page, '[data-testid="automation-schedule-max-occurrences"]', "2");
     await page.waitForFunction((id) => {
       const value = (selector: string) => document.querySelector<HTMLInputElement | HTMLSelectElement>(selector)?.value || "";
       return value('[data-testid="automation-schedule-anchor"]') === String(id)
@@ -631,7 +649,7 @@ async function exerciseNonMutatingAutomationControls(page: Page): Promise<Automa
     await page.waitForFunction((day) => document.querySelector(`[data-testid="automation-schedule-weekday-${day}"]`)?.getAttribute("aria-pressed") === "true", { timeout: 30_000 }, startWeekday);
     await activateRenderedControl(page, `[data-testid="automation-schedule-weekday-${addedWeekday}"]`);
     await page.select('[data-testid="automation-schedule-missed-run-policy"]', "run_once");
-    await fill(page, '[data-testid="automation-schedule-max-occurrences"]', "3");
+    await setRenderedInputValue(page, '[data-testid="automation-schedule-max-occurrences"]', "3");
     await page.waitForFunction((day) => {
       const cadence = document.querySelector<HTMLSelectElement>('[data-testid="automation-schedule-cadence"]')?.value;
       const occurrenceCount = document.querySelector<HTMLInputElement>('[data-testid="automation-schedule-max-occurrences"]')?.value;
