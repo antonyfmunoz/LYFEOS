@@ -233,7 +233,7 @@ export function TransformationThreadPanel() {
   if (!thread && onboardingComplete) {
     const reusableCapabilities = capabilityData?.capabilities || [];
     return (
-      <section className="mb-6" data-tour="transformation-thread">
+      <section className="mb-6" data-tour="transformation-thread" data-testid="transformation-thread-initialization">
         <div className="glassmorphic rounded-xl p-4 neon-border">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -243,11 +243,12 @@ export function TransformationThreadPanel() {
               <p className="mt-2 text-sm text-muted-foreground">Create a reviewable focus and three starter missions. A Thread is a temporary focus period; your reviewed capability history remains durable across Threads.</p>
             </div>
             <div className="flex shrink-0 flex-col gap-2 sm:min-w-64">
-              {reusableCapabilities.length > 0 && <select aria-label="Next capability focus" value={nextCapabilityId} onChange={(event) => setNextCapabilityId(event.target.value)} className="h-9 rounded-md border border-primary/20 bg-background/40 px-2 text-sm text-foreground">
+              {reusableCapabilities.length > 0 && <select data-testid="next-capability-focus" aria-label="Next capability focus" value={nextCapabilityId} onChange={(event) => setNextCapabilityId(event.target.value)} className="h-9 rounded-md border border-primary/20 bg-background/40 px-2 text-sm text-foreground">
                 <option value="">Use current onboarding direction</option>
                 {reusableCapabilities.map((capability) => <option key={capability.id} value={capability.id}>{capability.name} · {capability.experience} XP</option>)}
               </select>}
               <Button
+                data-testid="prepare-thread-focus"
                 size="sm"
                 className="bg-primary/20 text-primary border border-primary/50 hover:bg-primary/30"
                 onClick={() => initializeThread.mutate()}
@@ -297,6 +298,7 @@ export function TransformationThreadPanel() {
 
           {isDraft ? (
             <Button
+              data-testid="activate-thread-plan"
               size="sm"
               className="shrink-0 bg-primary/20 text-primary border border-primary/50 hover:bg-primary/30"
               onClick={() => activateThread.mutate(thread.id)}

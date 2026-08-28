@@ -14,6 +14,7 @@
     "acceptance:core-loop": "tsx scripts/production-core-loop-acceptance.ts",
     "acceptance:automation-recovery": "tsx scripts/automation-recovery-browser-acceptance.ts",
     "acceptance:ai-memory": "tsx scripts/ai-memory-browser-acceptance.ts",
+    "acceptance:thread-successor": "tsx scripts/thread-successor-browser-acceptance.ts",
     "verify": "npm run check && npm test && npm run build && npm run budget",
     "ops:health-integrity": "tsx scripts/health-integrity-drill.ts",
     "db:push": "drizzle-kit push"
