@@ -2365,6 +2365,7 @@ export const aiMemoryPolicies = pgTable("ai_memory_policies", {
   actionReceiptDays: integer("action_receipt_days").notNull().default(365),
   crossProductMemoryEnabled: boolean("cross_product_memory_enabled").notNull().default(false),
   allowedDestinations: jsonb("allowed_destinations").notNull().default([]),
+  revision: integer("revision").notNull().default(1),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 

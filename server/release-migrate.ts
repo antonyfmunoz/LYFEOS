@@ -3197,6 +3197,14 @@ const migrations = [
       CREATE INDEX IF NOT EXISTS "extension_audit_events_user_created_idx" ON "extension_audit_events" ("user_id", "created_at");
     `,
   },
+  {
+    id: "0138_ai_memory_lifecycle",
+    sql: `
+      ALTER TABLE "ai_memory_policies" ADD COLUMN IF NOT EXISTS "revision" integer NOT NULL DEFAULT 1;
+      ALTER TABLE "ai_memory_policies" DROP CONSTRAINT IF EXISTS "ai_memory_policies_revision_valid";
+      ALTER TABLE "ai_memory_policies" ADD CONSTRAINT "ai_memory_policies_revision_valid" CHECK ("revision" > 0);
+    `,
+  },
 ];
 
 async function run(): Promise<void> {

@@ -36,6 +36,7 @@ import * as Sentry from "@sentry/node";
 import { SESSION_COOKIE_NAME } from "./session-config";
 import { consumeDistributedRateLimit, deleteExpiredRateLimits, rateLimitBucketHash } from "./distributed-rate-limit";
 import { migrateLegacyIntegrationCredentials } from "./integration-provider-credentials";
+import { startAIMemoryRetentionWorker, stopAIMemoryRetentionWorker } from "./ai-memory-retention-worker";
 
 const sentryDsn = process.env.SENTRY_DSN;
 const sentryEnvironment = process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || "development";
@@ -349,6 +350,7 @@ async function ensureDatabaseSchema() {
     startHealthDeletionReceiptCleanup();
     startProductAnalyticsDeletionWorker();
     startHypothesisWorker();
+    startAIMemoryRetentionWorker();
     if (process.env.LYFEOS_TEST_ENV !== "isolated") startScheduledAutomationWorker();
   });
 
@@ -357,6 +359,7 @@ async function ensureDatabaseSchema() {
   const gracefulShutdown = (signal: string) => {
     log(`Received ${signal}, shutting down gracefully...`);
     stopHypothesisWorker();
+    stopAIMemoryRetentionWorker();
     stopScheduledAutomationWorker();
     server.close(() => {
       log('Server closed');

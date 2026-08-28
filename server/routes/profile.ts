@@ -589,11 +589,13 @@ export function registerProfileRoutes(app: Express): void {
   });
 
   app.get("/api/account/ai-memory", isAuthenticated, async (req: Request, res: Response) => {
+    res.setHeader("Cache-Control", "private, no-store");
     try {
       const userId = req.session.userId!;
-      const [legacyMessages, chatConversations, profile, contextReceipts, actionReceipts, personaRows] = await Promise.all([
+      const [legacyMessages, chatConversations, voiceSessions, profile, contextReceipts, actionReceipts, personaRows] = await Promise.all([
         selectAccountRows("ai_messages", userId),
         selectAccountRows("conversations", userId),
+        selectAccountRows("ai_voice_sessions", userId),
         storage.getUserProfile(userId),
         selectAccountRows("ai_context_receipts", userId),
         selectAccountRows("ai_action_records", userId),
@@ -602,6 +604,7 @@ export function registerProfileRoutes(app: Express): void {
       return res.json({
         legacyMessageCount: legacyMessages.length,
         conversationCount: chatConversations.length,
+        voiceSessionCount: voiceSessions.length,
         affirmationStored: Boolean(profile?.characterAffirmation),
         profileContextStored: Boolean(profile?.aiPersonalityProfile && Object.keys(profile.aiPersonalityProfile as object).length),
         contextReceiptCount: contextReceipts.length,
@@ -621,30 +624,44 @@ export function registerProfileRoutes(app: Express): void {
   });
 
   app.delete("/api/account/ai-memory", isAuthenticated, async (req: Request, res: Response) => {
+    res.setHeader("Cache-Control", "private, no-store");
     const parsed = z.object({ scope: z.enum(["chat-history", "assistant-profile", "context-sources", "action-history", "all-ai-memory"]) }).safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: "Choose what the assistant should forget." });
     try {
       const userId = req.session.userId!;
-      if (parsed.data.scope === "chat-history" || parsed.data.scope === "all-ai-memory") {
-        await db.transaction(async (tx) => {
-          await tx.execute(sql`DELETE FROM "messages" WHERE "conversation_id" IN (SELECT "id" FROM "conversations" WHERE "user_id" = ${userId})`);
-          await tx.execute(sql`DELETE FROM "conversations" WHERE "user_id" = ${userId}`);
-          await tx.execute(sql`DELETE FROM "ai_messages" WHERE "user_id" = ${userId}`);
-        });
-      }
-      if (parsed.data.scope === "assistant-profile" || parsed.data.scope === "all-ai-memory") {
-        await storage.upsertUserProfile(userId, { characterAffirmation: null, aiPersonalityProfile: {} } as any);
-      }
-      if (parsed.data.scope === "context-sources" || parsed.data.scope === "all-ai-memory") {
-        await db.execute(sql`DELETE FROM "ai_context_receipts" WHERE "user_id" = ${userId}`);
-      }
-      if (parsed.data.scope === "action-history" || parsed.data.scope === "all-ai-memory") {
-        await db.transaction(async (tx) => {
-          await tx.execute(sql`UPDATE "ai_pending_actions" SET "state" = 'rejected', "updated_at" = now() WHERE "user_id" = ${userId} AND "state" = 'pending'`);
-          await tx.execute(sql`DELETE FROM "ai_action_records" WHERE "user_id" = ${userId} AND "state" NOT IN ('executing')`);
-        });
-      }
-      return res.json({ success: true });
+      const forgetChats = parsed.data.scope === "chat-history" || parsed.data.scope === "all-ai-memory";
+      const forgetProfile = parsed.data.scope === "assistant-profile" || parsed.data.scope === "all-ai-memory";
+      const forgetContext = parsed.data.scope === "context-sources" || parsed.data.scope === "all-ai-memory";
+      const forgetActions = parsed.data.scope === "action-history" || parsed.data.scope === "all-ai-memory";
+      const result = await db.transaction(async (tx) => {
+        const removed = { conversations: 0, legacyMessages: 0, voiceSessions: 0, contextReceipts: 0, actionReceipts: 0, personaProfiles: 0 };
+        if (forgetChats) {
+          removed.voiceSessions = ((await tx.execute(sql`DELETE FROM "ai_voice_sessions" WHERE "user_id" = ${userId} RETURNING "id"`)) as { rows?: unknown[] }).rows?.length || 0;
+          removed.conversations = ((await tx.execute(sql`DELETE FROM "conversations" WHERE "user_id" = ${userId} RETURNING "id"`)) as { rows?: unknown[] }).rows?.length || 0;
+          removed.legacyMessages = ((await tx.execute(sql`DELETE FROM "ai_messages" WHERE "user_id" = ${userId} RETURNING "id"`)) as { rows?: unknown[] }).rows?.length || 0;
+        }
+        if (forgetProfile) {
+          await tx.execute(sql`UPDATE "user_profile" SET "character_affirmation" = NULL, "ai_personality_profile" = '{}'::jsonb, "updated_at" = now() WHERE "user_id" = ${userId}`);
+          removed.personaProfiles = ((await tx.execute(sql`DELETE FROM "ai_persona_profiles" WHERE "user_id" = ${userId} RETURNING "id"`)) as { rows?: unknown[] }).rows?.length || 0;
+          await tx.execute(sql`UPDATE "user_stats" SET "ai_assistant_name" = 'NOVA', "updated_at" = now() WHERE "user_id" = ${userId}`);
+        }
+        if (forgetContext) {
+          removed.contextReceipts = ((await tx.execute(sql`DELETE FROM "ai_context_receipts" WHERE "user_id" = ${userId} RETURNING "id"`)) as { rows?: unknown[] }).rows?.length || 0;
+        }
+        if (forgetActions) {
+          await tx.execute(sql`SELECT "id" FROM "ai_action_records" WHERE "user_id" = ${userId} FOR UPDATE`);
+          removed.actionReceipts = ((await tx.execute(sql`
+            DELETE FROM "ai_action_records"
+            WHERE "user_id" = ${userId} AND "state" NOT IN ('started','executing')
+            RETURNING "id"
+          `)) as { rows?: unknown[] }).rows?.length || 0;
+        }
+        const activeActions = forgetActions
+          ? Number(((await tx.execute(sql`SELECT count(*)::integer AS "count" FROM "ai_action_records" WHERE "user_id" = ${userId} AND "state" IN ('started','executing')`)) as { rows?: Array<{ count: number }> }).rows?.[0]?.count || 0)
+          : 0;
+        return { removed, retained: { activeActionReceipts: activeActions } };
+      });
+      return res.json({ success: true, ...result });
     } catch (error) {
       logger.error("Error clearing AI memory:", error);
       return res.status(500).json({ error: "Could not clear AI memory" });

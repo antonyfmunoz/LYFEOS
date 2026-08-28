@@ -79,14 +79,61 @@ describeApi("AI persona and memory governance authenticated journey", () => {
   });
 
   it("persists bounded retention and exposes explicit memory boundaries", async () => {
-    const updated = await request("PATCH", "/api/account/ai-memory-policy", { chatHistoryDays: 90, contextReceiptDays: 30, actionReceiptDays: 365, crossProductMemoryEnabled: false, allowedDestinations: [] }, cookie);
+    const [{ db }, schema, { eq }] = await Promise.all([import("../server/db"), import("../shared/schema"), import("drizzle-orm")]);
+    const old = new Date(Date.now() - 400 * 24 * 60 * 60 * 1_000);
+    const [conversation] = await db.insert(schema.conversations).values({ userId, title: "Expired chat", createdAt: old }).returning();
+    await db.insert(schema.messages).values({ conversationId: conversation.id, role: "user", content: "expired", createdAt: old });
+    await db.insert(schema.aiMessages).values({ userId, sender: "user", content: "expired legacy", timestamp: old });
+    await db.insert(schema.aiVoiceSessions).values([
+      { userId, title: "Expired completed voice", purpose: "meeting", status: "completed", createdAt: old, updatedAt: old },
+      { userId, title: "Active voice", purpose: "command", status: "active", createdAt: old, updatedAt: old },
+    ]);
+    await db.insert(schema.aiContextReceipts).values({ userId, purpose: "retention-test", sources: [], disclosure: "Metadata only.", createdAt: old, expiresAt: old });
+    const [terminalAction] = await db.insert(schema.aiActionRecords).values({ userId, toolName: "lookup_knowledge_base", risk: "read", state: "succeeded", createdAt: old, completedAt: old }).returning();
+    const [activeAction] = await db.insert(schema.aiActionRecords).values({ userId, toolName: "lookup_knowledge_base", risk: "read", state: "started", createdAt: old }).returning();
+
+    const initialPolicy = await request("GET", "/api/account/ai-memory-policy", undefined, cookie);
+    expect(initialPolicy.status).toBe(200);
+    const initialRevision = initialPolicy.data.policy.revision;
+    const updated = await request("PATCH", "/api/account/ai-memory-policy", { chatHistoryDays: 30, contextReceiptDays: 30, actionReceiptDays: 90, crossProductMemoryEnabled: false, allowedDestinations: [], expectedRevision: initialRevision }, cookie);
     expect(updated.status).toBe(200);
-    expect(updated.data.policy).toMatchObject({ chatHistoryDays: 90, contextReceiptDays: 30, actionReceiptDays: 365, crossProductMemoryEnabled: false });
+    expect(updated.data.policy).toMatchObject({ chatHistoryDays: 30, contextReceiptDays: 30, actionReceiptDays: 90, crossProductMemoryEnabled: false, revision: initialRevision + 1 });
+    expect(updated.data.removed).toEqual({ conversations: 1, legacyMessages: 1, voiceSessions: 1, contextReceipts: 1, actionReceipts: 1 });
+    expect((await request("PATCH", "/api/account/ai-memory-policy", { chatHistoryDays: 365, contextReceiptDays: 365, actionReceiptDays: 1095, crossProductMemoryEnabled: false, allowedDestinations: [], expectedRevision: initialRevision }, cookie)).status).toBe(409);
     const memory = await request("GET", "/api/account/ai-memory", undefined, cookie);
     expect(memory.status).toBe(200);
+    expect(memory.data).toMatchObject({ conversationCount: 0, legacyMessageCount: 0, voiceSessionCount: 1, contextReceiptCount: 0, actionReceiptCount: 1 });
     expect(memory.data.boundaries).toEqual({ nativeMessagesIncluded: false, externalSendingEnabled: false, crossProductMemoryDefault: "off", contextReceiptsContainRawValues: false });
     expect((await request("DELETE", "/api/account/ai-memory", { scope: "context-sources" }, cookie)).status).toBe(200);
-    expect((await request("DELETE", "/api/account/ai-memory", { scope: "action-history" }, cookie)).status).toBe(200);
+    const activeRetention = await request("DELETE", "/api/account/ai-memory", { scope: "action-history" }, cookie);
+    expect(activeRetention.status).toBe(200);
+    expect(activeRetention.data.retained.activeActionReceipts).toBe(1);
+    await db.update(schema.aiActionRecords).set({ state: "failed", completedAt: new Date() }).where(eq(schema.aiActionRecords.id, activeAction.id));
+    const terminalErasure = await request("DELETE", "/api/account/ai-memory", { scope: "action-history" }, cookie);
+    expect(terminalErasure.status).toBe(200);
+    expect(terminalErasure.data.retained.activeActionReceipts).toBe(0);
+    expect((await db.select().from(schema.aiActionRecords).where(eq(schema.aiActionRecords.id, terminalAction.id))).length).toBe(0);
+
+    const [scheduledConversation] = await db.insert(schema.conversations).values({ userId, title: "Scheduled expiry", createdAt: old }).returning();
+    await db.insert(schema.messages).values({ conversationId: scheduledConversation.id, role: "assistant", content: "expired", createdAt: old });
+    await db.insert(schema.aiMessages).values({ userId, sender: "ai", content: "scheduled legacy expiry", timestamp: old });
+    await db.insert(schema.aiVoiceSessions).values({ userId, title: "Scheduled voice expiry", purpose: "meeting", status: "cancelled", createdAt: old, updatedAt: old });
+    await db.insert(schema.aiContextReceipts).values({ userId, purpose: "scheduled-retention-test", sources: [], disclosure: "Metadata only.", createdAt: old, expiresAt: old });
+    await db.insert(schema.aiActionRecords).values({ userId, toolName: "lookup_knowledge_base", risk: "read", state: "failed", createdAt: old, completedAt: old });
+    const { runAIMemoryRetentionSweep } = await import("../server/ai-memory-retention-worker");
+    const sweep = await runAIMemoryRetentionSweep();
+    expect(sweep).toEqual({ leaseAcquired: true, conversations: 1, legacyMessages: 1, voiceSessions: 1, contextReceipts: 1, actionReceipts: 1 });
+    const afterSweep = await request("GET", "/api/account/ai-memory", undefined, cookie);
+    expect(afterSweep.data).toMatchObject({ conversationCount: 0, legacyMessageCount: 0, voiceSessionCount: 1, contextReceiptCount: 0, actionReceiptCount: 0 });
+  });
+
+  it("resets the named persona and generated profile as one atomic scope", async () => {
+    const reset = await request("DELETE", "/api/account/ai-memory", { scope: "assistant-profile" }, cookie);
+    expect(reset.status).toBe(200);
+    expect(reset.data.removed.personaProfiles).toBe(1);
+    const persona = await request("GET", "/api/ai/persona", undefined, cookie);
+    expect(persona.status).toBe(200);
+    expect(persona.data.persona).toMatchObject({ name: "NOVA", ecosystemSharingEnabled: false, allowedDestinations: [], revision: 1 });
   });
 
   it("snapshots explicit local, hybrid, or cloud execution policy", async () => {

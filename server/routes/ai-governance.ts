@@ -14,6 +14,7 @@ const DEFAULT_POLICY = {
   actionReceiptDays: 365,
   crossProductMemoryEnabled: false,
   allowedDestinations: [] as string[],
+  revision: 1,
 };
 
 async function ensurePersona(userId: number) {
@@ -27,8 +28,11 @@ async function ensurePersona(userId: number) {
 async function ensureMemoryPolicy(userId: number) {
   const existing = await db.select().from(aiMemoryPolicies).where(eq(aiMemoryPolicies.userId, userId)).limit(1);
   if (existing[0]) return existing[0];
-  const [created] = await db.insert(aiMemoryPolicies).values({ userId }).returning();
-  return created;
+  const [created] = await db.insert(aiMemoryPolicies).values({ userId }).onConflictDoNothing().returning();
+  if (created) return created;
+  const [concurrent] = await db.select().from(aiMemoryPolicies).where(eq(aiMemoryPolicies.userId, userId)).limit(1);
+  if (!concurrent) throw new Error("memory_policy_convergence_failed");
+  return concurrent;
 }
 
 async function ensureExecutionPreference(userId: number) {
@@ -49,36 +53,62 @@ const executionPreferenceInput = z.object({
   if (value.executionMode !== "hybrid" && value.cloudFallbackEnabled) context.addIssue({ code: z.ZodIssueCode.custom, path: ["cloudFallbackEnabled"], message: "Cloud fallback is available only in hybrid mode." });
 });
 
-export async function applyAIMemoryRetention(userId: number): Promise<{ conversations: number; contextReceipts: number; actionReceipts: number }> {
-  const policy = await ensureMemoryPolicy(userId);
-  return db.transaction(async (tx) => {
-    let conversations = 0;
-    if (policy.chatHistoryDays !== null) {
-      const result = await tx.execute(sql`
-        DELETE FROM "conversations"
-        WHERE "user_id" = ${userId} AND "created_at" < now() - (${policy.chatHistoryDays} * interval '1 day')
-        RETURNING "id"
-      `);
-      conversations = (result as { rows?: unknown[] }).rows?.length || 0;
-    }
-    const context = await tx.execute(sql`
-      DELETE FROM "ai_context_receipts"
-      WHERE "user_id" = ${userId} AND ("expires_at" <= now() OR "created_at" < now() - (${policy.contextReceiptDays} * interval '1 day'))
-      RETURNING "id"
-    `);
-    const actions = await tx.execute(sql`
-      DELETE FROM "ai_action_records"
+type AIMemoryRetentionResult = {
+  conversations: number;
+  legacyMessages: number;
+  voiceSessions: number;
+  contextReceipts: number;
+  actionReceipts: number;
+};
+
+type AIMemoryPolicy = typeof aiMemoryPolicies.$inferSelect;
+type AIMemorySQLExecutor = Pick<typeof db, "execute">;
+
+function affectedRows(result: unknown): number {
+  return (result as { rows?: unknown[] }).rows?.length || 0;
+}
+
+async function applyAIMemoryRetentionWithPolicy(executor: AIMemorySQLExecutor, userId: number, policy: AIMemoryPolicy): Promise<AIMemoryRetentionResult> {
+  let conversations = 0;
+  let legacyMessages = 0;
+  let voiceSessions = 0;
+  if (policy.chatHistoryDays !== null) {
+    voiceSessions = affectedRows(await executor.execute(sql`
+      DELETE FROM "ai_voice_sessions"
       WHERE "user_id" = ${userId}
-        AND "state" NOT IN ('started','pending_approval','executing')
-        AND "created_at" < now() - (${policy.actionReceiptDays} * interval '1 day')
+        AND "status" <> 'active'
+        AND "created_at" < now() - (${policy.chatHistoryDays} * interval '1 day')
       RETURNING "id"
-    `);
-    return {
-      conversations,
-      contextReceipts: (context as { rows?: unknown[] }).rows?.length || 0,
-      actionReceipts: (actions as { rows?: unknown[] }).rows?.length || 0,
-    };
-  });
+    `));
+    conversations = affectedRows(await executor.execute(sql`
+      DELETE FROM "conversations"
+      WHERE "user_id" = ${userId} AND "created_at" < now() - (${policy.chatHistoryDays} * interval '1 day')
+      RETURNING "id"
+    `));
+    legacyMessages = affectedRows(await executor.execute(sql`
+      DELETE FROM "ai_messages"
+      WHERE "user_id" = ${userId} AND "timestamp" < now() - (${policy.chatHistoryDays} * interval '1 day')
+      RETURNING "id"
+    `));
+  }
+  const contextReceipts = affectedRows(await executor.execute(sql`
+    DELETE FROM "ai_context_receipts"
+    WHERE "user_id" = ${userId} AND ("expires_at" <= now() OR "created_at" < now() - (${policy.contextReceiptDays} * interval '1 day'))
+    RETURNING "id"
+  `));
+  const actionReceipts = affectedRows(await executor.execute(sql`
+    DELETE FROM "ai_action_records"
+    WHERE "user_id" = ${userId}
+      AND "state" NOT IN ('started','pending_approval','executing')
+      AND "created_at" < now() - (${policy.actionReceiptDays} * interval '1 day')
+    RETURNING "id"
+  `));
+  return { conversations, legacyMessages, voiceSessions, contextReceipts, actionReceipts };
+}
+
+export async function applyAIMemoryRetention(userId: number): Promise<AIMemoryRetentionResult> {
+  const policy = await ensureMemoryPolicy(userId);
+  return db.transaction((tx) => applyAIMemoryRetentionWithPolicy(tx, userId, policy));
 }
 
 export function registerAIGovernanceRoutes(app: Express): void {
@@ -182,10 +212,16 @@ export function registerAIGovernanceRoutes(app: Express): void {
       const userId = req.session.userId!;
       await ensureMemoryPolicy(userId);
       const destinations = parsed.data.crossProductMemoryEnabled ? parsed.data.allowedDestinations : [];
-      const [policy] = await db.update(aiMemoryPolicies).set({ ...parsed.data, allowedDestinations: destinations, updatedAt: new Date() }).where(eq(aiMemoryPolicies.userId, userId)).returning();
-      const removed = await applyAIMemoryRetention(userId);
+      const { expectedRevision, ...settings } = parsed.data;
+      const { policy, removed } = await db.transaction(async (tx) => {
+        const [policy] = await tx.update(aiMemoryPolicies).set({ ...settings, allowedDestinations: destinations, revision: expectedRevision + 1, updatedAt: new Date() }).where(and(eq(aiMemoryPolicies.userId, userId), eq(aiMemoryPolicies.revision, expectedRevision))).returning();
+        if (!policy) throw new Error("memory_policy_revision_conflict");
+        const removed = await applyAIMemoryRetentionWithPolicy(tx, userId, policy);
+        return { policy, removed };
+      });
       return res.json({ policy, removed });
-    } catch {
+    } catch (error) {
+      if (error instanceof Error && error.message === "memory_policy_revision_conflict") return res.status(409).json({ error: "Memory settings changed in another session. Reload before saving." });
       return res.status(500).json({ error: "Could not save memory retention settings." });
     }
   });

@@ -804,6 +804,7 @@ export default function ProfilePage() {
   const { data: aiMemory } = useQuery<{
     legacyMessageCount: number;
     conversationCount: number;
+    voiceSessionCount: number;
     affirmationStored: boolean;
     profileContextStored: boolean;
     contextReceiptCount: number;
@@ -829,16 +830,23 @@ export default function ProfilePage() {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/ai/persona"] }); toast({ title: "AI persona saved", description: "Your AI name is synchronized with the portable persona record." }); },
     onError: (error: Error) => toast({ title: "Could not save AI persona", description: error.message, variant: "destructive" }),
   });
-  const { data: aiMemoryPolicy } = useQuery<{ policy: { chatHistoryDays: number | null; contextReceiptDays: number; actionReceiptDays: number; crossProductMemoryEnabled: boolean; allowedDestinations: string[] } }>({
+  const { data: aiMemoryPolicy } = useQuery<{ policy: { chatHistoryDays: number | null; contextReceiptDays: number; actionReceiptDays: number; crossProductMemoryEnabled: boolean; allowedDestinations: string[]; revision: number } }>({
     queryKey: ["/api/account/ai-memory-policy"], enabled: !!user?.id,
   });
   const updateMemoryPolicyMutation = useMutation({
     mutationFn: (changes: Partial<{ chatHistoryDays: number | null; contextReceiptDays: number; actionReceiptDays: number }>) => {
       const current = aiMemoryPolicy?.policy;
       if (!current) throw new Error("Memory policy is still loading.");
-      return apiRequest("/api/account/ai-memory-policy", { method: "PATCH", body: JSON.stringify({ ...current, ...changes }) });
+      const { revision, ...settings } = current;
+      return apiRequest("/api/account/ai-memory-policy", { method: "PATCH", body: JSON.stringify({ ...settings, ...changes, expectedRevision: revision }) });
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/account/ai-memory-policy"] }); queryClient.invalidateQueries({ queryKey: ["/api/account/ai-memory"] }); toast({ title: "Memory retention updated" }); },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/account/ai-memory-policy"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/account/ai-memory"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/ai/context-receipts"] });
+      refreshAiActionState();
+      toast({ title: "Memory retention updated", description: "Expired records were removed under the saved policy." });
+    },
     onError: (error: Error) => toast({ title: "Could not update retention", description: error.message, variant: "destructive" }),
   });
   const { data: aiContextReceipts } = useQuery<{ receipts: Array<{ id: string; sources: Array<{ key: string; label: string; recordCount: number }>; disclosure: string; created_at: string }> }>({
@@ -913,24 +921,31 @@ export default function ProfilePage() {
       method: "DELETE",
       body: JSON.stringify({ scope }),
     }),
-    onSuccess: (_, scope) => {
+    onSuccess: (result: { retained?: { activeActionReceipts?: number } }, scope) => {
       queryClient.invalidateQueries({ queryKey: ["/api/account/ai-memory"] });
       queryClient.invalidateQueries({ queryKey: ["/api/ai/context-receipts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/account/ai-actions"] });
-      if (scope === "chat-history") {
+      if (scope === "chat-history" || scope === "all-ai-memory") {
         queryClient.removeQueries({ queryKey: ["/api/conversations"] });
         queryClient.removeQueries({ queryKey: ["/api/messages"] });
-      } else {
+        queryClient.invalidateQueries({ queryKey: ["/api/ai/voice-sessions"] });
+      }
+      if (scope !== "chat-history") {
         queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
       }
+      if (scope === "assistant-profile" || scope === "all-ai-memory") {
+        queryClient.invalidateQueries({ queryKey: ["/api/ai/persona"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/user-stats"] });
+      }
       const descriptions: Record<string, string> = {
-        "chat-history": "Previous AI conversations have been permanently erased.",
-        "assistant-profile": "The generated assistant profile and affirmation have been cleared.",
+        "chat-history": "Previous text and voice AI conversations have been permanently erased.",
+        "assistant-profile": "The AI name, generated profile, and affirmation have been reset to defaults.",
         "context-sources": "Context-source receipts have been permanently erased.",
         "action-history": "Completed assistant-action receipts and repair payloads have been erased.",
         "all-ai-memory": "All erasable AI memory categories have been cleared.",
       };
-      toast({ title: "AI memory cleared", description: descriptions[scope] });
+      const active = result.retained?.activeActionReceipts || 0;
+      toast({ title: "AI memory cleared", description: active > 0 ? `${descriptions[scope]} ${active} active action receipt${active === 1 ? "" : "s"} will remain until execution finishes.` : descriptions[scope] });
     },
     onError: (error: Error) => toast({ title: "Could not clear AI memory", description: error.message, variant: "destructive" }),
   });
@@ -2053,7 +2068,7 @@ export default function ProfilePage() {
                 <button type="button" onClick={() => { const enabled = !aiPersona?.persona.ecosystemSharingEnabled; savePersonaMutation.mutate({ ecosystemSharingEnabled: enabled, allowedDestinations: enabled ? ["umh"] : [] }); }} className={`h-5 w-10 shrink-0 rounded-full relative transition-colors ${aiPersona?.persona.ecosystemSharingEnabled ? "bg-primary/30" : "bg-card"}`} aria-pressed={aiPersona?.persona.ecosystemSharingEnabled || false} aria-label="Share portable AI persona through UMH" role="switch"><span className={`absolute top-0.5 h-4 w-4 rounded-full transition-all ${aiPersona?.persona.ecosystemSharingEnabled ? "left-5 bg-primary" : "left-0.5 bg-muted-foreground"}`} /></button>
               </div>
               <div className="space-y-2 text-xs text-muted-foreground">
-                <p>{aiMemory?.conversationCount || 0} saved conversations and {aiMemory?.legacyMessageCount || 0} legacy messages.</p>
+                <p>{aiMemory?.conversationCount || 0} saved text conversations, {aiMemory?.voiceSessionCount || 0} voice sessions, and {aiMemory?.legacyMessageCount || 0} legacy messages.</p>
                 <p>{aiMemory?.affirmationStored || aiMemory?.profileContextStored ? "A generated assistant profile is stored." : "No generated assistant profile is stored."}</p>
                 <p>{aiMemory?.contextReceiptCount || 0} context-source receipts and {aiMemory?.actionReceiptCount || 0} action receipts.</p>
                 <p className="text-[11px]">Cross-product memory: off by default · Native Messages: excluded · External sending: disabled</p>
@@ -2104,7 +2119,7 @@ export default function ProfilePage() {
                   Clear chat history
                 </Button>
                 <Button size="sm" variant="outline" className="border-primary/30 text-primary hover:bg-primary/10" onClick={() => clearAiMemoryMutation.mutate("assistant-profile")} disabled={clearAiMemoryMutation.isPending}>
-                  Reset AI profile
+                  Reset AI identity & profile
                 </Button>
                 <Button size="sm" variant="outline" className="border-primary/30 text-primary hover:bg-primary/10" onClick={() => clearAiMemoryMutation.mutate("context-sources")} disabled={clearAiMemoryMutation.isPending}>Clear context receipts</Button>
                 <Button size="sm" variant="outline" className="border-primary/30 text-primary hover:bg-primary/10" onClick={() => clearAiMemoryMutation.mutate("action-history")} disabled={clearAiMemoryMutation.isPending}>Clear action receipts</Button>

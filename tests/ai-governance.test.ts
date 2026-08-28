@@ -37,7 +37,7 @@ describe("AI and memory governance", () => {
   });
 
   it("validates bounded retention choices and records only source metadata", () => {
-    expect(aiMemoryPolicyInput.safeParse({ chatHistoryDays: null, contextReceiptDays: 90, actionReceiptDays: 365, crossProductMemoryEnabled: false, allowedDestinations: [] }).success).toBe(true);
+    expect(aiMemoryPolicyInput.safeParse({ chatHistoryDays: null, contextReceiptDays: 90, actionReceiptDays: 365, crossProductMemoryEnabled: false, allowedDestinations: [], expectedRevision: 1 }).success).toBe(true);
     expect(aiMemoryPolicyInput.safeParse({ chatHistoryDays: 7, contextReceiptDays: 90, actionReceiptDays: 365 }).success).toBe(false);
     const sources = buildAIContextSources({ planningEnabled: true, identityEnabled: false, dailyStateEnabled: true, conversationHistoryEnabled: false, missionCount: 3, visionGoalCount: 2, dailyLogCount: 4, priorConversationMessageCount: 50, knowledgeLayerNames: ["Sleep"], imageCount: 1 });
     expect(sources.map((source) => source.key)).toEqual(["current_request", "planning", "daily_state", "knowledge:sleep", "images"]);
@@ -49,6 +49,9 @@ describe("AI and memory governance", () => {
     const profileRoute = readSource("server/routes/profile.ts");
     const profilePage = readSource("client/src/pages/ProfilePage.tsx");
     const migration = readSource("migrations/0102_ai_memory_governance.sql");
+    const lifecycleMigration = readSource("migrations/0138_ai_memory_lifecycle.sql");
+    const retentionWorker = readSource("server/ai-memory-retention-worker.ts");
+    const server = readSource("server/index.ts");
     expect(chat).toContain("CONTEXT SOURCE LEDGER");
     expect(chat).toContain("External sending is disabled");
     expect(chat).toContain('"/api/ai-actions/:actionId/repair"');
@@ -58,6 +61,12 @@ describe("AI and memory governance", () => {
     expect(profilePage).toContain("Recent context sources");
     expect(migration).toContain('CREATE TABLE IF NOT EXISTS "ai_context_receipts"');
     expect(migration).toContain('CREATE TABLE IF NOT EXISTS "ai_action_repairs"');
+    expect(lifecycleMigration).toContain('"ai_memory_policies_revision_valid"');
+    expect(profileRoute).toContain('DELETE FROM "ai_voice_sessions"');
+    expect(profileRoute).toContain('"ai_assistant_name" = \'NOVA\'');
+    expect(retentionWorker).toContain("pg_try_advisory_xact_lock");
+    expect(retentionWorker).toContain('voice."status" <> \'active\'');
+    expect(server).toContain("startAIMemoryRetentionWorker()");
   });
 
   it("blocks assistant webpage reads from private networks and unsafe schemes", async () => {

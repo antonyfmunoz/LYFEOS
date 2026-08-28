@@ -48,8 +48,8 @@ jobs:
           test "$(printf '%s' "$body" | jq -r '.service')" = "lyfeos"
           printf '%s' "$body" | jq -e '.sourceRevision | test("^[0-9a-f]{40}$")' >/dev/null
           test "$(printf '%s' "$body" | jq -r '.migrations.status')" = "available"
-          test "$(printf '%s' "$body" | jq -r '.migrations.count')" -ge 129
-          test "$(printf '%s' "$body" | jq -r '.migrations.latest')" = "0137_ai_execution_and_signed_extensions"
+          test "$(printf '%s' "$body" | jq -r '.migrations.count')" -ge 130
+          test "$(printf '%s' "$body" | jq -r '.migrations.latest')" = "0138_ai_memory_lifecycle"
       - name: Verify protected health integrity aggregates
         env:
           LYFEOS_MONITOR_TOKEN: ${{ secrets.LYFEOS_MONITOR_TOKEN }}

@@ -91,6 +91,7 @@ export const aiMemoryPolicyInput = z.object({
   actionReceiptDays: z.union([z.literal(90), z.literal(365), z.literal(1095)]),
   crossProductMemoryEnabled: z.boolean().default(false),
   allowedDestinations: z.array(z.enum(["umh", "entrepreneuros", "creatoros"])).max(3).default([]),
+  expectedRevision: z.number().int().positive(),
 }).strict();
 
 export type AIContextSource = {
@@ -122,4 +123,3 @@ export function buildAIContextSources(input: {
   if (input.imageCount > 0) sources.push({ key: "images", label: "User-authorized images", category: "image", recordCount: input.imageCount, origin: "user" });
   return sources;
 }
-
