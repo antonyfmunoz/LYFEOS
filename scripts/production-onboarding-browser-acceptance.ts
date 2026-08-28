@@ -362,14 +362,13 @@ async function advanceFullOnboarding(page: Page, username: string, evidence: Jou
 
 async function auditRenderedState(page: Page): Promise<Pick<JourneyEvidence, "mainCount" | "duplicateIds" | "unlabeledControls" | "horizontalOverflowPx">> {
   return page.evaluate(() => {
-    const visible = (element: Element) => {
-      const style = getComputedStyle(element);
-      return style.display !== "none" && style.visibility !== "hidden" && element.getClientRects().length > 0;
-    };
     const ids = Array.from(document.querySelectorAll<HTMLElement>("[id]")).map((element) => element.id).filter(Boolean);
     const duplicateIds = [...new Set(ids.filter((id, index) => ids.indexOf(id) !== index))].sort();
     const unlabeledControls = Array.from(document.querySelectorAll<HTMLElement>("button, input, textarea, select"))
-      .filter(visible)
+      .filter((element) => {
+        const style = getComputedStyle(element);
+        return style.display !== "none" && style.visibility !== "hidden" && element.getClientRects().length > 0;
+      })
       .filter((element) => {
         if (element.getAttribute("aria-hidden") === "true") return false;
         const id = element.id;
