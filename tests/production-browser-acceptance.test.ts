@@ -172,6 +172,7 @@ describe("production browser acceptance custody", () => {
     expect(coreLoopScript).toContain('renderedProgression.endingExperience === progressionAfterReview.activityExperience');
     expect(coreLoopScript).toContain('name: "rendered progression visualization"');
     expect(coreLoopScript).not.toContain("const numberFrom =");
+    expect(coreLoopScript).toContain("const renderedProgression = await page.evaluate(`");
     expect(coreLoopScript).toContain('activityExperience: Number((total || "").replace(/[^0-9-]/g, ""))');
     expect(coreLoopScript).toContain('await waitForApiBudget(page, 30)');
     expect(coreLoopScript).toContain('activateMissionControl(page, "undo")');
