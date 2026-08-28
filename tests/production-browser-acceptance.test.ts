@@ -144,6 +144,9 @@ describe("production browser acceptance custody", () => {
     expect(onboardingScript).toContain('completedMissionIds.join(",") === "0,1,2,3,4,5,6,7"');
     expect(onboardingScript).toContain("waitForPersistedOnboardingPosition");
     expect(onboardingScript).toContain("evidence.progressSurvivedReload = true");
+    expect(onboardingScript).toContain('page.on("pageerror"');
+    expect(onboardingScript).toContain("Onboarding step unavailable at");
+    expect(onboardingScript).toContain("cachedUser=");
     expect(onboardingScript).toContain('data-testid="account-delete-submit"');
     expect(onboardingScript).toContain('"DELETE MY ACCOUNT"');
     expect(onboardingScript).toContain('emailCheck.body?.available === true');

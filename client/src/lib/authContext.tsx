@@ -66,27 +66,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Sync Clerk auth state with server session
+  const authSyncGenerationRef = React.useRef(0);
   useEffect(() => {
+    const generation = ++authSyncGenerationRef.current;
+    const controller = new AbortController();
     const syncAuth = async () => {
+      let hasCachedUser = false;
       try {
         const cachedUser = localStorage.getItem("lyfeos_user");
         if (cachedUser) {
           try {
             const parsedUser = JSON.parse(cachedUser);
             if (parsedUser && parsedUser.id) {
+              hasCachedUser = true;
               setUser(parsedUser);
+              // A previously server-verified identity can render while its
+              // cookie is revalidated. Protected APIs remain server-enforced.
+              setIsLoading(false);
             }
           } catch (e) {
             console.error("Failed to parse cached user data:", e);
           }
         }
 
-        const response = await fetch("/api/auth/me", {
-          credentials: "include"
-        });
+        const fetchSession = async () => {
+          const timeout = window.setTimeout(() => controller.abort(), 8_000);
+          try {
+            return await fetch("/api/auth/me", {
+              credentials: "include",
+              cache: "no-store",
+              signal: controller.signal,
+            });
+          } finally {
+            window.clearTimeout(timeout);
+          }
+        };
+
+        let response = await fetchSession();
+        if (response.status === 401 && hasCachedUser && generation === authSyncGenerationRef.current) {
+          // Clerk initialization and a freshly established local cookie can
+          // overlap on a reload. Confirm once before revoking the local identity.
+          await new Promise((resolve) => window.setTimeout(resolve, 150));
+          response = await fetchSession();
+        }
+        if (generation !== authSyncGenerationRef.current) return;
 
         if (response.ok) {
           const data = await response.json();
+          if (generation !== authSyncGenerationRef.current) return;
           console.log("Server auth check successful, user data:", data.user);
           setUser(data.user);
           localStorage.setItem("lyfeos_user", JSON.stringify(data.user));
@@ -104,16 +131,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.warn(`Server auth check temporarily unavailable (${response.status}); preserving the verified local session.`);
         }
       } catch (error) {
-        console.error("Failed to check authentication status:", error);
-        if (!user) {
-          localStorage.removeItem("lyfeos_user");
+        if (generation !== authSyncGenerationRef.current) return;
+        if (error instanceof DOMException && error.name === "AbortError") {
+          console.warn("Server auth check timed out; preserving the verified local session.");
+          return;
         }
+        console.error("Failed to check authentication status:", error);
+        // Network and provider failures are not proof that the server session
+        // ended. Keep a verified cached identity until a confirmed 401.
       } finally {
-        setIsLoading(false);
+        if (generation === authSyncGenerationRef.current) setIsLoading(false);
       }
     };
 
-    syncAuth();
+    void syncAuth();
+    return () => {
+      if (generation === authSyncGenerationRef.current) authSyncGenerationRef.current += 1;
+      controller.abort();
+    };
   }, [clerkUserLoaded, isSignedIn]);
 
   const login = async (identifier: string, password: string) => {

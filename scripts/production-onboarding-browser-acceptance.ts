@@ -137,7 +137,23 @@ async function poll<T>(read: () => Promise<T>, accept: (value: T) => boolean, la
 }
 
 async function currentOnboardingStep(page: Page): Promise<{ mission: number; step: number }> {
-  await page.waitForSelector('[data-testid="onboarding-step"]', { visible: true, timeout: 30_000 });
+  try {
+    await page.waitForSelector('[data-testid="onboarding-step"]', { visible: true, timeout: 30_000 });
+  } catch (error) {
+    const rendered = await page.evaluate(() => ({
+      path: `${window.location.pathname}${window.location.search}`,
+      title: document.title,
+      readyState: document.readyState,
+      heading: document.querySelector("h1, h2, h3")?.textContent?.trim().slice(0, 160) || null,
+      body: document.body?.innerText.trim().replace(/\s+/g, " ").slice(0, 400) || null,
+      root: document.getElementById("root")?.innerHTML.trim().replace(/\s+/g, " ").slice(0, 240) || null,
+      cachedUser: Boolean(localStorage.getItem("lyfeos_user")),
+      scripts: Array.from(document.scripts).map((script) => script.src || "inline").slice(-6),
+      serviceWorker: navigator.serviceWorker?.controller?.scriptURL || null,
+    })).catch(() => ({ path: null, title: null, readyState: null, heading: null, body: null, root: null, cachedUser: null, scripts: [], serviceWorker: null }));
+    const session = await browserApiRequest(page, "/api/auth/me").catch(() => ({ status: 0, body: null }));
+    throw new Error(`Onboarding step unavailable at ${rendered.path || "unknown path"} (${rendered.heading || rendered.title || "no heading"}; ready=${rendered.readyState}; session=${session.status}; cachedUser=${rendered.cachedUser}; serviceWorker=${rendered.serviceWorker || "none"}; scripts=${rendered.scripts.join(",") || "none"}; root=${rendered.root || "empty"}; body=${rendered.body || "empty"}): ${sanitize(error)}`);
+  }
   return page.$eval('[data-testid="onboarding-step"]', (element) => ({
     mission: Number(element.getAttribute("data-mission")),
     step: Number(element.getAttribute("data-step")),
@@ -454,6 +470,9 @@ async function runJourney(browser: Browser, viewport: ViewportCase): Promise<Jou
     const message = sanitize(entry.text(), redactions);
     if (/ERR_BLOCKED_BY_CLIENT|clerk|favicon|Failed to load resource: the server responded with a status of 401/i.test(message)) return;
     evidence.unexpectedConsoleErrors.push(message);
+  });
+  page.on("pageerror", (error) => {
+    evidence.unexpectedConsoleErrors.push(`Uncaught page error: ${sanitize(error, redactions)}`);
   });
 
   try {

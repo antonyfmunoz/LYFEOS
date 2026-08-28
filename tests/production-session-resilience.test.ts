@@ -20,6 +20,11 @@ describe("production session and optional-provider resilience", () => {
   it("clears a locally verified identity only when the session endpoint confirms 401", () => {
     expect(authContext).toContain("else if (response.status === 401)");
     expect(authContext).toContain("preserving the verified local session");
+    expect(authContext).toContain("authSyncGenerationRef");
+    expect(authContext).toContain("controller.abort(), 8_000");
+    expect(authContext).toContain("response.status === 401 && hasCachedUser");
+    expect(authContext).toContain("setIsLoading(false)");
+    expect(authContext).not.toContain('if (!user) {\n          localStorage.removeItem("lyfeos_user")');
     expect(authContext).not.toContain("if (!clerkUserLoaded) return;");
     expect(authContext).not.toContain('console.log("Not authenticated with server, clearing local user data")');
   });
