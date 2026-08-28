@@ -68,7 +68,13 @@ async function provisionLocalUser(seed: LocalUserSeed) {
 }
 
 export const bindAuthenticatedPrincipal = async (req: Request, res: Response, next: NextFunction) => {
-  const { userId } = getAuth(req);
+  let userId: string | null | undefined;
+  try {
+    ({ userId } = getAuth(req));
+  } catch (error) {
+    logger.warn("Clerk principal was unavailable; continuing with verified local session authentication.");
+    return next();
+  }
   if (!userId) return next();
   let user = await storage.getUserByClerkId(userId);
   if (!user) {

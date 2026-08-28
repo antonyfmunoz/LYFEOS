@@ -14,4 +14,12 @@ describe("Clerk server bootstrap", () => {
     expect(source).toContain("publishableKey: process.env.VITE_CLERK_PUBLISHABLE_KEY");
     expect(source).toContain("secretKey: process.env.CLERK_SECRET_KEY");
   });
+
+  it("does not let an unavailable Clerk principal terminate local session authentication", () => {
+    const source = fs.readFileSync(path.resolve("server/routes/auth.ts"), "utf8");
+    expect(source).toContain("try {");
+    expect(source).toContain("({ userId } = getAuth(req));");
+    expect(source).toContain("continuing with verified local session authentication");
+    expect(source).toContain("return next();");
+  });
 });

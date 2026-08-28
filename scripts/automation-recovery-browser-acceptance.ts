@@ -209,7 +209,7 @@ async function main(): Promise<void> {
     browser = await puppeteer.launch({
       executablePath: await findChromium(),
       headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
+      args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--no-proxy-server"],
     });
     const page = await browser.newPage();
     const session = cookieParts(cookie);
