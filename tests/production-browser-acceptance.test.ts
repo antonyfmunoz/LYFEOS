@@ -155,6 +155,9 @@ describe("production browser acceptance custody", () => {
     expect(coreLoopScript).toContain('page.type(selector, value, { delay: 15 })');
     expect(coreLoopScript).toContain("control?.value === expectedValue");
     expect(coreLoopScript).toContain('stage = "fill the bounded follow-up action"');
+    expect(coreLoopScript).toContain("async function stabilizeRenderedFields");
+    expect(coreLoopScript).toContain('stage = "stabilize the complete rendered automation draft"');
+    expect(coreLoopScript).toContain("Rendered automation fields did not settle");
     expect(coreLoopScript).toContain('await waitForApiBudget(page, 80)');
     expect(coreLoopScript).toContain('await waitForApiBudget(page, 60)');
     expect(coreLoopScript).toContain('response.headers.get("ratelimit-remaining")');
@@ -172,7 +175,7 @@ describe("production browser acceptance custody", () => {
     expect(coreLoopScript).toContain('activateRenderedControl(page, \'[data-testid="automation-create"]\')');
     expect(coreLoopScript).toContain('Automation preview could not ${stage}');
     expect(coreLoopScript).toContain('nameInput?.value === "New automation"');
-    expect(coreLoopScript).toContain("expectedName: AUTOMATION_NAME");
+    expect(coreLoopScript).toContain("value: AUTOMATION_NAME");
     expect(coreLoopScript).toContain('activateRenderedControl(page, \'[data-testid="automation-save"]\')');
     expect(coreLoopScript).toContain('activateRenderedControl(page, \'[data-testid="automation-preview"]\')');
     expect(coreLoopScript).toContain('previewBody.preview?.disclosure === "Preview only. No mission was changed and no follow-up was created."');

@@ -369,6 +369,30 @@ async function fill(page: Page, selector: string, value: string): Promise<void> 
   }, { timeout: 10_000 }, { inputSelector: selector, expectedValue: value });
 }
 
+type RenderedFieldExpectation = { selector: string; value: string };
+
+async function readRenderedFields(page: Page, fields: RenderedFieldExpectation[]): Promise<Record<string, string | null>> {
+  return page.evaluate((expectations) => Object.fromEntries(expectations.map(({ selector }) => {
+    const control = document.querySelector<HTMLInputElement | HTMLTextAreaElement>(selector);
+    return [selector, control?.value ?? null];
+  })), fields);
+}
+
+async function stabilizeRenderedFields(page: Page, fields: RenderedFieldExpectation[]): Promise<void> {
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    const actual = await readRenderedFields(page, fields);
+    const mismatches = fields.filter(({ selector, value }) => actual[selector] !== value);
+    if (mismatches.length === 0) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      const confirmation = await readRenderedFields(page, fields);
+      if (fields.every(({ selector, value }) => confirmation[selector] === value)) return;
+    }
+    for (const field of mismatches) await fill(page, field.selector, field.value);
+  }
+  const actual = await readRenderedFields(page, fields);
+  throw new Error(`Rendered automation fields did not settle: ${JSON.stringify(actual)}`);
+}
+
 async function exerciseNonMutatingAutomationPreview(page: Page): Promise<AutomationPreviewEvidence> {
   assert(missionId !== null, "Cannot qualify automation preview without the synthetic Mission.");
   assert(progressionBefore !== null, "Cannot qualify automation preview without a settled progression baseline.");
@@ -408,19 +432,14 @@ async function exerciseNonMutatingAutomationPreview(page: Page): Promise<Automat
     await fill(page, '[data-testid="automation-condition-title"]', SYNTHETIC_MISSION_PREFIX);
     stage = "fill the bounded follow-up action";
     await fill(page, '[data-testid="automation-action-title-0"]', AUTOMATION_FOLLOW_UP_TITLE);
+    stage = "stabilize the complete rendered automation draft";
+    await stabilizeRenderedFields(page, [
+      { selector: '[data-testid="automation-name"]', value: AUTOMATION_NAME },
+      { selector: '[data-testid="automation-description"]', value: AUTOMATION_DESCRIPTION },
+      { selector: '[data-testid="automation-condition-title"]', value: SYNTHETIC_MISSION_PREFIX },
+      { selector: '[data-testid="automation-action-title-0"]', value: AUTOMATION_FOLLOW_UP_TITLE },
+    ]);
     stage = "save the disabled bounded automation draft";
-    await page.waitForFunction(({ expectedName, expectedDescription, expectedCondition, expectedAction }) => {
-      const value = (selector: string) => document.querySelector<HTMLInputElement | HTMLTextAreaElement>(selector)?.value;
-      return value('[data-testid="automation-name"]') === expectedName
-        && value('[data-testid="automation-description"]') === expectedDescription
-        && value('[data-testid="automation-condition-title"]') === expectedCondition
-        && value('[data-testid="automation-action-title-0"]') === expectedAction;
-    }, { timeout: 10_000 }, {
-      expectedName: AUTOMATION_NAME,
-      expectedDescription: AUTOMATION_DESCRIPTION,
-      expectedCondition: SYNTHETIC_MISSION_PREFIX,
-      expectedAction: AUTOMATION_FOLLOW_UP_TITLE,
-    });
     const saveResponsePromise = page.waitForResponse((response) => {
     const url = new URL(response.url());
     return url.origin === BASE_URL.origin && url.pathname === `/api/automations/${automationId}` && response.request().method() === "PATCH";
