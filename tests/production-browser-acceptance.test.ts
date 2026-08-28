@@ -131,10 +131,11 @@ describe("production browser acceptance custody", () => {
     expect(coreLoopScript).toContain('contract: "lyfeos.production-core-loop-acceptance.v1"');
     expect(coreLoopScript).toContain("[AUTOMATED ACCEPTANCE]");
     expect(coreLoopScript).toContain("async function dismissBlockingTutorial");
+    expect(coreLoopScript).toContain("async function activateRenderedControl");
     expect(coreLoopScript).toContain('button[aria-label="Skip this tutorial"]');
     expect(coreLoopScript).toContain("button.click()");
     expect(coreLoopScript).toContain("const tutorialDismissed = await dismissBlockingTutorial(page)");
-    expect(coreLoopScript).toContain('page.click(\'[data-tour="create-mission"]\')');
+    expect(coreLoopScript).toContain('activateRenderedControl(page, \'[data-tour="create-mission"]\')');
     expect(coreLoopScript).toContain('page.click(\'[data-testid="mission-create-submit"]\')');
     expect(coreLoopScript).toContain('page.click(\'[data-testid="proof-plan-save"]\')');
     expect(coreLoopScript).toContain('page.click(\'[data-testid="mission-evidence-add"]\')');

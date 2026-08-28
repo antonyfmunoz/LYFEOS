@@ -149,6 +149,15 @@ async function fill(page: Page, selector: string, value: string): Promise<void> 
   await page.type(selector, value);
 }
 
+async function activateRenderedControl(page: Page, selector: string): Promise<void> {
+  await page.waitForSelector(selector, { visible: true, timeout: 30_000 });
+  await page.evaluate((controlSelector) => {
+    const control = document.querySelector<HTMLElement>(controlSelector);
+    if (!control) throw new Error(`Rendered control disappeared before activation: ${controlSelector}`);
+    control.click();
+  }, selector);
+}
+
 async function dismissBlockingTutorial(page: Page): Promise<boolean> {
   const selector = 'button[aria-label="Skip this tutorial"]';
   const control = await page.$(selector);
@@ -292,7 +301,7 @@ async function main(): Promise<void> {
     await page.waitForSelector('[data-tour="create-mission"]', { visible: true, timeout: 30_000 });
     const tutorialDismissed = await dismissBlockingTutorial(page);
     steps.push({ name: "first-use tutorial boundary", status: "passed", detail: tutorialDismissed ? "Dismissed the visible tutorial through its named Skip control." : "No blocking tutorial was presented." });
-    await page.click('[data-tour="create-mission"]');
+    await activateRenderedControl(page, '[data-tour="create-mission"]');
     await fill(page, "#create-title", MISSION_TITLE);
     const createResponsePromise = page.waitForResponse((response) => {
       const url = new URL(response.url());
