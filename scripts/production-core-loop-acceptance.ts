@@ -356,8 +356,17 @@ async function readStableProgression(page: Page): Promise<ProgressionSnapshot> {
 
 async function fill(page: Page, selector: string, value: string): Promise<void> {
   await page.waitForSelector(selector, { visible: true, timeout: 30_000 });
-  await page.click(selector, { clickCount: 3 });
+  await page.focus(selector);
+  const modifier = process.platform === "darwin" ? "Meta" : "Control";
+  await page.keyboard.down(modifier);
+  await page.keyboard.press("A");
+  await page.keyboard.up(modifier);
+  await page.keyboard.press("Backspace");
   await page.type(selector, value);
+  await page.waitForFunction(({ inputSelector, expectedValue }) => {
+    const control = document.querySelector<HTMLInputElement | HTMLTextAreaElement>(inputSelector);
+    return control?.value === expectedValue;
+  }, { timeout: 10_000 }, { inputSelector: selector, expectedValue: value });
 }
 
 async function exerciseNonMutatingAutomationPreview(page: Page): Promise<AutomationPreviewEvidence> {
