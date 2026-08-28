@@ -67,8 +67,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Sync Clerk auth state with server session
   useEffect(() => {
-    if (!clerkUserLoaded) return;
-
     const syncAuth = async () => {
       try {
         const cachedUser = localStorage.getItem("lyfeos_user");

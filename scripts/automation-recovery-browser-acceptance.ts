@@ -25,6 +25,7 @@ const FIXTURE_ID = randomUUID();
 const FIXTURE_LABEL = FIXTURE_ID.slice(0, 8);
 const EMAIL = `automation_browser_${FIXTURE_LABEL}@example.com`;
 const PASSWORD = "TestPass123!";
+const DISPLAY_NAME = `automation_browser_${FIXTURE_LABEL}`;
 const MISSION_TITLE = `[AUTOMATED ACCEPTANCE] Recovery ${FIXTURE_LABEL}`;
 const MISSION_SECRET = `private-description-${FIXTURE_ID}`;
 const FOLLOW_UP_TITLE = `[AUTOMATED ACCEPTANCE] Recovery follow-up ${FIXTURE_LABEL}`;
@@ -152,7 +153,7 @@ async function main(): Promise<void> {
     const registration = await request("POST", "/api/auth/complete-registration", {
       email: EMAIL,
       password: PASSWORD,
-      displayName: `automation_browser_${FIXTURE_LABEL}`,
+      displayName: DISPLAY_NAME,
       termsAccepted: true,
     });
     assert(registration.status === 201, `Registration returned ${registration.status}.`);
@@ -214,6 +215,9 @@ async function main(): Promise<void> {
     const page = await browser.newPage();
     const session = cookieParts(cookie);
     await page.setCookie({ ...session, url: BASE_URL.origin, path: "/", httpOnly: true, secure: false, sameSite: "Lax" });
+    await page.evaluateOnNewDocument((fixtureUser) => {
+      localStorage.setItem("lyfeos_user", JSON.stringify(fixtureUser));
+    }, { id: userId, displayName: DISPLAY_NAME });
     await page.setCacheEnabled(false);
 
     for (const viewport of VIEWPORTS) {
