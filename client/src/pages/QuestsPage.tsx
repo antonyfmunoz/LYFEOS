@@ -5245,12 +5245,17 @@ export default function QuestsPage() {
                             <h3 className="font-medium line-through text-muted-foreground">{quest.title}</h3>
                             <div className="flex items-center gap-1 flex-shrink-0 ml-2">
                               <button
+                                type="button"
+                                aria-label={`${terminatedInfoOpen[quest.id] ? "Hide" : "Show"} archived mission details for ${quest.title}`}
+                                aria-expanded={Boolean(terminatedInfoOpen[quest.id])}
                                 className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors opacity-50 hover:opacity-100"
                                 onClick={() => setTerminatedInfoOpen(prev => ({ ...prev, [quest.id]: !prev[quest.id] }))}
                               >
                                 <Info className="h-3.5 w-3.5" />
                               </button>
                               <button
+                                type="button"
+                                aria-label={`Edit archived mission ${quest.title}`}
                                 className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors opacity-50 hover:opacity-100"
                                 onClick={() => openEditDialog({ ...quest, id: String(quest.id) } as Quest)}
                               >

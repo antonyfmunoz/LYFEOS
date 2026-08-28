@@ -113,6 +113,8 @@ describe("shared accessibility shell", () => {
     const editor = readFileSync(resolve(process.cwd(), "client/src/components/markdown/MarkdownEditor.tsx"), "utf8");
     const toast = readFileSync(resolve(process.cwd(), "client/src/components/ui/toast.tsx"), "utf8");
     expect(missions).toContain('data-testid="mission-create-submit"');
+    expect(missions).toContain('aria-label={`${terminatedInfoOpen[quest.id] ? "Hide" : "Show"} archived mission details for ${quest.title}`}');
+    expect(missions).toContain('aria-label={`Edit archived mission ${quest.title}`}');
     expect(detail).toContain('data-testid="proof-plan-purpose" aria-label="Mission purpose"');
     expect(detail).toContain('data-testid="proof-plan-output" aria-label="Expected mission output"');
     expect(detail).toContain('data-testid="proof-plan-method" aria-label="Mission method steps"');
