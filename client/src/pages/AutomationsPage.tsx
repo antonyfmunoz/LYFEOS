@@ -213,6 +213,7 @@ export default function AutomationsPage() {
             const completedAt = receiptTime(receipt.completedAt);
             const scheduledFor = receiptTime(receipt.triggerContext?.scheduledFor);
             const repairable = ["failed", "partial", "running"].includes(receipt.status) && receipt.errorCode !== "SCHEDULE_ANCHOR_UNAVAILABLE";
+            const recoveryLabel = receipt.status === "running" ? `Check unfinished actions for run ${receipt.id}` : `Retry unfinished actions for run ${receipt.id}`;
             return <article key={receipt.id} data-testid={`automation-run-${receipt.id}`} className="space-y-3 rounded-lg border border-primary/10 p-4 text-xs">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="space-y-1">
@@ -220,8 +221,9 @@ export default function AutomationsPage() {
                   <p data-testid={`automation-run-${receipt.id}-metadata`} className="text-muted-foreground">Started {createdAt || "at an unavailable time"}{completedAt ? ` · completed ${completedAt}` : " · not completed"}{receipt.triggerQuestId ? ` · trigger Mission #${receipt.triggerQuestId}` : ""}</p>
                   {receipt.errorCode ? <p data-testid={`automation-run-${receipt.id}-error`} className="text-amber-300">Run issue: {readableToken(receipt.errorCode)}</p> : null}
                 </div>
-                {repairable ? <Button data-testid={`automation-run-repair-${receipt.id}`} aria-label={`Retry unfinished actions for run ${receipt.id}`} size="sm" variant="outline" disabled={repair.isPending && repair.variables === receipt.id} onClick={() => repair.mutate(receipt.id)}><RotateCcw className="mr-1 h-3.5 w-3.5" />{repair.isPending && repair.variables === receipt.id ? "Repairing…" : "Repair"}</Button> : null}
+                {repairable ? <Button data-testid={`automation-run-repair-${receipt.id}`} aria-label={recoveryLabel} size="sm" variant="outline" disabled={repair.isPending && repair.variables === receipt.id} onClick={() => repair.mutate(receipt.id)}><RotateCcw className="mr-1 h-3.5 w-3.5" />{repair.isPending && repair.variables === receipt.id ? "Checking…" : receipt.status === "running" ? "Check" : "Repair"}</Button> : null}
               </div>
+              {receipt.status === "running" ? <p data-testid={`automation-run-${receipt.id}-running-note`} role="note" className="text-muted-foreground">This run has not completed. Use Check to review unfinished actions now. Active work is not reclaimed until its recovery window has safely expired.</p> : null}
               {receipt.triggerContext ? <div data-testid={`automation-run-${receipt.id}-schedule`} className="rounded-md bg-primary/5 p-3 text-muted-foreground">
                 <p><span className="text-foreground">Schedule context</span>{scheduledFor ? ` · due ${scheduledFor}` : ""}{receipt.triggerContext.localDate ? ` · local date ${receipt.triggerContext.localDate}` : ""}{receipt.triggerContext.timeZone ? ` · ${receipt.triggerContext.timeZone}` : ""}</p>
                 {receipt.triggerContext.delayed || receipt.triggerContext.missedOccurrences || receipt.triggerContext.consolidatedOccurrences ? <p className="mt-1">{receipt.triggerContext.delayed ? "Delayed run" : "On-time run"}{receipt.triggerContext.missedOccurrences ? ` · ${receipt.triggerContext.missedOccurrences} missed occurrence${receipt.triggerContext.missedOccurrences === 1 ? "" : "s"}` : ""}{receipt.triggerContext.consolidatedOccurrences ? ` · ${receipt.triggerContext.consolidatedOccurrences} consolidated` : ""}</p> : null}

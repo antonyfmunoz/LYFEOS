@@ -30,6 +30,8 @@ const MISSION_TITLE = `[AUTOMATED ACCEPTANCE] Recovery ${FIXTURE_LABEL}`;
 const MISSION_SECRET = `private-description-${FIXTURE_ID}`;
 const FOLLOW_UP_TITLE = `[AUTOMATED ACCEPTANCE] Recovery follow-up ${FIXTURE_LABEL}`;
 const AUTOMATION_NAME = `[AUTOMATED ACCEPTANCE] Recovery rule ${FIXTURE_LABEL}`;
+const SCHEDULE_AUTOMATION_NAME = `[AUTOMATED ACCEPTANCE] Scheduled rule ${FIXTURE_LABEL}`;
+const SCHEDULE_FOLLOW_UP_TITLE = `[AUTOMATED ACCEPTANCE] Scheduled follow-up ${FIXTURE_LABEL}`;
 const VIEWPORTS: Array<{ name: string; value: Viewport }> = [
   { name: "desktop-1440x900", value: { width: 1440, height: 900, deviceScaleFactor: 1 } },
   { name: "mobile-390x844", value: { width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true } },
@@ -90,6 +92,26 @@ function cookieParts(cookie: string): { name: string; value: string } {
   return { name: cookie.slice(0, separator), value: cookie.slice(separator + 1) };
 }
 
+function utcDate(value: Date): string {
+  return value.toISOString().slice(0, 10);
+}
+
+function shiftUtcDate(value: Date, days: number): Date {
+  const shifted = new Date(value);
+  shifted.setUTCDate(shifted.getUTCDate() + days);
+  return shifted;
+}
+
+async function selectAutomation(page: Page, automationId: number, runIds: number[]): Promise<void> {
+  const editor = `[data-testid="automation-editor-${automationId}"]`;
+  if (!await page.$(editor)) {
+    await page.waitForSelector(`[data-testid="automation-list-item-${automationId}"]`, { visible: true, timeout: 30_000 });
+    await page.$eval(`[data-testid="automation-list-item-${automationId}"]`, (button) => (button as HTMLButtonElement).click());
+  }
+  await page.waitForSelector(editor, { visible: true, timeout: 30_000 });
+  for (const runId of runIds) await page.waitForSelector(`[data-testid="automation-run-${runId}"]`, { visible: true, timeout: 30_000 });
+}
+
 async function inspectRun(page: Page, runId: number, viewport: string): Promise<ViewResult> {
   return page.evaluate(({ id, viewportName, privateDescription }) => {
     const run = document.querySelector<HTMLElement>(`[data-testid="automation-run-${id}"]`);
@@ -143,10 +165,23 @@ async function main(): Promise<void> {
   let automationId = 0;
   let runId = 0;
   let followUpId = 0;
+  let scheduledAutomationId = 0;
+  let scheduledRunId = 0;
+  let scheduledFollowUpId = 0;
+  let failedRunId = 0;
+  let runningRunId = 0;
   const views: ViewResult[] = [];
   let repaired = false;
+  let actionAttemptsAfterRepair: number[] = [];
   let followUpCount = 0;
+  let scheduledFollowUpCount = 0;
+  let scheduledWorkerResults: string[] = [];
+  let renderedScheduled = false;
+  let renderedFailed = false;
+  let renderedRunning = false;
   let accountErased = false;
+  let residualCounts = { users: -1, automations: -1, runs: -1, actionReceipts: -1 };
+  let workerPool: { end: () => Promise<void> } | null = null;
   let failure: string | null = null;
 
   try {
@@ -246,9 +281,153 @@ async function main(): Promise<void> {
     const repairedView = await inspectRun(page, runId, "mobile-390x844-after-repair");
     assert(repairedView.status.includes("Succeeded") && repairedView.actionAttempts.join(",") === "1,2" && repairedView.repairLabel === null, "Rendered receipt did not converge after repair.");
     views.push(repairedView);
+    actionAttemptsAfterRepair = repairedView.actionAttempts;
     const missions = await request("GET", "/api/automations/missions", undefined, cookie);
     followUpCount = missions.body.missions?.filter((row: any) => row.title === FOLLOW_UP_TITLE).length || 0;
     assert(followUpCount === 1, "Repair duplicated the lifecycle-keyed follow-up Mission.");
+
+    const workerNow = new Date();
+    const scheduleStart = utcDate(shiftUtcDate(workerNow, -1));
+    const scheduledDefinition = {
+      version: 2,
+      trigger: {
+        type: "schedule",
+        questId: missionId,
+        timeZone: "UTC",
+        localTime: "00:00",
+        cadence: "daily",
+        weekdays: [],
+        startDate: scheduleStart,
+        endDate: null,
+        maxOccurrences: 2,
+        missedRunPolicy: "run_once",
+      },
+      conditions: {},
+      actions: [{ type: "schedule_follow_up", title: SCHEDULE_FOLLOW_UP_TITLE, description: "", category: "growth", delayDays: 1 }],
+      stopOnError: true,
+    };
+    const scheduledCreated = await request("POST", "/api/automations", {
+      name: SCHEDULE_AUTOMATION_NAME,
+      description: "Disposable scheduled-worker rendering",
+      definition: scheduledDefinition,
+    }, cookie);
+    assert(scheduledCreated.status === 201, `Scheduled automation creation returned ${scheduledCreated.status}.`);
+    scheduledAutomationId = Number(scheduledCreated.body.automation?.id);
+    const scheduledEnabled = await request("PATCH", "/api/automations/" + scheduledAutomationId, { enabled: true }, cookie);
+    assert(scheduledEnabled.status === 200, `Scheduled automation enable returned ${scheduledEnabled.status}.`);
+
+    const firstScheduledFor = new Date(`${scheduleStart}T00:00:00.000Z`);
+    await pool.query("UPDATE workflow_automations SET schedule_next_run_at = $1, schedule_claimed_at = NULL WHERE user_id = $2 AND id = $3", [firstScheduledFor, userId, scheduledAutomationId]);
+    const scheduledWorker = await import("../server/scheduled-automation-worker");
+    const workerDatabase = await import("../server/db");
+    workerPool = workerDatabase.pool;
+    scheduledWorkerResults = (await Promise.all([
+      scheduledWorker.processScheduledAutomation(scheduledAutomationId, workerNow),
+      scheduledWorker.processScheduledAutomation(scheduledAutomationId, workerNow),
+    ])).sort();
+    assert(scheduledWorkerResults.join(",") === "busy,completed", `Scheduled worker did not prove one-winner leasing: ${scheduledWorkerResults.join(",")}.`);
+
+    const scheduledDetail = await request("GET", "/api/automations/" + scheduledAutomationId, undefined, cookie);
+    const scheduledRun = scheduledDetail.body.runs?.[0];
+    scheduledRunId = Number(scheduledRun?.id);
+    scheduledFollowUpId = Number(scheduledRun?.actionResults?.[0]?.targetQuestId);
+    assert(scheduledDetail.status === 200 && scheduledRun?.status === "succeeded" && scheduledRun?.triggerType === "schedule", "The real scheduled worker did not retain a succeeded schedule receipt.");
+    assert(
+      scheduledRun?.triggerContext?.consolidatedOccurrences === 2
+        && scheduledRun?.triggerContext?.missedRunPolicy === "run_once"
+        && scheduledRun?.triggerContext?.delayed === true
+        && scheduledRun?.triggerContext?.localDate === utcDate(workerNow)
+        && scheduledRun?.triggerContext?.timeZone === "UTC",
+      "The scheduled receipt did not retain the bounded consolidated context.",
+    );
+    assert(Number.isInteger(scheduledRunId) && scheduledRunId > 0 && Number.isInteger(scheduledFollowUpId) && scheduledFollowUpId > 0, "Scheduled execution did not expose bounded run and target Mission IDs.");
+    assert(!Object.hasOwn(scheduledRun, "definitionSnapshot") && !Object.hasOwn(scheduledRun, "idempotencyKey"), "Scheduled owner detail exposed private execution fields.");
+    const scheduledMissions = await request("GET", "/api/automations/missions", undefined, cookie);
+    scheduledFollowUpCount = scheduledMissions.body.missions?.filter((row: any) => row.title === SCHEDULE_FOLLOW_UP_TITLE).length || 0;
+    assert(scheduledFollowUpCount === 1, "Scheduled execution did not create exactly one lifecycle-keyed follow-up Mission.");
+
+    const failedResults = [{ actionIndex: 0, type: "set_mission_category", status: "failed", attemptCount: 1, errorCode: "ACTION_FAILED" }];
+    const failedInsert = await pool.query<{ id: number }>(
+      "INSERT INTO workflow_automation_runs (user_id, automation_id, automation_name, trigger_type, trigger_quest_id, idempotency_key, definition_snapshot, status, action_results, error_code, completed_at) VALUES ($1,$2,$3,'manual',$4,$5,$6::jsonb,'failed',$7::jsonb,'ACTION_FAILED',now()) RETURNING id",
+      [userId, automationId, AUTOMATION_NAME, missionId, "browser-failed:" + randomUUID(), JSON.stringify(definition), JSON.stringify(failedResults)],
+    );
+    failedRunId = Number(failedInsert.rows[0]?.id);
+    await pool.query(
+      "INSERT INTO workflow_automation_action_receipts (user_id, run_id, action_index, action_type, status, attempt_count, last_error_code, completed_at, updated_at) VALUES ($1,$2,0,'set_mission_category','failed',1,'ACTION_FAILED',now(),now())",
+      [userId, failedRunId],
+    );
+
+    const runningResults = [
+      { actionIndex: 0, type: "set_mission_category", status: "succeeded", targetQuestId: missionId, attemptCount: 1 },
+      { actionIndex: 1, type: "schedule_follow_up", status: "running", attemptCount: 1 },
+    ];
+    const runningInsert = await pool.query<{ id: number }>(
+      "INSERT INTO workflow_automation_runs (user_id, automation_id, automation_name, trigger_type, trigger_quest_id, idempotency_key, definition_snapshot, status, action_results, error_code, completed_at) VALUES ($1,$2,$3,'manual',$4,$5,$6::jsonb,'running',$7::jsonb,NULL,NULL) RETURNING id",
+      [userId, automationId, AUTOMATION_NAME, missionId, "browser-running:" + randomUUID(), JSON.stringify(definition), JSON.stringify(runningResults)],
+    );
+    runningRunId = Number(runningInsert.rows[0]?.id);
+    await pool.query(
+      "INSERT INTO workflow_automation_action_receipts (user_id, run_id, action_index, action_type, status, target_quest_id, attempt_count, completed_at, updated_at) VALUES ($1,$2,0,'set_mission_category','succeeded',$3,1,now(),now()), ($1,$2,1,'schedule_follow_up','running',NULL,1,NULL,now())",
+      [userId, runningRunId, missionId],
+    );
+
+    for (const viewport of VIEWPORTS) {
+      await page.setViewport(viewport.value);
+      await page.goto(new URL("/automations", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
+      await selectAutomation(page, scheduledAutomationId, [scheduledRunId]);
+      const scheduledView = await inspectRun(page, scheduledRunId, `${viewport.name}-scheduled-worker`);
+      views.push(scheduledView);
+      assert(
+        scheduledView.status.includes("Succeeded")
+          && scheduledView.status.includes(`Run #${scheduledRunId} · Schedule`)
+          && scheduledView.status.includes("Schedule context")
+          && scheduledView.status.includes("Delayed run")
+          && scheduledView.status.includes("2 consolidated")
+          && scheduledView.status.includes("local date " + utcDate(workerNow))
+          && scheduledView.status.includes("UTC"),
+        `${viewport.name} did not render the bounded scheduled-worker context.`,
+      );
+      assert(
+        scheduledView.status.includes("Action 1: Create follow-up Mission")
+          && scheduledView.status.includes(`Mission #${scheduledFollowUpId}`)
+          && scheduledView.actionAttempts.join(",") === "1"
+          && scheduledView.repairLabel === null,
+        `${viewport.name} did not render the scheduled action receipt.`,
+      );
+      assert(scheduledView.duplicateIds.length === 0 && scheduledView.unlabeledControls.length === 0 && scheduledView.horizontalOverflowPx <= 2, `${viewport.name} failed scheduled receipt accessibility or overflow checks.`);
+
+      await selectAutomation(page, automationId, [failedRunId, runningRunId]);
+      const failedView = await inspectRun(page, failedRunId, `${viewport.name}-failed`);
+      const runningView = await inspectRun(page, runningRunId, `${viewport.name}-running`);
+      views.push(failedView, runningView);
+      assert(
+        failedView.status.includes("Failed")
+          && failedView.status.includes(`Run #${failedRunId} · Manual`)
+          && failedView.status.includes("Action 1: Set Mission category")
+          && failedView.status.includes("Action Failed")
+          && failedView.actionAttempts.join(",") === "1"
+          && failedView.repairLabel === `Retry unfinished actions for run ${failedRunId}`,
+        `${viewport.name} did not render the failed receipt truthfully.`,
+      );
+      assert(
+        runningView.status.includes("Running")
+          && runningView.status.includes(`Run #${runningRunId} · Manual`)
+          && runningView.status.includes("not completed")
+          && runningView.status.includes("Action 1: Set Mission category")
+          && runningView.status.includes("Action 2: Create follow-up Mission")
+          && runningView.status.includes("Use Check to review unfinished actions now.")
+          && runningView.actionAttempts.join(",") === "1,1"
+          && runningView.repairLabel === `Check unfinished actions for run ${runningRunId}`,
+        `${viewport.name} did not render the active running receipt truthfully.`,
+      );
+      for (const stateView of [failedView, runningView]) {
+        assert(stateView.duplicateIds.length === 0 && stateView.unlabeledControls.length === 0 && stateView.horizontalOverflowPx <= 2, `${stateView.viewport} failed rendered accessibility or overflow checks.`);
+        assert(!stateView.status.includes("idempotency") && !stateView.status.includes("definitionSnapshot") && !stateView.status.includes(FIXTURE_ID), `${stateView.viewport} exposed a private execution field.`);
+      }
+    }
+    renderedScheduled = true;
+    renderedFailed = true;
+    renderedRunning = true;
   } catch (error) {
     failure = safeError(error);
   } finally {
@@ -256,30 +435,64 @@ async function main(): Promise<void> {
     if (cookie) {
       const deleted = await request("DELETE", "/api/account", { confirmation: "DELETE MY ACCOUNT" }, cookie).catch(() => null);
       if (deleted?.status === 200 && userId > 0) {
-        const residual = await pool.query<{ count: string }>("SELECT count(*)::text AS count FROM users WHERE id = $1", [userId]);
-        accountErased = residual.rows[0]?.count === "0";
+        const residual = await pool.query<{ users: string; automations: string; runs: string; action_receipts: string }>(
+          "SELECT (SELECT count(*)::text FROM users WHERE id = $1) AS users, (SELECT count(*)::text FROM workflow_automations WHERE user_id = $1) AS automations, (SELECT count(*)::text FROM workflow_automation_runs WHERE user_id = $1) AS runs, (SELECT count(*)::text FROM workflow_automation_action_receipts WHERE user_id = $1) AS action_receipts",
+          [userId],
+        );
+        residualCounts = {
+          users: Number(residual.rows[0]?.users),
+          automations: Number(residual.rows[0]?.automations),
+          runs: Number(residual.rows[0]?.runs),
+          actionReceipts: Number(residual.rows[0]?.action_receipts),
+        };
+        accountErased = Object.values(residualCounts).every((count) => count === 0);
       }
     }
+    if (workerPool) await workerPool.end().catch(() => undefined);
     await pool.end();
     const report = {
-      contract: "lyfeos.isolated-automation-recovery-browser.v1",
+      contract: "lyfeos.isolated-automation-recovery-browser.v2",
       generatedAt: new Date().toISOString(),
       baseUrl: BASE_URL.origin,
-      fixture: { missionId, automationId, runId, followUpId },
+      fixture: { missionId, automationId, runId, followUpId, scheduledAutomationId, scheduledRunId, scheduledFollowUpId, failedRunId, runningRunId },
       views,
-      repaired,
-      actionAttemptsAfterRepair: views.at(-1)?.actionAttempts || [],
-      followUpCount,
+      recovery: { repaired, actionAttemptsAfterRepair, followUpCount },
+      scheduledExecution: { workerResults: scheduledWorkerResults, scheduledFollowUpCount, rendered: renderedScheduled },
+      renderedStates: { failed: renderedFailed, running: renderedRunning },
       accountErased,
-      summary: { passed: failure === null && repaired && followUpCount === 1 && accountErased, failure },
-      boundary: "Disposable isolated Chromium evidence for partial-run rendering and explicit unfinished-action repair. It is not production execution, a human assistive-technology review, or provider-alert evidence.",
+      residualCounts,
+      summary: {
+        passed: failure === null
+          && repaired
+          && actionAttemptsAfterRepair.join(",") === "1,2"
+          && followUpCount === 1
+          && scheduledWorkerResults.join(",") === "busy,completed"
+          && scheduledFollowUpCount === 1
+          && renderedScheduled
+          && renderedFailed
+          && renderedRunning
+          && accountErased,
+        failure,
+      },
+      boundary: "Disposable isolated PostgreSQL plus Chromium evidence. The schedule used the real worker and action lifecycle; failed/running rows are bounded display fixtures only. This is not production execution, a human assistive-technology review, or provider-alert evidence.",
     };
     await fs.writeFile(OUTPUT_FILE, `${JSON.stringify(report, null, 2)}\n`, "utf8");
-    console.log(JSON.stringify({ contract: report.contract, passed: report.summary.passed, viewCount: views.length, repaired, followUpCount, accountErased }));
+    console.log(JSON.stringify({ contract: report.contract, passed: report.summary.passed, viewCount: views.length, repaired, scheduledWorkerResults, renderedFailed, renderedRunning, accountErased }));
   }
 
   if (failure) throw new Error(failure);
-  assert(repaired && followUpCount === 1 && accountErased, "Rendered recovery acceptance did not complete its repair and cleanup invariants.");
+  assert(
+    repaired
+      && actionAttemptsAfterRepair.join(",") === "1,2"
+      && followUpCount === 1
+      && scheduledWorkerResults.join(",") === "busy,completed"
+      && scheduledFollowUpCount === 1
+      && renderedScheduled
+      && renderedFailed
+      && renderedRunning
+      && accountErased,
+    "Rendered automation acceptance did not complete its recovery, schedule, state and cleanup invariants.",
+  );
 }
 
 main().catch((error) => {

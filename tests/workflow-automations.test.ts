@@ -143,21 +143,30 @@ describe("workflow automations", () => {
     expect(page).toContain('data-testid={`automation-run-${receipt.id}-schedule`}');
     expect(page).toContain('data-testid={`automation-run-${receipt.id}-action-${result.actionIndex}`}');
     expect(page).toContain('data-testid={`automation-run-repair-${receipt.id}`}');
-    expect(page).toContain('aria-label={`Retry unfinished actions for run ${receipt.id}`}');
+    expect(page).toContain('receipt.status === "running" ? `Check unfinished actions for run ${receipt.id}` : `Retry unfinished actions for run ${receipt.id}`');
+    expect(page).toContain('data-testid={`automation-run-${receipt.id}-running-note`}');
+    expect(page).toContain("Active work is not reclaimed until its recovery window has safely expired");
     expect(page).toContain("never replays an action that already succeeded");
     expect(page).toContain("not copied mission descriptions");
     expect(page).toContain('value.toLowerCase().replaceAll("_", " ")');
   });
 
-  it("qualifies rendered partial-run repair only in disposable isolated CI", () => {
+  it("qualifies recovery, real scheduled execution, and bounded receipt states only in disposable isolated CI", () => {
     const acceptance = source("scripts/automation-recovery-browser-acceptance.ts");
     const workflow = source(".github/workflows/verify.yml");
     expect(acceptance).toContain('process.env.LYFEOS_TEST_ENV === "isolated"');
     expect(acceptance).toContain('["127.0.0.1", "localhost"].includes(BASE_URL.hostname)');
     expect(acceptance).toContain('status = \'partial\'');
+    expect(acceptance).toContain('processScheduledAutomation(scheduledAutomationId, workerNow)');
+    expect(acceptance).toContain('scheduledWorkerResults.join(",") === "busy,completed"');
+    expect(acceptance).toContain("'failed',$7::jsonb,'ACTION_FAILED'");
+    expect(acceptance).toContain("'running',$7::jsonb,NULL,NULL");
+    expect(acceptance).toContain('Check unfinished actions for run');
     expect(acceptance).toContain("Retry unfinished actions for run");
     expect(acceptance).toContain('actionAttempts.join(",") === "1,2"');
     expect(acceptance).toContain('followUpCount === 1');
+    expect(acceptance).toContain('scheduledFollowUpCount === 1');
+    expect(acceptance).toContain('lyfeos.isolated-automation-recovery-browser.v2');
     expect(acceptance).toContain('confirmation: "DELETE MY ACCOUNT"');
     expect(acceptance).toContain("accountErased");
     expect(workflow).toContain("browser-actions/setup-chrome@v2");
