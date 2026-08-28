@@ -150,6 +150,7 @@ describe("production browser acceptance custody", () => {
     expect(onboardingScript).toContain('data-testid="account-delete-submit"');
     expect(onboardingScript).toContain("async function activateRenderedControl");
     expect(onboardingScript).toContain('activateRenderedControl(page, \'[data-testid="account-delete-submit"]\')');
+    expect(onboardingScript).toContain('request.method() === "GET" && failure === "net::ERR_ABORTED"');
     expect(onboardingScript).not.toContain("const visible =");
     expect(onboardingScript).toContain('element.closest("label")');
     expect(onboardingScript).toContain('"DELETE MY ACCOUNT"');

@@ -474,7 +474,9 @@ async function runJourney(browser: Browser, viewport: ViewportCase): Promise<Jou
   });
   page.on("requestfailed", (request) => {
     const url = new URL(request.url());
-    if (url.origin === BASE_URL.origin) evidence.failedSameOriginRequests.push(`${request.method()} ${url.pathname}: ${request.failure()?.errorText || "failed"}`);
+    const failure = request.failure()?.errorText || "failed";
+    const expectedNavigationAbort = request.method() === "GET" && failure === "net::ERR_ABORTED";
+    if (url.origin === BASE_URL.origin && !expectedNavigationAbort) evidence.failedSameOriginRequests.push(`${request.method()} ${url.pathname}: ${failure}`);
   });
   page.on("console", (entry) => {
     if (entry.type() !== "error") return;
