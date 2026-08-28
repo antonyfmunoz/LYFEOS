@@ -7,8 +7,9 @@ const chatRoutes = fs.readFileSync("server/replit_integrations/chat/routes.ts", 
 
 describe("production session and optional-provider resilience", () => {
   it("bounds aggregate API hydration per account without pooling authenticated users behind one IP", () => {
-    expect(server).toContain('const principal = req.session?.userId ? `user:${req.session.userId}` : `ip:${ip}`');
-    expect(server).toContain('createRateLimiter("api", qualificationRequestLimit(100), 60 * 1000, true)');
+    expect(server).toContain('const principal = authenticated ? `user:${req.session.userId}` : `ip:${ip}`');
+    expect(server).toContain('const maxRequests = authenticated ? authenticatedMaxRequests : defaultMaxRequests');
+    expect(server).toContain('createRateLimiter("api", qualificationRequestLimit(100), 60 * 1000, true, qualificationRequestLimit(300))');
     expect(server).toContain('createRateLimiter("ai-orchestration", qualificationRequestLimit(10), 60 * 1000, true)');
     expect(server).toContain('const key = keyByPrincipalOnly ? `${scope}:${principal}`');
     expect(server).toContain("existingLimit <= maxRequests");

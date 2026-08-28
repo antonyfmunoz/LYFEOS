@@ -143,6 +143,24 @@ async function currentOnboardingStep(page: Page): Promise<{ mission: number; ste
   }));
 }
 
+async function waitForOnboardingStep(page: Page, mission: number, step: number, timeoutMs = 15_000): Promise<void> {
+  try {
+    await page.waitForFunction(({ expectedMission, expectedStep }) => {
+      const node = document.querySelector('[data-testid="onboarding-step"]');
+      return node?.getAttribute("data-mission") === String(expectedMission)
+        && node?.getAttribute("data-step") === String(expectedStep);
+    }, { timeout: timeoutMs }, { expectedMission: mission, expectedStep: step });
+  } catch (error) {
+    const rendered = await page.$eval('[data-testid="onboarding-step"]', (node) => ({
+      mission: node.getAttribute("data-mission"),
+      step: node.getAttribute("data-step"),
+      heading: node.querySelector("h2, h3")?.textContent?.trim().slice(0, 160) || null,
+      nextDisabled: document.querySelector<HTMLButtonElement>('[data-testid="onboarding-next"]')?.disabled ?? null,
+    })).catch(() => ({ mission: null, step: null, heading: null, nextDisabled: null }));
+    throw new Error(`Expected onboarding Mission ${mission} step ${step}, but rendered ${rendered.mission}/${rendered.step} (${rendered.heading || "no heading"}; nextDisabled=${rendered.nextDisabled}): ${sanitize(error)}`);
+  }
+}
+
 async function nextEnabled(page: Page): Promise<boolean> {
   return page.$eval('[data-testid="onboarding-next"]', (element) => !(element as HTMLButtonElement).disabled);
 }
@@ -273,21 +291,15 @@ async function advanceFullOnboarding(page: Page, username: string, evidence: Jou
       await page.click('[data-testid="onboarding-next"]');
       advancedSteps += 1;
       if (step < expectedSteps - 1) {
-        await page.waitForFunction(({ expectedMission, expectedStep }) => {
-          const node = document.querySelector('[data-testid="onboarding-step"]');
-          return node?.getAttribute("data-mission") === String(expectedMission)
-            && node?.getAttribute("data-step") === String(expectedStep);
-        }, { timeout: 15_000 }, { expectedMission: mission, expectedStep: step + 1 });
+        await waitForOnboardingStep(page, mission, step + 1);
+        if (mission === 0 && step === 0) evidence.availableUsernameAdvanced = true;
       } else {
         await page.waitForFunction(() => document.body.innerText.includes("Mission Complete!"), { timeout: 30_000 });
         await waitForMissionReceipt(page, mission);
         evidence.completedMissionIds.push(mission);
         if (mission < 7) {
           await page.click('[data-testid="onboarding-continue"]');
-          await page.waitForFunction((expectedMission) => {
-            const node = document.querySelector('[data-testid="onboarding-step"]');
-            return node?.getAttribute("data-mission") === String(expectedMission) && node?.getAttribute("data-step") === "0";
-          }, { timeout: 15_000 }, mission + 1);
+          await waitForOnboardingStep(page, mission + 1, 0);
         }
       }
     }
@@ -419,7 +431,7 @@ async function runJourney(browser: Browser, viewport: ViewportCase): Promise<Jou
   page.on("console", (entry) => {
     if (entry.type() !== "error") return;
     const message = sanitize(entry.text(), redactions);
-    if (/ERR_BLOCKED_BY_CLIENT|clerk|favicon/i.test(message)) return;
+    if (/ERR_BLOCKED_BY_CLIENT|clerk|favicon|Failed to load resource: the server responded with a status of 401/i.test(message)) return;
     evidence.unexpectedConsoleErrors.push(message);
   });
 

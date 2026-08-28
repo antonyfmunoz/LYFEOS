@@ -130,10 +130,12 @@ app.use(session({
 
 const rateLimitStore = new Map<string, { count: number; windowStart: number }>();
 
-function createRateLimiter(scope: string, maxRequests: number, windowMs: number, keyByPrincipalOnly = false) {
+function createRateLimiter(scope: string, defaultMaxRequests: number, windowMs: number, keyByPrincipalOnly = false, authenticatedMaxRequests = defaultMaxRequests) {
   return (req: Request, res: Response, next: NextFunction) => {
     const ip = req.ip || req.socket.remoteAddress || "unknown";
-    const principal = req.session?.userId ? `user:${req.session.userId}` : `ip:${ip}`;
+    const authenticated = Boolean(req.session?.userId);
+    const principal = authenticated ? `user:${req.session.userId}` : `ip:${ip}`;
+    const maxRequests = authenticated ? authenticatedMaxRequests : defaultMaxRequests;
     // A scope is part of the bucket identity so a tighter endpoint policy can
     // never collide with (or inherit traffic from) the aggregate API policy.
     const key = keyByPrincipalOnly ? `${scope}:${principal}` : `${scope}:${principal}:${req.path}`;
@@ -229,8 +231,11 @@ app.use("/api/ai/orchestration-runs", createRateLimiter("ai-orchestration", qual
 // shared CI harness from turning unrelated later tests into 429 cascades.
 // Product pages hydrate several independent, user-owned surfaces. Bound that
 // aggregate traffic per authenticated account rather than pooling every user
-// behind the same proxy IP, while preserving the existing production ceiling.
-app.use("/api", createRateLimiter("api", qualificationRequestLimit(100), 60 * 1000, true));
+// behind the same proxy IP. A complete onboarding journey legitimately crosses
+// the anonymous ceiling while saving eight Missions and activating its Thread,
+// so authenticated accounts receive a larger aggregate budget. Tighter auth,
+// AI, webhook, public-form, and provider-specific policies still run first.
+app.use("/api", createRateLimiter("api", qualificationRequestLimit(100), 60 * 1000, true, qualificationRequestLimit(300)));
 
 const rateLimitCleanupTimer = setInterval(() => {
   deleteExpiredRateLimits(pool).catch((error) => log(`Rate-limit cleanup failed: ${error instanceof Error ? error.message : "unknown error"}`));
