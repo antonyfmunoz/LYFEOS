@@ -8,6 +8,7 @@ const workflow = fs.readFileSync(".github/workflows/production-browser-acceptanc
 const packageJson = fs.readFileSync("package.json", "utf8");
 const rootLayout = fs.readFileSync("client/src/components/layout/RootLayout.tsx", "utf8");
 const automationsPage = fs.readFileSync("client/src/pages/AutomationsPage.tsx", "utf8");
+const clientShell = fs.readFileSync("client/index.html", "utf8");
 
 describe("production browser acceptance custody", () => {
   it("has no embedded account credentials and fails closed when protected evidence is required", () => {
@@ -98,6 +99,15 @@ describe("production browser acceptance custody", () => {
     expect(script).toContain("first.failedRequests.length === 0");
     expect(script).toContain("first.serverErrors.length === 0");
     expect(script).toContain("first.consoleErrors.length === 0");
+  });
+
+  it("does not block first paint on third-party font stylesheets", () => {
+    const googleFontStylesheets = [...clientShell.matchAll(/<link rel="stylesheet" href="https:\/\/fonts\.googleapis\.com\/[^"]+"([^>]*)\/>/g)];
+    expect(googleFontStylesheets).toHaveLength(4);
+    expect(googleFontStylesheets.filter((match) => match[1].includes('media="print"'))).toHaveLength(2);
+    expect(clientShell.match(/<link rel="preload" as="style" href="https:\/\/fonts\.googleapis\.com\//g)).toHaveLength(2);
+    expect(clientShell).toContain("onload=\"this.media='all'\"");
+    expect(clientShell).toContain("<noscript>");
   });
 
   it("authenticates once and reuses the verified session across responsive viewports", () => {
