@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import puppeteer, { type Browser, type BrowserContext, type Page, type Viewport } from "puppeteer-core";
 
-type ApiResult = { status: number; body: any; cookie: string };
+type ApiResult = { status: number; body: any; cookie: string; retryAfterSeconds: number | null };
 type Account = { id: number; email: string; displayName: string; cookie: string };
 type Signals = { consoleErrors: string[]; pageErrors: string[]; failedRequests: string[]; serverErrors: string[] };
 type Cleanup = { viewport: string; accountErased: boolean; sessionInvalidated: boolean; emailReleased: boolean; displayNameReleased: boolean; otherAccountErased: boolean };
@@ -64,7 +64,23 @@ async function request(method: string, pathname: string, body?: unknown, cookie 
     status: response.status,
     body: await response.json().catch(() => ({})),
     cookie: (response.headers.get("set-cookie") || "").split(";", 1)[0],
+    retryAfterSeconds: Number.isFinite(Number(response.headers.get("retry-after"))) ? Number(response.headers.get("retry-after")) : null,
   };
+}
+
+async function registerDisposableAccount(account: Account): Promise<ApiResult> {
+  let result: ApiResult | null = null;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    result = await request("POST", "/api/auth/complete-registration", { email: account.email, password: PASSWORD, displayName: account.displayName, termsAccepted: true });
+    if (result.status === 201) {
+      Object.assign(account, { id: Number(result.body.user?.id), cookie: result.cookie });
+      return result;
+    }
+    if (result.status !== 429 || attempt === 1) return result;
+    const waitSeconds = Math.min(61, Math.max(1, result.retryAfterSeconds || 60));
+    await new Promise((resolve) => setTimeout(resolve, waitSeconds * 1_000 + 250));
+  }
+  return result!;
 }
 
 async function findChromium(): Promise<string> {
@@ -253,11 +269,9 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
   let failure: unknown = null;
   let stage = "register disposable owners";
   try {
-    const ownerRegistration = await request("POST", "/api/auth/complete-registration", { email: owner.email, password: PASSWORD, displayName: owner.displayName, termsAccepted: true });
-    const otherRegistration = await request("POST", "/api/auth/complete-registration", { email: other.email, password: PASSWORD, displayName: other.displayName, termsAccepted: true });
+    const ownerRegistration = await registerDisposableAccount(owner);
+    const otherRegistration = await registerDisposableAccount(other);
     assert(ownerRegistration.status === 201 && otherRegistration.status === 201, `Disposable owner registration returned ${ownerRegistration.status}/${otherRegistration.status}.`);
-    Object.assign(owner, { id: Number(ownerRegistration.body.user?.id), cookie: ownerRegistration.cookie });
-    Object.assign(other, { id: Number(otherRegistration.body.user?.id), cookie: otherRegistration.cookie });
     assert(owner.id > 0 && owner.cookie && other.id > 0 && other.cookie, "Disposable registrations did not return both owners and sessions.");
     assert((await request("PATCH", "/api/profile", { onboardingCompleted: true }, owner.cookie)).status === 200, "Owner onboarding setup failed.");
 

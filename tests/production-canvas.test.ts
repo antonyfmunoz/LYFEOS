@@ -29,6 +29,9 @@ describe("production Canvas evidence custody", () => {
     expect(acceptance).toContain("restoreCreatedNewImmutableRevision");
     expect(acceptance).toContain("crossOwnerIsolationReconciled");
     expect(acceptance).toContain("otherAccountErased");
+    expect(acceptance).toContain("registerDisposableAccount");
+    expect(acceptance).toContain('response.headers.get("retry-after")');
+    expect(acceptance).toContain("Object.assign(account");
     expect(acceptance).toContain("human assistive-technology comprehension");
     expect(acceptance).toContain("physical-device pointer");
   });
