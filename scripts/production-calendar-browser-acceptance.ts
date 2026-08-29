@@ -204,7 +204,12 @@ async function chooseCreateDueTime(page: Page): Promise<void> {
   await page.waitForFunction(() => document.querySelector('[data-radix-popper-content-wrapper]')?.textContent?.includes("09") === true, { timeout: 10_000 });
   await buttons[0].click();
   await page.waitForFunction(() => document.querySelector('[data-radix-popper-content-wrapper]')?.textContent?.includes("10") === true, { timeout: 10_000 });
-  await buttons.at(-1)!.click();
+  const committed = await page.evaluate(() => {
+    const control = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-radix-popper-content-wrapper] button')).find((button) => button.textContent?.trim() === "Done");
+    control?.click();
+    return Boolean(control);
+  });
+  assert(committed, "The create Mission due-time selection could not be committed.");
   await page.waitForFunction(() => Array.from(document.querySelectorAll<HTMLButtonElement>("button")).some((button) => button.textContent?.trim() === "10:00 AM" && button.getClientRects().length > 0), { timeout: 10_000 });
 }
 
