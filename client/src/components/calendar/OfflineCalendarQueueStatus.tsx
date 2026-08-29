@@ -87,7 +87,7 @@ export default function OfflineCalendarQueueStatus({ userId }: { userId: number 
   </section>;
   if (!queue.data?.length && online) return null;
 
-  return <section className="border-b border-primary/20 bg-background/30 px-3 py-3" aria-labelledby="offline-calendar-queue-heading">
+  return <section data-testid="calendar-offline-queue" className="border-b border-primary/20 bg-background/30 px-3 py-3" aria-labelledby="offline-calendar-queue-heading">
     <div className="flex flex-wrap items-start justify-between gap-2">
       <div>
         <h2 id="offline-calendar-queue-heading" className="flex items-center gap-2 text-sm font-medium text-white">
@@ -98,7 +98,7 @@ export default function OfflineCalendarQueueStatus({ userId }: { userId: number 
       </div>
       {!online ? <span className="rounded-full border border-amber-300/30 px-2 py-1 text-[11px] text-amber-200">Offline</span> : null}
     </div>
-    {queue.data?.length ? <div className="mt-3 space-y-2">{queue.data.map((item) => <div key={item.id} className={`rounded-lg border px-3 py-2 text-xs ${item.status === "conflict" ? "border-amber-300/30 bg-amber-300/5" : item.status === "failed" ? "border-destructive/30 bg-destructive/5" : "border-primary/15"}`}>
+    {queue.data?.length ? <div className="mt-3 space-y-2">{queue.data.map((item) => <div data-testid={`calendar-queue-item-${item.id}`} key={item.id} className={`rounded-lg border px-3 py-2 text-xs ${item.status === "conflict" ? "border-amber-300/30 bg-amber-300/5" : item.status === "failed" ? "border-destructive/30 bg-destructive/5" : "border-primary/15"}`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <p className="flex items-center gap-1.5 text-white">{item.status === "conflict" ? <AlertTriangle className="h-3.5 w-3.5 text-amber-300" /> : null}{item.kind === "create" ? "Create" : "Update"} · {item.title}</p>

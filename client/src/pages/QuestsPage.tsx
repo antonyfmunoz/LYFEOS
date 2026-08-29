@@ -3022,6 +3022,7 @@ export default function QuestsPage() {
             </Collapsible>
 
             <button 
+              data-testid="mission-update-submit"
               onClick={handleUpdateMission} 
               className="w-full mt-4 text-sm font-mono px-4 py-2.5 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40 inline-flex items-center justify-center"
               disabled={!editFormData.title.trim() || isSubmitting || (editFormData.isRitualized && editFormData.repeatFrequency === "weekly" && editFormData.repeatDays.length === 0)}
@@ -4023,7 +4024,7 @@ export default function QuestsPage() {
         };
 
         return (
-          <div className="glassmorphic rounded-xl overflow-hidden neon-border">
+          <div data-testid="calendar-page" className="glassmorphic rounded-xl overflow-hidden neon-border">
             <p className="border-b border-primary/10 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">
               Calendar is a scheduling view of your canonical Missions. Creating or editing here updates the same mission record and lifecycle.
             </p>
@@ -4056,7 +4057,7 @@ export default function QuestsPage() {
                 <button type="button" onClick={calNavToday} className="text-xs font-mono px-2 py-1 rounded border border-primary/30 hover:bg-primary/10 transition-colors ml-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
                   Today
                 </button>
-                <h2 className="text-lg font-orbitron ml-3">{calTitle}</h2>
+                <h2 data-testid="calendar-title" className="text-lg font-orbitron ml-3">{calTitle}</h2>
               </div>
               <div className="flex rounded-lg border border-primary/30 overflow-hidden">
                 {(['year', 'month', 'week', 'day'] as const).map(z => (
