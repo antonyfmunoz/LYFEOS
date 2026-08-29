@@ -49,6 +49,12 @@ describe("durable Voice overlay lifecycle", () => {
     expect(acceptance).toContain("LYFEOS_ACCEPTANCE_HARNESS_SOURCE");
     expect(acceptance).toContain('new URL(intercepted.url()).pathname === "/api/voice-command"');
     expect(acceptance).toContain("The command response is deliberately intercepted with a fixed content-free provider stub");
+    expect(acceptance).toContain("__lyfeosAcceptanceVoiceToggleCount");
+    expect(acceptance).toContain("Voice overlay did not open after its rendered launch control dispatched");
+    expect(acceptance).toContain('button[aria-label="Skip this tutorial"]');
+    expect(acceptance).toContain("tutorialDismissed");
+    expect(acceptance).toContain("activateHitTestedControl");
+    expect(acceptance).toContain("document.elementFromPoint");
     expect(acceptance).toContain('await waitForVoice(account, 4, "active", firstStored.id)');
     expect(acceptance).toContain('await waitForVoice(account, 4, "completed", firstStored.id)');
     expect(acceptance).toContain("cleanup.accountErased = cleanup.sessionInvalidated && cleanup.emailReleased && cleanup.displayNameReleased");

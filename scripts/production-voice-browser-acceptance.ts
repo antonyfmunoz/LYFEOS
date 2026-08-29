@@ -11,6 +11,7 @@ type Signals = { consoleErrors: string[]; pageErrors: string[]; failedRequests: 
 type Cleanup = { viewport: string; accountErased: boolean; sessionInvalidated: boolean; emailReleased: boolean; displayNameReleased: boolean };
 type ViewResult = {
   viewport: string;
+  tutorialDismissed: boolean;
   oneDurableSession: boolean;
   firstCommandSegmentCount: number;
   secondCommandSegmentCount: number;
@@ -93,6 +94,36 @@ function cookieParts(cookie: string): { name: string; value: string } {
   return { name: cookie.slice(0, separator), value: cookie.slice(separator + 1) };
 }
 
+async function dismissBlockingTutorial(page: Page): Promise<boolean> {
+  const selector = 'button[aria-label="Skip this tutorial"]';
+  const control = await page.$(selector);
+  if (!control) return false;
+  const visible = await control.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return style.display !== "none" && style.visibility !== "hidden" && element.getClientRects().length > 0;
+  });
+  if (!visible) return false;
+  await page.evaluate((tutorialSelector) => {
+    const button = document.querySelector<HTMLButtonElement>(tutorialSelector);
+    if (!button) throw new Error("Tutorial skip control disappeared before dismissal.");
+    button.click();
+  }, selector);
+  await page.waitForSelector(selector, { hidden: true, timeout: 10_000 });
+  return true;
+}
+
+async function activateHitTestedControl(page: Page, selector: string): Promise<void> {
+  await page.waitForFunction((targetSelector) => {
+    const control = document.querySelector<HTMLElement>(targetSelector);
+    if (!control || (control as HTMLButtonElement).disabled) return false;
+    const rect = control.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return false;
+    const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+    return hit === control || (hit !== null && control.contains(hit));
+  }, { timeout: 30_000 }, selector);
+  await page.click(selector);
+}
+
 function captureSignals(page: Page): Signals {
   const signals: Signals = { consoleErrors: [], pageErrors: [], failedRequests: [], serverErrors: [] };
   page.on("console", (entry) => {
@@ -136,32 +167,39 @@ async function auditPage(page: Page): Promise<Pick<ViewResult, "mainCount" | "du
 }
 
 async function installBrowserDoubles(page: Page): Promise<void> {
-  await page.evaluateOnNewDocument(() => {
-    const instances: any[] = [];
-    class AcceptanceSpeechRecognition {
-      continuous = false;
-      interimResults = true;
-      lang = "en-US";
-      maxAlternatives = 1;
-      onstart: (() => void) | null = null;
-      onresult: ((event: any) => void) | null = null;
-      onerror: ((event: any) => void) | null = null;
-      onend: (() => void) | null = null;
-      constructor() { instances.push(this); }
-      start() { queueMicrotask(() => this.onstart?.()); }
-      stop() { queueMicrotask(() => this.onend?.()); }
-      abort() { queueMicrotask(() => this.onend?.()); }
-      emitFinal(value: string) {
-        const result: any = [{ transcript: value }];
-        result.isFinal = true;
-        this.onresult?.({ resultIndex: 0, results: [result] });
-        queueMicrotask(() => this.onend?.());
+  // Keep this as literal browser JavaScript. Passing a TypeScript callback here
+  // can serialize references to tsx/esbuild helpers that do not exist in-page.
+  await page.evaluateOnNewDocument(String.raw`
+    (() => {
+      const instances = [];
+      let toggleEvents = 0;
+      window.addEventListener("toggle-voice-control", () => { toggleEvents += 1; });
+      class AcceptanceSpeechRecognition {
+        continuous = false;
+        interimResults = true;
+        lang = "en-US";
+        maxAlternatives = 1;
+        onstart = null;
+        onresult = null;
+        onerror = null;
+        onend = null;
+        constructor() { instances.push(this); }
+        start() { queueMicrotask(() => this.onstart?.()); }
+        stop() { queueMicrotask(() => this.onend?.()); }
+        abort() { queueMicrotask(() => this.onend?.()); }
+        emitFinal(value) {
+          const result = [{ transcript: value }];
+          result.isFinal = true;
+          this.onresult?.({ resultIndex: 0, results: [result] });
+          queueMicrotask(() => this.onend?.());
+        }
       }
-    }
-    Object.defineProperty(window, "SpeechRecognition", { configurable: true, value: AcceptanceSpeechRecognition });
-    Object.defineProperty(window, "webkitSpeechRecognition", { configurable: true, value: AcceptanceSpeechRecognition });
-    Object.defineProperty(window, "__lyfeosAcceptanceSpeech", { configurable: true, value: instances });
-  });
+      Object.defineProperty(window, "SpeechRecognition", { configurable: true, value: AcceptanceSpeechRecognition });
+      Object.defineProperty(window, "webkitSpeechRecognition", { configurable: true, value: AcceptanceSpeechRecognition });
+      Object.defineProperty(window, "__lyfeosAcceptanceSpeech", { configurable: true, value: instances });
+      Object.defineProperty(window, "__lyfeosAcceptanceVoiceToggleCount", { configurable: true, get: () => toggleEvents });
+    })();
+  `);
   await page.setRequestInterception(true);
   page.on("request", (intercepted) => {
     if (intercepted.method() === "POST" && new URL(intercepted.url()).pathname === "/api/voice-command") {
@@ -235,6 +273,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
   let view: ViewResult | null = null;
   let cleanup: Cleanup = { viewport: viewport.name, accountErased: false, sessionInvalidated: false, emailReleased: false, displayNameReleased: false };
   let failure: unknown = null;
+  let stage = "register disposable account";
   try {
     const registration = await request("POST", "/api/auth/complete-registration", { email: account.email, password: PASSWORD, displayName: account.displayName, termsAccepted: true });
     assert(registration.status === 201, `Registration returned ${registration.status}.`);
@@ -244,6 +283,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     const onboarding = await request("PATCH", "/api/profile", { onboardingCompleted: true }, account.cookie);
     assert(onboarding.status === 200 && onboarding.body?.onboardingCompleted === true, `Onboarding setup returned ${onboarding.status}.`);
 
+    stage = "open authenticated AI page";
     context = await browser.createBrowserContext();
     const page = await context.newPage();
     const signals = captureSignals(page);
@@ -257,32 +297,86 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     await page.setCacheEnabled(false);
     await page.goto(new URL("/ai", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
     await page.waitForSelector('[data-tour="ai-voice"]', { visible: true, timeout: 60_000 });
-    await page.click('[data-tour="ai-voice"]');
-    await page.waitForSelector('[data-testid="voice-pause-resume"]', { visible: true, timeout: 30_000 });
+    const tutorialDismissed = await dismissBlockingTutorial(page);
+    stage = "launch and pause Voice";
+    await activateHitTestedControl(page, '[data-tour="ai-voice"]');
+    try {
+      await page.waitForSelector('[data-testid="voice-pause-resume"]', { visible: true, timeout: 30_000 });
+    } catch {
+      await page.screenshot({ path: path.join(OUTPUT_DIR, `voice-launch-${viewport.name}.png`), fullPage: true }).catch(() => undefined);
+      const diagnostics = await page.evaluate(() => {
+        const launch = document.querySelector<HTMLElement>('[data-tour="ai-voice"]');
+        const rect = launch?.getBoundingClientRect();
+        const hit = rect ? document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2) as HTMLElement | null : null;
+        return {
+          pathname: window.location.pathname,
+          toggleEvents: Number((window as any).__lyfeosAcceptanceVoiceToggleCount || 0),
+          speechRecognitionType: typeof (window as any).SpeechRecognition,
+          webkitSpeechRecognitionType: typeof (window as any).webkitSpeechRecognition,
+          recognizerInstances: Array.isArray((window as any).__lyfeosAcceptanceSpeech) ? (window as any).__lyfeosAcceptanceSpeech.length : -1,
+          launchButtons: document.querySelectorAll('[data-tour="ai-voice"]').length,
+          pauseControls: document.querySelectorAll('[data-testid="voice-pause-resume"]').length,
+          stopControls: document.querySelectorAll('[data-testid="voice-stop"]').length,
+          dialogs: document.querySelectorAll('[role="dialog"]').length,
+          hitTarget: hit ? {
+            tag: hit.tagName.toLowerCase(),
+            testId: hit.getAttribute("data-testid"),
+            tour: hit.getAttribute("data-tour"),
+            role: hit.getAttribute("role"),
+            label: hit.getAttribute("aria-label"),
+            className: String(hit.className).slice(0, 300),
+          } : null,
+        };
+      });
+      throw new Error(`Voice overlay did not open after its rendered launch control dispatched: ${JSON.stringify({ ...diagnostics, signals })}`);
+    }
     await page.click('[data-testid="voice-pause-resume"]');
     await page.waitForFunction(() => document.querySelector('[data-testid="voice-pause-resume"]')?.getAttribute("aria-label") === "Resume dictation", { timeout: 30_000 });
     await page.click('[data-testid="voice-pause-resume"]');
 
+    stage = "emit first Voice command";
     await emitCommand(page, "Record the first bounded acceptance observation.");
     const firstStored = JSON.parse(await page.evaluate((key) => sessionStorage.getItem(key) || "null", ACTIVE_SESSION_KEY)) as { id?: string; version?: number } | null;
     assert(firstStored?.id && firstStored.version === 1, "The first command did not retain an opaque active-session reference.");
+    stage = "verify first durable Voice command";
     const first = await waitForVoice(account, 2, "active", firstStored.id);
     assert(first.list.length === 1, "The first command created more than one Voice session.");
 
+    stage = "emit second Voice command";
     await page.click('[data-testid="voice-pause-resume"]');
     await emitCommand(page, "Record the second bounded acceptance observation.");
+    stage = "verify second durable Voice command";
     const second = await waitForVoice(account, 4, "active", firstStored.id);
     assert(second.list.length === 1, "The second command created a duplicate Voice session.");
 
+    stage = "reload and restore Voice session";
     await page.reload({ waitUntil: "domcontentloaded", timeout: 60_000 });
     await page.waitForSelector('[data-tour="ai-voice"]', { visible: true, timeout: 60_000 });
+    stage = "verify opaque Voice reference after reload";
     const afterReloadStored = JSON.parse(await page.evaluate((key) => sessionStorage.getItem(key) || "null", ACTIVE_SESSION_KEY)) as { id?: string; version?: number } | null;
     assert(afterReloadStored?.id === firstStored.id && afterReloadStored.version === firstStored.version, "Reload lost or changed the active Voice reference.");
-    await page.click('[data-tour="ai-voice"]');
-    await page.waitForFunction(() => document.querySelector('[data-testid="voice-pause-resume"]')?.getAttribute("aria-label") === "Pause dictation", { timeout: 30_000 });
+    stage = "relaunch Voice after reload";
+    await activateHitTestedControl(page, '[data-tour="ai-voice"]');
+    stage = "wait for restored Voice listening state";
+    try {
+      await page.waitForFunction(() => document.querySelector('[data-testid="voice-pause-resume"]')?.getAttribute("aria-label") === "Pause dictation", { timeout: 30_000 });
+    } catch {
+      await page.screenshot({ path: path.join(OUTPUT_DIR, `voice-restore-${viewport.name}.png`), fullPage: true }).catch(() => undefined);
+      const diagnostics = await page.evaluate(() => ({
+        toggleEvents: Number((window as any).__lyfeosAcceptanceVoiceToggleCount || 0),
+        recognizerInstances: Array.isArray((window as any).__lyfeosAcceptanceSpeech) ? (window as any).__lyfeosAcceptanceSpeech.length : -1,
+        pauseControls: document.querySelectorAll('[data-testid="voice-pause-resume"]').length,
+        pauseLabel: document.querySelector('[data-testid="voice-pause-resume"]')?.getAttribute("aria-label") || null,
+        tutorialSkipControls: document.querySelectorAll('button[aria-label="Skip this tutorial"]').length,
+        dialogs: document.querySelectorAll('[role="dialog"]').length,
+      }));
+      throw new Error(`Restored Voice did not reach listening state: ${JSON.stringify({ ...diagnostics, signals })}`);
+    }
+    stage = "verify restored durable Voice session";
     const restored = await waitForVoice(account, 4, "active", firstStored.id);
     assert(restored.list.length === 1, "Reload restoration created a duplicate Voice session.");
 
+    stage = "explicitly complete Voice session";
     const completionResponse = page.waitForResponse((response) => response.request().method() === "POST" && new URL(response.url()).pathname === `/api/ai/voice-sessions/${firstStored.id}/complete`, { timeout: 30_000 });
     await page.click('[data-testid="voice-stop"]');
     assert((await completionResponse).status() === 200, "Explicit Voice close did not complete the durable session.");
@@ -290,6 +384,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     await page.waitForFunction((key) => sessionStorage.getItem(key) === null, { timeout: 30_000 }, ACTIVE_SESSION_KEY);
     assert(completed.detail.session.summaryMethod === "extractive_v1", "Explicit close did not create the extractive review record.");
 
+    stage = "render completed Voice archive";
     await page.reload({ waitUntil: "domcontentloaded", timeout: 60_000 });
     await page.waitForSelector('[data-testid="voice-session-archive"]', { visible: true, timeout: 60_000 });
     const recordSelector = `[data-testid="voice-session-record-${firstStored.id}"]`;
@@ -302,6 +397,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
 
     view = {
       viewport: viewport.name,
+      tutorialDismissed,
       oneDurableSession: second.list.length === 1 && restored.list.length === 1,
       firstCommandSegmentCount: first.detail.segments.length,
       secondCommandSegmentCount: second.detail.segments.length,
@@ -313,7 +409,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
       signals,
     };
   } catch (error) {
-    failure = error;
+    failure = new Error(`${stage}: ${safeError(error)}`);
   } finally {
     if (context) await context.close().catch(() => undefined);
     if (account.cookie) cleanup = await eraseAccount(account, viewport.name);
