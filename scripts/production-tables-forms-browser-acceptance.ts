@@ -96,11 +96,12 @@ function cookieParts(cookie: string): { name: string; value: string } {
   return { name: cookie.slice(0, separator), value: cookie.slice(separator + 1) };
 }
 
-function captureSignals(page: Page): Signals {
+function captureSignals(page: Page, allowAnonymousAuthBoundary = false): Signals {
   const signals: Signals = { consoleErrors: [], pageErrors: [], failedRequests: [], serverErrors: [] };
   page.on("console", (entry) => {
     if (entry.type() !== "error") return;
     const source = entry.location().url;
+    if (allowAnonymousAuthBoundary && source === new URL("/api/auth/me", BASE_URL).toString() && entry.text().includes("401")) return;
     signals.consoleErrors.push(`${entry.text().slice(0, 500)}${source ? ` @ ${source}` : ""}`);
   });
   page.on("pageerror", (error) => signals.pageErrors.push(error.message.slice(0, 500)));
@@ -114,6 +115,11 @@ function captureSignals(page: Page): Signals {
     if (response.url().startsWith(BASE_URL.origin) && response.status() >= 500) signals.serverErrors.push(`${response.status()} ${new URL(response.url()).pathname}`);
   });
   return signals;
+}
+
+function acknowledgeReconciledBodylessMutation(signals: Signals, method: string, pathname: string): void {
+  const expected = `${method} ${pathname}: net::ERR_ABORTED`;
+  signals.failedRequests = signals.failedRequests.filter((signal) => signal !== expected);
 }
 
 async function dismissBlockingTutorial(page: Page): Promise<boolean> {
@@ -305,12 +311,18 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     stage = "exercise named view and local filter";
     await page.select('[aria-label="Saved table view"]', String(namedView.body.view.id));
     await page.waitForFunction(() => document.querySelector('[aria-label="Table records"]')?.textContent?.includes("1 visible"), { timeout: 30_000 });
-    const namedViewText = await page.$eval('[aria-label="Table records"]', (element) => element.textContent || "");
+    const namedViewRows = {
+      alpha: await page.$(`[aria-label="Edit row ${alpha.body.row.id}"]`) !== null,
+      beta: await page.$(`[aria-label="Edit row ${beta.body.row.id}"]`) !== null,
+    };
     await page.select('[aria-label="Saved table view"]', "");
     await setValue(page, '[aria-label="Filter table rows"]', "Beta");
     await page.waitForFunction(() => document.querySelector('[aria-label="Table records"]')?.textContent?.includes("1 visible"), { timeout: 30_000 });
-    const filterText = await page.$eval('[aria-label="Table records"]', (element) => element.textContent || "");
-    const namedViewAndFilterReconciled = namedViewText.includes("Alpha") && !namedViewText.includes("Beta") && filterText.includes("Beta") && !filterText.includes("Alpha");
+    const filteredRows = {
+      alpha: await page.$(`[aria-label="Edit row ${alpha.body.row.id}"]`) !== null,
+      beta: await page.$(`[aria-label="Edit row ${beta.body.row.id}"]`) !== null,
+    };
+    const namedViewAndFilterReconciled = namedViewRows.alpha && !namedViewRows.beta && !filteredRows.alpha && filteredRows.beta;
     assert(namedViewAndFilterReconciled, "Named view and live filter did not reconcile visible rows.");
     await setValue(page, '[aria-label="Filter table rows"]', "");
 
@@ -365,7 +377,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     stage = "submit shared form in anonymous rendered context";
     publicContext = await browser.createBrowserContext();
     publicPage = await publicContext.newPage();
-    const publicSignals = captureSignals(publicPage);
+    const publicSignals = captureSignals(publicPage, true);
     await publicPage.setViewport(viewport.value);
     await publicPage.setCacheEnabled(false);
     await publicPage.goto(shareUrl, { waitUntil: "domcontentloaded", timeout: 60_000 });
@@ -389,6 +401,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     await page.waitForFunction(() => [...document.querySelectorAll("button")].some((button) => button.textContent?.trim() === "Revoke"), { timeout: 45_000 });
     await activateButtonByText(page, "Revoke");
     await waitForGrants(owner, formId, (body) => body.grants?.some((candidate: any) => candidate.id === grant.id && candidate.revokedAt), "grant revocation");
+    acknowledgeReconciledBodylessMutation(signals, "POST", `/api/forms/${formId}/access-grants/${grant.id}/revoke`);
     const rejected = await request("GET", `/api/public/forms/${publicId}`, undefined, "", { Authorization: `Bearer ${token}` });
     const revokedTokenRejected = rejected.status === 404;
     assert(revokedTokenRejected, `Revoked public token returned ${rejected.status}.`);
@@ -409,6 +422,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
       await new Promise((resolve) => setTimeout(resolve, 400));
     }
     assert(deleted, "Rendered table deletion did not remove the owned Table graph.");
+    acknowledgeReconciledBodylessMutation(signals, "DELETE", `/api/databases/${databaseId}`);
     await page.waitForSelector(`[data-testid="table-card-${databaseId}"]`, { hidden: true, timeout: 30_000 });
     const deletionReconciled = await page.$(`[data-testid="table-card-${databaseId}"]`) === null;
     assert(deletionReconciled, "Deleted Table remained in the rendered catalog.");

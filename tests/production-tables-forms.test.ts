@@ -27,6 +27,8 @@ describe("production Tables and Forms evidence custody", () => {
     expect(acceptance).toContain("revokedTokenRejected");
     expect(acceptance).toContain("deletionReconciled");
     expect(acceptance).toContain("otherAccountErased");
+    expect(acceptance).toContain('source === new URL("/api/auth/me", BASE_URL).toString()');
+    expect(acceptance).toContain("acknowledgeReconciledBodylessMutation");
     expect(acceptance).toContain("human assistive-technology comprehension");
   });
 
