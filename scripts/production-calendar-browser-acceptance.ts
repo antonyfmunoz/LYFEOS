@@ -111,6 +111,11 @@ function captureSignals(page: Page, intentionallyOffline: () => boolean): Signal
   return signals;
 }
 
+function acknowledgeReconciledConflict(signals: Signals): void {
+  const index = signals.consoleErrors.findIndex((error) => error === "Failed to load resource: the server responded with a status of 409 ()");
+  if (index >= 0) signals.consoleErrors.splice(index, 1);
+}
+
 async function dismissBlockingTutorial(page: Page): Promise<void> {
   const deadline = Date.now() + 10_000;
   while (Date.now() < deadline) {
@@ -304,6 +309,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     const conflicted = await waitForMission(account, date, (mission) => Number(mission.id) === missionId, "server-side conflict state");
     const staleEditStoppedAsConflict = conflicted.title === serverTitle && conflicted.revision === 2;
     assert(staleEditStoppedAsConflict, "Stale Calendar edit overwrote the newer server mission.");
+    acknowledgeReconciledConflict(signals);
     page.once("dialog", (dialog) => void dialog.accept());
     await activate(page, '[data-testid="calendar-offline-queue"] button');
     const applied = await waitForMission(account, date, (mission) => Number(mission.id) === missionId && mission.title === queuedTitle, "explicit conflict apply");

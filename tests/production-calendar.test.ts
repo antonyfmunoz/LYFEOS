@@ -25,6 +25,7 @@ describe("production Calendar evidence custody", () => {
     expect(acceptance).toContain("offlineCreateQueued");
     expect(acceptance).toContain("reconnectCreateConverged");
     expect(acceptance).toContain("staleEditStoppedAsConflict");
+    expect(acceptance).toContain("acknowledgeReconciledConflict(signals)");
     expect(acceptance).toContain("explicitConflictApplyConverged");
     expect(acceptance).toContain("queueDrained");
     expect(acceptance).toContain('CALENDAR_TIME_ZONE = "America/Los_Angeles"');
