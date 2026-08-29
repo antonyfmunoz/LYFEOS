@@ -256,6 +256,12 @@ describe("Sheets instrument", () => {
     expect(vault).toContain("navigate('/spreadsheets')");
   });
 
+  it("recognizes the dedicated new-sheet route without relying on a missing route parameter", () => {
+    const editor = source("client/src/pages/SpreadsheetEditorPage.tsx");
+    expect(editor).toContain("const [location, navigate] = useLocation()");
+    expect(editor).toContain('location === "/spreadsheets/new" || spreadsheetId === "new"');
+  });
+
   it("exposes stable nonvisual seams for production browser qualification", () => {
     const catalog = source("client/src/pages/SpreadsheetsPage.tsx");
     const editor = source("client/src/pages/SpreadsheetEditorPage.tsx");

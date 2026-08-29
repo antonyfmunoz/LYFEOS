@@ -50,10 +50,10 @@ const spreadsheetBackgroundColorClasses: Record<SpreadsheetColorToken, string> =
 };
 
 export default function SpreadsheetEditorPage() {
+  const [location, navigate] = useLocation();
   const { spreadsheetId } = useParams();
-  const isNew = spreadsheetId === "new";
+  const isNew = location === "/spreadsheets/new" || spreadsheetId === "new";
   const id = Number(spreadsheetId);
-  const [, navigate] = useLocation();
   const { toast } = useToast();
   const [title, setTitle] = useState("Untitled Sheet");
   const [description, setDescription] = useState("");
