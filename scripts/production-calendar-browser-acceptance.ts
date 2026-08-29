@@ -29,6 +29,7 @@ const HARNESS_SOURCE = process.env.LYFEOS_ACCEPTANCE_HARNESS_SOURCE || process.e
 const OUTPUT_DIR = path.resolve(process.env.LYFEOS_CALENDAR_OUTPUT_DIR || path.join(os.tmpdir(), "lyfeos-production-calendar"));
 const OUTPUT_FILE = path.join(OUTPUT_DIR, "calendar-report.json");
 const PASSWORD = "TestPass123!";
+const CALENDAR_TIME_ZONE = "America/Los_Angeles";
 const VIEWPORTS: Array<{ name: string; value: Viewport }> = [
   { name: "desktop-1440x900", value: { width: 1440, height: 900, deviceScaleFactor: 1 } },
   { name: "mobile-390x844", value: { width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true } },
@@ -36,6 +37,12 @@ const VIEWPORTS: Array<{ name: string; value: Viewport }> = [
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
+}
+
+function calendarDateInZone(timeZone: string): string {
+  const parts = new Intl.DateTimeFormat("en-US", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
+  const value = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${value.year}-${value.month}-${value.day}`;
 }
 
 function safeError(error: unknown): string {
@@ -216,7 +223,7 @@ async function eraseAccount(account: Account): Promise<boolean> {
 async function runViewport(browser: Browser, viewport: { name: string; value: Viewport }, ordinal: number): Promise<{ view: ViewResult; cleanup: Cleanup }> {
   const stamp = `${Date.now()}_${ordinal}_${randomUUID().slice(0, 8)}`;
   const account: Account = { id: 0, email: `calendar_owner_${stamp}@example.com`, displayName: `calendar_owner_${ordinal}_${stamp.slice(-8)}`, cookie: "" };
-  const date = new Date().toISOString().slice(0, 10);
+  const date = calendarDateInZone(CALENDAR_TIME_ZONE);
   const offlineTitle = `Offline create ${ordinal}`;
   const conflictTitle = `Conflict base ${ordinal}`;
   const queuedTitle = `Queued edit ${ordinal}`;
@@ -246,6 +253,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
       try { localStorage.setItem("lyfeos_user", JSON.stringify(fixtureUser)); } catch { /* Origin is not ready. */ }
     }, { id: account.id, displayName: account.displayName });
     await page.setViewport(viewport.value);
+    await page.emulateTimezone(CALENDAR_TIME_ZONE);
     await page.setCacheEnabled(false);
     await page.goto(new URL("/calendar", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
     await page.waitForSelector('[data-testid="calendar-page"]', { visible: true, timeout: 60_000 });
