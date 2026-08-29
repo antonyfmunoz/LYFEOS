@@ -415,7 +415,6 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     await page.waitForFunction(() => [...document.querySelectorAll("button")].some((button) => button.textContent?.trim() === "Revoke"), { timeout: 45_000 });
     await activateButtonByText(page, "Revoke");
     await waitForGrants(owner, formId, (body) => body.grants?.some((candidate: any) => candidate.id === grant.id && candidate.revokedAt), "grant revocation");
-    acknowledgeReconciledBodylessMutation(signals, "POST", `/api/forms/${formId}/access-grants/${grant.id}/revoke`);
     const rejected = await request("GET", `/api/public/forms/${publicId}`, undefined, "", { Authorization: `Bearer ${token}` });
     const revokedTokenRejected = rejected.status === 404;
     assert(revokedTokenRejected, `Revoked public token returned ${rejected.status}.`);
@@ -423,6 +422,11 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     await page.waitForSelector('[data-testid="table-editor"]', { visible: true, timeout: 45_000 });
     const privateAudit = await auditPage(page, '[data-testid="table-editor"]');
     assert(privateAudit.mainCount === 1 && privateAudit.duplicateIds.length === 0 && privateAudit.invalidLabelReferences.length === 0 && privateAudit.unlabeledControls.length === 0 && privateAudit.horizontalOverflowPx <= 2, `${viewport.name} Table editor failed semantics or overflow checks.`);
+    // Chromium may emit requestfailed for a successful 204 mutation only when the
+    // following navigation aborts its bodyless response. Reconcile that exact
+    // signal only after the persisted revocation, rejected token, and completed
+    // owner navigation independently prove that the mutation succeeded.
+    acknowledgeReconciledBodylessMutation(signals, "POST", `/api/forms/${formId}/access-grants/${grant.id}/revoke`);
     assert(Object.values(signals).every((items) => items.length === 0), `${viewport.name} private Table/Form journey produced application errors: ${JSON.stringify(signals)}.`);
     await page.goto(new URL("/databases", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
     await page.waitForSelector(`[data-testid="table-card-${databaseId}"]`, { visible: true, timeout: 45_000 });
