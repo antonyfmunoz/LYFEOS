@@ -376,6 +376,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     const staleSaveStoppedAsConflict = conflictState.title === serverTitle;
     assert(staleSaveStoppedAsConflict, "Stale rendered save overwrote the competing Canvas revision.");
     acknowledgeReconciledConflict(signals);
+    page.once("dialog", (dialog) => void dialog.accept());
     await page.reload({ waitUntil: "domcontentloaded", timeout: 60_000 });
     await page.waitForSelector('[data-testid="canvas-editor"]', { visible: true, timeout: 60_000 });
     await page.waitForSelector('[data-testid="canvas-node-limit_300"]', { timeout: 45_000 });
