@@ -11,6 +11,44 @@ import { getLocalDateString } from "./utils";
 import { applyPrimaryColor } from "./applyPrimaryColor";
 import { submitCalendarMissionMutation } from "./calendarOfflineQueue";
 
+const STAT_TIPS_SESSION_TTL_MS = 5 * 60 * 1000;
+
+function discardSessionStatTips(key: string): void {
+  try {
+    sessionStorage.removeItem(key);
+  } catch {
+    // Storage is optional; the network request remains the source of truth.
+  }
+}
+
+function readSessionStatTips(userId: number): Record<string, string[]> | null {
+  const key = `lyfeos_stat_tips_${userId}`;
+  try {
+    const cached = JSON.parse(sessionStorage.getItem(key) || "null") as { fetchedAt?: unknown; tips?: unknown } | null;
+    if (!cached || typeof cached.fetchedAt !== "number" || Date.now() - cached.fetchedAt > STAT_TIPS_SESSION_TTL_MS || !cached.tips || typeof cached.tips !== "object" || Array.isArray(cached.tips)) {
+      discardSessionStatTips(key);
+      return null;
+    }
+    const entries = Object.entries(cached.tips as Record<string, unknown>);
+    if (entries.some(([, tips]) => !Array.isArray(tips) || tips.some((tip) => typeof tip !== "string"))) {
+      discardSessionStatTips(key);
+      return null;
+    }
+    return Object.fromEntries(entries) as Record<string, string[]>;
+  } catch {
+    discardSessionStatTips(key);
+    return null;
+  }
+}
+
+function writeSessionStatTips(userId: number, tips: Record<string, string[]>): void {
+  try {
+    sessionStorage.setItem(`lyfeos_stat_tips_${userId}`, JSON.stringify({ fetchedAt: Date.now(), tips }));
+  } catch {
+    // A privacy-restricted browser may decline this optional reload cache.
+  }
+}
+
 // Initial stats data
 const initialStats: UserStats = {
   attentionTokens: {
@@ -586,6 +624,12 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       fetchComputedStats();
 
       const fetchAllTips = async () => {
+        const cachedTips = readSessionStatTips(user.id);
+        if (cachedTips) {
+          setStatTips(cachedTips);
+          setStatTipsLoading(false);
+          return;
+        }
         setStatTipsLoading(true);
         try {
           const response = await fetch("/api/stat-tips/all", {
@@ -597,6 +641,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
             const data = await response.json();
             if (data.tips) {
               setStatTips(data.tips);
+              writeSessionStatTips(user.id, data.tips);
             }
           }
         } catch (error) {
