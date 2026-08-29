@@ -105,15 +105,19 @@ describe("Sheets instrument", () => {
     expect(() => createSpreadsheetChart(document, { id: "bad", title: "No labels", kind: "bar", sheetId: document.activeSheetId, range: { startRow: 0, endRow: 1, startColumn: 0, endColumn: 0 } })).toThrow("header row");
   });
 
-  it("governs trend, proportion, and correlation chart shapes without inventing series roles", () => {
+  it("governs trend, stacked, combination, proportion, and correlation chart shapes without inventing series roles", () => {
     const document = createEmptySpreadsheetDocument();
     const oneSeriesRange = { startRow: 0, endRow: 3, startColumn: 0, endColumn: 1 };
     const twoSeriesRange = { startRow: 0, endRow: 3, startColumn: 0, endColumn: 2 };
     expect(createSpreadsheetChart(document, { id: "area", title: "Trend", kind: "area", sheetId: document.activeSheetId, range: twoSeriesRange }).charts[0].kind).toBe("area");
+    expect(createSpreadsheetChart(document, { id: "stacked", title: "Total by source", kind: "stacked_bar", sheetId: document.activeSheetId, range: twoSeriesRange }).charts[0].kind).toBe("stacked_bar");
+    expect(createSpreadsheetChart(document, { id: "combo", title: "Volume and trend", kind: "combo", sheetId: document.activeSheetId, range: twoSeriesRange }).charts[0].kind).toBe("combo");
     expect(createSpreadsheetChart(document, { id: "pie", title: "Share", kind: "pie", sheetId: document.activeSheetId, range: oneSeriesRange }).charts[0].kind).toBe("pie");
     expect(createSpreadsheetChart(document, { id: "scatter", title: "Relationship", kind: "scatter", sheetId: document.activeSheetId, range: twoSeriesRange }).charts[0].kind).toBe("scatter");
     expect(() => createSpreadsheetChart(document, { id: "ambiguous-pie", title: "Share", kind: "pie", sheetId: document.activeSheetId, range: twoSeriesRange })).toThrow("exactly one value column");
     expect(() => createSpreadsheetChart(document, { id: "ambiguous-scatter", title: "Relationship", kind: "scatter", sheetId: document.activeSheetId, range: oneSeriesRange })).toThrow("exactly two numeric series columns");
+    expect(() => createSpreadsheetChart(document, { id: "ambiguous-stacked", title: "Total", kind: "stacked_bar", sheetId: document.activeSheetId, range: oneSeriesRange })).toThrow("at least two numeric series columns");
+    expect(() => createSpreadsheetChart(document, { id: "ambiguous-combo", title: "Trend", kind: "combo", sheetId: document.activeSheetId, range: oneSeriesRange })).toThrow("at least two numeric series columns");
   });
 
   it("derives chart values from canonical cells and never converts missing or invalid values to zero", () => {
@@ -356,9 +360,15 @@ describe("Sheets instrument", () => {
     expect(editor).toContain("SpreadsheetChartCard");
     const chart = source("client/src/components/spreadsheets/SpreadsheetChartCard.tsx");
     expect(chart).toContain('<SelectItem value="area">Area</SelectItem>');
+    expect(chart).toContain('<SelectItem value="stacked_bar">Stacked bar</SelectItem>');
+    expect(chart).toContain('<SelectItem value="combo">Combination</SelectItem>');
+    expect(chart).toContain('stackId="source-series"');
+    expect(chart).toContain("const comboBarSeries = data.series[0]");
+    expect(chart).toContain("const comboLineSeries = data.series.slice(1)");
     expect(chart).toContain('<SelectItem value="pie">Pie</SelectItem>');
     expect(chart).toContain('<SelectItem value="scatter">Scatter</SelectItem>');
     expect(chart).toContain("only complete pairs become points");
+    expect(chart).toContain("source-column order defines these roles");
     expect(chart).toContain("Accessible chart data");
     expect(editor).toContain('data-testid="sheet-history"');
     expect(editor).toContain("sheet-history-version-${revision.revisionNumber}");

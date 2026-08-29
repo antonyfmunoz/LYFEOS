@@ -12,7 +12,7 @@ describe("production Sheets evidence custody", () => {
   const editor = source("client/src/pages/SpreadsheetEditorPage.tsx");
 
   it("binds the production-only contract to immutable runtime and harness sources", () => {
-    expect(acceptance).toContain('contract: "lyfeos.production-sheets-browser.v3"');
+    expect(acceptance).toContain('contract: "lyfeos.production-sheets-browser.v4"');
     expect(acceptance).toContain('BASE_URL.origin === "https://lyfeos.net"');
     expect(acceptance).toContain("release.body?.sourceRevision === SOURCE");
     expect(acceptance).toContain("HARNESS_SOURCE");
@@ -26,7 +26,8 @@ describe("production Sheets evidence custody", () => {
     expect(acceptance).toContain("chartFamiliesRenderedFromCanonicalRanges");
     expect(acceptance).toContain("chartDefinitionsPersisted");
     expect(acceptance).toContain("chartFamiliesReloadedAndRestored");
-    expect(acceptance).toContain('["line", "bar", "area", "pie", "scatter"]');
+    expect(acceptance).toContain('["line", "bar", "stacked_bar", "area", "combo", "pie", "scatter"]');
+    expect(acceptance).toContain("source-column roles for stacked and combination charts");
     expect(acceptance).toContain("complete numeric pairs");
     expect(acceptance).toContain("Missing values are never converted to zero");
     expect(acceptance).toContain("localImportReviewedAndPersisted");

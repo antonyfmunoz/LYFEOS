@@ -172,7 +172,7 @@ async function selectCellAndEnter(page: Page, address: string, value: string): P
   await setValue(page, 'input[aria-label="Cell input or formula"]', value);
 }
 
-async function createChartFromRange(page: Page, startAddress: string, endAddress: string, kind: "line" | "bar" | "area" | "pie" | "scatter", expectedCount: number): Promise<void> {
+async function createChartFromRange(page: Page, startAddress: string, endAddress: string, kind: "line" | "bar" | "stacked_bar" | "area" | "combo" | "pie" | "scatter", expectedCount: number): Promise<void> {
   await activate(page, `[data-sheet-address="${startAddress}"]`);
   await page.$eval(`[data-sheet-address="${endAddress}"]`, (element) => element.dispatchEvent(new MouseEvent("click", { bubbles: true, shiftKey: true })));
   await activate(page, '[data-testid="sheet-chart-create"]');
@@ -186,11 +186,12 @@ async function createChartFromRange(page: Page, startAddress: string, endAddress
     const triggerSelector = `[data-testid="${cardTestId}"] [aria-label="Chart type"]`;
     await activate(page, triggerSelector);
     await page.waitForSelector('[role="option"]', { visible: true, timeout: 10_000 });
+    const optionLabel = kind === "stacked_bar" ? "stacked bar" : kind === "combo" ? "combination" : kind;
     const selected = await page.evaluate((expected) => {
       const option = Array.from(document.querySelectorAll<HTMLElement>('[role="option"]')).find((candidate) => candidate.innerText.trim().toLocaleLowerCase() === expected);
       option?.click();
       return Boolean(option);
-    }, kind);
+    }, optionLabel);
     assert(selected, `Could not select the ${kind} chart type.`);
     await page.waitForFunction(({ count, expectedKind }) => {
       const charts = document.querySelectorAll<HTMLElement>('[data-testid^="sheet-chart-chart_"]');
@@ -360,20 +361,26 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     }, { timeout: 30_000 });
     await createChartFromRange(page, "C1", "E4", "bar", 2);
     await createChartFromRange(page, "C1", "E4", "area", 3);
-    await createChartFromRange(page, "C1", "D4", "pie", 4);
-    await createChartFromRange(page, "C1", "E4", "scatter", 5);
+    await createChartFromRange(page, "C1", "E4", "stacked_bar", 4);
+    await createChartFromRange(page, "C1", "E4", "combo", 5);
+    await createChartFromRange(page, "C1", "D4", "pie", 6);
+    await createChartFromRange(page, "C1", "E4", "scatter", 7);
     const chartFamiliesRenderedFromCanonicalRanges = await page.evaluate(() => {
       const charts = Array.from(document.querySelectorAll<HTMLElement>('[data-testid^="sheet-chart-chart_"]'));
       const kinds = charts.map((chart) => chart.dataset.chartKind);
       const pie = charts.find((chart) => chart.dataset.chartKind === "pie");
       const scatter = charts.find((chart) => chart.dataset.chartKind === "scatter");
-      return charts.length === 5
-        && ["line", "bar", "area", "pie", "scatter"].every((kind) => kinds.includes(kind))
+      const stacked = charts.find((chart) => chart.dataset.chartKind === "stacked_bar");
+      const combo = charts.find((chart) => chart.dataset.chartKind === "combo");
+      return charts.length === 7
+        && ["line", "bar", "stacked_bar", "area", "combo", "pie", "scatter"].every((kind) => kinds.includes(kind))
         && pie?.dataset.sourceRange === "C1:D4"
         && scatter?.dataset.sourceRange === "C1:E4"
         && (scatter.textContent || "").includes("2 complete numeric pairs plotted")
         && (scatter.textContent || "").includes("1 observation without a complete numeric pair not plotted")
-        && (pie?.textContent || "").includes("Pie charts require one label column and one value column");
+        && (pie?.textContent || "").includes("Pie charts require one label column and one value column")
+        && (stacked?.textContent || "").includes("missing segments stay missing")
+        && (combo?.textContent || "").includes("source-column order defines these roles");
     });
     assert(chartFamiliesRenderedFromCanonicalRanges, "Rendered trend, proportion, or correlation chart semantics did not reconcile their canonical ranges.");
     const fileInput = await page.$('input[aria-label="Choose a CSV or TSV file"]');
@@ -399,10 +406,12 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
       && chart?.range?.endRow === 3
       && chart?.range?.startColumn === 2
       && chart?.range?.endColumn === endColumn);
-    const chartDefinitionsPersisted = creationCharts.length === 5
+    const chartDefinitionsPersisted = creationCharts.length === 7
       && hasChart("line", 4)
       && hasChart("bar", 4)
       && hasChart("area", 4)
+      && hasChart("stacked_bar", 4)
+      && hasChart("combo", 4)
       && hasChart("pie", 3)
       && hasChart("scatter", 4);
     assert(chartDefinitionsPersisted, `Creation revision did not persist every governed chart definition over canonical cells; observed=${JSON.stringify({ creationSheetId: creationSheet?.id, creationCharts })}.`);
@@ -464,11 +473,11 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
       && revisionsV4.body.revisions[0]?.sourceRevision === 1;
     assert(restoreCreatedNewImmutableRevision, "Rendered restore did not preserve history and create immutable revision four from version one.");
     await page.waitForSelector('[data-testid^="sheet-chart-chart_"]', { visible: true, timeout: 30_000 });
-    const chartFamiliesReloadedAndRestored = restored.content?.charts?.length === 5
+    const chartFamiliesReloadedAndRestored = restored.content?.charts?.length === 7
       && await page.evaluate(() => {
         const charts = Array.from(document.querySelectorAll<HTMLElement>('[data-testid^="sheet-chart-chart_"]'));
         const kinds = charts.map((chart) => chart.dataset.chartKind);
-        return charts.length === 5 && ["line", "bar", "area", "pie", "scatter"].every((kind) => kinds.includes(kind));
+        return charts.length === 7 && ["line", "bar", "stacked_bar", "area", "combo", "pie", "scatter"].every((kind) => kinds.includes(kind));
       });
     assert(chartFamiliesReloadedAndRestored, "The governed chart family did not survive reload and immutable restore.");
 
@@ -520,7 +529,7 @@ async function main(): Promise<void> {
     if (browser) await browser.close().catch(() => undefined);
     const passed = failure === null && views.length === VIEWPORTS.length && cleanups.length === VIEWPORTS.length && cleanups.every((cleanup) => cleanup.accountErased && cleanup.otherAccountErased);
     const report = {
-      contract: "lyfeos.production-sheets-browser.v3",
+      contract: "lyfeos.production-sheets-browser.v4",
       generatedAt: new Date().toISOString(),
       baseUrl: BASE_URL.origin,
       sourceRevision: SOURCE,
@@ -528,7 +537,7 @@ async function main(): Promise<void> {
       views,
       cleanups,
       summary: { passed, failure },
-      boundary: "Disposable production-account Chromium evidence for Sheets. It proves desktop/mobile catalog and editor rendering; raw-value and formula persistence; calculated formula display; local undo/redo; persisted live line, bar, area, pie and scatter definitions over canonical cells; formula-derived chart values; explicit missing-value and complete-pair handling with accessible source tables; chart-family reload and immutable restore; copy/paste through a controlled in-page Clipboard API adapter; explicit local CSV review before persistence; immutable create, update, conflict and restore revisions; cross-owner isolation; bounded rendering at the documented 500-row by 100-column limit; responsive semantics; and verified account/session/identifier erasure. It does not prove native spreadsheet-file import, OS clipboard permissions, real-device clipboard or file-picker behavior, browser permission denial recovery, simultaneous multi-tab editing, stacked or combination charts, full Excel or Google Sheets formula compatibility, human assistive-technology comprehension, statistical causality, or longitudinal calculation correctness for user-authored models.",
+      boundary: "Disposable production-account Chromium evidence for Sheets. It proves desktop/mobile catalog and editor rendering; raw-value and formula persistence; calculated formula display; local undo/redo; persisted live line, bar, stacked bar, area, combination, pie and scatter definitions over canonical cells; deterministic source-column roles for stacked and combination charts; formula-derived chart values; explicit missing-value and complete-pair handling with accessible source tables; chart-family reload and immutable restore; copy/paste through a controlled in-page Clipboard API adapter; explicit local CSV review before persistence; immutable create, update, conflict and restore revisions; cross-owner isolation; bounded rendering at the documented 500-row by 100-column limit; responsive semantics; and verified account/session/identifier erasure. It does not prove native spreadsheet-file import, OS clipboard permissions, real-device clipboard or file-picker behavior, browser permission denial recovery, simultaneous multi-tab editing, configurable per-series chart roles, dual-axis normalization, full Excel or Google Sheets formula compatibility, human assistive-technology comprehension, statistical causality, or longitudinal calculation correctness for user-authored models.",
     };
     await fs.writeFile(OUTPUT_FILE, `${JSON.stringify(report, null, 2)}\n`, "utf8");
     if (process.env.GITHUB_STEP_SUMMARY) {

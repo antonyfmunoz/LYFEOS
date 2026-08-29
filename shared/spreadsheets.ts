@@ -3,7 +3,7 @@ import { z } from "zod";
 export const spreadsheetAddressPattern = /^[A-Z]{1,3}[1-9][0-9]{0,3}$/;
 export const spreadsheetNumberFormats = ["decimal", "percent", "currency_usd"] as const;
 export const spreadsheetColorTokens = ["red", "amber", "green", "blue", "purple"] as const;
-export const spreadsheetChartKinds = ["line", "bar", "area", "pie", "scatter"] as const;
+export const spreadsheetChartKinds = ["line", "bar", "stacked_bar", "area", "combo", "pie", "scatter"] as const;
 export type SpreadsheetNumberFormat = typeof spreadsheetNumberFormats[number];
 export type SpreadsheetColorToken = typeof spreadsheetColorTokens[number];
 export type SpreadsheetChartKind = typeof spreadsheetChartKinds[number];
@@ -53,6 +53,9 @@ export const spreadsheetChartSchema = z.object({
   }
   if (chart.kind === "scatter" && dataColumnCount !== 2) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Scatter charts require one label column and exactly two numeric series columns.", path: ["range"] });
+  }
+  if ((chart.kind === "stacked_bar" || chart.kind === "combo") && dataColumnCount < 2) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: `${chart.kind === "stacked_bar" ? "Stacked bar" : "Combination"} charts require one label column and at least two numeric series columns.`, path: ["range"] });
   }
 });
 
