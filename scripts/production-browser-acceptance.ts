@@ -80,6 +80,8 @@ const PUBLIC_ROUTES = [
   "/",
   "/login",
   "/register",
+  "/privacy",
+  "/terms",
   "/forgot-password",
   "/reset-password",
   "/waitlist",

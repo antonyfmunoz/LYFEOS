@@ -7,9 +7,28 @@ describe("public launch routing", () => {
 
   it("keeps registration and account recovery publicly reachable", () => {
     expect(app).toContain('<Route path="/register" component={RegisterPage} />');
+    expect(app).toContain('<Route path="/privacy" component={TrustDisclosurePage} />');
+    expect(app).toContain('<Route path="/terms" component={TrustDisclosurePage} />');
     expect(app).toContain('<Route path="/forgot-password" component={ForgotPasswordPage} />');
     expect(app).toContain('<Route path="/reset-password" component={ResetPasswordPage} />');
     expect(app).toContain("'/forgot-password', '/reset-password'");
+  });
+
+  it("does not make registration depend on missing or falsely finalized legal pages", () => {
+    const registration = readFileSync(resolve(process.cwd(), "client/src/pages/RegisterPage.tsx"), "utf8");
+    const onboarding = readFileSync(resolve(process.cwd(), "client/src/pages/OnboardingPage.tsx"), "utf8");
+    const authRoutes = readFileSync(resolve(process.cwd(), "server/routes/auth.ts"), "utf8");
+    const migration = readFileSync(resolve(process.cwd(), "migrations/0141_registration_disclosure_provenance.sql"), "utf8");
+    const disclosure = readFileSync(resolve(process.cwd(), "client/src/pages/TrustDisclosurePage.tsx"), "utf8");
+    expect(registration).toContain("These are not finalized legal terms.");
+    expect(registration).not.toContain("I agree to the");
+    expect(registration).toContain("REGISTRATION_DISCLOSURE_VERSION");
+    expect(onboarding).toContain("registrationDisclosureVersion: REGISTRATION_DISCLOSURE_VERSION");
+    expect(authRoutes).toContain('registrationDisclosureVersion: acknowledgedVersion');
+    expect(authRoutes).toContain('termsAccepted: termsAccepted === true');
+    expect(migration).toContain('"registration_disclosure_acknowledged_at" timestamp');
+    expect(disclosure).toContain("does not currently publish approved consumer Terms of Service");
+    expect(disclosure).toContain("factual summary of current product behavior");
   });
 
   it("renders the landing page at the public root while preserving the explicit waitlist", () => {

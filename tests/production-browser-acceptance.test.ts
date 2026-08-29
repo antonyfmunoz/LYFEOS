@@ -25,6 +25,8 @@ describe("production browser acceptance custody", () => {
       '"/"',
       '"/login"',
       '"/register"',
+      '"/privacy"',
+      '"/terms"',
       '"/forgot-password"',
       '"/reset-password"',
       '"/waitlist"',

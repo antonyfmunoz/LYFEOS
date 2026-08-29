@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, Rea
 import { useLocation } from "wouter";
 import { toast } from "@/hooks/use-toast";
 import { queryClient } from "./queryClient";
+import { REGISTRATION_DISCLOSURE_VERSION } from "@shared/registration-disclosure";
 import { useUser, useAuth as useClerkAuth, useClerk, useSignIn } from "@clerk/clerk-react";
 import { applyPrimaryColor } from "./applyPrimaryColor";
 import { getLocalDateString } from "./utils";
@@ -278,7 +279,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: trimmedEmail, password, termsAccepted: true, ...(extraData || {}) }),
+        body: JSON.stringify({ email: trimmedEmail, password, registrationDisclosureVersion: REGISTRATION_DISCLOSURE_VERSION, ...(extraData || {}) }),
         credentials: "include",
       });
       const data = await response.json() as AuthResponse;

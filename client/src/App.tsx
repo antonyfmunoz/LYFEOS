@@ -74,6 +74,7 @@ const ProjectsPage = lazyRoute(() => import("./pages/ProjectsPage"));
 const MessagesPage = lazyRoute(() => import("./pages/MessagesPage"));
 const WaitlistPage = lazyRoute(() => import("./pages/WaitlistPage"));
 const WaitlistThankYouPage = lazyRoute(() => import("./pages/WaitlistThankYouPage"));
+const TrustDisclosurePage = lazyRoute(() => import("./pages/TrustDisclosurePage"));
 
 const isTouchDevice = () =>
   typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
@@ -342,6 +343,8 @@ function Router() {
       <Route path="/register" component={RegisterPage} />
       <Route path="/forgot-password" component={ForgotPasswordPage} />
       <Route path="/reset-password" component={ResetPasswordPage} />
+      <Route path="/privacy" component={TrustDisclosurePage} />
+      <Route path="/terms" component={TrustDisclosurePage} />
       <Route path="/login-success" component={LoginSuccessPage} />
       <Route path="/review-mission" component={MissionReviewPage} />
       

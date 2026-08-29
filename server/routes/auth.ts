@@ -8,6 +8,7 @@ import bcrypt from "bcrypt";
 import { SESSION_COOKIE_NAME } from "../session-config";
 import { applyClerkUserLifecycleEvent } from "../clerk-webhook-lifecycle";
 import { deleteLocalAccountData } from "./profile";
+import { REGISTRATION_DISCLOSURE_VERSION } from "@shared/registration-disclosure";
 
 declare module "express-session" {
   interface SessionData {
@@ -60,7 +61,7 @@ async function provisionLocalUser(seed: LocalUserSeed) {
     email: seed.email,
     authProvider: "clerk",
     clerkId: seed.clerkId,
-    termsAccepted: true,
+    termsAccepted: false,
   });
 
   await initializeUserRecords(user.id);
@@ -145,15 +146,19 @@ export function registerAuthRoutes(app: Express): void {
 
   app.post("/api/auth/register", async (req: Request, res: Response) => {
     try {
-      const { email, password, termsAccepted, avatarColor } = req.body;
-      if (!z.string().email().safeParse(email).success || typeof password !== "string" || password.length < 6 || termsAccepted !== true) {
-        return res.status(400).json({ error: "A valid email, password, and acceptance of the terms are required" });
+      const { email, password, termsAccepted, registrationDisclosureVersion, avatarColor } = req.body;
+      const acknowledgedVersion = registrationDisclosureVersion === REGISTRATION_DISCLOSURE_VERSION
+        ? REGISTRATION_DISCLOSURE_VERSION
+        : termsAccepted === true ? "legacy_terms_boolean" : null;
+      if (!z.string().email().safeParse(email).success || typeof password !== "string" || password.length < 6 || !acknowledgedVersion) {
+        return res.status(400).json({ error: "A valid email, password, and registration disclosure acknowledgment are required" });
       }
       const normalizedEmail = email.trim().toLowerCase();
       if (await storage.getUserByEmail(normalizedEmail)) return res.status(409).json({ error: "An account with this email already exists" });
       const user = await storage.createUser({
         email: normalizedEmail, password: await bcrypt.hash(password, 12), displayName: normalizedEmail.split("@")[0],
-        title: "COMMANDER", authProvider: "email", termsAccepted: true, avatarColor: avatarColor || "#00e0ff",
+        title: "COMMANDER", authProvider: "email", termsAccepted: termsAccepted === true,
+        registrationDisclosureVersion: acknowledgedVersion, registrationDisclosureAcknowledgedAt: new Date(), avatarColor: avatarColor || "#00e0ff",
       });
       await initializeUserRecords(user.id);
       bindSession(req, user);
@@ -181,9 +186,12 @@ export function registerAuthRoutes(app: Express): void {
 
   app.post("/api/auth/complete-registration", async (req: Request, res: Response) => {
     try {
-      const { email, password, displayName, firstName, lastName, avatarColor, termsAccepted } = req.body;
-      if (!z.string().email().safeParse(email).success || typeof password !== "string" || password.length < 6 || typeof displayName !== "string" || displayName.trim().length < 3 || termsAccepted !== true) {
-        return res.status(400).json({ error: "Please provide a valid email, password, and display name" });
+      const { email, password, displayName, firstName, lastName, avatarColor, termsAccepted, registrationDisclosureVersion } = req.body;
+      const acknowledgedVersion = registrationDisclosureVersion === REGISTRATION_DISCLOSURE_VERSION
+        ? REGISTRATION_DISCLOSURE_VERSION
+        : termsAccepted === true ? "legacy_terms_boolean" : null;
+      if (!z.string().email().safeParse(email).success || typeof password !== "string" || password.length < 6 || typeof displayName !== "string" || displayName.trim().length < 3 || !acknowledgedVersion) {
+        return res.status(400).json({ error: "Please provide a valid email, password, display name, and registration disclosure acknowledgment" });
       }
       const normalizedEmail = email.trim().toLowerCase();
       if (await storage.getUserByEmail(normalizedEmail)) return res.status(409).json({ error: "An account with this email already exists" });
@@ -191,7 +199,8 @@ export function registerAuthRoutes(app: Express): void {
       if (existingName) return res.status(409).json({ error: "Display name already taken" });
       const user = await storage.createUser({
         email: normalizedEmail, password: await bcrypt.hash(password, 12), displayName: displayName.trim(), firstName: firstName || null,
-        lastName: lastName || null, title: "COMMANDER", authProvider: "email", termsAccepted: true, avatarColor: avatarColor || "#00e0ff",
+        lastName: lastName || null, title: "COMMANDER", authProvider: "email", termsAccepted: termsAccepted === true,
+        registrationDisclosureVersion: acknowledgedVersion, registrationDisclosureAcknowledgedAt: new Date(), avatarColor: avatarColor || "#00e0ff",
       });
       await initializeUserRecords(user.id);
       bindSession(req, user);

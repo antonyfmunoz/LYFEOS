@@ -23,7 +23,9 @@ export const users = pgTable("users", {
   authProvider: text("auth_provider").default("email"), // ("email", "google", "apple", "facebook")
   firebaseUid: text("firebase_uid"), // Firebase UID for Firebase-authenticated users
   clerkId: text("clerk_id").unique(), // Clerk user ID for Clerk-authenticated users
-  termsAccepted: boolean("terms_accepted").default(false),
+  termsAccepted: boolean("terms_accepted").default(false), // Legacy legal-terms flag; new beta disclosure provenance is stored separately.
+  registrationDisclosureVersion: text("registration_disclosure_version"),
+  registrationDisclosureAcknowledgedAt: timestamp("registration_disclosure_acknowledged_at"),
   emailVerified: boolean("email_verified").default(false),
   emailVerificationToken: text("email_verification_token"),
   emailVerificationExpiry: timestamp("email_verification_expiry"),
@@ -1144,6 +1146,8 @@ export const insertUserSchema = createInsertSchema(users).pick({
   firebaseUid: true,
   clerkId: true,
   termsAccepted: true,
+  registrationDisclosureVersion: true,
+  registrationDisclosureAcknowledgedAt: true,
   lastLoginAt: true,
   stripeCustomerId: true,
   stripeSubscriptionId: true,

@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/authContext";
 import { Input } from "@/components/ui/input";
 import { Loader2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { REGISTRATION_DISCLOSURE_VERSION } from "@shared/registration-disclosure";
 
 export default function RegisterPage() {
   usePageTitle('Register');
@@ -16,7 +17,7 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
-  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [disclosuresReviewed, setDisclosuresReviewed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isOAuthRedirecting, setIsOAuthRedirecting] = useState(() => {
     return !!localStorage.getItem('lyfeos-oauth-redirect-pending');
@@ -73,8 +74,8 @@ export default function RegisterPage() {
       return;
     }
     
-    if (!termsAccepted) {
-      setError("You must accept the Terms of Service and Privacy Policy");
+    if (!disclosuresReviewed) {
+      setError("Review and acknowledge the beta access and privacy disclosures");
       setIsLoading(false);
       return;
     }
@@ -94,6 +95,7 @@ export default function RegisterPage() {
       sessionStorage.setItem("lyfeos-pending-registration", JSON.stringify({
         email: trimmedEmail,
         avatarColor: "#00e0ff",
+        registrationDisclosureVersion: REGISTRATION_DISCLOSURE_VERSION,
       }));
       localStorage.removeItem("lyfeos-has-seen-dashboard");
       localStorage.setItem("lyfeos-pending-onboarding", "true");
@@ -136,7 +138,8 @@ export default function RegisterPage() {
           <button
             type="button"
             onClick={() => loginWithGoogle('register')}
-            className="w-full flex items-center justify-center gap-3 py-2.5 rounded border text-sm font-medium transition-colors hover:opacity-80"
+            disabled={!disclosuresReviewed}
+            className="w-full flex items-center justify-center gap-3 py-2.5 rounded border text-sm font-medium transition-colors hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-40"
             style={{ backgroundColor: 'rgba(255,255,255,0.05)', borderColor: accent?.border30 || 'rgba(255,255,255,0.2)' }}
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="white">
@@ -150,7 +153,8 @@ export default function RegisterPage() {
           <button
             type="button"
             onClick={() => loginWithApple('register')}
-            className="w-full flex items-center justify-center gap-3 py-2.5 rounded border text-sm font-medium transition-colors hover:opacity-80"
+            disabled={!disclosuresReviewed}
+            className="w-full flex items-center justify-center gap-3 py-2.5 rounded border text-sm font-medium transition-colors hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-40"
             style={{ backgroundColor: 'rgba(255,255,255,0.05)', borderColor: accent?.border30 || 'rgba(255,255,255,0.2)' }}
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="white">
@@ -220,15 +224,17 @@ export default function RegisterPage() {
           
           <div className="flex items-start space-x-2 mt-4">
             <Checkbox 
-              id="terms" 
-              checked={termsAccepted}
-              onCheckedChange={(checked) => setTermsAccepted(checked === true)}
+              id="trust-disclosures"
+              checked={disclosuresReviewed}
+              onCheckedChange={(checked) => setDisclosuresReviewed(checked === true)}
+              aria-describedby="trust-disclosure-links"
               className="mt-1 border-white/50 data-[state=checked]:bg-white data-[state=checked]:text-black"
             />
-            <label htmlFor="terms" className="text-sm text-white cursor-pointer">
-              I agree to the <span className="auth-link" style={{ color: accent?.color || 'white' }}><Link href="/terms" className="hover:opacity-80" style={{ color: accent?.color || 'white' }}>Terms of Service</Link></span> and <span className="auth-link" style={{ color: accent?.color || 'white' }}><Link href="/privacy" className="hover:opacity-80" style={{ color: accent?.color || 'white' }}>Privacy Policy</Link></span>. 
-              Your journey is protected, and your data remains under your control.
-            </label>
+            <div id="trust-disclosure-links" className="text-sm text-white">
+              <label htmlFor="trust-disclosures" className="cursor-pointer">I reviewed these disclosures:</label>{" "}
+              <a href="/terms" target="_blank" rel="noreferrer" className="auth-link hover:opacity-80" style={{ color: accent?.color || 'white' }}>beta access</a>{" "}
+              and factual <a href="/privacy" target="_blank" rel="noreferrer" className="auth-link hover:opacity-80" style={{ color: accent?.color || 'white' }}>privacy</a>. These are not finalized legal terms.
+            </div>
           </div>
           
           {error && (

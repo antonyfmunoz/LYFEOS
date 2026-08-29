@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/lib/authContext";
+import { REGISTRATION_DISCLOSURE_VERSION } from "@shared/registration-disclosure";
 import { useLYFEOS } from "@/lib/context";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useQuery } from "@tanstack/react-query";
@@ -949,7 +950,7 @@ export default function OnboardingPage() {
       if (missionId === 0) {
         const pendingRegData = sessionStorage.getItem("lyfeos-pending-registration");
         if (pendingRegData) {
-          const { email, avatarColor } = JSON.parse(pendingRegData);
+          const { email, avatarColor, registrationDisclosureVersion } = JSON.parse(pendingRegData);
           const password = getPendingPassword();
           if (!password) {
             sessionStorage.removeItem("lyfeos-pending-registration");
@@ -970,7 +971,9 @@ export default function OnboardingPage() {
             birthday: birthdayStr,
             location,
             timezone,
-            termsAccepted: true,
+            ...(registrationDisclosureVersion === REGISTRATION_DISCLOSURE_VERSION
+              ? { registrationDisclosureVersion: REGISTRATION_DISCLOSURE_VERSION }
+              : { termsAccepted: true }),
           });
           sessionStorage.removeItem("lyfeos-pending-registration");
           if (colorForRegistration && colorForRegistration !== "#ffffff") {
