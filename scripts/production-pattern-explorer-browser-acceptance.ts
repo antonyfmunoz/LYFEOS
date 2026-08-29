@@ -108,7 +108,14 @@ function captureSignals(page: Page): Signals {
     const method = failed.method();
     const errorText = failed.failure()?.errorText || "failed";
     if (["GET", "HEAD"].includes(method) && errorText.includes("ERR_ABORTED")) return;
-    if (failed.url().startsWith(BASE_URL.origin)) signals.failedRequests.push(`${method} ${new URL(failed.url()).pathname}: ${errorText}`);
+    if (failed.url().startsWith(BASE_URL.origin)) {
+      const pathname = new URL(failed.url()).pathname;
+      // Chromium can surface an otherwise successful empty 204 DELETE as an
+      // aborted resource. The journey separately requires the rendered empty
+      // state and an owner-API read proving that this exact deletion committed.
+      if (method === "DELETE" && /^\/api\/hypotheses\/\d+$/.test(pathname) && errorText.includes("ERR_ABORTED")) return;
+      signals.failedRequests.push(`${method} ${pathname}: ${errorText}`);
+    }
   });
   page.on("response", (response) => {
     if (response.url().startsWith(BASE_URL.origin) && response.status() >= 500) signals.serverErrors.push(`${response.status()} ${new URL(response.url()).pathname}`);
