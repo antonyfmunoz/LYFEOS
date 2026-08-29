@@ -188,6 +188,26 @@ async function setValue(page: Page, selector: string, value: string): Promise<vo
   }, value);
 }
 
+async function chooseCreateDueTime(page: Page): Promise<void> {
+  const opened = await page.evaluate(() => {
+    const trigger = Array.from(document.querySelectorAll<HTMLButtonElement>("button")).find((button) =>
+      button.textContent?.trim() === "Select time" && button.getClientRects().length > 0,
+    );
+    trigger?.click();
+    return Boolean(trigger);
+  });
+  assert(opened, "The create Mission due-time picker was not available.");
+  await page.waitForSelector('[data-radix-popper-content-wrapper]', { visible: true, timeout: 10_000 });
+  const buttons = await page.$$('[data-radix-popper-content-wrapper] button');
+  assert(buttons.length >= 8, "The create Mission due-time controls were incomplete.");
+  await buttons[0].click();
+  await page.waitForFunction(() => document.querySelector('[data-radix-popper-content-wrapper]')?.textContent?.includes("09") === true, { timeout: 10_000 });
+  await buttons[0].click();
+  await page.waitForFunction(() => document.querySelector('[data-radix-popper-content-wrapper]')?.textContent?.includes("10") === true, { timeout: 10_000 });
+  await buttons.at(-1)!.click();
+  await page.waitForFunction(() => Array.from(document.querySelectorAll<HTMLButtonElement>("button")).some((button) => button.textContent?.trim() === "10:00 AM" && button.getClientRects().length > 0), { timeout: 10_000 });
+}
+
 async function activate(page: Page, selector: string): Promise<void> {
   await page.waitForSelector(selector, { visible: true, timeout: 30_000 });
   await page.$eval(selector, (control) => control.scrollIntoView({ block: "center", inline: "center" }));
@@ -313,6 +333,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     stage = "queue and reconcile offline create";
     await activate(page, `[aria-label^="Create mission on "][aria-label$=" at 9 AM"]`);
     await setValue(page, "#create-title", offlineTitle);
+    await chooseCreateDueTime(page);
     intentionallyOffline = true;
     await enterOffline(page);
     await activate(page, '[data-testid="mission-create-submit"]');
