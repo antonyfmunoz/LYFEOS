@@ -53,6 +53,10 @@ describe("production Projects browser acceptance custody", () => {
     ]) expect(page).toContain(seam);
     expect(page).toContain('window.history.replaceState');
     expect(page).toContain('title: "Project was not saved"');
+    expect(page).toContain('queryClient.setQueryData<{ projects: Project[]; removedProjects: Project[] }>(["/api/projects"], projectList)');
+    const createdSelection = page.indexOf("setSelectedId(project.id)");
+    expect(createdSelection).toBeGreaterThan(-1);
+    expect(createdSelection).toBeLessThan(page.indexOf('await queryClient.invalidateQueries({ queryKey: ["/api/projects"], exact: true })', createdSelection));
     expect(lifecycle).toContain("export async function createProjectMissionLifecycle");
     expect(lifecycle).toContain("can never leave behind an unlinked Mission");
     expect(lifecycle).toContain("await tx.insert(quests).values(prepared).returning()");

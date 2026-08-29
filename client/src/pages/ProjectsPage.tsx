@@ -40,7 +40,18 @@ export default function ProjectsPage() {
   }, [selectedId]);
   useEffect(() => { const p = detail.data?.project; if (!p) return; setTitle(p.title); setDescription(p.description || ""); setOutcome(p.outcome || ""); setStartDate(p.startDate || ""); setDueDate(p.dueDate || ""); setNextState(p.state); }, [detail.data]);
   const refresh = async () => { await Promise.all([queryClient.invalidateQueries({ queryKey: ["/api/projects"], exact: true }), selectedId ? queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedId] }) : Promise.resolve(), queryClient.invalidateQueries({ queryKey: ["/api/automations/missions"] })]); };
-  const create = useMutation({ mutationFn: () => apiRequest<{ project: Project }>("/api/projects", { method: "POST", body: JSON.stringify({ title: newTitle, outcome: newOutcome, description: null, startDate: null, dueDate: null }) }), onSuccess: async ({ project }) => { setNewTitle(""); setNewOutcome(""); await queryClient.invalidateQueries({ queryKey: ["/api/projects"], exact: true }); setSelectedId(project.id); toast({ title: "Project created" }); }, onError: (error) => toast({ title: "Project was not created", description: errorMessage(error), variant: "destructive" }) });
+  const create = useMutation({ mutationFn: () => apiRequest<{ project: Project }>("/api/projects", { method: "POST", body: JSON.stringify({ title: newTitle, outcome: newOutcome, description: null, startDate: null, dueDate: null }) }), onSuccess: async ({ project }) => {
+    setNewTitle(""); setNewOutcome("");
+    const projectList = (current?: { projects: Project[]; removedProjects: Project[] }) => ({
+      projects: [project, ...(current?.projects || []).filter((item) => item.id !== project.id)],
+      removedProjects: (current?.removedProjects || []).filter((item) => item.id !== project.id),
+    });
+    queryClient.setQueryData<{ projects: Project[]; removedProjects: Project[] }>(["/api/projects"], projectList);
+    setSelectedId(project.id);
+    await queryClient.invalidateQueries({ queryKey: ["/api/projects"], exact: true });
+    queryClient.setQueryData<{ projects: Project[]; removedProjects: Project[] }>(["/api/projects"], projectList);
+    toast({ title: "Project created" });
+  }, onError: (error) => toast({ title: "Project was not created", description: errorMessage(error), variant: "destructive" }) });
   const save = useMutation({ mutationFn: () => apiRequest(`/api/projects/${selectedId}`, { method: "PATCH", body: JSON.stringify({ title, description: description || null, outcome, startDate: startDate || null, dueDate: dueDate || null, expectedRevision: detail.data!.project.revision }) }), onSuccess: async () => { await refresh(); toast({ title: "Project saved" }); }, onError: (error) => toast({ title: "Project was not saved", description: errorMessage(error), variant: "destructive" }) });
   const transition = useMutation({ mutationFn: () => apiRequest(`/api/projects/${selectedId}/state`, { method: "POST", body: JSON.stringify({ state: nextState, expectedRevision: detail.data!.project.revision }) }), onSuccess: async () => { await refresh(); toast({ title: "Project state updated" }); }, onError: (error) => toast({ title: "State was not changed", description: errorMessage(error), variant: "destructive" }) });
   const createMission = useMutation({ mutationFn: (mutationId: string) => apiRequest(`/api/projects/${selectedId}/missions/new`, { method: "POST", body: JSON.stringify({ title: missionTitle, description: "", dueDate: null, expectedRevision: detail.data!.project.revision, mutationId }) }), onSuccess: async () => { setMissionTitle(""); await refresh(); toast({ title: "Mission added to project" }); }, onError: (error) => toast({ title: "Mission was not added", description: errorMessage(error), variant: "destructive" }) });
