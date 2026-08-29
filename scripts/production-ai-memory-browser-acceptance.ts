@@ -266,11 +266,22 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     const signals = captureSignals(page);
     const session = cookieParts(account.cookie);
     await page.setCookie({ ...session, url: BASE_URL.origin, path: "/", httpOnly: true, secure: true, sameSite: "Lax" });
-    await page.evaluateOnNewDocument((fixtureUser) => localStorage.setItem("lyfeos_user", JSON.stringify(fixtureUser)), { id: account.id, displayName: account.displayName });
+    await page.evaluateOnNewDocument((fixtureUser) => {
+      try {
+        localStorage.setItem("lyfeos_user", JSON.stringify(fixtureUser));
+      } catch {
+        // Browser-owned documents can deny storage before the target origin loads.
+      }
+    }, { id: account.id, displayName: account.displayName });
     await page.setViewport(viewport.value);
     await page.setCacheEnabled(false);
     await page.goto(new URL("/profile", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
     await page.waitForSelector('[data-testid="ai-memory-settings"]', { visible: true, timeout: 60_000 });
+    await page.waitForFunction(
+      (expectedId) => Number(JSON.parse(localStorage.getItem("lyfeos_user") || "{}").id) === expectedId,
+      { timeout: 30_000 },
+      account.id,
+    );
     await waitForText(page, "ai-memory-chat-summary", "1 saved text conversations, 1 voice sessions, and 0 legacy messages.");
     await waitForText(page, "ai-memory-receipt-summary", "0 context-source receipts and 0 action receipts.");
     await waitForText(page, "ai-memory-profile-summary", "A generated assistant profile is stored.");
