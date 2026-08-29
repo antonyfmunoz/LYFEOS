@@ -67,6 +67,9 @@ describe("Mission consequence preflight", () => {
     expect(acceptance).toContain('BASE_URL.origin === "https://lyfeos.net"');
     expect(acceptance).toContain('release.body?.sourceRevision === SOURCE');
     expect(acceptance).toContain('"lyfeos.production-mission-safety-browser.v1"');
+    expect(acceptance).toContain("for (let attempt = 0; attempt < 2; attempt += 1)");
+    expect(acceptance).toContain('await page.goto("about:blank"');
+    expect(acceptance).not.toContain('await page.reload({ waitUntil: "domcontentloaded" })');
     expect(acceptance).toContain('sessionInvalidated');
     expect(acceptance).toContain('emailReleased');
     expect(acceptance).toContain('displayNameReleased');

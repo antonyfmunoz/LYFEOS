@@ -250,9 +250,22 @@ async function createPage(browser: Browser, account: FixtureAccount): Promise<{ 
 }
 
 async function openMission(page: Page, missionId: number): Promise<void> {
-  await page.goto(new URL(`/mission/${missionId}`, BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
-  await waitForText(page, MISSION_TITLE);
-  await waitForText(page, "PROOF PLAN");
+  const missionUrl = new URL(`/mission/${missionId}`, BASE_URL).toString();
+  let lastFailure: unknown = null;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      await page.goto(missionUrl, { waitUntil: "domcontentloaded", timeout: 60_000 });
+      await waitForText(page, MISSION_TITLE);
+      await waitForText(page, "PROOF PLAN");
+      return;
+    } catch (error) {
+      lastFailure = error;
+      if (attempt === 1) break;
+      await page.goto("about:blank", { waitUntil: "domcontentloaded", timeout: 10_000 }).catch(() => null);
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+  }
+  throw lastFailure;
 }
 
 async function fillProofPlan(page: Page, expectedOutput: string): Promise<void> {
@@ -447,7 +460,7 @@ async function main(): Promise<void> {
     assert(prerequisiteBlockedCompletion, "The accepted high-risk Mission bypassed its incomplete prerequisite.");
     const completePrerequisite = await request("POST", `/api/quests/${prerequisiteId}/toggle`, undefined, account.cookie);
     assert(completePrerequisite.status === 200 && completePrerequisite.body.quest?.completed === true, `Prerequisite completion returned ${completePrerequisite.status}.`);
-    await page.reload({ waitUntil: "domcontentloaded" });
+    await openMission(page, missionId);
     await waitForText(page, `✓ ${PREREQUISITE_TITLE}`);
 
     stage = "materially revise the accepted plan and prove decision invalidation";
@@ -460,7 +473,7 @@ async function main(): Promise<void> {
     );
     materialRevisionInvalidatedDecision = revised.body.preflightRequirement?.satisfied === false && revised.body.preflightRequirement?.currentPreflightId === null;
     assert(materialRevisionInvalidatedDecision, "The prior consequence decision leaked across a material contract revision.");
-    await page.reload({ waitUntil: "domcontentloaded" });
+    await openMission(page, missionId);
     stage = "render the invalidated revision-two consequence boundary";
     await waitForText(page, "Consequence preflight · contract revision 2");
     stage = "render the revision-two acceptance gate";
@@ -481,7 +494,7 @@ async function main(): Promise<void> {
     assert(completedAfterAllGates, `Completion after all gates returned ${completed.status}.`);
     for (const viewport of VIEWPORTS) {
       await page.setViewport(viewport.value);
-      await page.reload({ waitUntil: "domcontentloaded" });
+      await openMission(page, missionId);
       await waitForText(page, REVISED_OUTPUT);
       await waitForText(page, `✓ ${PREREQUISITE_TITLE}`);
       const view = await inspectView(page, viewport.name);
