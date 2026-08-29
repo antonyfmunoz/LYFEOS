@@ -9,6 +9,8 @@ import { useToast } from "@/hooks/use-toast";
 
 type Domain = "missions" | "daily_state" | "health";
 type Signal = { id: string; domain: Domain; label: string; unit: string; aggregation: string; provenance: string; quality: string; enabled: boolean; availability: "local" };
+type SignalResponse = { consents: Record<Domain, "enabled" | "revoked">; signals: Signal[]; disclosure: string };
+type ConsentResponse = { consent: { domain: Domain; state: "enabled" | "revoked" }; consents: Record<Domain, "enabled" | "revoked"> };
 type Snapshot = {
   id: number;
   evidenceStart: string;
@@ -98,7 +100,7 @@ function HypothesisCard({ hypothesis }: { hypothesis: Hypothesis }) {
 
 export default function HypothesisWorkbench() {
   const { toast } = useToast();
-  const signals = useQuery<{ consents: Record<Domain, "enabled" | "revoked">; signals: Signal[]; disclosure: string }>({ queryKey: ["/api/hypotheses/signals"], queryFn: () => apiRequest("/api/hypotheses/signals") });
+  const signals = useQuery<SignalResponse>({ queryKey: ["/api/hypotheses/signals"], queryFn: () => apiRequest("/api/hypotheses/signals") });
   const records = useQuery<{ hypotheses: Hypothesis[]; disclosure: string }>({ queryKey: ["/api/hypotheses"], queryFn: () => apiRequest("/api/hypotheses") });
   const [title, setTitle] = useState("");
   const [leftSignalId, setLeftSignalId] = useState("");
@@ -108,7 +110,17 @@ export default function HypothesisWorkbench() {
   const [acknowledged, setAcknowledged] = useState(false);
   const enabledSignals = useMemo(() => (signals.data?.signals || []).filter((signal) => signal.enabled), [signals.data]);
   const invalidate = () => { void queryClient.invalidateQueries({ queryKey: ["/api/hypotheses/signals"] }); void queryClient.invalidateQueries({ queryKey: ["/api/hypotheses"] }); };
-  const consent = useMutation({ mutationFn: ({ domain, state }: { domain: Domain; state: "enabled" | "revoked" }) => apiRequest("/api/hypotheses/consents", { method: "PATCH", body: JSON.stringify({ domain, state, acknowledgedPrivateAnalysis: true }) }), onSuccess: invalidate });
+  const consent = useMutation({
+    mutationFn: ({ domain, state }: { domain: Domain; state: "enabled" | "revoked" }) => apiRequest<ConsentResponse>("/api/hypotheses/consents", { method: "PATCH", body: JSON.stringify({ domain, state, acknowledgedPrivateAnalysis: true }) }),
+    onSuccess: (response) => {
+      queryClient.setQueryData<SignalResponse>(["/api/hypotheses/signals"], (current) => current ? {
+        ...current,
+        consents: response.consents,
+        signals: current.signals.map((signal) => ({ ...signal, enabled: response.consents[signal.domain] === "enabled" })),
+      } : current);
+      void queryClient.invalidateQueries({ queryKey: ["/api/hypotheses"] });
+    },
+  });
   const create = useMutation({
     mutationFn: () => apiRequest("/api/hypotheses", { method: "POST", body: JSON.stringify({ title, leftSignalId, rightSignalId, periodDays, lagDays, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC", acknowledgedExploratory: true }) }),
     onSuccess: () => { setTitle(""); setAcknowledged(false); invalidate(); toast({ title: "Private hypothesis created" }); },
@@ -120,9 +132,11 @@ export default function HypothesisWorkbench() {
       <div className="mt-4 grid gap-2 md:grid-cols-3">
         {(Object.keys(domainCopy) as Domain[]).map((domain) => {
           const enabled = signals.data?.consents[domain] === "enabled";
-          return <button key={domain} type="button" data-testid={`hypothesis-consent-${domain}`} aria-pressed={enabled} disabled={consent.isPending} onClick={() => consent.mutate({ domain, state: enabled ? "revoked" : "enabled" })} className={`rounded-lg border p-3 text-left transition-colors ${enabled ? "border-primary/45 bg-primary/10" : "border-muted/20 bg-background/30"}`}><span className="text-sm font-medium text-foreground">{domainCopy[domain].title}</span><span className="mt-1 block text-xs text-muted-foreground">{domainCopy[domain].detail}</span><span className={`mt-2 block text-[11px] font-mono uppercase ${enabled ? "text-primary" : "text-muted-foreground"}`}>{enabled ? "Enabled" : "Off"}</span></button>;
+          const saving = consent.isPending && consent.variables?.domain === domain;
+          return <button key={domain} type="button" data-testid={`hypothesis-consent-${domain}`} aria-pressed={enabled} aria-busy={saving} disabled={consent.isPending} onClick={() => consent.mutate({ domain, state: enabled ? "revoked" : "enabled" })} className={`rounded-lg border p-3 text-left transition-colors ${enabled ? "border-primary/45 bg-primary/10" : "border-muted/20 bg-background/30"}`}><span className="text-sm font-medium text-foreground">{domainCopy[domain].title}</span><span className="mt-1 block text-xs text-muted-foreground">{domainCopy[domain].detail}</span><span className={`mt-2 block text-[11px] font-mono uppercase ${enabled ? "text-primary" : "text-muted-foreground"}`}>{saving ? "Saving…" : enabled ? "Enabled" : "Off"}</span></button>;
         })}
       </div>
+      {consent.error ? <p className="mt-2 text-xs text-destructive" role="alert">The consent change was not saved. Your previous setting remains active. Try again.</p> : null}
       <details className="mt-3 rounded-lg border border-muted/20 p-3 text-xs text-muted-foreground"><summary className="cursor-pointer text-foreground">Signal definitions and source quality</summary><div className="mt-2 grid gap-2 sm:grid-cols-2">{(signals.data?.signals || []).map((signal) => <div key={signal.id}><p className="font-medium text-foreground">{signal.label} ({signal.unit})</p><p>{signal.provenance} · {signal.quality.replaceAll("_", " ")} · {signal.aggregation}</p></div>)}</div><p className="mt-2">{signals.data?.disclosure}</p></details>
       <div className="mt-4 rounded-xl border border-muted/20 p-4">
         <h4 className="text-sm font-medium text-foreground">Test a question</h4>

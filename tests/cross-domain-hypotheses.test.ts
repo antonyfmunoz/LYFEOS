@@ -42,6 +42,9 @@ describe("Cross-domain hypothesis workspace", () => {
     expect(health).toContain("Health-derived cross-domain hypotheses");
     expect(ui).toContain("never become automatic advice, Missions, XP, rank, or badges");
     expect(ui).toContain("Scheduled recalculation runs at most daily");
+    expect(ui).toContain('queryClient.setQueryData<SignalResponse>(["/api/hypotheses/signals"]');
+    expect(ui).toContain("The consent change was not saved. Your previous setting remains active.");
+    expect(ui).toContain("aria-busy={saving}");
     expect(ui).toContain('aria-label="Private interpretation context"');
     expect(ui).toContain('data-testid="hypothesis-workbench"');
     expect(productionAcceptance).toContain('contract: "lyfeos.production-pattern-explorer-browser.v1"');
