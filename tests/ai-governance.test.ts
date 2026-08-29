@@ -105,6 +105,22 @@ describe("AI and memory governance", () => {
     expect(packageJson).toContain('"acceptance:ai-memory"');
   });
 
+  it("qualifies privacy-bound AI memory through disposable source-pinned production accounts", () => {
+    const acceptance = readSource("scripts/production-ai-memory-browser-acceptance.ts");
+    const workflow = readSource(".github/workflows/production-browser-acceptance.yml");
+    const packageJson = readSource("package.json");
+    expect(acceptance).toContain('BASE_URL.origin === "https://lyfeos.net"');
+    expect(acceptance).toContain('release.body?.sourceRevision === SOURCE');
+    expect(acceptance).toContain('"lyfeos.production-ai-memory-browser.v1"');
+    expect(acceptance).toContain('privateContentAbsent');
+    expect(acceptance).toContain('sessionInvalidated');
+    expect(acceptance).toContain('emailReleased');
+    expect(acceptance).toContain('displayNameReleased');
+    expect(workflow).toContain("Run disposable production AI-memory acceptance");
+    expect(workflow).toContain("npm run acceptance:production-ai-memory");
+    expect(packageJson).toContain('"acceptance:production-ai-memory"');
+  });
+
   it("blocks assistant webpage reads from private networks and unsafe schemes", async () => {
     expect(isPrivateOrReservedAddress("127.0.0.1")).toBe(true);
     expect(isPrivateOrReservedAddress("10.2.3.4")).toBe(true);

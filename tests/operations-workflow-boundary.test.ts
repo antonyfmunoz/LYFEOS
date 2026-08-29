@@ -27,6 +27,7 @@ describe("production operations workflow boundary", () => {
     const browser = workflow("production-browser-acceptance.yml");
     expect(browser).toContain("Resolve deployed immutable source");
     expect(browser).toContain("Run disposable production onboarding acceptance");
+    expect(browser).toContain("Run disposable production AI-memory acceptance");
     expect(browser).toContain("Run disposable production Mission safety acceptance");
     expect(browser).toContain("LYFEOS_ACCEPTANCE_SOURCE: ${{ steps.release.outputs.source }}");
     expect(browser).toContain("LYFEOS_ACCEPTANCE_HARNESS_SOURCE: ${{ github.sha }}");

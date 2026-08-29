@@ -15,6 +15,7 @@
     "acceptance:onboarding": "tsx scripts/production-onboarding-browser-acceptance.ts",
     "acceptance:automation-recovery": "tsx scripts/automation-recovery-browser-acceptance.ts",
     "acceptance:ai-memory": "tsx scripts/ai-memory-browser-acceptance.ts",
+    "acceptance:production-ai-memory": "tsx scripts/production-ai-memory-browser-acceptance.ts",
     "acceptance:messages": "tsx scripts/messages-browser-acceptance.ts",
     "acceptance:mission-safety": "tsx scripts/mission-safety-browser-acceptance.ts",
     "acceptance:thread-successor": "tsx scripts/thread-successor-browser-acceptance.ts",
