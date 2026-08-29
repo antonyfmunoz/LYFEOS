@@ -89,6 +89,15 @@ describe("production browser acceptance custody", () => {
     expect(script).toContain('contract: "lyfeos.production-browser-acceptance.failure.v1"');
     expect(script).toContain("auditRouteWithEvidence");
     expect(script).toContain("route audit failed:");
+    expect(script).toContain("retryableDocumentFailure");
+    expect(script).toContain('await page.goto("about:blank"');
+    expect(script).toContain("attemptCount: 2");
+    expect(script).toContain("recoveredFailures");
+    expect(script).toContain("recoveredRoutes");
+    expect(script).toContain('navigation === "document"');
+    expect(script).toContain("first.failedRequests.length === 0");
+    expect(script).toContain("first.serverErrors.length === 0");
+    expect(script).toContain("first.consoleErrors.length === 0");
   });
 
   it("authenticates once and reuses the verified session across responsive viewports", () => {

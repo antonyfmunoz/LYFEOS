@@ -32,6 +32,8 @@ type RouteResult = {
   failedRequests: string[];
   serverErrors: string[];
   consoleErrors: string[];
+  attemptCount: number;
+  recoveredFailures: string[];
   failures: string[];
 };
 
@@ -49,6 +51,7 @@ type AcceptanceReport = {
     routes: number;
     passed: number;
     failed: number;
+    recoveredRoutes: number;
   };
 };
 
@@ -452,6 +455,8 @@ async function auditRoute(page: Page, route: string, kind: RouteKind, viewportNa
       failedRequests: [...new Set(failedRequests)],
       serverErrors: [...new Set(serverErrors)],
       consoleErrors: [...new Set(consoleErrors)],
+      attemptCount: 1,
+      recoveredFailures: [],
       failures,
     };
 
@@ -468,51 +473,80 @@ async function auditRoute(page: Page, route: string, kind: RouteKind, viewportNa
 }
 
 async function auditRouteWithEvidence(page: Page, route: string, kind: RouteKind, viewportName: string, navigation: "document" | "spa" = "document"): Promise<RouteResult> {
-  try {
-    return await auditRoute(page, route, kind, viewportName, navigation);
-  } catch (error) {
-    const message = sanitizedFailureMessage(error);
-    const safeRoute = route === "/" ? "root" : route.slice(1).replace(/[^a-z0-9_-]+/gi, "-");
+  const captureAttempt = async (): Promise<RouteResult> => {
     try {
-      await page.screenshot({ path: path.join(OUTPUT_DIR, `${viewportName}-${safeRoute}-audit-error.png`), fullPage: true });
-    } catch {
-      // The structured route result remains useful even if Chromium cannot capture the page.
+      return await auditRoute(page, route, kind, viewportName, navigation);
+    } catch (error) {
+      const message = sanitizedFailureMessage(error);
+      const safeRoute = route === "/" ? "root" : route.slice(1).replace(/[^a-z0-9_-]+/gi, "-");
+      try {
+        await page.screenshot({ path: path.join(OUTPUT_DIR, `${viewportName}-${safeRoute}-audit-error.png`), fullPage: true });
+      } catch {
+        // The structured route result remains useful even if Chromium cannot capture the page.
+      }
+      return {
+        kind,
+        route,
+        viewport: viewportName,
+        navigation,
+        finalPath: (() => {
+          try {
+            return new URL(page.url()).pathname;
+          } catch {
+            return "";
+          }
+        })(),
+        title: "",
+        timings: {
+          domContentLoadedMs: null,
+          loadMs: null,
+          firstContentfulPaintMs: null,
+          largestContentfulPaintMs: null,
+          cumulativeLayoutShift: null,
+        },
+        accessibility: {
+          duplicateIds: [],
+          unlabeledControls: [],
+          mainCount: 0,
+          headingCount: 0,
+          tabbableCount: 0,
+          firstTabReachedControl: false,
+        },
+        horizontalOverflowPx: 0,
+        failedRequests: [],
+        serverErrors: [],
+        consoleErrors: [],
+        attemptCount: 1,
+        recoveredFailures: [],
+        failures: [`route audit failed: ${message}`],
+      };
     }
-    return {
-      kind,
-      route,
-      viewport: viewportName,
-      navigation,
-      finalPath: (() => {
-        try {
-          return new URL(page.url()).pathname;
-        } catch {
-          return "";
-        }
-      })(),
-      title: "",
-      timings: {
-        domContentLoadedMs: null,
-        loadMs: null,
-        firstContentfulPaintMs: null,
-        largestContentfulPaintMs: null,
-        cumulativeLayoutShift: null,
-      },
-      accessibility: {
-        duplicateIds: [],
-        unlabeledControls: [],
-        mainCount: 0,
-        headingCount: 0,
-        tabbableCount: 0,
-        firstTabReachedControl: false,
-      },
-      horizontalOverflowPx: 0,
-      failedRequests: [],
-      serverErrors: [],
-      consoleErrors: [],
-      failures: [`route audit failed: ${message}`],
-    };
-  }
+  };
+
+  const first = await captureAttempt();
+  const retryableDocumentFailure = navigation === "document"
+    && first.failures.length > 0
+    && first.failedRequests.length === 0
+    && first.serverErrors.length === 0
+    && first.consoleErrors.length === 0
+    && first.failures.every((failure) =>
+      /^(?:domContentLoadedMs|loadMs|firstContentfulPaintMs|largestContentfulPaintMs) .* exceeded /.test(failure)
+      || failure === "route audit failed: Waiting failed: 30000ms exceeded"
+    );
+  if (!retryableDocumentFailure) return first;
+
+  // One fresh-document retry distinguishes a transient runner/edge stall from
+  // a persistent route failure. The recovered first attempt remains in the
+  // report; semantic, application, server, resource and SPA failures never
+  // enter this recovery path.
+  await page.goto("about:blank", { waitUntil: "domcontentloaded", timeout: 30_000 });
+  await new Promise((resolve) => setTimeout(resolve, 500));
+  const second = await captureAttempt();
+  return {
+    ...second,
+    attemptCount: 2,
+    recoveredFailures: second.failures.length === 0 ? first.failures : [],
+  };
 }
 
 async function newPage(browser: Browser, viewport: Viewport, mobile: boolean): Promise<Page> {
@@ -563,7 +597,7 @@ async function writeSummary(report: AcceptanceReport): Promise<void> {
     "",
     "| Viewport | Route | Navigation | Result | LCP | CLS |",
     "| --- | --- | --- | --- | ---: | ---: |",
-    ...report.results.map((result) => `| ${result.viewport} | ${result.route} | ${result.navigation} | ${result.failures.length ? `FAIL: ${result.failures.join("; ")}` : "PASS"} | ${result.timings.largestContentfulPaintMs ?? "n/a"} | ${result.timings.cumulativeLayoutShift ?? "n/a"} |`),
+    ...report.results.map((result) => `| ${result.viewport} | ${result.route} | ${result.navigation} | ${result.failures.length ? `FAIL: ${result.failures.join("; ")}` : result.recoveredFailures.length ? `PASS after one document retry: ${result.recoveredFailures.join("; ")}` : "PASS"} | ${result.timings.largestContentfulPaintMs ?? "n/a"} | ${result.timings.cumulativeLayoutShift ?? "n/a"} |`),
     "",
     "This is automated lab evidence. It does not substitute for human screen-reader comprehension, real-field Core Web Vitals, or provider authorization evidence.",
   ];
@@ -643,6 +677,7 @@ async function main(): Promise<void> {
       routes: results.length,
       passed: results.filter((result) => result.failures.length === 0).length,
       failed: results.filter((result) => result.failures.length > 0).length,
+      recoveredRoutes: results.filter((result) => result.recoveredFailures.length > 0).length,
     },
   };
 
