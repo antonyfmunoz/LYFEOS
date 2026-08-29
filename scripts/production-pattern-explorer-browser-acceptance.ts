@@ -182,7 +182,9 @@ function dateDaysAgo(daysAgo: number): string {
 
 async function seedOwnedEvidence(account: Account): Promise<void> {
   for (let index = 0; index < 7; index += 1) {
-    const daysAgo = 6 - index;
+    // End on yesterday in UTC so all seven records are historical even when
+    // the runner and production browser straddle opposite calendar dates.
+    const daysAgo = 7 - index;
     const date = dateDaysAgo(daysAgo);
     const daily = await request("POST", `/api/users/${account.id}/daily-logs`, {
       date,
