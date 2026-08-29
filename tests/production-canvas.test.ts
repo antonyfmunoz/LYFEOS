@@ -12,7 +12,7 @@ describe("production Canvas evidence custody", () => {
   const editor = source("client/src/pages/CanvasEditorPage.tsx");
 
   it("binds the production-only contract to immutable runtime and harness sources", () => {
-    expect(acceptance).toContain('contract: "lyfeos.production-canvas-browser.v1"');
+    expect(acceptance).toContain('contract: "lyfeos.production-canvas-browser.v2"');
     expect(acceptance).toContain('BASE_URL.origin === "https://lyfeos.net"');
     expect(acceptance).toContain("release.body?.sourceRevision === SOURCE");
     expect(acceptance).toContain("HARNESS_SOURCE");
@@ -22,6 +22,8 @@ describe("production Canvas evidence custody", () => {
     expect(acceptance).toContain('name: "desktop-1440x900"');
     expect(acceptance).toContain('name: "mobile-390x844"');
     expect(acceptance).toContain("governedTemplateReviewed");
+    expect(acceptance).toContain("userTemplateCreatedAndApplied");
+    expect(acceptance).toContain('request("GET", "/api/canvas-templates", undefined, other.cookie)');
     expect(acceptance).toContain("nodeAndConnectionEditingReconciled");
     expect(acceptance).toContain("localImportReviewedAndPersisted");
     expect(acceptance).toContain("staleSaveStoppedAsConflict");

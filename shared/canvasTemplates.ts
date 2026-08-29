@@ -11,6 +11,15 @@ export const canvasTemplateSchema = z.object({
 
 export type CanvasTemplate = z.infer<typeof canvasTemplateSchema>;
 
+export const userCanvasTemplateRequestSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  description: z.string().trim().max(240).nullable().optional(),
+  category: z.string().trim().min(1).max(80).regex(/^[A-Za-z0-9 _-]+$/),
+  document: canvasDocumentSchema,
+}).strict();
+
+export type UserCanvasTemplateRequest = z.infer<typeof userCanvasTemplateRequestSchema>;
+
 export const builtInCanvasTemplates: readonly CanvasTemplate[] = canvasTemplateSchema.array().parse([
   {
     id: "project-map",

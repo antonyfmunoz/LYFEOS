@@ -39,6 +39,16 @@ type CanvasRevisionRecord = {
   createdAt: string;
 };
 
+type UserCanvasTemplateRecord = {
+  id: number;
+  name: string;
+  description: string | null;
+  category: string;
+  document: unknown;
+  createdAt: string;
+  updatedAt: string;
+};
+
 const nodeColorClasses: Record<CanvasNode["color"], string> = {
   slate: "border-slate-400/40 bg-slate-950/90",
   cyan: "border-cyan-400/45 bg-cyan-950/90",
@@ -78,6 +88,7 @@ export default function CanvasEditorPage() {
   const [pendingImport, setPendingImport] = useState<{ document: CanvasDocument; fileName: string } | null>(null);
   const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
   const [pendingTemplateId, setPendingTemplateId] = useState<string | null>(null);
+  const [templateName, setTemplateName] = useState("");
   const [localHistoryState, setLocalHistoryState] = useState({ canUndo: false, canRedo: false });
   const dragRef = useRef<{ nodeIds: string[]; clientX: number; clientY: number; origins: Record<string, { x: number; y: number }>; snapshot: CanvasDocument; moved: boolean } | null>(null);
   const panRef = useRef<{ clientX: number; clientY: number; x: number; y: number; snapshot: CanvasDocument; moved: boolean } | null>(null);
@@ -96,6 +107,10 @@ export default function CanvasEditorPage() {
     queryKey: ["/api/canvases", id, "revisions"],
     queryFn: () => apiRequest(`/api/canvases/${id}/revisions`),
     enabled: !isNew && Number.isInteger(id),
+  });
+  const userTemplates = useQuery<{ templates: UserCanvasTemplateRecord[]; limit: number }>({
+    queryKey: ["/api/canvas-templates"],
+    queryFn: () => apiRequest("/api/canvas-templates"),
   });
 
   useEffect(() => {
@@ -175,6 +190,33 @@ export default function CanvasEditorPage() {
       toast({ title: `Restored as version ${restored.revision}`, description: "The historical canvas was copied into a new immutable version." });
     },
   });
+  const saveTemplate = useMutation({
+    mutationFn: () => apiRequest<{ template: UserCanvasTemplateRecord }>("/api/canvas-templates", {
+      method: "POST",
+      body: JSON.stringify({
+        name: templateName.trim(),
+        description: description.trim() || null,
+        category,
+        document,
+      }),
+    }),
+    onSuccess: (result) => {
+      setTemplateName("");
+      void queryClient.invalidateQueries({ queryKey: ["/api/canvas-templates"] });
+      setPendingTemplateId(`user:${result.template.id}`);
+      toast({ title: "Reusable Canvas template saved", description: "This private snapshot is now available in your template library." });
+    },
+    onError: (error) => toast({ title: "Template could not be saved", description: error instanceof Error ? error.message : "Please try again.", variant: "destructive" }),
+  });
+  const deleteTemplate = useMutation({
+    mutationFn: (templateId: number) => apiRequest(`/api/canvas-templates/${templateId}`, { method: "DELETE" }),
+    onSuccess: (_result, templateId) => {
+      if (pendingTemplateId === `user:${templateId}`) setPendingTemplateId(null);
+      void queryClient.invalidateQueries({ queryKey: ["/api/canvas-templates"] });
+      toast({ title: "Canvas template deleted", description: "Existing canvases created from it are unchanged." });
+    },
+    onError: (error) => toast({ title: "Template could not be deleted", description: error instanceof Error ? error.message : "Please try again.", variant: "destructive" }),
+  });
 
   const updateDocument = (updater: (current: CanvasDocument) => CanvasDocument) => {
     undoStack.current = [...undoStack.current.slice(-19), document];
@@ -220,10 +262,21 @@ export default function CanvasEditorPage() {
     setLegacyContent(null); setSelectedNodeId(null); setSelectedNodeIds([]); setConnectionTarget(""); setPendingImport(null); setPendingTemplateId(null); setTemplatePickerOpen(false);
     toast({ title: "Canvas import staged", description: "Review the imported workspace, then Save to create a new immutable version." });
   };
-  const pendingTemplate = builtInCanvasTemplates.find((template) => template.id === pendingTemplateId) || null;
+  const pendingBuiltInTemplate = builtInCanvasTemplates.find((template) => template.id === pendingTemplateId) || null;
+  const pendingUserTemplate = pendingTemplateId?.startsWith("user:")
+    ? userTemplates.data?.templates.find((template) => template.id === Number(pendingTemplateId.slice(5))) || null
+    : null;
+  const pendingTemplate = pendingBuiltInTemplate
+    ? { ...pendingBuiltInTemplate, kind: "built-in" as const }
+    : pendingUserTemplate
+      ? { ...pendingUserTemplate, kind: "user" as const }
+      : null;
   const applyTemplate = () => {
     if (!pendingTemplate) return;
-    updateDocument(() => createCanvasDocumentFromTemplate(pendingTemplate.id));
+    const parsed = pendingTemplate.kind === "built-in"
+      ? createCanvasDocumentFromTemplate(pendingTemplate.id)
+      : canvasDocumentSchema.parse(pendingTemplate.document);
+    updateDocument(() => parsed);
     setLegacyContent(null); setPendingImport(null); setPendingTemplateId(null); setTemplatePickerOpen(false); setSelectedNodeId(null); setSelectedNodeIds([]); setConnectionTarget("");
     toast({ title: `${pendingTemplate.name} applied`, description: "The template is an unsaved, reversible Canvas change. Review it before saving." });
   };
@@ -382,7 +435,7 @@ export default function CanvasEditorPage() {
         {dirty && <span className="text-xs text-amber-400">unsaved</span>}
       </div>
       <div className="flex flex-wrap gap-2">
-        <Button data-testid="canvas-templates" variant="outline" aria-expanded={templatePickerOpen} onClick={() => { setTemplatePickerOpen((open) => !open); setPendingTemplateId(null); }}><LayoutTemplate className="mr-1 h-4 w-4" />Templates</Button>
+        <Button data-testid="canvas-templates" variant="outline" aria-expanded={templatePickerOpen} onClick={() => { setTemplatePickerOpen((open) => !open); setPendingTemplateId(null); setTemplateName(title.trim() === "Untitled Canvas" ? "" : title.trim().slice(0, 80)); }}><LayoutTemplate className="mr-1 h-4 w-4" />Templates</Button>
         <input ref={importInput} type="file" accept="application/json,.json" className="hidden" aria-label="Import LyfeOS Canvas JSON" onChange={(event) => void stageJsonImport(event.target.files?.[0])} />
         <Button variant="outline" onClick={() => importInput.current?.click()}><Upload className="mr-1 h-4 w-4" />Import</Button>
         <Button variant="outline" onClick={() => downloadJson(filename, legacyContent ?? document)}><Download className="mr-1 h-4 w-4" />JSON</Button>
@@ -396,6 +449,23 @@ export default function CanvasEditorPage() {
 
     {templatePickerOpen && <section className="rounded-xl border border-primary/20 bg-card/30 p-4" aria-label="Canvas template library">
       <div><h2 className="font-medium">Canvas templates</h2><p className="mt-1 text-xs text-muted-foreground">Choose a governed starting structure. Selection is only a preview; Apply replaces the unsaved Canvas document, remains reversible with Undo, and still requires Save.</p></div>
+      <div className="mt-3 rounded-lg border border-primary/15 bg-background/20 p-3" aria-label="Save current Canvas as a template">
+        <div className="flex flex-wrap items-end gap-2">
+          <label className="min-w-[220px] flex-1 text-xs text-muted-foreground">Template name<Input data-testid="canvas-template-name" className="mt-1" value={templateName} maxLength={80} onChange={(event) => setTemplateName(event.target.value)} placeholder="Reusable template name" /></label>
+          <Button data-testid="canvas-template-save" variant="outline" disabled={!templateName.trim() || saveTemplate.isPending || legacyContent !== null} onClick={() => saveTemplate.mutate()}><Save className="mr-1 h-4 w-4" />{saveTemplate.isPending ? "Saving…" : "Save current as template"}</Button>
+        </div>
+        <p className="mt-2 text-[11px] text-muted-foreground">Saves a private snapshot of the current unsaved document. Future template edits never change canvases already created from it.</p>
+      </div>
+      {!!userTemplates.data?.templates.length && <div className="mt-4"><h3 className="text-xs font-mono uppercase tracking-wider text-primary">Your templates</h3><div className="mt-2 grid gap-2 md:grid-cols-3">{userTemplates.data.templates.map((template) => {
+        const parsed = canvasDocumentSchema.safeParse(template.document);
+        if (!parsed.success) return null;
+        const templateKey = `user:${template.id}`;
+        return <article key={template.id} className={`rounded-lg border p-3 ${pendingTemplateId === templateKey ? "border-primary bg-primary/10" : "border-primary/10 bg-background/20"}`}>
+          <button type="button" data-testid={`canvas-user-template-${template.id}`} aria-pressed={pendingTemplateId === templateKey} onClick={() => setPendingTemplateId(templateKey)} className="block w-full text-left"><span className="text-[10px] font-mono uppercase tracking-wider text-primary">{template.category}</span><span className="mt-1 block text-sm font-medium">{template.name}</span><span className="mt-1 block text-xs leading-relaxed text-muted-foreground">{template.description || "Private reusable Canvas snapshot."}</span><span className="mt-2 block text-[10px] text-muted-foreground">{parsed.data.nodes.length} nodes · {parsed.data.edges.length} connections</span></button>
+          <Button size="sm" variant="ghost" className="mt-2 px-0 text-xs text-muted-foreground hover:text-destructive" disabled={deleteTemplate.isPending} onClick={() => { if (window.confirm(`Delete template “${template.name}”? Existing canvases will not change.`)) deleteTemplate.mutate(template.id); }}><Trash2 className="mr-1 h-3.5 w-3.5" />Delete template</Button>
+        </article>;
+      })}</div></div>}
+      <h3 className="mt-4 text-xs font-mono uppercase tracking-wider text-primary">LyfeOS templates</h3>
       <div className="mt-3 grid gap-2 md:grid-cols-3">{builtInCanvasTemplates.map((template) => <button key={template.id} type="button" data-testid={`canvas-template-${template.id}`} aria-pressed={pendingTemplateId === template.id} onClick={() => setPendingTemplateId(template.id)} className={`rounded-lg border p-3 text-left transition ${pendingTemplateId === template.id ? "border-primary bg-primary/10" : "border-primary/10 bg-background/20 hover:border-primary/35"}`}><span className="text-[10px] font-mono uppercase tracking-wider text-primary">{template.category}</span><span className="mt-1 block text-sm font-medium">{template.name}</span><span className="mt-1 block text-xs leading-relaxed text-muted-foreground">{template.description}</span><span className="mt-2 block text-[10px] text-muted-foreground">{template.document.nodes.length} nodes · {template.document.edges.length} connections</span></button>)}</div>
       {pendingTemplate && <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/20 bg-primary/5 p-3"><p className="text-xs text-muted-foreground"><span className="font-medium text-foreground">Review {pendingTemplate.name}:</span> applying replaces {document.nodes.length} current nodes and {document.edges.length} connections only in the unsaved editor.</p><div className="flex gap-2"><Button size="sm" variant="ghost" onClick={() => setPendingTemplateId(null)}>Cancel</Button><Button data-testid="canvas-template-apply" size="sm" onClick={applyTemplate}>Apply template</Button></div></div>}
     </section>}

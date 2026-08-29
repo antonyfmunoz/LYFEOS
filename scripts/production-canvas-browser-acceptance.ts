@@ -19,6 +19,7 @@ type ViewResult = {
   viewport: string;
   catalogAndEditorRendered: boolean;
   governedTemplateReviewed: boolean;
+  userTemplateCreatedAndApplied: boolean;
   nodeAndConnectionEditingReconciled: boolean;
   undoRedoReconciled: boolean;
   viewportControlsReconciled: boolean;
@@ -354,6 +355,20 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     await page.waitForFunction(() => document.querySelector('button[aria-label="Reset canvas view to 100 percent"]')?.textContent?.includes("100%"), { timeout: 30_000 });
     const viewportControlsReconciled = true;
 
+    stage = "save, isolate, and reapply an owner-authored Canvas template";
+    await activate(page, '[data-testid="canvas-templates"]');
+    await setValue(page, '[data-testid="canvas-template-name"]', `Reusable decision map ${ordinal}`);
+    await activate(page, '[data-testid="canvas-template-save"]');
+    await page.waitForSelector('[data-testid^="canvas-user-template-"]', { visible: true, timeout: 45_000 });
+    const ownerTemplates = await request("GET", "/api/canvas-templates", undefined, owner.cookie);
+    const otherTemplates = await request("GET", "/api/canvas-templates", undefined, other.cookie);
+    assert(ownerTemplates.status === 200 && ownerTemplates.body.templates?.length === 1, "Owner-authored Canvas template did not persist exactly once.");
+    assert(otherTemplates.status === 200 && otherTemplates.body.templates?.length === 0, "Owner-authored Canvas template crossed the account boundary.");
+    await activate(page, '[data-testid^="canvas-user-template-"]');
+    await activate(page, '[data-testid="canvas-template-apply"]');
+    await page.waitForFunction((title) => document.querySelector('[data-testid="canvas-node-project_outcome"]')?.textContent?.includes(String(title)), { timeout: 30_000 }, `Qualified outcome ${ordinal}`);
+    const userTemplateCreatedAndApplied = true;
+
     stage = "review a local Canvas JSON import and preserve Undo/Redo";
     const fileInput = await page.$('input[aria-label="Import LyfeOS Canvas JSON"]');
     assert(fileInput, "Local Canvas JSON input is unavailable.");
@@ -436,7 +451,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     assertCleanAudit(catalogAudit, `${viewport.name} Canvas catalog`);
     await acknowledgeBoundedChunkRecovery(page, signals);
     assert(!hasUnexpectedBrowserSignals(signals), `${viewport.name} Canvas journey produced application errors: ${JSON.stringify(signals)}.`);
-    view = { viewport: viewport.name, catalogAndEditorRendered, governedTemplateReviewed, nodeAndConnectionEditingReconciled, undoRedoReconciled, viewportControlsReconciled, localImportReviewedAndPersisted, immutableCreationRevisionReconciled, crossOwnerIsolationReconciled, staleSaveStoppedAsConflict, maximumDocumentRendered, renderedNodeCountAtLimit, reconciledSaveCreatedNewRevision, restoreCreatedNewImmutableRevision, catalogPersistenceRendered, editorAudit, catalogAudit, signals };
+    view = { viewport: viewport.name, catalogAndEditorRendered, governedTemplateReviewed, userTemplateCreatedAndApplied, nodeAndConnectionEditingReconciled, undoRedoReconciled, viewportControlsReconciled, localImportReviewedAndPersisted, immutableCreationRevisionReconciled, crossOwnerIsolationReconciled, staleSaveStoppedAsConflict, maximumDocumentRendered, renderedNodeCountAtLimit, reconciledSaveCreatedNewRevision, restoreCreatedNewImmutableRevision, catalogPersistenceRendered, editorAudit, catalogAudit, signals };
   } catch (error) {
     const rendered = page ? await page.evaluate(() => document.body?.innerText.slice(0, 2_000) || "page unavailable").catch(() => "page unavailable") : "page unavailable";
     if (page) await page.screenshot({ path: path.join(OUTPUT_DIR, `canvas-${viewport.name}-failure.png`), fullPage: true }).catch(() => undefined);
@@ -476,7 +491,7 @@ async function main(): Promise<void> {
     if (browser) await browser.close().catch(() => undefined);
     const passed = failure === null && views.length === VIEWPORTS.length && cleanups.length === VIEWPORTS.length && cleanups.every((cleanup) => cleanup.accountErased && cleanup.otherAccountErased);
     const report = {
-      contract: "lyfeos.production-canvas-browser.v1",
+      contract: "lyfeos.production-canvas-browser.v2",
       generatedAt: new Date().toISOString(),
       baseUrl: BASE_URL.origin,
       sourceRevision: SOURCE,
@@ -484,7 +499,7 @@ async function main(): Promise<void> {
       views,
       cleanups,
       summary: { passed, failure },
-      boundary: "Disposable production-account Chromium evidence for Canvas. It proves desktop/mobile catalog and editor rendering; explicit built-in template review; node and directed-connection editing; local undo/redo and viewport controls; explicit local LyfeOS Canvas JSON review before persistence; immutable create, update, conflict and restore revisions; cross-owner isolation; complete rendering at the documented 300-node limit; responsive semantics; and verified account/session/identifier erasure. It does not prove physical-device pointer or multi-touch gesture quality, browser file-picker denial recovery, simultaneous multi-tab editing, human assistive-technology comprehension, user-authored template catalogs, arbitrary third-party whiteboard import, collaboration, production-scale rendering latency, or longitudinal usefulness of user-authored maps.",
+      boundary: "Disposable production-account Chromium evidence for Canvas. It proves desktop/mobile catalog and editor rendering; explicit built-in template review; creation, owner isolation and reapplication of a private user-authored template snapshot; node and directed-connection editing; local undo/redo and viewport controls; explicit local LyfeOS Canvas JSON review before persistence; immutable create, update, conflict and restore revisions; cross-owner isolation; complete rendering at the documented 300-node limit; responsive semantics; and verified account/session/identifier erasure. It does not prove physical-device pointer or multi-touch gesture quality, browser file-picker denial recovery, simultaneous multi-tab editing, human assistive-technology comprehension, arbitrary third-party whiteboard import, collaboration, production-scale rendering latency, or longitudinal usefulness of user-authored maps.",
     };
     await fs.writeFile(OUTPUT_FILE, `${JSON.stringify(report, null, 2)}\n`, "utf8");
     if (process.env.GITHUB_STEP_SUMMARY) {

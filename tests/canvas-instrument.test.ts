@@ -8,7 +8,7 @@ import {
   createEmptyCanvasDocument,
   updateCanvasRequestSchema,
 } from "../shared/canvases";
-import { builtInCanvasTemplates, canvasTemplateSchema, createCanvasDocumentFromTemplate } from "../shared/canvasTemplates";
+import { builtInCanvasTemplates, canvasTemplateSchema, createCanvasDocumentFromTemplate, userCanvasTemplateRequestSchema } from "../shared/canvasTemplates";
 import { fitCanvasViewport, panCanvasViewport, zoomCanvasViewport } from "../client/src/lib/canvasViewport";
 
 const source = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8");
@@ -111,7 +111,7 @@ describe("Canvas instrument", () => {
       expect(contract).toContain("canvas_revisions_canvas_revision_unique_idx");
     }
     expect(release).toContain('id: "0107_canvas_revisions"');
-    expect(profile).toContain('"canvas_revisions", "canvases"');
+    expect(profile).toContain('"canvas_revisions", "canvas_templates", "canvases"');
     expect(canvasRevisionSnapshotSchema.safeParse({ title: "Map", description: null, category: "planning", content: createEmptyCanvasDocument() }).success).toBe(true);
   });
 
@@ -197,9 +197,39 @@ describe("Canvas instrument", () => {
     expect(editor).toContain('aria-label="Canvas template library"');
     expect(editor).toContain("aria-pressed={pendingTemplateId === template.id}");
     expect(editor).toContain("Apply replaces the unsaved Canvas document");
-    expect(editor).toContain("updateDocument(() => createCanvasDocumentFromTemplate(pendingTemplate.id))");
+    expect(editor).toContain('pendingTemplate.kind === "built-in"');
+    expect(editor).toContain("createCanvasDocumentFromTemplate(pendingTemplate.id)");
+    expect(editor).toContain("canvasDocumentSchema.parse(pendingTemplate.document)");
     expect(editor).toContain("only in the unsaved editor");
     expect(editor).toContain("still requires Save");
     expect(editor).toContain("unsaved, reversible Canvas change");
+  });
+
+  it("supports owner-authored private templates without weakening Canvas validation", () => {
+    const document = createEmptyCanvasDocument();
+    expect(userCanvasTemplateRequestSchema.safeParse({ name: "My planning map", description: null, category: "planning", document }).success).toBe(true);
+    expect(userCanvasTemplateRequestSchema.safeParse({ name: "My map", category: "planning", document, userId: 99 }).success).toBe(false);
+    expect(userCanvasTemplateRequestSchema.safeParse({ name: "My map", category: "../../unsafe", document }).success).toBe(false);
+
+    const routes = source("server/routes/content.ts");
+    const editor = source("client/src/pages/CanvasEditorPage.tsx");
+    const migration = source("migrations/0142_canvas_templates.sql");
+    const release = source("server/release-migrate.ts");
+    const profile = source("server/routes/profile.ts");
+    expect(routes).toContain('app.get("/api/canvas-templates"');
+    expect(routes).toContain('app.post("/api/canvas-templates"');
+    expect(routes).toContain('app.delete("/api/canvas-templates/:id"');
+    expect(routes).toContain("userCanvasTemplateRequestSchema.parse(req.body)");
+    expect(routes).toContain("eq(canvasTemplates.userId, req.session.userId!)");
+    expect(editor).toContain('data-testid="canvas-template-save"');
+    expect(editor).toContain('data-testid={`canvas-user-template-${template.id}`}');
+    expect(editor).toContain("Future template edits never change canvases already created from it");
+    for (const contract of [migration, release]) {
+      expect(contract).toContain('"canvas_templates"');
+      expect(contract).toContain('REFERENCES "users"("id") ON DELETE CASCADE');
+      expect(contract).toContain('"canvas_templates_user_updated_idx"');
+    }
+    expect(release).toContain('id: "0142_canvas_templates"');
+    expect(profile).toContain('"canvas_revisions", "canvas_templates", "canvases"');
   });
 });

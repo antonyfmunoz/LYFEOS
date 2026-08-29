@@ -1461,6 +1461,19 @@ export const canvasRevisions = pgTable("canvas_revisions", {
   index("canvas_revisions_user_canvas_created_idx").on(table.userId, table.canvasId, table.createdAt),
 ]);
 
+export const canvasTemplates = pgTable("canvas_templates", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  description: text("description"),
+  category: text("category").notNull().default("general"),
+  document: jsonb("document").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("canvas_templates_user_updated_idx").on(table.userId, table.updatedAt),
+]);
+
 // Insert schema for Canvas
 export const insertCanvasSchema = createInsertSchema(canvases).omit({
   id: true,
@@ -1584,6 +1597,7 @@ export const insertDocumentSchema = createInsertSchema(documents).omit({
 export type Canvas = typeof canvases.$inferSelect;
 export type InsertCanvas = z.infer<typeof insertCanvasSchema>;
 export type CanvasRevision = typeof canvasRevisions.$inferSelect;
+export type CanvasTemplateRecord = typeof canvasTemplates.$inferSelect;
 
 export type Graph = typeof graphs.$inferSelect;
 export type InsertGraph = z.infer<typeof insertGraphSchema>;

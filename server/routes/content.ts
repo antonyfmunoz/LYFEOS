@@ -22,11 +22,13 @@ import {
   spreadsheetRevisions,
   canvases,
   canvasRevisions,
+  canvasTemplates,
   quests,
   missionPages,
 } from "@shared/schema";
 import { createSpreadsheetRequestSchema, spreadsheetRevisionSnapshotSchema, updateSpreadsheetRequestSchema } from "@shared/spreadsheets";
 import { canvasRevisionSnapshotSchema, createCanvasRequestSchema, updateCanvasRequestSchema } from "@shared/canvases";
+import { userCanvasTemplateRequestSchema } from "@shared/canvasTemplates";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { parseExpectedResourceRevision } from "../revision-concurrency";
 
@@ -41,7 +43,7 @@ declare module "express-session" {
 
 export function registerContentRoutes(app: Express): void {
   app.use((req, res, next) => {
-    if (req.path.includes("/spreadsheets") || req.path.includes("/canvases")) {
+    if (req.path.includes("/spreadsheets") || req.path.includes("/canvases") || req.path.includes("/canvas-templates")) {
       res.setHeader("Cache-Control", "private, no-store, max-age=0");
       res.setHeader("Pragma", "no-cache");
       res.setHeader("Vary", "Cookie");
@@ -899,6 +901,63 @@ export function registerContentRoutes(app: Express): void {
     } catch (error) {
       logger.error("Error toggling canvas favorite status:", error);
       return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/canvas-templates", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const templates = await db.select({
+        id: canvasTemplates.id,
+        name: canvasTemplates.name,
+        description: canvasTemplates.description,
+        category: canvasTemplates.category,
+        document: canvasTemplates.document,
+        createdAt: canvasTemplates.createdAt,
+        updatedAt: canvasTemplates.updatedAt,
+      }).from(canvasTemplates).where(eq(canvasTemplates.userId, req.session.userId!)).orderBy(desc(canvasTemplates.updatedAt)).limit(100);
+      return res.status(200).json({ templates, limit: 100 });
+    } catch (error) {
+      logger.error("Error getting canvas templates:", error);
+      return res.status(500).json({ error: "Could not load Canvas templates" });
+    }
+  });
+
+  app.post("/api/canvas-templates", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const input = userCanvasTemplateRequestSchema.parse(req.body);
+      const result = await db.transaction(async (tx) => {
+        await tx.execute(sql`SELECT id FROM users WHERE id = ${req.session.userId!} FOR UPDATE`);
+        const count = await tx.execute(sql`SELECT count(*)::integer AS count FROM canvas_templates WHERE user_id = ${req.session.userId!}`);
+        const currentCount = Number((count.rows[0] as { count?: unknown } | undefined)?.count || 0);
+        if (currentCount >= 100) return { kind: "limit" } as const;
+        const [template] = await tx.insert(canvasTemplates).values({
+          userId: req.session.userId!,
+          name: input.name,
+          description: input.description || null,
+          category: input.category,
+          document: input.document,
+        }).returning();
+        return { kind: "created", template } as const;
+      });
+      if (result.kind === "limit") return res.status(409).json({ error: "Canvas template limit reached. Delete an older template before saving another." });
+      return res.status(201).json({ template: result.template });
+    } catch (error) {
+      if (error instanceof z.ZodError) return res.status(400).json({ error: "Invalid Canvas template", details: error.flatten() });
+      logger.error("Error creating canvas template:", error);
+      return res.status(500).json({ error: "Could not save Canvas template" });
+    }
+  });
+
+  app.delete("/api/canvas-templates/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const templateId = Number(req.params.id);
+      if (!Number.isInteger(templateId) || templateId < 1) return res.status(400).json({ error: "Invalid Canvas template ID" });
+      const [deleted] = await db.delete(canvasTemplates).where(and(eq(canvasTemplates.id, templateId), eq(canvasTemplates.userId, req.session.userId!))).returning({ id: canvasTemplates.id });
+      if (!deleted) return res.status(404).json({ error: "Canvas template not found" });
+      return res.status(200).json({ deleted: true, id: deleted.id });
+    } catch (error) {
+      logger.error("Error deleting canvas template:", error);
+      return res.status(500).json({ error: "Could not delete Canvas template" });
     }
   });
 
