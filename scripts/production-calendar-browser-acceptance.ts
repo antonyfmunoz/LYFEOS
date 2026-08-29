@@ -255,7 +255,13 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     const session = cookieParts(account.cookie);
     await page.setCookie({ ...session, url: BASE_URL.origin, path: "/", httpOnly: true, secure: true, sameSite: "Lax" });
     await page.evaluateOnNewDocument((fixtureUser) => {
-      try { localStorage.setItem("lyfeos_user", JSON.stringify(fixtureUser)); } catch { /* Origin is not ready. */ }
+      try {
+        localStorage.setItem("lyfeos_user", JSON.stringify(fixtureUser));
+        // Calendar is the subject of this contract. Mark the unrelated Missions
+        // tutorial complete before React's async profile query can mount it over
+        // a later Calendar interaction.
+        localStorage.setItem(`lyfeos-tutorial-done-missions-${fixtureUser.id}`, "true");
+      } catch { /* Origin is not ready. */ }
     }, { id: account.id, displayName: account.displayName });
     await page.setViewport(viewport.value);
     await page.emulateTimezone(CALENDAR_TIME_ZONE);
