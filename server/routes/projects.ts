@@ -5,7 +5,7 @@ import { ZodError } from "zod";
 import { canTransitionProject, createProjectMissionSchema, createProjectSchema, projectMissionSchema, projectRecoverySchema, projectStateSchema, removeProjectSchema, transitionProjectSchema, updateProjectSchema } from "@shared/projects";
 import { kanbanBoards, projectEvents, quests, type Quest } from "@shared/schema";
 import { db } from "../db";
-import { changeMissionProjectMembershipLifecycle, createMissionLifecycle, MissionLifecycleError } from "../mission-lifecycle";
+import { changeMissionProjectMembershipLifecycle, createProjectMissionLifecycle, MissionLifecycleError } from "../mission-lifecycle";
 import { logger } from "../utils";
 import { isAuthenticated } from "./middleware";
 
@@ -209,26 +209,19 @@ export function registerProjectRoutes(app: Express): void {
     try {
       const id = idParam(req.params.id); if (!id) return res.status(400).json({ error: "Invalid project ID" });
       const input = createProjectMissionSchema.parse(req.body), userId = req.session.userId!;
-      const project = await ownedProject(id, userId); if (!project) return res.status(404).json({ error: "Project not found" });
       const lifecycleKey = `project:${id}:create:${input.mutationId}`;
       const payloadHash = createHash("sha256").update(JSON.stringify({ title: input.title, description: input.description, dueDate: input.dueDate })).digest("hex");
-      let [mission] = await db.select().from(quests).where(and(eq(quests.userId, userId), eq(quests.lifecycleKey, lifecycleKey))).limit(1);
-      let replayed = Boolean(mission);
-      if (mission && mission.lifecyclePayloadHash !== payloadHash) throw new ProjectRequestError(409, "This mission mutation identity was already used with different details.");
-      if (!mission) {
-        if (project.revision !== input.expectedRevision) return res.status(409).json({ error: "Project changed in another session. Refresh before creating a Mission." });
-        if (project.state === "completed" || project.state === "archived") return res.status(409).json({ error: "Reopen this Project before creating another Mission." });
-        try {
-          mission = await createMissionLifecycle({ userId, title: input.title, description: input.description, dueDate: input.dueDate, projectId: null, lifecycleKey, lifecyclePayloadHash: payloadHash, source: "ui" });
-        } catch (error) {
-          [mission] = await db.select().from(quests).where(and(eq(quests.userId, userId), eq(quests.lifecycleKey, lifecycleKey))).limit(1);
-          if (!mission) throw error;
-          replayed = true;
-        }
-      }
-      if (mission.lifecyclePayloadHash !== payloadHash) throw new ProjectRequestError(409, "This mission mutation identity was already used with different details.");
-      const result = await changeMissionProjectMembershipLifecycle({ userId, projectId: id, missionId: mission.id, expectedProjectRevision: input.expectedRevision, expectedMissionRevision: mission.revision, mode: "link" });
-      res.status(replayed || result.replayed ? 200 : 201).json({ mission: publicMission(result.mission), project: result.project, replayed: replayed || result.replayed });
+      const result = await createProjectMissionLifecycle({
+        userId,
+        projectId: id,
+        title: input.title,
+        description: input.description,
+        dueDate: input.dueDate,
+        expectedProjectRevision: input.expectedRevision,
+        lifecycleKey,
+        lifecyclePayloadHash: payloadHash,
+      });
+      res.status(result.replayed ? 200 : 201).json({ mission: publicMission(result.mission), project: result.project, replayed: result.replayed });
     } catch (error) { return requestError(res, error); }
   });
 }

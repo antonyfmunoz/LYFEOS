@@ -85,6 +85,42 @@ describeApi("Project lifecycle recovery", () => {
     expect(missions.data.missions.filter((row: any) => row.title === body.title)).toHaveLength(1);
   });
 
+  it("commits a Project edit or its new Mission atomically without leaving an orphan", async () => {
+    const project = await request("POST", "/api/projects", { title: "Atomic", outcome: "One aggregate result", description: null, startDate: null, dueDate: null }, cookie);
+    expect(project.status).toBe(201);
+    const atomicProjectId = project.data.project.id;
+    const missionTitle = `Atomic race mission ${stamp}`;
+    const [missionResult, editResult] = await Promise.all([
+      request("POST", `/api/projects/${atomicProjectId}/missions/new`, {
+        title: missionTitle,
+        description: "",
+        dueDate: null,
+        expectedRevision: 1,
+        mutationId: crypto.randomUUID(),
+      }, cookie),
+      request("PATCH", `/api/projects/${atomicProjectId}`, {
+        description: "Competing project edit",
+        expectedRevision: 1,
+      }, cookie),
+    ]);
+    expect([missionResult.status, editResult.status].filter((status) => status === 409)).toHaveLength(1);
+    expect([missionResult.status, editResult.status].filter((status) => status === 200 || status === 201)).toHaveLength(1);
+
+    const detail = await request("GET", `/api/projects/${atomicProjectId}`, undefined, cookie);
+    expect(detail.status).toBe(200);
+    expect(detail.data.project.revision).toBe(2);
+    const linked = detail.data.missions.filter((row: any) => row.title === missionTitle);
+    const allMissions = await request("GET", "/api/automations/missions", undefined, cookie);
+    const anywhere = allMissions.data.missions.filter((row: any) => row.title === missionTitle);
+    if (missionResult.status === 201) {
+      expect(linked).toHaveLength(1);
+      expect(anywhere).toHaveLength(1);
+    } else {
+      expect(linked).toHaveLength(0);
+      expect(anywhere).toHaveLength(0);
+    }
+  });
+
   it("serializes completion against a new open Mission link", async () => {
     const project = await request("POST", "/api/projects", { title: "Race", outcome: "No invalid completed state", description: null, startDate: null, dueDate: null }, cookie);
     const projectId = project.data.project.id;

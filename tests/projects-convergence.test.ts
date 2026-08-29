@@ -38,8 +38,12 @@ describe("Projects convergence", () => {
   it("uses Missions as Project tasks and never writes duplicate kanban tasks", () => {
     const routes = source("server/routes/projects.ts");
     const lifecycle = source("server/mission-lifecycle.ts");
-    expect(routes).toContain("createMissionLifecycle({");
+    expect(routes).toContain("createProjectMissionLifecycle({");
     expect(routes).toContain("changeMissionProjectMembershipLifecycle({");
+    expect(lifecycle).toContain("export async function createProjectMissionLifecycle");
+    expect(lifecycle).toContain("can never leave behind an unlinked Mission");
+    expect(lifecycle).toContain("projectId: input.projectId");
+    expect(lifecycle).toContain('eventType: "mission_created"');
     expect(lifecycle).toContain("changeMissionProjectMembershipLifecycle");
     expect(lifecycle).toContain("tx.update(quests)");
     expect(lifecycle).toContain('storage.logActivityEvent(input.userId, "mission_updated"');

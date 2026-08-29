@@ -306,6 +306,96 @@ export async function changeMissionProjectMembershipLifecycle(input: {
   return result;
 }
 
+/** Creates a canonical Mission and attaches it to its Project in the same
+ * transaction. A competing Project mutation therefore wins or loses as one
+ * aggregate change; it can never leave behind an unlinked Mission after the
+ * Project request reports a conflict. Exact lifecycle-key retries recover the
+ * already-linked Mission without repeating activity or automation effects. */
+export async function createProjectMissionLifecycle(input: {
+  userId: number;
+  projectId: number;
+  title: string;
+  description: string;
+  dueDate: string | null;
+  expectedProjectRevision: number;
+  lifecycleKey: string;
+  lifecyclePayloadHash: string;
+}) {
+  const prepared = await prepareMissionCreation({
+    userId: input.userId,
+    title: input.title,
+    description: input.description,
+    dueDate: input.dueDate,
+    projectId: input.projectId,
+    lifecycleKey: input.lifecycleKey,
+    lifecyclePayloadHash: input.lifecyclePayloadHash,
+  }, { source: "ui" });
+  const result = await db.transaction(async (tx) => {
+    const [project] = await tx.select().from(kanbanBoards).where(and(
+      eq(kanbanBoards.id, input.projectId),
+      eq(kanbanBoards.userId, input.userId),
+      isNull(kanbanBoards.deletedAt),
+    )).for("update").limit(1);
+    if (!project) throw new MissionLifecycleError(404, "Project not found");
+
+    const [existing] = await tx.select().from(quests).where(and(
+      eq(quests.userId, input.userId),
+      eq(quests.lifecycleKey, input.lifecycleKey),
+    )).limit(1);
+    if (existing) {
+      if (existing.lifecyclePayloadHash !== input.lifecyclePayloadHash) {
+        throw new MissionLifecycleError(409, "This mission mutation identity was already used with different details.", existing);
+      }
+      if (existing.projectId === project.id) return { project, mission: existing, replayed: true, created: false };
+      throw new MissionLifecycleError(409, "This mission mutation was created previously but is no longer linked to this Project. Review it before retrying.", existing);
+    }
+
+    if (project.state === "completed" || project.state === "archived") {
+      throw new MissionLifecycleError(409, "Reopen this Project before creating another Mission.");
+    }
+    if (project.revision !== input.expectedProjectRevision) {
+      throw new MissionLifecycleError(409, "Project changed in another session. Refresh before creating a Mission.");
+    }
+
+    const [mission] = await tx.insert(quests).values(prepared).returning();
+    await tx.insert(userActivityEvents).values({
+      userId: input.userId,
+      eventType: "mission_created",
+      metadata: { questId: mission.id, title: mission.title, source: "ui", lifecycleKey: input.lifecycleKey },
+    });
+    const [updatedProject] = await tx.update(kanbanBoards).set({ revision: project.revision + 1, updatedAt: new Date() })
+      .where(and(
+        eq(kanbanBoards.id, project.id),
+        eq(kanbanBoards.userId, input.userId),
+        eq(kanbanBoards.revision, project.revision),
+      ))
+      .returning();
+    if (!updatedProject) throw new MissionLifecycleError(409, "Project changed in another session. Refresh before creating a Mission.");
+    await tx.insert(projectEvents).values({
+      userId: input.userId,
+      projectId: project.id,
+      eventType: "ProjectTaskLinked.v1",
+      fromState: project.state,
+      toState: project.state,
+      aggregateRevision: updatedProject.revision,
+    });
+    return { project: updatedProject, mission, replayed: false, created: true };
+  });
+  if (result.created) {
+    await dispatchMissionAutomations({
+      userId: input.userId,
+      triggerType: "mission_created",
+      quest: result.mission,
+      idempotencyReference: String(result.mission.id),
+    });
+  }
+  return {
+    project: result.project,
+    mission: (await storage.getQuest(result.mission.id)) || result.mission,
+    replayed: result.replayed,
+  };
+}
+
 /** Reschedules an incomplete mission while retaining an append-only, user-owned
  * explanation of that capacity decision. This is a lifecycle transition, not
  * a failure state, so it must update the mission and its audit record together. */
