@@ -382,7 +382,7 @@ export default function CanvasEditorPage() {
         {dirty && <span className="text-xs text-amber-400">unsaved</span>}
       </div>
       <div className="flex flex-wrap gap-2">
-        <Button variant="outline" aria-expanded={templatePickerOpen} onClick={() => { setTemplatePickerOpen((open) => !open); setPendingTemplateId(null); }}><LayoutTemplate className="mr-1 h-4 w-4" />Templates</Button>
+        <Button data-testid="canvas-templates" variant="outline" aria-expanded={templatePickerOpen} onClick={() => { setTemplatePickerOpen((open) => !open); setPendingTemplateId(null); }}><LayoutTemplate className="mr-1 h-4 w-4" />Templates</Button>
         <input ref={importInput} type="file" accept="application/json,.json" className="hidden" aria-label="Import LyfeOS Canvas JSON" onChange={(event) => void stageJsonImport(event.target.files?.[0])} />
         <Button variant="outline" onClick={() => importInput.current?.click()}><Upload className="mr-1 h-4 w-4" />Import</Button>
         <Button variant="outline" onClick={() => downloadJson(filename, legacyContent ?? document)}><Download className="mr-1 h-4 w-4" />JSON</Button>
@@ -397,13 +397,13 @@ export default function CanvasEditorPage() {
     {templatePickerOpen && <section className="rounded-xl border border-primary/20 bg-card/30 p-4" aria-label="Canvas template library">
       <div><h2 className="font-medium">Canvas templates</h2><p className="mt-1 text-xs text-muted-foreground">Choose a governed starting structure. Selection is only a preview; Apply replaces the unsaved Canvas document, remains reversible with Undo, and still requires Save.</p></div>
       <div className="mt-3 grid gap-2 md:grid-cols-3">{builtInCanvasTemplates.map((template) => <button key={template.id} type="button" data-testid={`canvas-template-${template.id}`} aria-pressed={pendingTemplateId === template.id} onClick={() => setPendingTemplateId(template.id)} className={`rounded-lg border p-3 text-left transition ${pendingTemplateId === template.id ? "border-primary bg-primary/10" : "border-primary/10 bg-background/20 hover:border-primary/35"}`}><span className="text-[10px] font-mono uppercase tracking-wider text-primary">{template.category}</span><span className="mt-1 block text-sm font-medium">{template.name}</span><span className="mt-1 block text-xs leading-relaxed text-muted-foreground">{template.description}</span><span className="mt-2 block text-[10px] text-muted-foreground">{template.document.nodes.length} nodes · {template.document.edges.length} connections</span></button>)}</div>
-      {pendingTemplate && <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/20 bg-primary/5 p-3"><p className="text-xs text-muted-foreground"><span className="font-medium text-foreground">Review {pendingTemplate.name}:</span> applying replaces {document.nodes.length} current nodes and {document.edges.length} connections only in the unsaved editor.</p><div className="flex gap-2"><Button size="sm" variant="ghost" onClick={() => setPendingTemplateId(null)}>Cancel</Button><Button size="sm" onClick={applyTemplate}>Apply template</Button></div></div>}
+      {pendingTemplate && <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/20 bg-primary/5 p-3"><p className="text-xs text-muted-foreground"><span className="font-medium text-foreground">Review {pendingTemplate.name}:</span> applying replaces {document.nodes.length} current nodes and {document.edges.length} connections only in the unsaved editor.</p><div className="flex gap-2"><Button size="sm" variant="ghost" onClick={() => setPendingTemplateId(null)}>Cancel</Button><Button data-testid="canvas-template-apply" size="sm" onClick={applyTemplate}>Apply template</Button></div></div>}
     </section>}
 
     {pendingImport && <section className="rounded-xl border border-primary/25 bg-primary/5 p-4" aria-label="Canvas import review">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div><h2 className="font-medium">Review JSON import</h2><p className="mt-1 text-xs text-muted-foreground">{pendingImport.fileName} · {pendingImport.document.nodes.length} nodes · {pendingImport.document.edges.length} connections · viewport {Math.round(pendingImport.document.viewport.zoom * 100)}%</p></div>
-        <div className="flex gap-2"><Button size="sm" variant="ghost" onClick={() => setPendingImport(null)}>Cancel</Button><Button size="sm" onClick={confirmJsonImport}>Replace unsaved canvas</Button></div>
+        <div className="flex gap-2"><Button size="sm" variant="ghost" onClick={() => setPendingImport(null)}>Cancel</Button><Button data-testid="canvas-import-confirm" size="sm" onClick={confirmJsonImport}>Replace unsaved canvas</Button></div>
       </div>
       <p className="mt-2 text-xs text-muted-foreground">The file was parsed locally and has not been uploaded or saved. Confirming replaces the current unsaved document only; Undo remains available, and persistence still requires Save.</p>
     </section>}
@@ -419,8 +419,8 @@ export default function CanvasEditorPage() {
       }}>Start blank v1 canvas</Button>
     </div> : <>
       <div className="flex flex-wrap gap-2 rounded-xl border border-primary/15 bg-card/30 p-2">
-        <Button size="sm" variant="outline" disabled={!localHistoryState.canUndo} onClick={undoDocument}><Undo2 className="mr-1 h-4 w-4" />Undo</Button>
-        <Button size="sm" variant="outline" disabled={!localHistoryState.canRedo} onClick={redoDocument}><Redo2 className="mr-1 h-4 w-4" />Redo</Button>
+        <Button data-testid="canvas-undo" size="sm" variant="outline" disabled={!localHistoryState.canUndo} onClick={undoDocument}><Undo2 className="mr-1 h-4 w-4" />Undo</Button>
+        <Button data-testid="canvas-redo" size="sm" variant="outline" disabled={!localHistoryState.canRedo} onClick={redoDocument}><Redo2 className="mr-1 h-4 w-4" />Redo</Button>
         <span aria-hidden="true" className="mx-1 w-px self-stretch bg-primary/15" />
         <Button size="sm" variant="outline" onClick={() => addNode("note")}><StickyNote className="mr-1 h-4 w-4" />Note</Button>
         <Button size="sm" variant="outline" onClick={() => addNode("heading")}><Heading className="mr-1 h-4 w-4" />Heading</Button>
