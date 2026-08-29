@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
@@ -13,28 +13,34 @@ import { healthTrackingDomains, type HealthTrackingDomain } from "@/components/h
 import OfflineHealthQueueStatus from "@/components/health/OfflineHealthQueueStatus";
 import { ArrowLeft, Heart, Activity, Target, Flame, Loader2, TrendingUp, Brain, Zap, Smile } from "lucide-react";
 import { LineChart, Line, ScatterChart, Scatter, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
+import { DeferredFeatureChunkBoundary } from "@/components/DeferredFeature";
+import { withChunkLoadTimeout } from "@/lib/runtimeRecovery";
 
-const NutritionDiary = lazy(() => import("@/components/health/NutritionDiary"));
-const WorkoutLog = lazy(() => import("@/components/health/WorkoutLog"));
-const BodyProgress = lazy(() => import("@/components/health/BodyProgress"));
-const RecoveryLog = lazy(() => import("@/components/health/RecoveryLog"));
-const RecoveryRoutines = lazy(() => import("@/components/health/RecoveryRoutines"));
-const HealthMetricsLedger = lazy(() => import("@/components/health/HealthMetricsLedger"));
-const IngredientScanner = lazy(() => import("@/components/health/IngredientScanner"));
-const CapabilityEvidencePanel = lazy(() => import("@/components/health/CapabilityEvidencePanel"));
-const SleepLog = lazy(() => import("@/components/health/SleepLog"));
-const HealthTimeline = lazy(() => import("@/components/health/HealthTimeline"));
-const ExerciseLibrary = lazy(() => import("@/components/health/ExerciseLibrary"));
-const TrainingPrograms = lazy(() => import("@/components/health/TrainingPrograms"));
-const WorkoutAnalytics = lazy(() => import("@/components/health/WorkoutAnalytics"));
-const SupplementSchedules = lazy(() => import("@/components/health/SupplementSchedules"));
-const MealPlanner = lazy(() => import("@/components/health/MealPlanner"));
-const HealthTrendWorkbench = lazy(() => import("@/components/health/HealthTrendWorkbench"));
-const HealthDataRights = lazy(() => import("@/components/health/HealthDataRights"));
-const HealthConnections = lazy(() => import("@/components/health/HealthConnections"));
-const HealthProgression = lazy(() => import("@/components/health/HealthProgression"));
-const HealthAssistant = lazy(() => import("@/components/health/HealthAssistant"));
-const ActivitySignals = lazy(() => import("@/components/health/ActivitySignals"));
+function lazyHealthFeature<Component extends ComponentType<any>>(loader: () => Promise<{ default: Component }>) {
+  return lazy(() => withChunkLoadTimeout(loader));
+}
+
+const NutritionDiary = lazyHealthFeature(() => import("@/components/health/NutritionDiary"));
+const WorkoutLog = lazyHealthFeature(() => import("@/components/health/WorkoutLog"));
+const BodyProgress = lazyHealthFeature(() => import("@/components/health/BodyProgress"));
+const RecoveryLog = lazyHealthFeature(() => import("@/components/health/RecoveryLog"));
+const RecoveryRoutines = lazyHealthFeature(() => import("@/components/health/RecoveryRoutines"));
+const HealthMetricsLedger = lazyHealthFeature(() => import("@/components/health/HealthMetricsLedger"));
+const IngredientScanner = lazyHealthFeature(() => import("@/components/health/IngredientScanner"));
+const CapabilityEvidencePanel = lazyHealthFeature(() => import("@/components/health/CapabilityEvidencePanel"));
+const SleepLog = lazyHealthFeature(() => import("@/components/health/SleepLog"));
+const HealthTimeline = lazyHealthFeature(() => import("@/components/health/HealthTimeline"));
+const ExerciseLibrary = lazyHealthFeature(() => import("@/components/health/ExerciseLibrary"));
+const TrainingPrograms = lazyHealthFeature(() => import("@/components/health/TrainingPrograms"));
+const WorkoutAnalytics = lazyHealthFeature(() => import("@/components/health/WorkoutAnalytics"));
+const SupplementSchedules = lazyHealthFeature(() => import("@/components/health/SupplementSchedules"));
+const MealPlanner = lazyHealthFeature(() => import("@/components/health/MealPlanner"));
+const HealthTrendWorkbench = lazyHealthFeature(() => import("@/components/health/HealthTrendWorkbench"));
+const HealthDataRights = lazyHealthFeature(() => import("@/components/health/HealthDataRights"));
+const HealthConnections = lazyHealthFeature(() => import("@/components/health/HealthConnections"));
+const HealthProgression = lazyHealthFeature(() => import("@/components/health/HealthProgression"));
+const HealthAssistant = lazyHealthFeature(() => import("@/components/health/HealthAssistant"));
+const ActivitySignals = lazyHealthFeature(() => import("@/components/health/ActivitySignals"));
 
 function DeferredHealthSection({ children, label, targetId }: { children: ReactNode; label: string; targetId?: string }) {
   const target = useRef<HTMLDivElement>(null);
@@ -46,7 +52,7 @@ function DeferredHealthSection({ children, label, targetId }: { children: ReactN
     observer.observe(target.current);
     return () => observer.disconnect();
   }, [ready]);
-  return <div ref={target} id={targetId} className="scroll-mt-6">{ready ? <Suspense fallback={<div className="glassmorphic mb-8 min-h-32 rounded-2xl border border-primary/20 p-6 text-sm text-muted-foreground" role="status">Loading {label}…</div>}>{children}</Suspense> : <div className="mb-8 min-h-32" aria-hidden="true" />}</div>;
+  return <div ref={target} id={targetId} className="scroll-mt-6">{ready ? <DeferredFeatureChunkBoundary fallback={<div className="glassmorphic mb-8 min-h-32 rounded-2xl border border-destructive/30 p-6 text-sm" role="alert"><p className="font-medium">The {label} workspace could not load.</p><p className="mt-1 text-xs text-muted-foreground">Other Health workspaces remain available. Reload the latest LyfeOS version to retry this workspace.</p><button type="button" className="mt-3 rounded-md border border-primary/30 px-3 py-1.5 text-xs text-primary" onClick={() => window.location.reload()}>Reload LyfeOS</button></div>}><Suspense fallback={<div className="glassmorphic mb-8 min-h-32 rounded-2xl border border-primary/20 p-6 text-sm text-muted-foreground" role="status">Loading {label}…</div>}>{children}</Suspense></DeferredFeatureChunkBoundary> : <div className="mb-8 min-h-32" aria-hidden="true" />}</div>;
 }
 
 function getStatusBadge(pct: number): { label: string; color: string; bg: string } {

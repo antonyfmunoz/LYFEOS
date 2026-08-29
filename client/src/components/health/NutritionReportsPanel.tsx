@@ -1,8 +1,9 @@
-import { lazy, Suspense } from "react";
+import { Suspense } from "react";
 import { Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DeferredFeatureChunkBoundary, useDeferredFeature } from "@/components/DeferredFeature";
 
-const NutritionTrendChart = lazy(() => import("./NutritionTrendChart"));
+const loadNutritionTrendChart = () => import("./NutritionTrendChart");
 
 type NutritionTrendDay = {
   date: string;
@@ -73,6 +74,7 @@ export default function NutritionReportsPanel({
   onContributionNutrientChange,
   onDownload,
 }: Props) {
+  const { attempt: nutritionChartAttempt, Component: NutritionTrendChart, retry: retryNutritionChart } = useDeferredFeature(loadNutritionTrendChart);
   const selectedContribution = contributions?.nutrients.find((nutrient) => nutrient.nutrientKey === contributionNutrient);
 
   return (
@@ -87,9 +89,7 @@ export default function NutritionReportsPanel({
         </div>
         {trends.trend.some((day) => day.entries > 0) ? (
           <div className="mt-3 h-40" role="img" aria-label={`Recorded daily energy over ${trendDays} days`}>
-            <Suspense fallback={<div className="flex h-full items-center justify-center text-xs text-muted-foreground" role="status">Loading nutrition chart…</div>}>
-              <NutritionTrendChart data={trends.trend} />
-            </Suspense>
+            <DeferredFeatureChunkBoundary key={nutritionChartAttempt} fallback={<div className="flex h-full flex-col items-center justify-center gap-2 rounded-md border border-destructive/30 p-3 text-center text-xs" role="alert"><p>Nutrition chart could not load. The accessible history table remains available below.</p><div className="flex flex-wrap justify-center gap-2"><Button size="sm" variant="outline" onClick={retryNutritionChart}>Try chart again</Button><Button size="sm" variant="ghost" onClick={() => window.location.reload()}>Reload LyfeOS</Button></div></div>}><Suspense fallback={<div className="flex h-full items-center justify-center text-xs text-muted-foreground" role="status">Loading nutrition chart…</div>}><NutritionTrendChart data={trends.trend} /></Suspense></DeferredFeatureChunkBoundary>
           </div>
         ) : <p className="mt-3 text-xs text-muted-foreground">No diary entries are recorded in this period.</p>}
         <details className="mt-3 rounded-md border border-muted/20 p-2">
