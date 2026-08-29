@@ -4,10 +4,11 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import puppeteer, { type Browser, type BrowserContext, type Page, type Viewport } from "puppeteer-core";
+import { acknowledgeBoundedChunkRecovery, hasUnexpectedBrowserSignals, type BrowserSignals } from "./lib/production-browser-signals";
 
 type ApiResult = { status: number; body: any; cookie: string; retryAfterSeconds: number | null };
 type Account = { id: number; email: string; displayName: string; cookie: string };
-type Signals = { consoleErrors: string[]; pageErrors: string[]; failedRequests: string[]; serverErrors: string[] };
+type Signals = BrowserSignals;
 type Cleanup = { viewport: string; accountErased: boolean; sessionInvalidated: boolean; emailReleased: boolean; displayNameReleased: boolean; otherAccountErased: boolean };
 type PageAudit = { mainCount: number; duplicateIds: string[]; invalidLabelReferences: string[]; unlabeledControls: string[]; horizontalOverflowPx: number };
 type ViewResult = {
@@ -113,7 +114,7 @@ function cookieParts(cookie: string): { name: string; value: string } {
 }
 
 function captureSignals(page: Page, allowAnonymousAuthBoundary = false): Signals {
-  const signals: Signals = { consoleErrors: [], pageErrors: [], failedRequests: [], serverErrors: [] };
+  const signals: Signals = { consoleErrors: [], pageErrors: [], failedRequests: [], serverErrors: [], recoveredChunkLoads: [] };
   page.on("console", (entry) => {
     if (entry.type() !== "error") return;
     const source = entry.location().url;
@@ -405,7 +406,8 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     const anonymousBrowserSubmissionReconciled = table.rows.length === 5;
     const publicAudit = await auditPage(publicPage, "main");
     assert(publicAudit.mainCount === 1 && publicAudit.duplicateIds.length === 0 && publicAudit.invalidLabelReferences.length === 0 && publicAudit.unlabeledControls.length === 0 && publicAudit.horizontalOverflowPx <= 2, `${viewport.name} shared Form failed semantics or overflow checks.`);
-    assert(Object.values(publicSignals).every((items) => items.length === 0), `${viewport.name} shared Form produced application errors: ${JSON.stringify(publicSignals)}.`);
+    await acknowledgeBoundedChunkRecovery(publicPage, publicSignals);
+    assert(!hasUnexpectedBrowserSignals(publicSignals), `${viewport.name} shared Form produced application errors: ${JSON.stringify(publicSignals)}.`);
     await publicContext.close();
     publicContext = null;
     publicPage = null;
@@ -427,7 +429,8 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     // signal only after the persisted revocation, rejected token, and completed
     // owner navigation independently prove that the mutation succeeded.
     acknowledgeReconciledBodylessMutation(signals, "POST", `/api/forms/${formId}/access-grants/${grant.id}/revoke`);
-    assert(Object.values(signals).every((items) => items.length === 0), `${viewport.name} private Table/Form journey produced application errors: ${JSON.stringify(signals)}.`);
+    await acknowledgeBoundedChunkRecovery(page, signals);
+    assert(!hasUnexpectedBrowserSignals(signals), `${viewport.name} private Table/Form journey produced application errors: ${JSON.stringify(signals)}.`);
     await page.goto(new URL("/databases", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
     await page.waitForSelector(`[data-testid="table-card-${databaseId}"]`, { visible: true, timeout: 45_000 });
     page.once("dialog", (dialog) => void dialog.accept());

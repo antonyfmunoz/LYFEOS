@@ -4,10 +4,15 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import puppeteer, { type Browser, type BrowserContext, type Page, type Viewport } from "puppeteer-core";
+import {
+  acknowledgeBoundedChunkRecovery,
+  hasUnexpectedBrowserSignals,
+  type BrowserSignals,
+} from "./lib/production-browser-signals";
 
 type ApiResult = { status: number; body: any; cookie: string };
 type Account = { id: number; email: string; displayName: string; cookie: string };
-type Signals = { consoleErrors: string[]; pageErrors: string[]; failedRequests: string[]; serverErrors: string[] };
+type Signals = BrowserSignals;
 type Cleanup = { viewport: string; accountErased: boolean; sessionInvalidated: boolean; emailReleased: boolean; displayNameReleased: boolean };
 type ViewResult = {
   viewport: string;
@@ -125,7 +130,7 @@ async function activateHitTestedControl(page: Page, selector: string): Promise<v
 }
 
 function captureSignals(page: Page): Signals {
-  const signals: Signals = { consoleErrors: [], pageErrors: [], failedRequests: [], serverErrors: [] };
+  const signals: Signals = { consoleErrors: [], pageErrors: [], failedRequests: [], serverErrors: [], recoveredChunkLoads: [] };
   page.on("console", (entry) => {
     if (entry.type() !== "error") return;
     const source = entry.location().url;
@@ -393,7 +398,8 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     await page.waitForFunction(() => document.querySelector('[data-testid="voice-session-archive"]')?.textContent?.includes("Extractive summary from your transcript") === true, { timeout: 30_000 });
     const rendered = await auditPage(page);
     assert(rendered.mainCount === 1 && rendered.duplicateIds.length === 0 && rendered.unlabeledControls.length === 0 && rendered.horizontalOverflowPx <= 2, `${viewport.name} failed Voice semantics or overflow checks.`);
-    assert(Object.values(signals).every((items) => items.length === 0), `${viewport.name} produced application errors: ${JSON.stringify(signals)}.`);
+    await acknowledgeBoundedChunkRecovery(page, signals);
+    assert(!hasUnexpectedBrowserSignals(signals), `${viewport.name} produced application errors: ${JSON.stringify(signals)}.`);
 
     view = {
       viewport: viewport.name,

@@ -4,10 +4,11 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import puppeteer, { type Browser, type BrowserContext, type Page, type Viewport } from "puppeteer-core";
+import { acknowledgeBoundedChunkRecovery, hasUnexpectedBrowserSignals, type BrowserSignals } from "./lib/production-browser-signals";
 
 type ApiResult = { status: number; body: any; cookie: string };
 type Account = { id: number; email: string; displayName: string; cookie: string };
-type Signals = { consoleErrors: string[]; pageErrors: string[]; failedRequests: string[]; serverErrors: string[] };
+type Signals = BrowserSignals;
 type Cleanup = { viewport: string; accountErased: boolean; sessionInvalidated: boolean; emailReleased: boolean; displayNameReleased: boolean };
 type ViewResult = {
   viewport: string;
@@ -150,7 +151,7 @@ async function clickMemoryAction(page: Page, testId: string): Promise<void> {
 }
 
 function captureSignals(page: Page): Signals {
-  const signals: Signals = { consoleErrors: [], pageErrors: [], failedRequests: [], serverErrors: [] };
+  const signals: Signals = { consoleErrors: [], pageErrors: [], failedRequests: [], serverErrors: [], recoveredChunkLoads: [] };
   page.on("console", (entry) => {
     if (entry.type() !== "error") return;
     const source = entry.location().url;
@@ -318,7 +319,8 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     assert(memory.body.affirmationStored === false && memory.body.profileContextStored === false, "Rendered profile reset did not reconcile to the owner API.");
     assert(memory.body.boundaries?.nativeMessagesIncluded === false && memory.body.boundaries?.externalSendingEnabled === false && memory.body.boundaries?.crossProductMemoryDefault === "off" && memory.body.boundaries?.contextReceiptsContainRawValues === false, "AI-memory privacy boundaries drifted.");
     assert(rendered.mainCount === 1 && rendered.duplicateIds.length === 0 && rendered.unlabeledControls.length === 0 && rendered.horizontalOverflowPx <= 2, `${viewport.name} failed AI-memory semantics or overflow checks.`);
-    assert(Object.values(signals).every((items) => items.length === 0), `${viewport.name} produced application errors: ${JSON.stringify(signals)}.`);
+    await acknowledgeBoundedChunkRecovery(page, signals);
+    assert(!hasUnexpectedBrowserSignals(signals), `${viewport.name} produced application errors: ${JSON.stringify(signals)}.`);
 
     view = {
       viewport: viewport.name,

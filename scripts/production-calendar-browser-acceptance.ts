@@ -4,10 +4,11 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import puppeteer, { type Browser, type BrowserContext, type Page, type Viewport } from "puppeteer-core";
+import { acknowledgeBoundedChunkRecovery, hasUnexpectedBrowserSignals, type BrowserSignals } from "./lib/production-browser-signals";
 
 type ApiResult = { status: number; body: any; cookie: string; retryAfterSeconds: number | null };
 type Account = { id: number; email: string; displayName: string; cookie: string };
-type Signals = { consoleErrors: string[]; pageErrors: string[]; failedRequests: string[]; serverErrors: string[] };
+type Signals = BrowserSignals;
 type PageAudit = { mainCount: number; duplicateIds: string[]; invalidLabelReferences: string[]; unlabeledControls: string[]; horizontalOverflowPx: number };
 type Cleanup = { viewport: string; accountErased: boolean; sessionInvalidated: boolean; emailReleased: boolean; displayNameReleased: boolean };
 type ViewResult = {
@@ -127,7 +128,7 @@ function cookieParts(cookie: string): { name: string; value: string } {
 }
 
 function captureSignals(page: Page, intentionallyOffline: () => boolean): Signals {
-  const signals: Signals = { consoleErrors: [], pageErrors: [], failedRequests: [], serverErrors: [] };
+  const signals: Signals = { consoleErrors: [], pageErrors: [], failedRequests: [], serverErrors: [], recoveredChunkLoads: [] };
   page.on("console", (entry) => {
     if (entry.type() !== "error" || intentionallyOffline()) return;
     signals.consoleErrors.push(entry.text().slice(0, 500));
@@ -387,7 +388,8 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     acknowledgeReconciledConflict(signals);
     const audit = await auditPage(page);
     assert(audit.mainCount === 1 && audit.duplicateIds.length === 0 && audit.invalidLabelReferences.length === 0 && audit.unlabeledControls.length === 0 && audit.horizontalOverflowPx <= 2, `${viewport.name} Calendar failed semantics or overflow checks.`);
-    assert(Object.values(signals).every((items) => items.length === 0), `${viewport.name} Calendar journey produced application errors: ${JSON.stringify(signals)}.`);
+    await acknowledgeBoundedChunkRecovery(page, signals);
+    assert(!hasUnexpectedBrowserSignals(signals), `${viewport.name} Calendar journey produced application errors: ${JSON.stringify(signals)}.`);
     view = { viewport: viewport.name, canonicalProjectionRendered, rangeNavigationRendered, offlineCreateQueued, reconnectCreateConverged, staleEditStoppedAsConflict, explicitConflictApplyConverged, queueDrained, audit, signals };
   } catch (error) {
     const rendered = page ? await page.evaluate(() => document.body?.innerText.slice(0, 2_000) || "page unavailable").catch(() => "page unavailable") : "page unavailable";

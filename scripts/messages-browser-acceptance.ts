@@ -5,10 +5,11 @@ import os from "node:os";
 import path from "node:path";
 import pg from "pg";
 import puppeteer, { type Browser, type BrowserContext, type Page, type Viewport } from "puppeteer-core";
+import { acknowledgeBoundedChunkRecovery, hasUnexpectedBrowserSignals, type BrowserSignals as CoreBrowserSignals } from "./lib/production-browser-signals";
 
 type ApiResult = { status: number; body: any; cookie: string; retryAfterSeconds: number | null };
 type FixtureAccount = { id: number; displayName: string; email: string; password: string; cookie: string };
-type BrowserSignals = { consoleErrors: string[]; pageErrors: string[]; failedRequests: string[]; serverErrors: string[]; isolatedProviderErrors: string[] };
+type BrowserSignals = CoreBrowserSignals & { isolatedProviderErrors: string[] };
 type ViewResult = {
   account: "sender" | "recipient";
   viewport: string;
@@ -141,7 +142,7 @@ async function replaceInput(page: Page, selector: string, value: string): Promis
 }
 
 function captureBrowserSignals(page: Page): BrowserSignals {
-  const signals: BrowserSignals = { consoleErrors: [], pageErrors: [], failedRequests: [], serverErrors: [], isolatedProviderErrors: [] };
+  const signals: BrowserSignals = { consoleErrors: [], pageErrors: [], failedRequests: [], serverErrors: [], recoveredChunkLoads: [], isolatedProviderErrors: [] };
   page.on("console", (entry) => {
     if (entry.type() !== "error") return;
     const source = entry.location().url;
@@ -437,6 +438,8 @@ async function main(): Promise<void> {
         assert(view.renderedMessageCount >= 2, `${entry.account} ${viewport.name} did not render both conversation messages.`);
       }
     }
+    await acknowledgeBoundedChunkRecovery(senderPage, senderBrowser.signals);
+    await acknowledgeBoundedChunkRecovery(recipientPage, recipientBrowser.signals);
   } catch (error) {
     failure = `${stage}: ${safeError(error)}`;
   } finally {
@@ -474,9 +477,10 @@ async function main(): Promise<void> {
       pageErrors: [...combined.pageErrors, ...current.pageErrors],
       failedRequests: [...combined.failedRequests, ...current.failedRequests],
       serverErrors: [...combined.serverErrors, ...current.serverErrors],
+      recoveredChunkLoads: [...combined.recoveredChunkLoads, ...current.recoveredChunkLoads],
       isolatedProviderErrors: [...combined.isolatedProviderErrors, ...current.isolatedProviderErrors],
-    }), { consoleErrors: [], pageErrors: [], failedRequests: [], serverErrors: [], isolatedProviderErrors: [] });
-    const browserClean = [allSignals.consoleErrors, allSignals.pageErrors, allSignals.failedRequests, allSignals.serverErrors].every((items) => items.length === 0);
+    }), { consoleErrors: [], pageErrors: [], failedRequests: [], serverErrors: [], recoveredChunkLoads: [], isolatedProviderErrors: [] });
+    const browserClean = !hasUnexpectedBrowserSignals(allSignals);
     const passed = failure === null
       && readReceiptRendered
       && reactionRendered

@@ -4,10 +4,11 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import puppeteer, { type Browser, type BrowserContext, type Page, type Viewport } from "puppeteer-core";
+import { acknowledgeBoundedChunkRecovery, hasUnexpectedBrowserSignals, type BrowserSignals } from "./lib/production-browser-signals";
 
 type ApiResult = { status: number; body: any; cookie: string; retryAfterSeconds: number | null };
 type Account = { id: number; email: string; displayName: string; cookie: string };
-type Signals = { consoleErrors: string[]; pageErrors: string[]; failedRequests: string[]; serverErrors: string[]; isolatedProviderErrors: string[] };
+type Signals = BrowserSignals & { isolatedProviderErrors: string[] };
 type PageAudit = { mainCount: number; duplicateIds: string[]; invalidLabelReferences: string[]; unlabeledControls: string[]; horizontalOverflowPx: number };
 type Cleanup = { viewport: string; ownerErased: boolean; otherErased: boolean };
 type ViewResult = {
@@ -107,7 +108,7 @@ function cookieParts(cookie: string): { name: string; value: string } {
 }
 
 function captureSignals(page: Page): Signals {
-  const signals: Signals = { consoleErrors: [], pageErrors: [], failedRequests: [], serverErrors: [], isolatedProviderErrors: [] };
+  const signals: Signals = { consoleErrors: [], pageErrors: [], failedRequests: [], serverErrors: [], recoveredChunkLoads: [], isolatedProviderErrors: [] };
   page.on("console", (entry) => {
     if (entry.type() !== "error") return;
     const source = entry.location().url || "";
@@ -393,7 +394,8 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     const audit = await auditPage(page);
     assert(audit.mainCount === 1 && audit.duplicateIds.length === 0 && audit.invalidLabelReferences.length === 0
       && audit.unlabeledControls.length === 0 && audit.horizontalOverflowPx <= 2, `${viewport.name} failed Projects semantics or overflow checks: ${JSON.stringify(audit)}.`);
-    assert([signals.consoleErrors, signals.pageErrors, signals.failedRequests, signals.serverErrors].every((items) => items.length === 0), `${viewport.name} Projects journey produced application errors: ${JSON.stringify(signals)}.`);
+    await acknowledgeBoundedChunkRecovery(page, signals);
+    assert(!hasUnexpectedBrowserSignals(signals), `${viewport.name} Projects journey produced application errors: ${JSON.stringify(signals)}.`);
     view = { viewport: viewport.name, catalogAndDetailRendered, declaredOutcomeAndDatesPersisted, canonicalMissionCreatedAtomically, prematureCompletionBlocked, unlinkPreservedCanonicalMission, completionAndReopenReconciled, existingMissionRelinked, staleSaveStoppedAsConflict, recoverableRemovalAndRestoreReconciled, deepLinkPersisted: deepLinkPersisted && restoredDeepLink, crossOwnerIsolationReconciled, appendOnlyHistoryReconciled, audit, signals };
   } catch (error) {
     const rendered = page ? await page.evaluate(() => document.body?.innerText.slice(0, 2_000) || "page unavailable").catch(() => "page unavailable") : "page unavailable";

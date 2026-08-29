@@ -38,12 +38,14 @@ describe("production Tables and Forms evidence custody", () => {
     const tokenProof = acceptance.indexOf('assert(revokedTokenRejected');
     const navigationProof = acceptance.indexOf("await page.waitForSelector('[data-testid=\"table-editor\"]'", tokenProof);
     const revocationAcknowledgement = acceptance.indexOf('acknowledgeReconciledBodylessMutation(signals, "POST", `/api/forms/${formId}/access-grants/${grant.id}/revoke`)');
-    const signalAssertion = acceptance.indexOf('assert(Object.values(signals).every((items) => items.length === 0), `${viewport.name} private Table/Form journey');
+    const recoveryAcknowledgement = acceptance.indexOf("await acknowledgeBoundedChunkRecovery(page, signals)");
+    const signalAssertion = acceptance.indexOf('assert(!hasUnexpectedBrowserSignals(signals), `${viewport.name} private Table/Form journey');
     expect(revocationProof).toBeGreaterThan(-1);
     expect(tokenProof).toBeGreaterThan(revocationProof);
     expect(navigationProof).toBeGreaterThan(tokenProof);
     expect(revocationAcknowledgement).toBeGreaterThan(navigationProof);
-    expect(signalAssertion).toBeGreaterThan(revocationAcknowledgement);
+    expect(recoveryAcknowledgement).toBeGreaterThan(revocationAcknowledgement);
+    expect(signalAssertion).toBeGreaterThan(recoveryAcknowledgement);
   });
 
   it("keeps stable hooks nonvisual and runs the contract in protected production acceptance", () => {

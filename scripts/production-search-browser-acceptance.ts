@@ -5,10 +5,11 @@ import os from "node:os";
 import path from "node:path";
 import pg from "pg";
 import puppeteer, { type Browser, type BrowserContext, type Page, type Viewport } from "puppeteer-core";
+import { acknowledgeBoundedChunkRecovery, hasUnexpectedBrowserSignals, type BrowserSignals } from "./lib/production-browser-signals";
 
 type ApiResult = { status: number; body: any; cookie: string; retryAfterSeconds: number | null };
 type Account = { id: number; email: string; displayName: string; cookie: string };
-type Signals = { consoleErrors: string[]; pageErrors: string[]; failedRequests: string[]; serverErrors: string[]; isolatedProviderErrors: string[] };
+type Signals = BrowserSignals & { isolatedProviderErrors: string[] };
 type Audit = { mainCount: number; duplicateIds: string[]; invalidLabelReferences: string[]; unlabeledControls: string[]; horizontalOverflowPx: number };
 type SearchView = {
   viewport: string;
@@ -113,7 +114,7 @@ function cookieParts(cookie: string): { name: string; value: string } {
 }
 
 function captureSignals(page: Page): Signals {
-  const signals: Signals = { consoleErrors: [], pageErrors: [], failedRequests: [], serverErrors: [], isolatedProviderErrors: [] };
+  const signals: Signals = { consoleErrors: [], pageErrors: [], failedRequests: [], serverErrors: [], recoveredChunkLoads: [], isolatedProviderErrors: [] };
   page.on("console", (entry) => {
     if (entry.type() !== "error") return;
     const source = entry.location().url || "";
@@ -318,7 +319,7 @@ async function main(): Promise<void> {
   const views: SearchView[] = [];
   let browser: Browser | null = null;
   let context: BrowserContext | null = null;
-  let signals: Signals = { consoleErrors: [], pageErrors: [], failedRequests: [], serverErrors: [], isolatedProviderErrors: [] };
+  let signals: Signals = { consoleErrors: [], pageErrors: [], failedRequests: [], serverErrors: [], recoveredChunkLoads: [], isolatedProviderErrors: [] };
   let shortcutOpenedAndFocused = false;
   let ownerIsolationReconciled = false;
   let secretOnlyFieldsExcluded = false;
@@ -390,6 +391,7 @@ async function main(): Promise<void> {
     await replaceInput(page, '[data-testid="workspace-search-input"]', `noresult${randomUUID().replace(/-/g, "").slice(0, 10)}`);
     await page.waitForSelector('[data-testid="search-empty"]', { visible: true, timeout: 30_000 });
     emptyStateRendered = true;
+    await acknowledgeBoundedChunkRecovery(page, signals);
   } catch (error) {
     failure = `${stage}: ${safeError(error)}`;
   } finally {
@@ -410,7 +412,7 @@ async function main(): Promise<void> {
       residualCounts = Object.fromEntries(Object.entries(residue.rows[0] || {}).map(([key, value]) => [key, Number(value)]));
       await pool.end();
     }
-    const browserClean = [signals.consoleErrors, signals.pageErrors, signals.failedRequests, signals.serverErrors].every((items) => items.length === 0);
+    const browserClean = !hasUnexpectedBrowserSignals(signals);
     const viewsPassed = views.length === VIEWPORTS.length && views.every((view) => view.allSixKindsRendered && view.resultCountsReconciled && view.filtersReconciled && view.queryDeepLinkPersisted && view.reloadReconciled && view.audit.mainCount === 1 && view.audit.duplicateIds.length === 0 && view.audit.invalidLabelReferences.length === 0 && view.audit.unlabeledControls.length === 0 && view.audit.horizontalOverflowPx <= 2);
     const cleanupPassed = identifierErasure.owner && identifierErasure.other && (residualCounts === null || Object.values(residualCounts).every((count) => count === 0));
     const passed = failure === null && shortcutOpenedAndFocused && ownerIsolationReconciled && secretOnlyFieldsExcluded && resultDeepLinkRendered && minimumQueryDisclosureRendered && emptyStateRendered && viewsPassed && browserClean && cleanupPassed;

@@ -5,10 +5,11 @@ import os from "node:os";
 import path from "node:path";
 import pg from "pg";
 import puppeteer, { type Browser, type BrowserContext, type Page, type Viewport } from "puppeteer-core";
+import { acknowledgeBoundedChunkRecovery, hasUnexpectedBrowserSignals, type BrowserSignals as CoreBrowserSignals } from "./lib/production-browser-signals";
 
 type ApiResult = { status: number; body: any; cookie: string };
 type FixtureAccount = { id: number; displayName: string; email: string; cookie: string };
-type BrowserSignals = { consoleErrors: string[]; pageErrors: string[]; failedRequests: string[]; serverErrors: string[]; isolatedProviderErrors: string[] };
+type BrowserSignals = CoreBrowserSignals & { isolatedProviderErrors: string[] };
 type ViewResult = {
   viewport: string;
   mainCount: number;
@@ -177,7 +178,7 @@ async function activateRenderedControl(page: Page, selector: string): Promise<vo
 }
 
 function captureBrowserSignals(page: Page): BrowserSignals {
-  const signals: BrowserSignals = { consoleErrors: [], pageErrors: [], failedRequests: [], serverErrors: [], isolatedProviderErrors: [] };
+  const signals: BrowserSignals = { consoleErrors: [], pageErrors: [], failedRequests: [], serverErrors: [], recoveredChunkLoads: [], isolatedProviderErrors: [] };
   page.on("console", (entry) => {
     if (entry.type() !== "error") return;
     const source = entry.location().url;
@@ -372,7 +373,7 @@ async function main(): Promise<void> {
   let account: FixtureAccount | null = null;
   let browser: Browser | null = null;
   let context: BrowserContext | null = null;
-  let signals: BrowserSignals = { consoleErrors: [], pageErrors: [], failedRequests: [], serverErrors: [], isolatedProviderErrors: [] };
+  let signals: BrowserSignals = { consoleErrors: [], pageErrors: [], failedRequests: [], serverErrors: [], recoveredChunkLoads: [], isolatedProviderErrors: [] };
   let missionId = 0;
   let prerequisiteId = 0;
   let initialCompletionBlocked = false;
@@ -503,6 +504,7 @@ async function main(): Promise<void> {
       assert(view.duplicateIds.length === 0 && view.unlabeledControls.length === 0 && view.horizontalOverflowPx <= 2, `${viewport.name} failed Mission-safety accessibility or overflow checks.`);
       assert(view.renderedRevision === 2 && view.acceptedStateRendered && view.prerequisiteCompleteRendered && view.noAuthorityBoundaryRendered, `${viewport.name} did not render the accepted exact-revision safety boundary.`);
     }
+    await acknowledgeBoundedChunkRecovery(page, signals);
   } catch (error) {
     failure = `${stage}: ${safeError(error)}`;
   } finally {
@@ -541,7 +543,7 @@ async function main(): Promise<void> {
     }
     await pool?.end();
 
-    const browserClean = [signals.consoleErrors, signals.pageErrors, signals.failedRequests, signals.serverErrors].every((items) => items.length === 0);
+    const browserClean = !hasUnexpectedBrowserSignals(signals);
     const passed = failure === null
       && initialCompletionBlocked
       && reviseDecisionWithheldAcceptance
