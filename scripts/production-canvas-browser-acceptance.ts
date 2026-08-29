@@ -311,6 +311,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     await selectNode(page, "project_outcome");
     await setValue(page, 'input[aria-label="Node title"]', `Qualified outcome ${ordinal}`);
     await page.waitForFunction((title) => document.querySelector('[data-testid="canvas-node-project_outcome"]')?.textContent?.includes(String(title)), { timeout: 30_000 }, `Qualified outcome ${ordinal}`);
+    await selectNode(page, "project_outcome");
     const connectionLabel = await page.$('input[aria-label^="Connection label"]');
     assert(connectionLabel, "The selected template node did not expose governed connection editing.");
     await setValue(page, 'input[aria-label^="Connection label"]', `evidence ${ordinal}`);
