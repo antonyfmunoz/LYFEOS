@@ -228,6 +228,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
   let view: ViewResult | null = null;
   let cleanup: Cleanup = { viewport: viewport.name, accountErased: false, sessionInvalidated: false, emailReleased: false, displayNameReleased: false };
   let failure: unknown = null;
+  let stage = "register disposable account";
   try {
     const registration = await request("POST", "/api/auth/complete-registration", { email: account.email, password: PASSWORD, displayName: account.displayName, termsAccepted: true });
     assert(registration.status === 201, `Registration returned ${registration.status}.`);
@@ -236,8 +237,10 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     assert(Number.isInteger(account.id) && account.id > 0 && account.cookie, "Registration did not create a disposable owner and session.");
     const onboarding = await request("PATCH", "/api/profile", { onboardingCompleted: true }, account.cookie);
     assert(onboarding.status === 200 && onboarding.body?.onboardingCompleted === true, `Onboarding setup returned ${onboarding.status}.`);
+    stage = "seed seven paired evidence days";
     await seedOwnedEvidence(account);
 
+    stage = "open rendered Tracker";
     context = await browser.createBrowserContext();
     const page = await context.newPage();
     const signals = captureSignals(page);
@@ -253,12 +256,14 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     const tutorialDismissed = await dismissBlockingTutorial(page);
     await waitForText(page, "No saved hypotheses yet.", '[data-testid="hypothesis-workbench"]');
 
+    stage = "enable Daily state and Health consent";
     const domainsDefaultedOff = await page.evaluate(() => ["missions", "daily_state", "health"].every((domain) => document.querySelector(`[data-testid="hypothesis-consent-${domain}"]`)?.getAttribute("aria-pressed") === "false"));
     assert(domainsDefaultedOff, "Pattern Explorer domains did not default off.");
     await clickAndWaitPressed(page, '[data-testid="hypothesis-consent-daily_state"]', true);
     await clickAndWaitPressed(page, '[data-testid="hypothesis-consent-health"]', true);
     const explicitConsentRendered = await page.evaluate(() => ["daily_state", "health"].every((domain) => document.querySelector(`[data-testid="hypothesis-consent-${domain}"]`)?.getAttribute("aria-pressed") === "true"));
 
+    stage = "create and calculate hypothesis";
     await page.type("#hypothesis-title", TITLE);
     await page.select("#hypothesis-left", "daily_state.mental_state");
     await page.select("#hypothesis-right", "health.hydration_ml");
@@ -268,6 +273,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     await waitForText(page, TITLE, '[data-testid="hypothesis-workbench"]');
     await waitForText(page, "r = 1.000", '[data-testid="hypothesis-workbench"]');
 
+    stage = "reconcile rendered association to owner API";
     const hypotheses = await request("GET", "/api/hypotheses", undefined, account.cookie);
     assert(hypotheses.status === 200 && hypotheses.body.hypotheses?.length === 1, "Rendered creation did not reconcile to one owner-scoped hypothesis.");
     const hypothesis = hypotheses.body.hypotheses[0];
@@ -283,6 +289,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     });
     assert(availableAssociationRendered && qualityDisclosureRendered, "Rendered association or evidence-quality disclosure is incomplete.");
 
+    stage = "save private interpretation";
     await page.type(`[data-testid="hypothesis-card-${hypothesis.id}"] input[aria-label="Private interpretation context"]`, PRIVATE_NOTE);
     await page.$eval(`[data-testid="hypothesis-card-${hypothesis.id}"] input[type="checkbox"]`, (input) => (input as HTMLInputElement).click());
     await page.click(`[data-testid="hypothesis-save-interpretation-${hypothesis.id}"]`);
@@ -291,22 +298,26 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     await waitForText(page, PRIVATE_NOTE, `[data-testid="hypothesis-card-${hypothesis.id}"]`);
     const privateInterpretationRendered = true;
 
+    stage = "pause and resume hypothesis";
     await page.click(`button[aria-label="Pause ${TITLE}"]`);
     await page.waitForSelector(`button[aria-label="Resume ${TITLE}"]`, { timeout: 30_000 });
     await page.click(`button[aria-label="Resume ${TITLE}"]`);
     await page.waitForSelector(`button[aria-label="Pause ${TITLE}"]`, { timeout: 30_000 });
     const pauseResumeRendered = true;
 
+    stage = "revoke consent and verify affected analysis pauses";
     await clickAndWaitPressed(page, '[data-testid="hypothesis-consent-health"]', false);
     await page.waitForSelector(`button[aria-label="Resume ${TITLE}"]`, { timeout: 30_000 });
     await waitForText(page, "domain consent revoked", `[data-testid="hypothesis-card-${hypothesis.id}"]`);
     const revoked = await request("GET", "/api/hypotheses", undefined, account.cookie);
     const revocationPausedAnalysis = revoked.body.hypotheses?.[0]?.status === "paused" && revoked.body.hypotheses?.[0]?.lastErrorCode === "domain_consent_revoked";
     assert(revocationPausedAnalysis, "Consent revocation did not pause the affected analysis.");
+    stage = "restore consent and resume analysis";
     await clickAndWaitPressed(page, '[data-testid="hypothesis-consent-health"]', true);
     await page.click(`button[aria-label="Resume ${TITLE}"]`);
     await page.waitForSelector(`button[aria-label="Pause ${TITLE}"]`, { timeout: 30_000 });
 
+    stage = "delete hypothesis and audit rendered workbench";
     await page.click(`button[aria-label="Delete ${TITLE}"]`);
     await waitForText(page, "No saved hypotheses yet.", '[data-testid="hypothesis-workbench"]');
     const finalHypotheses = await request("GET", "/api/hypotheses", undefined, account.cookie);
@@ -337,7 +348,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     if (context) await context.close().catch(() => undefined);
     if (account.cookie) cleanup = await eraseAccount(account, viewport.name);
   }
-  if (failure) throw new Error(`${safeError(failure)}; accountErased=${cleanup.accountErased}`);
+  if (failure) throw new Error(`stage=${stage}; ${safeError(failure)}; accountErased=${cleanup.accountErased}`);
   assert(view && cleanup.accountErased, `${viewport.name} did not complete the rendered journey and verified account erasure.`);
   return { view, cleanup };
 }
