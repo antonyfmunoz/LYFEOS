@@ -62,9 +62,9 @@ function downloadJson(filename: string, value: unknown) {
 
 export default function CanvasEditorPage() {
   const { canvasId } = useParams();
-  const isNew = canvasId === "new";
+  const [location, navigate] = useLocation();
+  const isNew = location === "/canvases/new" || canvasId === "new";
   const id = Number(canvasId);
-  const [, navigate] = useLocation();
   const { toast } = useToast();
   const [title, setTitle] = useState("Untitled Canvas");
   const [description, setDescription] = useState("");
@@ -374,7 +374,7 @@ export default function CanvasEditorPage() {
   if (query.isLoading) return <div className="container py-8 text-sm text-muted-foreground">Loading canvas…</div>;
   if (query.isError) return <div className="container py-8 text-sm text-destructive">{query.error instanceof Error ? query.error.message : "Canvas unavailable."}</div>;
 
-  return <div className="container max-w-[1600px] py-5 space-y-4">
+  return <div className="container max-w-[1600px] py-5 space-y-4" data-testid="canvas-editor">
     <div className="flex flex-wrap items-center justify-between gap-2">
       <div className="flex min-w-0 flex-1 items-center gap-2">
         <Link href="/canvases"><Button variant="outline">Canvas</Button></Link>
@@ -386,7 +386,7 @@ export default function CanvasEditorPage() {
         <input ref={importInput} type="file" accept="application/json,.json" className="hidden" aria-label="Import LyfeOS Canvas JSON" onChange={(event) => void stageJsonImport(event.target.files?.[0])} />
         <Button variant="outline" onClick={() => importInput.current?.click()}><Upload className="mr-1 h-4 w-4" />Import</Button>
         <Button variant="outline" onClick={() => downloadJson(filename, legacyContent ?? document)}><Download className="mr-1 h-4 w-4" />JSON</Button>
-        <Button disabled={!dirty || !title.trim() || save.isPending || legacyContent !== null} onClick={() => save.mutate()}><Save className="mr-1 h-4 w-4" />{save.isPending ? "Saving…" : "Save"}</Button>
+        <Button data-testid="canvas-save" disabled={!dirty || !title.trim() || save.isPending || legacyContent !== null} onClick={() => save.mutate()}><Save className="mr-1 h-4 w-4" />{save.isPending ? "Saving…" : "Save"}</Button>
       </div>
     </div>
     <div className="grid gap-2 md:grid-cols-[180px_1fr]">
@@ -396,7 +396,7 @@ export default function CanvasEditorPage() {
 
     {templatePickerOpen && <section className="rounded-xl border border-primary/20 bg-card/30 p-4" aria-label="Canvas template library">
       <div><h2 className="font-medium">Canvas templates</h2><p className="mt-1 text-xs text-muted-foreground">Choose a governed starting structure. Selection is only a preview; Apply replaces the unsaved Canvas document, remains reversible with Undo, and still requires Save.</p></div>
-      <div className="mt-3 grid gap-2 md:grid-cols-3">{builtInCanvasTemplates.map((template) => <button key={template.id} type="button" aria-pressed={pendingTemplateId === template.id} onClick={() => setPendingTemplateId(template.id)} className={`rounded-lg border p-3 text-left transition ${pendingTemplateId === template.id ? "border-primary bg-primary/10" : "border-primary/10 bg-background/20 hover:border-primary/35"}`}><span className="text-[10px] font-mono uppercase tracking-wider text-primary">{template.category}</span><span className="mt-1 block text-sm font-medium">{template.name}</span><span className="mt-1 block text-xs leading-relaxed text-muted-foreground">{template.description}</span><span className="mt-2 block text-[10px] text-muted-foreground">{template.document.nodes.length} nodes · {template.document.edges.length} connections</span></button>)}</div>
+      <div className="mt-3 grid gap-2 md:grid-cols-3">{builtInCanvasTemplates.map((template) => <button key={template.id} type="button" data-testid={`canvas-template-${template.id}`} aria-pressed={pendingTemplateId === template.id} onClick={() => setPendingTemplateId(template.id)} className={`rounded-lg border p-3 text-left transition ${pendingTemplateId === template.id ? "border-primary bg-primary/10" : "border-primary/10 bg-background/20 hover:border-primary/35"}`}><span className="text-[10px] font-mono uppercase tracking-wider text-primary">{template.category}</span><span className="mt-1 block text-sm font-medium">{template.name}</span><span className="mt-1 block text-xs leading-relaxed text-muted-foreground">{template.description}</span><span className="mt-2 block text-[10px] text-muted-foreground">{template.document.nodes.length} nodes · {template.document.edges.length} connections</span></button>)}</div>
       {pendingTemplate && <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/20 bg-primary/5 p-3"><p className="text-xs text-muted-foreground"><span className="font-medium text-foreground">Review {pendingTemplate.name}:</span> applying replaces {document.nodes.length} current nodes and {document.edges.length} connections only in the unsaved editor.</p><div className="flex gap-2"><Button size="sm" variant="ghost" onClick={() => setPendingTemplateId(null)}>Cancel</Button><Button size="sm" onClick={applyTemplate}>Apply template</Button></div></div>}
     </section>}
 
@@ -439,7 +439,7 @@ export default function CanvasEditorPage() {
       </div>
       <p className="text-xs text-muted-foreground">Drag empty space to pan. Shift-click nodes to extend or reduce the selection; selected nodes move together. Undo and Redo retain 20 unsaved document changes, with each node drag, pan, zoom, fit, bulk action, or confirmed import stored as one reversible change.</p>
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
-        <div ref={canvasViewportRef} className="relative h-[72vh] min-h-[500px] touch-none overflow-hidden rounded-xl border border-primary/15 bg-black/30 cursor-grab active:cursor-grabbing" aria-label="Canvas workspace. Drag empty space to pan." onPointerDown={startPan} onPointerMove={movePan} onPointerUp={stopPan} onPointerCancel={stopPan}>
+        <div ref={canvasViewportRef} data-testid="canvas-workspace" className="relative h-[72vh] min-h-[500px] touch-none overflow-hidden rounded-xl border border-primary/15 bg-black/30 cursor-grab active:cursor-grabbing" aria-label="Canvas workspace. Drag empty space to pan." onPointerDown={startPan} onPointerMove={movePan} onPointerUp={stopPan} onPointerCancel={stopPan}>
           <div className="absolute left-0 top-0 h-[10000px] w-[10000px] origin-top-left" style={{ transform: `translate3d(${document.viewport.x}px, ${document.viewport.y}px, 0) scale(${document.viewport.zoom})`, backgroundImage: "linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px)", backgroundSize: "24px 24px" }}>
             <svg aria-hidden="true" className="pointer-events-none absolute inset-0 h-[10000px] w-[10000px]">
               <defs><marker id="canvas-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L8,4 L0,8 Z" fill="hsl(var(--primary))" fillOpacity="0.65" /></marker></defs>
@@ -454,6 +454,7 @@ export default function CanvasEditorPage() {
             {document.nodes.map((node) => <div
               key={node.id}
               data-canvas-node={node.id}
+              data-testid={`canvas-node-${node.id}`}
               role="button"
               tabIndex={0}
               aria-label={`${nodeLabels[node.type]}: ${node.title || "Untitled"}`}
@@ -522,7 +523,7 @@ export default function CanvasEditorPage() {
         </aside>
       </div>
     </>}
-    {!isNew && <details className="rounded-xl border border-primary/15 bg-card/30 p-4">
+    {!isNew && <details data-testid="canvas-history" className="rounded-xl border border-primary/15 bg-card/30 p-4">
       <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-medium"><History className="h-4 w-4" />Saved version history</summary>
       <p className="mt-2 text-xs text-muted-foreground">Saved versions are immutable. Restoring copies the selected canvas into a new version; it never deletes or rewrites history. The 100 most recent versions are shown.</p>
       {revisions.isLoading && <p className="mt-3 text-sm text-muted-foreground">Loading saved versions…</p>}
@@ -532,7 +533,7 @@ export default function CanvasEditorPage() {
         {revisions.data.revisions.map((revision) => {
           const isCurrent = revision.revisionNumber === query.data?.canvas.revision;
           const action = revision.action === "restored" ? `restored from version ${revision.sourceRevision}` : revision.action;
-          return <li key={revision.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+          return <li key={revision.id} data-testid={`canvas-history-version-${revision.revisionNumber}`} className="flex flex-wrap items-center justify-between gap-3 py-3">
             <div><p className="text-sm font-medium">Version {revision.revisionNumber}{isCurrent ? " · current" : ""}</p><p className="text-xs text-muted-foreground">{action} · {new Date(revision.createdAt).toLocaleString()}</p></div>
             <Button type="button" size="sm" variant="outline" disabled={isCurrent || restoreRevision.isPending || dirty} onClick={() => { if (window.confirm(`Restore version ${revision.revisionNumber} as a new saved version? Your existing history will remain available.`)) restoreRevision.mutate(revision.revisionNumber); }}><RotateCcw className="mr-1 h-3.5 w-3.5" />Restore</Button>
           </li>;

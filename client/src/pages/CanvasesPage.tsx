@@ -50,7 +50,7 @@ export default function CanvasesPage() {
     return matchesSearch && (category === "all" || canvas.category === category);
   }).sort((a, b) => Number(b.favorite) - Number(a.favorite) || new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()), [all, category, search]);
 
-  return <div className="container max-w-6xl py-6 space-y-5">
+  return <div className="container max-w-6xl py-6 space-y-5" data-testid="canvas-page">
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div>
         <p className="text-xs font-mono uppercase tracking-[0.14em] text-primary">Personal information system</p>
@@ -59,7 +59,7 @@ export default function CanvasesPage() {
       </div>
       <div className="flex gap-2">
         <Link href="/document-vault"><Button variant="outline">Data Vault</Button></Link>
-        <Button onClick={() => navigate("/canvases/new")}><Plus className="mr-1 h-4 w-4" />New canvas</Button>
+        <Button data-testid="canvas-new" onClick={() => navigate("/canvases/new")}><Plus className="mr-1 h-4 w-4" />New canvas</Button>
       </div>
     </div>
     <div className="grid gap-2 sm:grid-cols-[1fr_180px]">
@@ -70,7 +70,7 @@ export default function CanvasesPage() {
       </select>
     </div>
     {canvases.isLoading ? <p className="text-sm text-muted-foreground">Loading canvases…</p> : filtered.length ? <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-      {filtered.map((canvas) => <article key={canvas.id} className="rounded-xl border border-primary/15 bg-card/35 p-4 transition hover:border-primary/35">
+      {filtered.map((canvas) => <article key={canvas.id} data-testid={`canvas-card-${canvas.id}`} className="rounded-xl border border-primary/15 bg-card/35 p-4 transition hover:border-primary/35">
         <div className="flex items-start justify-between gap-2">
           <button type="button" className="min-w-0 flex-1 text-left" onClick={() => navigate(`/canvases/${canvas.id}`)}>
             <div className="flex items-center gap-2"><LayoutDashboard className="h-4 w-4 text-primary" /><h2 className="truncate font-medium">{canvas.title}</h2></div>

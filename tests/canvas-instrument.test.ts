@@ -68,6 +68,21 @@ describe("Canvas instrument", () => {
     expect(editor).toContain("Start blank v1 canvas");
   });
 
+  it("recognizes the static new-canvas route and exposes stable production acceptance seams", () => {
+    const editor = source("client/src/pages/CanvasEditorPage.tsx");
+    const catalog = source("client/src/pages/CanvasesPage.tsx");
+    expect(editor).toContain('const [location, navigate] = useLocation()');
+    expect(editor).toContain('location === "/canvases/new" || canvasId === "new"');
+    expect(editor).toContain('data-testid="canvas-editor"');
+    expect(editor).toContain('data-testid="canvas-save"');
+    expect(editor).toContain('data-testid="canvas-workspace"');
+    expect(editor).toContain('data-testid={`canvas-template-${template.id}`}');
+    expect(editor).toContain('data-testid={`canvas-history-version-${revision.revisionNumber}`}');
+    expect(catalog).toContain('data-testid="canvas-page"');
+    expect(catalog).toContain('data-testid="canvas-new"');
+    expect(catalog).toContain('data-testid={`canvas-card-${canvas.id}`}');
+  });
+
   it("keeps zoom anchored, bounds panning, and fits node bounds deterministically", () => {
     expect(zoomCanvasViewport({ x: 0, y: 0, zoom: 1 }, 2, 400, 300)).toEqual({ x: -400, y: -300, zoom: 2 });
     expect(panCanvasViewport({ x: 9_990, y: -9_990, zoom: 1 }, 100, -100)).toEqual({ x: 10_000, y: -10_000, zoom: 1 });
