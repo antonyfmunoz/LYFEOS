@@ -272,10 +272,11 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     assert(undone && redone, "Rendered undo/redo did not reconcile the selected cell.");
     await setValue(page, 'input[aria-label="Cell input or formula"]', "2");
     await activate(page, 'button[aria-label^="Copy selected range"]');
-    await page.waitForFunction(() => document.body?.textContent?.includes("Range copied"), { timeout: 30_000 });
+    await page.waitForFunction(async () => {
+      try { return await navigator.clipboard.readText() === "2"; } catch { return false; }
+    }, { timeout: 30_000 });
     await activate(page, '[data-sheet-address="B1"]');
     await activate(page, 'button[aria-label^="Paste range starting"]');
-    await page.waitForFunction(() => document.body?.textContent?.includes("Range pasted"), { timeout: 30_000 });
     await page.waitForFunction(() => document.querySelector('[data-sheet-address="B1"]')?.getAttribute("aria-label") === "B1: 2", { timeout: 30_000 });
     const clipboardRoundTripReconciled = true;
     const fileInput = await page.$('input[aria-label="Choose a CSV or TSV file"]');
