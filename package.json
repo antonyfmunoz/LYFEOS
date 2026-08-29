@@ -18,6 +18,7 @@
     "acceptance:production-ai-memory": "tsx scripts/production-ai-memory-browser-acceptance.ts",
     "acceptance:production-voice": "tsx scripts/production-voice-browser-acceptance.ts",
     "acceptance:production-pattern-explorer": "tsx scripts/production-pattern-explorer-browser-acceptance.ts",
+    "acceptance:production-personal-finance": "tsx scripts/production-personal-finance-browser-acceptance.ts",
     "acceptance:messages": "tsx scripts/messages-browser-acceptance.ts",
     "acceptance:mission-safety": "tsx scripts/mission-safety-browser-acceptance.ts",
     "acceptance:thread-successor": "tsx scripts/thread-successor-browser-acceptance.ts",

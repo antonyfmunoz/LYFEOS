@@ -40,4 +40,32 @@ describe("personal finance foundation", () => {
     expect(page).toContain('Complete');
     expect(page).toContain('Reopen');
   });
+
+  it("binds the complete rendered finance lifecycle to protected production evidence", () => {
+    const page = readFileSync(resolve(process.cwd(), "client/src/pages/PersonalFinancePage.tsx"), "utf8");
+    const script = readFileSync(resolve(process.cwd(), "scripts/production-personal-finance-browser-acceptance.ts"), "utf8");
+    const workflow = readFileSync(resolve(process.cwd(), ".github/workflows/production-browser-acceptance.yml"), "utf8");
+    const packageJson = readFileSync(resolve(process.cwd(), "package.json"), "utf8");
+    expect(page).toContain('data-testid="personal-finance"');
+    expect(page).toContain('aria-label="Net worth and cash flow"');
+    expect(script).toContain('contract: "lyfeos.production-personal-finance-browser.v1"');
+    for (const invariant of [
+      "assetLiabilityMathReconciled",
+      "balanceHistoryReconciled",
+      "cashFlowAndBudgetReconciled",
+      "correctionReconciled",
+      "accountLifecycleReconciled",
+      "goalLifecycleReconciled",
+      "deletionAndArchiveReconciled",
+      "wealthTokensUnchanged",
+      "invalidLabelReferences",
+      "accountErased",
+    ]) expect(script).toContain(invariant);
+    expect(script).toContain('BASE_URL.origin === "https://lyfeos.net"');
+    expect(script).toContain("runtime does not match the requested immutable source");
+    expect(workflow).toContain("Run disposable production Personal Finance acceptance");
+    expect(workflow).toContain("LYFEOS_FINANCE_OUTPUT_DIR");
+    expect(workflow).toContain("npm run acceptance:production-personal-finance");
+    expect(packageJson).toContain('"acceptance:production-personal-finance"');
+  });
 });

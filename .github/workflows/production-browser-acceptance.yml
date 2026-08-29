@@ -121,6 +121,15 @@ jobs:
           LYFEOS_ACCEPTANCE_HARNESS_SOURCE: ${{ github.sha }}
           LYFEOS_PATTERN_OUTPUT_DIR: ${{ runner.temp }}/lyfeos-browser-acceptance
         run: npm run acceptance:production-pattern-explorer
+      - name: Run disposable production Personal Finance acceptance
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.require_authenticated }}
+        env:
+          LYFEOS_CHROMIUM_PATH: ${{ steps.chrome.outputs.chrome-path }}
+          LYFEOS_TEST_API_URL: https://lyfeos.net
+          LYFEOS_ACCEPTANCE_SOURCE: ${{ steps.release.outputs.source }}
+          LYFEOS_ACCEPTANCE_HARNESS_SOURCE: ${{ github.sha }}
+          LYFEOS_FINANCE_OUTPUT_DIR: ${{ runner.temp }}/lyfeos-browser-acceptance
+        run: npm run acceptance:production-personal-finance
       - name: Run disposable production Mission safety acceptance
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.require_authenticated }}
         env:
