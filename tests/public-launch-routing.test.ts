@@ -9,6 +9,7 @@ describe("public launch routing", () => {
     expect(app).toContain('<Route path="/register" component={RegisterPage} />');
     expect(app).toContain('<Route path="/privacy" component={TrustDisclosurePage} />');
     expect(app).toContain('<Route path="/terms" component={TrustDisclosurePage} />');
+    expect(app).toContain("'/privacy', '/terms'");
     expect(app).toContain('<Route path="/forgot-password" component={ForgotPasswordPage} />');
     expect(app).toContain('<Route path="/reset-password" component={ResetPasswordPage} />');
     expect(app).toContain("'/forgot-password', '/reset-password'");

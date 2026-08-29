@@ -311,7 +311,7 @@ function Router() {
     }
     
     // Public paths that don't require auth
-    const publicPaths = ['/login', '/register', '/forgot-password', '/reset-password', '/login-success', '/waitlist', '/review-mission', '/forms/respond'];
+    const publicPaths = ['/login', '/register', '/forgot-password', '/reset-password', '/privacy', '/terms', '/login-success', '/waitlist', '/review-mission', '/forms/respond'];
     const exactPublicPaths = ['/subscription'];
     if (publicPaths.some(path => currentPath.startsWith(path)) || exactPublicPaths.includes(currentPath)) {
       return;
