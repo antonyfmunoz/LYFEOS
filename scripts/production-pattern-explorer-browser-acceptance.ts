@@ -147,13 +147,26 @@ async function waitForText(page: Page, text: string, selector = "body"): Promise
 }
 
 async function clickAndWaitPressed(page: Page, selector: string, pressed: boolean): Promise<void> {
-  await page.click(selector);
+  await activateHitTestedControl(page, selector);
   await page.waitForFunction(
     (targetSelector, expected) => document.querySelector(targetSelector)?.getAttribute("aria-pressed") === String(expected),
     { timeout: 30_000 },
     selector,
     pressed,
   );
+}
+
+async function activateHitTestedControl(page: Page, selector: string): Promise<void> {
+  await page.$eval(selector, (control) => control.scrollIntoView({ block: "center", inline: "center" }));
+  await page.waitForFunction((targetSelector) => {
+    const control = document.querySelector<HTMLElement>(targetSelector);
+    if (!control || (control as HTMLButtonElement).disabled) return false;
+    const rect = control.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return false;
+    const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+    return hit === control || (hit !== null && control.contains(hit));
+  }, { timeout: 30_000 }, selector);
+  await page.click(selector);
 }
 
 async function auditWorkbench(page: Page): Promise<Pick<ViewResult, "mainCount" | "duplicateIds" | "unlabeledControls" | "horizontalOverflowPx">> {
@@ -311,9 +324,9 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     const privateInterpretationRendered = true;
 
     stage = "pause and resume hypothesis";
-    await page.click(`button[aria-label="Pause ${TITLE}"]`);
+    await activateHitTestedControl(page, `button[aria-label="Pause ${TITLE}"]`);
     await page.waitForSelector(`button[aria-label="Resume ${TITLE}"]`, { timeout: 30_000 });
-    await page.click(`button[aria-label="Resume ${TITLE}"]`);
+    await activateHitTestedControl(page, `button[aria-label="Resume ${TITLE}"]`);
     await page.waitForSelector(`button[aria-label="Pause ${TITLE}"]`, { timeout: 30_000 });
     const pauseResumeRendered = true;
 
@@ -326,11 +339,11 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     assert(revocationPausedAnalysis, "Consent revocation did not pause the affected analysis.");
     stage = "restore consent and resume analysis";
     await clickAndWaitPressed(page, '[data-testid="hypothesis-consent-health"]', true);
-    await page.click(`button[aria-label="Resume ${TITLE}"]`);
+    await activateHitTestedControl(page, `button[aria-label="Resume ${TITLE}"]`);
     await page.waitForSelector(`button[aria-label="Pause ${TITLE}"]`, { timeout: 30_000 });
 
     stage = "delete hypothesis and audit rendered workbench";
-    await page.click(`button[aria-label="Delete ${TITLE}"]`);
+    await activateHitTestedControl(page, `button[aria-label="Delete ${TITLE}"]`);
     await waitForText(page, "No saved hypotheses yet.", '[data-testid="hypothesis-workbench"]');
     const finalHypotheses = await request("GET", "/api/hypotheses", undefined, account.cookie);
     const deletionRendered = finalHypotheses.status === 200 && finalHypotheses.body.hypotheses?.length === 0;
