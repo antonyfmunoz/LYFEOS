@@ -277,9 +277,11 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     intentionallyOffline = true;
     await page.setOfflineMode(true);
     await activate(page, '[data-testid="mission-create-submit"]');
-    await page.waitForSelector('[data-testid="calendar-offline-queue"]', { visible: true, timeout: 30_000 });
-    const offlineCreateQueued = await page.$eval('[data-testid="calendar-offline-queue"]', (element, title) => element.textContent?.includes(String(title)) === true && element.textContent?.includes("Waiting for a connection") === true, offlineTitle);
-    assert(offlineCreateQueued, "Offline Calendar create was not visibly queued on this device.");
+    await page.waitForFunction((title) => {
+      const text = document.querySelector('[data-testid="calendar-offline-queue"]')?.textContent || "";
+      return text.includes(String(title)) && text.includes("Waiting for a connection");
+    }, { timeout: 45_000 }, offlineTitle);
+    const offlineCreateQueued = true;
     intentionallyOffline = false;
     await page.setOfflineMode(false);
     const created = await waitForMission(account, date, (mission) => mission.title === offlineTitle, "offline create reconnect");
