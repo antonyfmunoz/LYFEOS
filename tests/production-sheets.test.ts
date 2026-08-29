@@ -22,7 +22,7 @@ describe("production Sheets evidence custody", () => {
     expect(acceptance).toContain('name: "desktop-1440x900"');
     expect(acceptance).toContain('name: "mobile-390x844"');
     expect(acceptance).toContain("formulasCalculated");
-    expect(acceptance).toContain("clipboardRoundTripReconciled");
+    expect(acceptance).toContain("controlledClipboardAdapterRoundTrip");
     expect(acceptance).toContain("localImportReviewedAndPersisted");
     expect(acceptance).toContain("staleSaveStoppedAsConflict");
     expect(acceptance).toContain("largeGridWindowed");
@@ -30,6 +30,7 @@ describe("production Sheets evidence custody", () => {
     expect(acceptance).toContain("crossOwnerIsolationReconciled");
     expect(acceptance).toContain("otherAccountErased");
     expect(acceptance).toContain("human assistive-technology comprehension");
+    expect(acceptance).toContain("OS clipboard permissions");
   });
 
   it("uses stable nonvisual hooks and protected evidence custody", () => {

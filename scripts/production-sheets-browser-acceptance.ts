@@ -15,7 +15,7 @@ type ViewResult = {
   catalogAndEditorRendered: boolean;
   formulasCalculated: boolean;
   undoRedoReconciled: boolean;
-  clipboardRoundTripReconciled: boolean;
+  controlledClipboardAdapterRoundTrip: boolean;
   localImportReviewedAndPersisted: boolean;
   immutableCreationRevisionReconciled: boolean;
   crossOwnerIsolationReconciled: boolean;
@@ -235,7 +235,6 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
 
     stage = "render Sheets catalog and create through named controls";
     context = await browser.createBrowserContext();
-    await context.overridePermissions(BASE_URL.origin, ["clipboard-read", "clipboard-write"]);
     page = await context.newPage();
     const signals = captureSignals(page);
     const session = cookieParts(owner.cookie);
@@ -246,6 +245,16 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
         localStorage.setItem(`lyfeos-tutorial-done-missions-${fixtureUser.id}`, "true");
       } catch { /* Origin is not ready. */ }
     }, { id: owner.id, displayName: owner.displayName });
+    await page.evaluateOnNewDocument(() => {
+      let value = "";
+      Object.defineProperty(navigator, "clipboard", {
+        configurable: true,
+        value: {
+          writeText: async (nextValue: string) => { value = String(nextValue); },
+          readText: async () => value,
+        },
+      });
+    });
     await page.setViewport(viewport.value);
     await page.setCacheEnabled(false);
     await page.goto(new URL("/spreadsheets", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
@@ -278,7 +287,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     await activate(page, '[data-sheet-address="B1"]');
     await activate(page, 'button[aria-label^="Paste range starting"]');
     await page.waitForFunction(() => document.querySelector('[data-sheet-address="B1"]')?.getAttribute("aria-label") === "B1: 2", { timeout: 30_000 });
-    const clipboardRoundTripReconciled = true;
+    const controlledClipboardAdapterRoundTrip = true;
     const fileInput = await page.$('input[aria-label="Choose a CSV or TSV file"]');
     assert(fileInput, "Local CSV input is unavailable.");
     await fileInput.uploadFile(importPath);
@@ -360,7 +369,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     const audit = await auditPage(page);
     assert(audit.mainCount === 1 && audit.duplicateIds.length === 0 && audit.invalidLabelReferences.length === 0 && audit.unlabeledControls.length === 0 && audit.horizontalOverflowPx <= 2, `${viewport.name} Sheets failed semantics or overflow checks.`);
     assert(Object.values(signals).every((items) => items.length === 0), `${viewport.name} Sheets journey produced application errors: ${JSON.stringify(signals)}.`);
-    view = { viewport: viewport.name, catalogAndEditorRendered, formulasCalculated, undoRedoReconciled: true, clipboardRoundTripReconciled, localImportReviewedAndPersisted, immutableCreationRevisionReconciled, crossOwnerIsolationReconciled, staleSaveStoppedAsConflict, largeGridWindowed, renderedCellCountAtLimit, reconciledSaveCreatedNewRevision, restoreCreatedNewImmutableRevision, catalogPersistenceRendered, audit, signals };
+    view = { viewport: viewport.name, catalogAndEditorRendered, formulasCalculated, undoRedoReconciled: true, controlledClipboardAdapterRoundTrip, localImportReviewedAndPersisted, immutableCreationRevisionReconciled, crossOwnerIsolationReconciled, staleSaveStoppedAsConflict, largeGridWindowed, renderedCellCountAtLimit, reconciledSaveCreatedNewRevision, restoreCreatedNewImmutableRevision, catalogPersistenceRendered, audit, signals };
   } catch (error) {
     const rendered = page ? await page.evaluate(() => document.body?.innerText.slice(0, 2_000) || "page unavailable").catch(() => "page unavailable") : "page unavailable";
     if (page) await page.screenshot({ path: path.join(OUTPUT_DIR, `sheets-${viewport.name}-failure.png`), fullPage: true }).catch(() => undefined);
@@ -408,7 +417,7 @@ async function main(): Promise<void> {
       views,
       cleanups,
       summary: { passed, failure },
-      boundary: "Disposable production-account Chromium evidence for Sheets. It proves desktop/mobile catalog and editor rendering; raw-value and formula persistence; calculated formula display; local undo/redo; a permissioned browser Clipboard API round trip; explicit local CSV review before persistence; immutable create, update, conflict and restore revisions; cross-owner isolation; bounded rendering at the documented 500-row by 100-column limit; responsive semantics; and verified account/session/identifier erasure. It does not prove native spreadsheet-file import, charting, real-device clipboard or file-picker behavior, browser permission denial recovery, simultaneous multi-tab editing, full Excel or Google Sheets formula compatibility, human assistive-technology comprehension, or longitudinal calculation correctness for user-authored models.",
+      boundary: "Disposable production-account Chromium evidence for Sheets. It proves desktop/mobile catalog and editor rendering; raw-value and formula persistence; calculated formula display; local undo/redo; copy/paste through a controlled in-page Clipboard API adapter; explicit local CSV review before persistence; immutable create, update, conflict and restore revisions; cross-owner isolation; bounded rendering at the documented 500-row by 100-column limit; responsive semantics; and verified account/session/identifier erasure. It does not prove native spreadsheet-file import, charting, OS clipboard permissions, real-device clipboard or file-picker behavior, browser permission denial recovery, simultaneous multi-tab editing, full Excel or Google Sheets formula compatibility, human assistive-technology comprehension, or longitudinal calculation correctness for user-authored models.",
     };
     await fs.writeFile(OUTPUT_FILE, `${JSON.stringify(report, null, 2)}\n`, "utf8");
     if (process.env.GITHUB_STEP_SUMMARY) {
