@@ -73,7 +73,7 @@ describe("Projects convergence", () => {
 
   it("replaces the client-only Kanban entry with the protected Projects surface and preserves legacy detail", () => {
     const app = source("client/src/App.tsx");
-    expect(app).toContain('React.lazy(() => import("./pages/ProjectsPage"))');
+    expect(app).toContain('lazyRoute(() => import("./pages/ProjectsPage"))');
     expect(app).toContain('<Route path="/projects">');
     expect(app).toContain('<Route path="/kanban">');
     expect(app).toContain("<ProjectsPage />");

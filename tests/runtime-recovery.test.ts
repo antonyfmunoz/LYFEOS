@@ -4,6 +4,7 @@ import {
   CHUNK_RECOVERY_COOLDOWN_MS,
   getRuntimeErrorMessage,
   isChunkLoadError,
+  withChunkLoadTimeout,
 } from "../client/src/lib/runtimeRecovery";
 
 describe("runtime recovery", () => {
@@ -32,5 +33,18 @@ describe("runtime recovery", () => {
     expect(canAttemptChunkRecovery("not-a-number", now)).toBe(true);
     expect(canAttemptChunkRecovery(String(now - 1), now)).toBe(false);
     expect(canAttemptChunkRecovery(String(now - CHUNK_RECOVERY_COOLDOWN_MS - 1), now)).toBe(true);
+  });
+
+  it("resolves a route chunk that settles inside the bounded window", async () => {
+    await expect(withChunkLoadTimeout(async () => "loaded", 25)).resolves.toBe("loaded");
+  });
+
+  it("turns a stalled route chunk into a recoverable chunk-load error", async () => {
+    const stalled = withChunkLoadTimeout(() => new Promise<string>(() => undefined), 5);
+    await expect(stalled).rejects.toMatchObject({
+      name: "ChunkLoadError",
+      message: expect.stringContaining("route chunk timed out"),
+    });
+    await stalled.catch((error) => expect(isChunkLoadError(error)).toBe(true));
   });
 });

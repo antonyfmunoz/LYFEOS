@@ -5,10 +5,11 @@ import { describe, expect, it } from "vitest";
 describe("route loading boundary", () => {
   it("defers feature pages behind a suspense boundary instead of eagerly importing the whole product", () => {
     const app = readFileSync(resolve(process.cwd(), "client/src/App.tsx"), "utf8");
-    expect(app).toContain('React.lazy(() => import("./pages/DashboardPage"))');
-    expect(app).toContain('React.lazy(() => import("./pages/ProfilePage"))');
-    expect(app).toContain('React.lazy(() => import("./pages/AnalyticsPage"))');
-    expect(app).toContain('React.lazy(() => import("./pages/DocumentVaultPage"))');
+    expect(app).toContain('lazyRoute(() => import("./pages/DashboardPage"))');
+    expect(app).toContain('lazyRoute(() => import("./pages/ProfilePage"))');
+    expect(app).toContain('lazyRoute(() => import("./pages/AnalyticsPage"))');
+    expect(app).toContain('lazyRoute(() => import("./pages/DocumentVaultPage"))');
+    expect(app).toContain("React.lazy(() => withChunkLoadTimeout(loader))");
     expect(app).toContain('<Suspense fallback={<RouteLoadingScreen />}>');
     expect(app).not.toContain('import DashboardPage from "./pages/DashboardPage"');
   });

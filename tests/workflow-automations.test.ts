@@ -115,7 +115,7 @@ describe("workflow automations", () => {
       expect(profile).toContain(`"${table}"`);
     }
     expect(release).toContain('id: "0096_workflow_automations"');
-    expect(app).toContain('React.lazy(() => import("./pages/AutomationsPage"))');
+    expect(app).toContain('lazyRoute(() => import("./pages/AutomationsPage"))');
     expect(app).toContain('<Route path="/automations">');
     expect(vault).toContain("navigate('/automations')");
   });

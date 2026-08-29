@@ -114,7 +114,7 @@ describe("LyfeOS native Messages convergence", () => {
     const page = source("client/src/pages/MessagesPage.tsx");
     const rolodex = source("client/src/pages/RolodexPage.tsx");
     const sidebar = source("client/src/components/layout/Sidebar.tsx");
-    expect(app).toContain('React.lazy(() => import("./pages/MessagesPage"))');
+    expect(app).toContain('lazyRoute(() => import("./pages/MessagesPage"))');
     expect(app).toContain('<Route path="/messages">');
     expect(page).toContain("Native private communication");
     expect(page).toContain("Private note · only you");

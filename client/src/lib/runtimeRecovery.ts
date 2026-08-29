@@ -9,6 +9,25 @@ const CHUNK_LOAD_ERROR_PATTERNS = [
 
 export const CHUNK_RECOVERY_STORAGE_KEY = "lyfeos-chunk-recovery";
 export const CHUNK_RECOVERY_COOLDOWN_MS = 60_000;
+export const ROUTE_CHUNK_TIMEOUT_MS = 15_000;
+
+export function withChunkLoadTimeout<T>(
+  loader: () => Promise<T>,
+  timeoutMs = ROUTE_CHUNK_TIMEOUT_MS,
+): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_resolve, reject) => {
+    timeoutId = setTimeout(() => {
+      const error = new Error(`Failed to fetch dynamically imported module: route chunk timed out after ${timeoutMs}ms`);
+      error.name = "ChunkLoadError";
+      reject(error);
+    }, timeoutMs);
+  });
+
+  return Promise.race([loader(), timeout]).finally(() => {
+    if (timeoutId !== undefined) clearTimeout(timeoutId);
+  });
+}
 
 export function getRuntimeErrorMessage(error: unknown): string {
   if (error instanceof Error) return `${error.name}: ${error.message}`;
