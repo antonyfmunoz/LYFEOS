@@ -166,6 +166,16 @@ jobs:
           LYFEOS_ACCEPTANCE_HARNESS_SOURCE: ${{ github.sha }}
           LYFEOS_CANVAS_OUTPUT_DIR: ${{ runner.temp }}/lyfeos-browser-acceptance
         run: npm run acceptance:production-canvas
+      - name: Run disposable production Search acceptance
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.require_authenticated }}
+        env:
+          LYFEOS_CHROMIUM_PATH: ${{ steps.chrome.outputs.chrome-path }}
+          LYFEOS_TEST_API_URL: https://lyfeos.net
+          LYFEOS_SEARCH_ACCEPTANCE_MODE: production
+          LYFEOS_ACCEPTANCE_SOURCE: ${{ steps.release.outputs.source }}
+          LYFEOS_ACCEPTANCE_HARNESS_SOURCE: ${{ github.sha }}
+          LYFEOS_SEARCH_OUTPUT_DIR: ${{ runner.temp }}/lyfeos-browser-acceptance
+        run: npm run acceptance:production-search
       - name: Run disposable production Messages acceptance
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.require_authenticated }}
         env:

@@ -119,6 +119,7 @@ jobs:
           LYFEOS_MISSION_SAFETY_OUTPUT_DIR: ${{ runner.temp }}/lyfeos-mission-safety-browser
           LYFEOS_THREAD_SUCCESSOR_OUTPUT_DIR: ${{ runner.temp }}/lyfeos-thread-successor-browser
           LYFEOS_PROJECTS_OUTPUT_DIR: ${{ runner.temp }}/lyfeos-projects-browser
+          LYFEOS_SEARCH_OUTPUT_DIR: ${{ runner.temp }}/lyfeos-search-browser
           LYFEOS_EXTENSION_REGISTRY_ADMIN_TOKEN: ci-extension-registry-qualification-token-000001
         run: |
           export CLERK_SECRET_KEY="sk""_test_lyfeoslocalqualification000000000"
@@ -167,6 +168,9 @@ jobs:
           fi
           if [ "$test_status" -eq 0 ]; then
             LYFEOS_PROJECTS_ACCEPTANCE_MODE=isolated npm run acceptance:projects || test_status=$?
+          fi
+          if [ "$test_status" -eq 0 ]; then
+            LYFEOS_SEARCH_ACCEPTANCE_MODE=isolated npm run acceptance:search || test_status=$?
           fi
           if [ "$test_status" -ne 0 ]; then
             echo "Authenticated integration qualification failed. Server log:"
@@ -219,6 +223,14 @@ jobs:
         with:
           name: lyfeos-isolated-projects-${{ github.sha }}
           path: ${{ runner.temp }}/lyfeos-projects-browser
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Upload isolated Search evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: lyfeos-isolated-search-${{ github.sha }}
+          path: ${{ runner.temp }}/lyfeos-search-browser
           if-no-files-found: warn
           retention-days: 30
       - name: Rehearse logical backup and isolated restore

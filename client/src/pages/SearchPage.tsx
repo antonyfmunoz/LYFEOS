@@ -47,7 +47,7 @@ export default function SearchPage() {
   });
   const results = useMemo(() => (search.data?.results || []).filter((result) => kind === "all" || result.kind === kind), [kind, search.data?.results]);
 
-  return <div className="container max-w-5xl py-6 space-y-5">
+  return <div className="container max-w-5xl py-6 space-y-5" data-testid="search-page">
     <div>
       <p className="text-xs font-mono uppercase tracking-[0.14em] text-primary">Private workspace</p>
       <h1 className="font-orbitron text-2xl">Search</h1>
@@ -55,21 +55,21 @@ export default function SearchPage() {
     </div>
     <div className="relative">
       <Search className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
-      <Input autoFocus aria-label="Search LyfeOS" aria-keyshortcuts="Control+K Meta+K" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search your LyfeOS workspace" className="h-11 pl-11 pr-3 text-base sm:pr-28" />
+      <Input autoFocus aria-label="Search LyfeOS" aria-keyshortcuts="Control+K Meta+K" data-testid="workspace-search-input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search your LyfeOS workspace" className="h-11 pl-11 pr-3 text-base sm:pr-28" />
       <span className="pointer-events-none absolute right-3 top-3 hidden rounded border border-primary/15 px-2 py-0.5 text-[10px] text-muted-foreground sm:block" aria-hidden="true">Ctrl / Cmd K</span>
     </div>
     {search.data && <div className="flex flex-wrap gap-2" aria-label="Search result filters">
-      <button type="button" onClick={() => setKind("all")} className={`rounded-full border px-3 py-1 text-xs ${kind === "all" ? "border-primary bg-primary/20 text-primary" : "border-primary/15 text-muted-foreground"}`}>All {search.data.results.length}</button>
-      {(Object.keys(kindMeta) as WorkspaceSearchResultKind[]).map((value) => <button key={value} type="button" onClick={() => setKind(value)} className={`rounded-full border px-3 py-1 text-xs ${kind === value ? "border-primary bg-primary/20 text-primary" : "border-primary/15 text-muted-foreground"}`}>{kindMeta[value].label} {search.data.counts[value]}</button>)}
+      <button type="button" aria-pressed={kind === "all"} data-testid="search-filter-all" onClick={() => setKind("all")} className={`rounded-full border px-3 py-1 text-xs ${kind === "all" ? "border-primary bg-primary/20 text-primary" : "border-primary/15 text-muted-foreground"}`}>All {search.data.results.length}</button>
+      {(Object.keys(kindMeta) as WorkspaceSearchResultKind[]).map((value) => <button key={value} type="button" aria-pressed={kind === value} data-testid={`search-filter-${value}`} onClick={() => setKind(value)} className={`rounded-full border px-3 py-1 text-xs ${kind === value ? "border-primary bg-primary/20 text-primary" : "border-primary/15 text-muted-foreground"}`}>{kindMeta[value].label} {search.data.counts[value]}</button>)}
     </div>}
-    {debouncedQuery.length < 2 ? <div className="rounded-xl border border-dashed border-primary/20 p-10 text-center text-sm text-muted-foreground">Enter at least two characters. Search results remain private to your authenticated account.</div>
-      : search.isLoading ? <p className="text-sm text-muted-foreground">Searching…</p>
-      : search.isError ? <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">{search.error instanceof Error ? search.error.message : "Search is unavailable."}</div>
-      : results.length ? <div className="space-y-2">
+    {debouncedQuery.length < 2 ? <div data-testid="search-minimum-query" className="rounded-xl border border-dashed border-primary/20 p-10 text-center text-sm text-muted-foreground">Enter at least two characters. Search results remain private to your authenticated account.</div>
+      : search.isLoading ? <p className="text-sm text-muted-foreground" data-testid="search-loading">Searching…</p>
+      : search.isError ? <div data-testid="search-error" className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">{search.error instanceof Error ? search.error.message : "Search is unavailable."}</div>
+      : results.length ? <div className="space-y-2" data-testid="workspace-search-results" aria-live="polite">
         {results.map((result) => {
           const meta = kindMeta[result.kind];
           const Icon = meta.icon;
-          return <button key={`${result.kind}-${result.id}`} type="button" onClick={() => navigate(result.href)} className="flex w-full items-start gap-3 rounded-xl border border-primary/15 bg-card/35 p-4 text-left transition hover:border-primary/40 hover:bg-card/55">
+          return <button key={`${result.kind}-${result.id}`} type="button" data-testid={`search-result-${result.kind}-${result.id}`} data-result-kind={result.kind} onClick={() => navigate(result.href)} className="flex w-full items-start gap-3 rounded-xl border border-primary/15 bg-card/35 p-4 text-left transition hover:border-primary/40 hover:bg-card/55">
             <span className="rounded-lg bg-primary/10 p-2 text-primary"><Icon className="h-4 w-4" /></span>
             <span className="min-w-0 flex-1">
               <span className="flex flex-wrap items-center gap-2"><strong className="truncate font-medium">{result.title}</strong><span className="rounded border border-primary/15 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">{meta.label}</span></span>
@@ -78,6 +78,6 @@ export default function SearchPage() {
             </span>
           </button>;
         })}
-      </div> : <div className="rounded-xl border border-dashed border-primary/20 p-10 text-center text-sm text-muted-foreground">No results match “{debouncedQuery}” in this workspace.</div>}
+      </div> : <div data-testid="search-empty" className="rounded-xl border border-dashed border-primary/20 p-10 text-center text-sm text-muted-foreground">No results match “{debouncedQuery}” in this workspace.</div>}
   </div>;
 }
