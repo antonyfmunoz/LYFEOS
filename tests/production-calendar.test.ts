@@ -10,6 +10,7 @@ describe("production Calendar evidence custody", () => {
   const packageJson = source("package.json");
   const calendar = source("client/src/pages/QuestsPage.tsx");
   const queue = source("client/src/components/calendar/OfflineCalendarQueueStatus.tsx");
+  const context = source("client/src/lib/context.tsx");
 
   it("binds the production-only contract to immutable runtime and harness sources", () => {
     expect(acceptance).toContain('contract: "lyfeos.production-calendar-browser.v1"');
@@ -35,6 +36,8 @@ describe("production Calendar evidence custody", () => {
     expect(calendar).toContain('data-testid="calendar-title"');
     expect(calendar).toContain('data-testid="mission-update-submit"');
     expect(queue).toContain('data-testid="calendar-offline-queue"');
+    expect(context).toContain('queryClient.setQueryData(["calendar-offline-queue", user.id], await listCalendarMutationQueue(user.id))');
+    expect(context).toContain('queryClient.setQueryData(["calendar-offline-queue", user!.id], await listCalendarMutationQueue(user!.id))');
     expect(packageJson).toContain('"acceptance:production-calendar"');
     expect(workflow).toContain("npm run acceptance:production-calendar");
     expect(workflow).toContain("LYFEOS_CALENDAR_OUTPUT_DIR");

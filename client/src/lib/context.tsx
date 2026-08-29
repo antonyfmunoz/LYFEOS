@@ -9,7 +9,7 @@ import { useAuth } from "./authContext";
 import { apiRequest, queryClient } from "./queryClient";
 import { getLocalDateString } from "./utils";
 import { applyPrimaryColor } from "./applyPrimaryColor";
-import { submitCalendarMissionMutation } from "./calendarOfflineQueue";
+import { listCalendarMutationQueue, submitCalendarMissionMutation } from "./calendarOfflineQueue";
 
 const STAT_TIPS_SESSION_TTL_MS = 5 * 60 * 1000;
 
@@ -1089,6 +1089,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       });
       void queryClient.invalidateQueries({ queryKey: ["calendar-offline-queue", user.id] });
       if (result.queued) {
+        queryClient.setQueryData(["calendar-offline-queue", user.id], await listCalendarMutationQueue(user.id));
         toast({
           title: result.status === "conflict" ? "Calendar change needs review" : "Mission saved on this device",
           description: result.status === "conflict" ? "Open the Calendar sync panel to resolve it." : "It will be added to your account when this device reconnects.",
@@ -1181,6 +1182,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       });
       void queryClient.invalidateQueries({ queryKey: ["calendar-offline-queue", user!.id] });
       if (result.queued) {
+        queryClient.setQueryData(["calendar-offline-queue", user!.id], await listCalendarMutationQueue(user!.id));
         toast({
           title: result.status === "conflict" ? "Calendar change needs review" : "Calendar change saved on this device",
           description: result.status === "conflict" ? "The mission changed elsewhere. Review both versions in the Calendar sync panel." : "It will sync when this device reconnects.",
