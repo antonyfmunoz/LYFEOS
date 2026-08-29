@@ -121,8 +121,7 @@ function captureSignals(page: Page, intentionallyOffline: () => boolean): Signal
 }
 
 function acknowledgeReconciledConflict(signals: Signals): void {
-  const index = signals.consoleErrors.findIndex((error) => error === "Failed to load resource: the server responded with a status of 409 ()");
-  if (index >= 0) signals.consoleErrors.splice(index, 1);
+  signals.consoleErrors = signals.consoleErrors.filter((error) => error !== "Failed to load resource: the server responded with a status of 409 ()");
 }
 
 async function dismissBlockingTutorial(page: Page): Promise<void> {
@@ -326,7 +325,6 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     const conflicted = await waitForMission(account, date, (mission) => Number(mission.id) === missionId, "server-side conflict state");
     const staleEditStoppedAsConflict = conflicted.title === serverTitle && conflicted.revision === 2;
     assert(staleEditStoppedAsConflict, "Stale Calendar edit overwrote the newer server mission.");
-    acknowledgeReconciledConflict(signals);
     page.once("dialog", (dialog) => void dialog.accept());
     await activate(page, '[data-testid="calendar-offline-queue"] button');
     const applied = await waitForMission(account, date, (mission) => Number(mission.id) === missionId && mission.title === queuedTitle, "explicit conflict apply");
@@ -335,6 +333,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     await page.waitForSelector('[data-testid="calendar-offline-queue"]', { hidden: true, timeout: 45_000 });
     const queueDrained = await page.$('[data-testid="calendar-offline-queue"]') === null;
     assert(queueDrained, "Calendar queue remained after the accepted reconnect and conflict resolution.");
+    acknowledgeReconciledConflict(signals);
     const audit = await auditPage(page);
     assert(audit.mainCount === 1 && audit.duplicateIds.length === 0 && audit.invalidLabelReferences.length === 0 && audit.unlabeledControls.length === 0 && audit.horizontalOverflowPx <= 2, `${viewport.name} Calendar failed semantics or overflow checks.`);
     assert(Object.values(signals).every((items) => items.length === 0), `${viewport.name} Calendar journey produced application errors: ${JSON.stringify(signals)}.`);
