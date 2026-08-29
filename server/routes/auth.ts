@@ -9,11 +9,18 @@ import { SESSION_COOKIE_NAME } from "../session-config";
 import { applyClerkUserLifecycleEvent } from "../clerk-webhook-lifecycle";
 import { deleteLocalAccountData } from "./profile";
 import { REGISTRATION_DISCLOSURE_VERSION } from "@shared/registration-disclosure";
+import {
+  canApplyOAuthRegistrationDisclosure,
+  createOAuthRegistrationIntent,
+  isSameOriginRegistrationRequest,
+  type OAuthRegistrationIntent,
+} from "../oauth-registration-disclosure";
 
 declare module "express-session" {
   interface SessionData {
     userId: number;
     displayName: string;
+    oauthRegistrationIntent?: OAuthRegistrationIntent;
   }
 }
 
@@ -72,12 +79,16 @@ export const bindAuthenticatedPrincipal = async (req: Request, res: Response, ne
   const { userId } = getAuth(req);
   if (!userId) return next();
   let user = await storage.getUserByClerkId(userId);
-  if (!user) {
+  const registrationIntent = req.session.oauthRegistrationIntent;
+  let clerkUser;
+  if (!user || registrationIntent) {
     try {
-      const clerkUser = await clerkClient.users.getUser(userId);
-      const email = clerkUser.primaryEmailAddress?.emailAddress ?? clerkUser.emailAddresses[0]?.emailAddress;
-      if (!email) return res.status(401).json({ error: "A verified email is required to finish account setup" });
-      user = await provisionLocalUser({ clerkId: userId, email, firstName: clerkUser.firstName, lastName: clerkUser.lastName });
+      clerkUser = await clerkClient.users.getUser(userId);
+      if (!user) {
+        const email = clerkUser.primaryEmailAddress?.emailAddress ?? clerkUser.emailAddresses[0]?.emailAddress;
+        if (!email) return res.status(401).json({ error: "A verified email is required to finish account setup" });
+        user = await provisionLocalUser({ clerkId: userId, email, firstName: clerkUser.firstName, lastName: clerkUser.lastName });
+      }
     } catch (error) {
       logger.error("Unable to provision authenticated Clerk user:", error);
       return res.status(503).json({ error: "Account setup is temporarily unavailable" });
@@ -85,6 +96,22 @@ export const bindAuthenticatedPrincipal = async (req: Request, res: Response, ne
   }
   if (!user) {
     return res.status(401).json({ error: "User not found" });
+  }
+  if (registrationIntent && clerkUser) {
+    if (canApplyOAuthRegistrationDisclosure(registrationIntent, clerkUser, user)) {
+      try {
+        user = await storage.updateUser(user.id, {
+          registrationDisclosureVersion: REGISTRATION_DISCLOSURE_VERSION,
+          registrationDisclosureAcknowledgedAt: new Date(),
+        });
+      } catch (error) {
+        logger.error("Unable to record OAuth registration disclosure provenance:", error);
+        return res.status(503).json({ error: "Account setup is temporarily unavailable" });
+      }
+    }
+    // Consume the intent after the first authenticated Clerk identity is
+    // evaluated. A replay or later account switch cannot reuse it.
+    delete req.session.oauthRegistrationIntent;
   }
   req.session.userId = user.id;
   req.session.displayName = user.displayName ?? "";
@@ -143,6 +170,34 @@ export function registerAuthRoutes(app: Express): void {
     req.session.userId = user.id;
     req.session.displayName = user.displayName ?? "";
   };
+
+  app.post("/api/auth/oauth-registration-intent", (req: Request, res: Response) => {
+    if (!isSameOriginRegistrationRequest(req.get("origin"), req.get("host"), req.protocol)) {
+      return res.status(403).json({ error: "Registration must be started from LyfeOS" });
+    }
+
+    const clerkUserId = process.env.LYFEOS_TEST_ENV === "isolated" ? null : getAuth(req).userId;
+    if (clerkUserId || req.session.userId) {
+      return res.status(409).json({ error: "Sign out before creating another account" });
+    }
+    if (req.body?.registrationDisclosureVersion !== REGISTRATION_DISCLOSURE_VERSION) {
+      return res.status(400).json({ error: "Review and acknowledge the current registration disclosures" });
+    }
+
+    const intent = createOAuthRegistrationIntent();
+    req.session.oauthRegistrationIntent = intent;
+    req.session.save((error) => {
+      if (error) {
+        logger.error("Unable to persist OAuth registration intent:", error);
+        return res.status(503).json({ error: "Account setup is temporarily unavailable" });
+      }
+      return res.status(201).json({
+        intentId: intent.id,
+        registrationDisclosureVersion: intent.disclosureVersion,
+        expiresAt: new Date(intent.expiresAt).toISOString(),
+      });
+    });
+  });
 
   app.post("/api/auth/register", async (req: Request, res: Response) => {
     try {

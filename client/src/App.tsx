@@ -17,6 +17,7 @@ import { setSoundEnabled } from "./lib/sounds";
 import { ProductAnalytics } from "./components/ProductAnalytics";
 import InstallationBrandRuntime from "./components/InstallationBrandRuntime";
 import { withChunkLoadTimeout } from "./lib/runtimeRecovery";
+import { AuthenticateWithRedirectCallback } from "@clerk/clerk-react";
 
 function lazyRoute<T extends React.ComponentType<any>>(loader: () => Promise<{ default: T }>) {
   return React.lazy(() => withChunkLoadTimeout(loader));
@@ -311,7 +312,7 @@ function Router() {
     }
     
     // Public paths that don't require auth
-    const publicPaths = ['/login', '/register', '/forgot-password', '/reset-password', '/privacy', '/terms', '/login-success', '/waitlist', '/review-mission', '/forms/respond'];
+    const publicPaths = ['/login', '/register', '/forgot-password', '/reset-password', '/privacy', '/terms', '/login-success', '/sso-callback', '/waitlist', '/review-mission', '/forms/respond'];
     const exactPublicPaths = ['/subscription'];
     if (publicPaths.some(path => currentPath.startsWith(path)) || exactPublicPaths.includes(currentPath)) {
       return;
@@ -335,6 +336,12 @@ function Router() {
     <Suspense fallback={<RouteLoadingScreen />}>
     <Switch>
       {/* Public routes */}
+      <Route path="/sso-callback">
+        <main className="min-h-screen flex flex-col items-center justify-center p-4 text-white" style={{ backgroundColor: 'hsl(0 0% 7%)' }}>
+          <AuthenticateWithRedirectCallback />
+          <p className="text-white/60 text-sm" role="status" aria-live="polite">Completing sign-in...</p>
+        </main>
+      </Route>
       <Route path="/login">
         {isLoading && localStorage.getItem('lyfeos-oauth-mode') ? (
           <OAuthLoadingScreen />

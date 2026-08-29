@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { toast } from "@/hooks/use-toast";
 import { queryClient } from "./queryClient";
 import { REGISTRATION_DISCLOSURE_VERSION } from "@shared/registration-disclosure";
-import { useUser, useAuth as useClerkAuth, useClerk, useSignIn } from "@clerk/clerk-react";
+import { useUser, useAuth as useClerkAuth, useClerk, useSignIn, useSignUp } from "@clerk/clerk-react";
 import { applyPrimaryColor } from "./applyPrimaryColor";
 import { getLocalDateString } from "./utils";
 
@@ -51,6 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { isSignedIn } = useClerkAuth();
   const { signOut } = useClerk();
   const { signIn, setActive: setSignInActive } = useSignIn();
+  const { signUp } = useSignUp();
 
   const pendingPasswordRef = React.useRef<string | null>(null);
   const setPendingPassword = (password: string) => { pendingPasswordRef.current = password; };
@@ -117,6 +118,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (generation !== authSyncGenerationRef.current) return;
           console.log("Server auth check successful, user data:", data.user);
           setUser(data.user);
+          localStorage.removeItem("lyfeos-oauth-mode");
+          localStorage.removeItem("lyfeos-oauth-redirect-pending");
           localStorage.setItem("lyfeos_user", JSON.stringify(data.user));
           if (data.primaryColor) {
             applyPrimaryColor(data.primaryColor);
@@ -430,14 +433,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("lyfeos-continued-past-mission0");
       sessionStorage.removeItem("lyfeos-pending-registration");
 
-      if (!signIn) throw new Error("Sign-in not available");
-
-      await signIn.authenticateWithRedirect({
-        strategy: "oauth_google",
-        redirectUrl: "/sso-callback",
-        redirectUrlComplete: mode === 'register' ? "/onboarding" : "/login-success",
-      });
+      localStorage.setItem("lyfeos-oauth-mode", mode);
+      localStorage.setItem("lyfeos-oauth-redirect-pending", "true");
+      if (mode === "register") {
+        if (!signUp) throw new Error("Sign-up not available");
+        const response = await fetch("/api/auth/oauth-registration-intent", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ registrationDisclosureVersion: REGISTRATION_DISCLOSURE_VERSION }),
+        });
+        const intent = await response.json();
+        if (!response.ok || !intent?.intentId) throw new Error(intent?.error || "Could not start registration");
+        await signUp.authenticateWithRedirect({
+          strategy: "oauth_google",
+          redirectUrl: "/sso-callback",
+          redirectUrlComplete: "/onboarding",
+          unsafeMetadata: {
+            lyfeosRegistrationIntentId: intent.intentId,
+            lyfeosRegistrationDisclosureVersion: intent.registrationDisclosureVersion,
+          },
+        });
+      } else {
+        if (!signIn) throw new Error("Sign-in not available");
+        await signIn.authenticateWithRedirect({
+          strategy: "oauth_google",
+          redirectUrl: "/sso-callback",
+          redirectUrlComplete: "/login-success",
+        });
+      }
     } catch (error: any) {
+      localStorage.removeItem("lyfeos-oauth-mode");
+      localStorage.removeItem("lyfeos-oauth-redirect-pending");
       console.error("Google login error:", error);
       toast({
         title: "Login Error",
@@ -458,14 +485,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("lyfeos-continued-past-mission0");
       sessionStorage.removeItem("lyfeos-pending-registration");
 
-      if (!signIn) throw new Error("Sign-in not available");
-
-      await signIn.authenticateWithRedirect({
-        strategy: "oauth_apple",
-        redirectUrl: "/sso-callback",
-        redirectUrlComplete: mode === 'register' ? "/onboarding" : "/login-success",
-      });
+      localStorage.setItem("lyfeos-oauth-mode", mode);
+      localStorage.setItem("lyfeos-oauth-redirect-pending", "true");
+      if (mode === "register") {
+        if (!signUp) throw new Error("Sign-up not available");
+        const response = await fetch("/api/auth/oauth-registration-intent", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ registrationDisclosureVersion: REGISTRATION_DISCLOSURE_VERSION }),
+        });
+        const intent = await response.json();
+        if (!response.ok || !intent?.intentId) throw new Error(intent?.error || "Could not start registration");
+        await signUp.authenticateWithRedirect({
+          strategy: "oauth_apple",
+          redirectUrl: "/sso-callback",
+          redirectUrlComplete: "/onboarding",
+          unsafeMetadata: {
+            lyfeosRegistrationIntentId: intent.intentId,
+            lyfeosRegistrationDisclosureVersion: intent.registrationDisclosureVersion,
+          },
+        });
+      } else {
+        if (!signIn) throw new Error("Sign-in not available");
+        await signIn.authenticateWithRedirect({
+          strategy: "oauth_apple",
+          redirectUrl: "/sso-callback",
+          redirectUrlComplete: "/login-success",
+        });
+      }
     } catch (error: any) {
+      localStorage.removeItem("lyfeos-oauth-mode");
+      localStorage.removeItem("lyfeos-oauth-redirect-pending");
       console.error("Apple login error:", error);
       toast({
         title: "Login Error",

@@ -217,6 +217,7 @@ function createDistributedRateLimiter(scope: string, productionLimit: number, su
 
 app.use("/api/auth/register", createDistributedRateLimiter("auth.register", 5));
 app.use("/api/auth/complete-registration", createDistributedRateLimiter("auth.complete_registration", 5));
+app.use("/api/auth/oauth-registration-intent", createDistributedRateLimiter("auth.oauth_registration_intent", 10, false));
 app.use("/api/auth/login", createDistributedRateLimiter("auth.login", 10));
 app.use("/api/auth/check-email", createDistributedRateLimiter("auth.check_email", 20));
 app.use("/api/auth/check-display-name", createDistributedRateLimiter("auth.check_display_name", 30));
