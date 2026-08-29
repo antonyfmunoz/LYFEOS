@@ -252,16 +252,16 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     await dismissBlockingTutorial(page);
     await activate(page, '[data-testid="sheets-new"]');
     await page.waitForSelector('[data-testid="sheet-editor"]', { visible: true, timeout: 45_000 });
-    await page.evaluate(() => {
+    await page.evaluate(`(() => {
       let value = "";
       Object.defineProperty(navigator, "clipboard", {
         configurable: true,
         value: {
-          writeText: async (nextValue: string) => { value = String(nextValue); },
+          writeText: async (nextValue) => { value = String(nextValue); },
           readText: async () => value,
         },
       });
-    });
+    })()`);
     const catalogAndEditorRendered = true;
 
     stage = "exercise formulas, undo/redo, clipboard and reviewed local import";
