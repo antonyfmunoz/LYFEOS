@@ -121,6 +121,25 @@ async function activateRenderedControl(page: Page, selector: string): Promise<vo
   }, selector);
 }
 
+async function readRenderedFocusPair(page: Page, toggleSelector: string, firstThreadId: number, successorThreadId: number): Promise<{ first: string; successor: string }> {
+  const deadline = Date.now() + 30_000;
+  while (Date.now() < deadline) {
+    const rendered = await page.evaluate(({ firstId, successorId }) => {
+      const first = document.querySelector<HTMLElement>(`[data-testid="capability-focus-${firstId}"]`);
+      const successor = document.querySelector<HTMLElement>(`[data-testid="capability-focus-${successorId}"]`);
+      return first && successor ? { first: first.textContent?.trim() || "", successor: successor.textContent?.trim() || "" } : null;
+    }, { firstId: firstThreadId, successorId: successorThreadId });
+    if (rendered) return rendered;
+
+    const canOpen = await page.$eval(toggleSelector, (control) => (
+      control.getClientRects().length > 0 && (control.textContent?.trim() || "").startsWith("View durable history")
+    ));
+    if (canOpen) await activateRenderedControl(page, toggleSelector);
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+  throw new Error(`Both capability focus periods did not remain rendered through the active-Thread refresh.`);
+}
+
 async function auditRenderedPage(page: Page) {
   return page.evaluate(() => {
     const ids = new Map<string, number>();
@@ -300,12 +319,11 @@ async function runViewport(browser: Browser, pool: pg.Pool, viewport: { name: st
     assert(Number(graphPrimary?.experience) === first.durableReviewedExperience && Number(graphPrimary?.threadExperience) === 0, "Successor graph did not separate durable reviewed XP from zero Thread-local XP.");
 
     stage = "render both capability focus periods";
-    await page.waitForSelector(`[data-testid="capability-history-toggle-${primary.id}"]`, { visible: true, timeout: 30_000 });
-    await page.click(`[data-testid="capability-history-toggle-${primary.id}"]`);
-    await page.waitForSelector(`[data-testid="capability-focus-${successorThreadId}"]`, { visible: true, timeout: 30_000 });
-    await page.waitForSelector(`[data-testid="capability-focus-${first.firstThreadId}"]`, { visible: true, timeout: 30_000 });
-    const renderedSuccessorFocus = await page.$eval(`[data-testid="capability-focus-${successorThreadId}"]`, (element) => element.textContent?.trim() || "");
-    const renderedFirstFocus = await page.$eval(`[data-testid="capability-focus-${first.firstThreadId}"]`, (element) => element.textContent?.trim() || "");
+    const historyToggleSelector = `[data-testid="capability-history-toggle-${primary.id}"]`;
+    await page.waitForSelector(historyToggleSelector, { visible: true, timeout: 30_000 });
+    const renderedFocuses = await readRenderedFocusPair(page, historyToggleSelector, first.firstThreadId, successorThreadId);
+    const renderedSuccessorFocus = renderedFocuses.successor;
+    const renderedFirstFocus = renderedFocuses.first;
     assert(renderedSuccessorFocus.includes("active") && renderedSuccessorFocus.includes("0 XP recorded in this Thread"), `Rendered successor focus was not truthful: ${renderedSuccessorFocus}.`);
     assert(renderedFirstFocus.includes("completed") && renderedFirstFocus.includes(`${first.durableReviewedExperience} XP recorded in this Thread`), `Rendered completed focus was not truthful: ${renderedFirstFocus}.`);
 
