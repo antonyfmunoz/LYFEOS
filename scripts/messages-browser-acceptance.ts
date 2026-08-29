@@ -226,6 +226,12 @@ async function openMessages(page: Page): Promise<void> {
   await page.waitForFunction(() => [...document.querySelectorAll("h1")].some((heading) => heading.textContent?.trim() === "Messages"), { timeout: 30_000 });
 }
 
+async function selectConversation(page: Page, conversationId: string): Promise<void> {
+  const selector = `[data-testid="messages-conversation-${conversationId}"]`;
+  await page.waitForSelector(selector, { visible: true, timeout: 30_000 });
+  await clickSelector(page, selector);
+}
+
 async function inspectView(page: Page, account: "sender" | "recipient", viewport: string): Promise<ViewResult> {
   return page.evaluate(({ accountName, viewportName }) => {
     const ids = new Map<string, number>();
@@ -342,7 +348,7 @@ async function main(): Promise<void> {
     const recipientPage = recipientBrowser.page;
     await recipientPage.setViewport(VIEWPORTS[0].value);
     await openMessages(recipientPage);
-    await recipientPage.waitForSelector(`[data-testid="messages-conversation-${conversationId}"]`, { timeout: 30_000 });
+    await selectConversation(recipientPage, conversationId);
     await recipientPage.waitForSelector(`[data-testid="native-message-${initialMessageId}"]`, { timeout: 30_000 });
     await poll(
       () => request("GET", `/api/message-hub/conversations/${conversationId}`, undefined, sender.cookie),
@@ -350,6 +356,7 @@ async function main(): Promise<void> {
       "Opening the rendered recipient conversation did not create read evidence.",
     );
     await senderPage.reload({ waitUntil: "domcontentloaded" });
+    await selectConversation(senderPage, conversationId);
     await senderPage.waitForSelector(`[data-testid="native-message-${initialMessageId}"]`, { timeout: 30_000 });
     readReceiptRendered = (await senderPage.$eval(`[data-testid="native-message-${initialMessageId}"]`, (element) => (element as HTMLElement).innerText)).includes("read");
     assert(readReceiptRendered, "The sender UI did not render the recipient read state.");
@@ -375,6 +382,7 @@ async function main(): Promise<void> {
 
     stage = "edit the original message through sender controls";
     await senderPage.reload({ waitUntil: "domcontentloaded" });
+    await selectConversation(senderPage, conversationId);
     await senderPage.waitForSelector(`[data-testid="native-message-${replyMessageId}"]`, { timeout: 30_000 });
     await clickSelector(senderPage, `[data-testid="native-message-edit-${initialMessageId}"]`);
     await replaceInput(senderPage, `[data-testid="native-message-edit-input-${initialMessageId}"]`, EDITED_MESSAGE);
@@ -396,6 +404,7 @@ async function main(): Promise<void> {
     const ownerWithNote = await request("GET", `/api/message-hub/conversations/${conversationId}`, undefined, sender.cookie);
     const recipientWithoutNote = await request("GET", `/api/message-hub/conversations/${conversationId}`, undefined, recipient.cookie);
     await recipientPage.reload({ waitUntil: "domcontentloaded" });
+    await selectConversation(recipientPage, conversationId);
     await recipientPage.waitForSelector(`[data-testid="native-message-${initialMessageId}"]`, { timeout: 30_000 });
     privateNoteOwnerOnly = ownerWithNote.body.conversation?.notes?.some((note: any) => note.body === PRIVATE_NOTE)
       && recipientWithoutNote.body.conversation?.notes?.length === 0
@@ -419,7 +428,7 @@ async function main(): Promise<void> {
       ]) {
         await entry.page.setViewport(viewport.value);
         await entry.page.reload({ waitUntil: "domcontentloaded" });
-        await entry.page.waitForSelector(`[data-testid="messages-conversation-${conversationId}"]`, { timeout: 30_000 });
+        await selectConversation(entry.page, conversationId);
         await waitForText(entry.page, entry.expectedMessage);
         const view = await inspectView(entry.page, entry.account, viewport.name);
         views.push(view);
