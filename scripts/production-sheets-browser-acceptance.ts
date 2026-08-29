@@ -181,9 +181,11 @@ async function createChartFromRange(page: Page, startAddress: string, endAddress
     const cards = await page.$$('[data-testid^="sheet-chart-chart_"]');
     const card = cards.at(-1);
     assert(card, `Chart ${expectedCount} was not rendered.`);
-    const trigger = await card.$('[aria-label="Chart type"]');
-    assert(trigger, `Chart ${expectedCount} has no type selector.`);
-    await trigger.click();
+    const cardTestId = await card.evaluate((element) => element.getAttribute("data-testid"));
+    assert(cardTestId, `Chart ${expectedCount} has no stable test identifier.`);
+    const triggerSelector = `[data-testid="${cardTestId}"] [aria-label="Chart type"]`;
+    await page.waitForSelector(triggerSelector, { visible: true, timeout: 10_000 });
+    await page.click(triggerSelector);
     await page.waitForSelector('[role="option"]', { visible: true, timeout: 10_000 });
     const selected = await page.evaluate((expected) => {
       const option = Array.from(document.querySelectorAll<HTMLElement>('[role="option"]')).find((candidate) => candidate.innerText.trim().toLocaleLowerCase() === expected);
