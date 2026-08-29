@@ -1,8 +1,9 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { createEmptySpreadsheetDocument, nextSpreadsheetSheetName, removeSpreadsheetSheet, renameSpreadsheetSheet, spreadsheetDocumentSchema, spreadsheetRevisionSnapshotSchema, uniqueSpreadsheetSheetName } from "../shared/spreadsheets";
+import { createEmptySpreadsheetDocument, createSpreadsheetChart, nextSpreadsheetSheetName, removeSpreadsheetChart, removeSpreadsheetSheet, renameSpreadsheetSheet, shiftSpreadsheetChartsForAxis, spreadsheetDocumentSchema, spreadsheetRevisionSnapshotSchema, uniqueSpreadsheetSheetName, updateSpreadsheetChart } from "../shared/spreadsheets";
 import { columnLabel, evaluateSpreadsheetCell, formatSpreadsheetDisplayValue, insertSpreadsheetAxis, parseCellAddress } from "../client/src/lib/spreadsheetFormula";
+import { buildSpreadsheetChartData, spreadsheetChartRangeLabel } from "../client/src/lib/spreadsheetChart";
 import { createSpreadsheetSheetFromDelimited, formatSpreadsheetRange, parseSpreadsheetClipboard, parseSpreadsheetCsv, pasteSpreadsheetRange, serializeSpreadsheetRange, spreadsheetRangeBounds } from "../client/src/lib/spreadsheetRange";
 import { calculateSpreadsheetViewportWindow, moveSpreadsheetAddress } from "../client/src/lib/spreadsheetViewport";
 
@@ -91,6 +92,65 @@ describe("Sheets instrument", () => {
       sheets: [{ id: "sheet_legacy", name: "Legacy", cells: { J40: { input: "kept" } } }],
     });
     expect(parsed.sheets[0]).toMatchObject({ rowCount: 40, columnCount: 10, cells: { J40: { input: "kept" } } });
+    expect(parsed.charts).toEqual([]);
+  });
+
+  it("persists bounded chart definitions only over an existing in-sheet range", () => {
+    const document = createEmptySpreadsheetDocument();
+    const charted = createSpreadsheetChart(document, { id: "chart_one", title: "  Weekly output  ", kind: "line", sheetId: document.activeSheetId, range: { startRow: 0, endRow: 3, startColumn: 0, endColumn: 2 } });
+    expect(charted.charts[0]).toMatchObject({ title: "Weekly output", kind: "line", range: { startRow: 0, endRow: 3, startColumn: 0, endColumn: 2 } });
+    expect(document.charts).toEqual([]);
+    expect(spreadsheetDocumentSchema.safeParse({ ...charted, charts: [{ ...charted.charts[0], sheetId: "missing" }] }).success).toBe(false);
+    expect(spreadsheetDocumentSchema.safeParse({ ...charted, charts: [{ ...charted.charts[0], range: { startRow: 0, endRow: 40, startColumn: 0, endColumn: 2 } }] }).success).toBe(false);
+    expect(() => createSpreadsheetChart(document, { id: "bad", title: "No labels", kind: "bar", sheetId: document.activeSheetId, range: { startRow: 0, endRow: 1, startColumn: 0, endColumn: 0 } })).toThrow("header row");
+  });
+
+  it("derives chart values from canonical cells and never converts missing or invalid values to zero", () => {
+    const document = createEmptySpreadsheetDocument();
+    const sheet = document.sheets[0];
+    sheet.cells = {
+      A1: { input: "Week" }, B1: { input: "Calls" }, C1: { input: "Sales" },
+      A2: { input: "One" }, B2: { input: "4" }, C2: { input: "=B2/2" },
+      A3: { input: "Two" }, B3: { input: "" }, C3: { input: "not measured" },
+      A4: { input: "Three" }, B4: { input: "0" }, C4: { input: "=B4+3" },
+    };
+    const charted = createSpreadsheetChart(document, { id: "chart_values", title: "Calls and sales", kind: "bar", sheetId: sheet.id, range: { startRow: 0, endRow: 3, startColumn: 0, endColumn: 2 } });
+    const data = buildSpreadsheetChartData(charted, charted.charts[0]);
+    expect(spreadsheetChartRangeLabel(charted.charts[0])).toBe("A1:C4");
+    expect(data.series.map((series) => [series.name, series.validCount, series.missingCount])).toEqual([["Calls", 2, 1], ["Sales", 2, 1]]);
+    expect(data.rows).toEqual([
+      { label: "One", values: { series_1: 4, series_2: 2 } },
+      { label: "Two", values: { series_1: null, series_2: null } },
+      { label: "Three", values: { series_1: 0, series_2: 3 } },
+    ]);
+    expect(data).toMatchObject({ numericValueCount: 4, missingValueCount: 2 });
+  });
+
+  it("updates and removes chart definitions without mutating source cells", () => {
+    const document = createEmptySpreadsheetDocument();
+    document.sheets[0].cells = { A1: { input: "Day" }, B1: { input: "Value" }, A2: { input: "Mon" }, B2: { input: "1" } };
+    const charted = createSpreadsheetChart(document, { id: "chart_edit", title: "Original", kind: "line", sheetId: document.activeSheetId, range: { startRow: 0, endRow: 1, startColumn: 0, endColumn: 1 } });
+    const updated = updateSpreadsheetChart(charted, "chart_edit", { title: "Revised", kind: "bar" });
+    const removed = removeSpreadsheetChart(updated, "chart_edit");
+    expect(updated.charts[0]).toMatchObject({ title: "Revised", kind: "bar" });
+    expect(removed.charts).toEqual([]);
+    expect(removed.sheets[0].cells).toEqual(document.sheets[0].cells);
+    expect(charted.charts[0]).toMatchObject({ title: "Original", kind: "line" });
+  });
+
+  it("keeps chart ranges aligned through structural insertion and removes only charts owned by a removed tab", () => {
+    const document = createEmptySpreadsheetDocument();
+    const firstId = document.activeSheetId;
+    document.sheets.push({ ...document.sheets[0], id: "sheet_second", name: "Second", cells: {} });
+    let charted = createSpreadsheetChart(document, { id: "chart_first", title: "First", kind: "line", sheetId: firstId, range: { startRow: 2, endRow: 4, startColumn: 2, endColumn: 4 } });
+    charted = createSpreadsheetChart(charted, { id: "chart_second", title: "Second", kind: "bar", sheetId: "sheet_second", range: { startRow: 0, endRow: 1, startColumn: 0, endColumn: 1 } });
+    const shiftedBefore = shiftSpreadsheetChartsForAxis(charted, firstId, "row", 1);
+    expect(shiftedBefore.charts[0].range).toMatchObject({ startRow: 3, endRow: 5, startColumn: 2, endColumn: 4 });
+    const shiftedInside = shiftSpreadsheetChartsForAxis(shiftedBefore, firstId, "column", 3);
+    expect(shiftedInside.charts[0].range).toMatchObject({ startRow: 3, endRow: 5, startColumn: 2, endColumn: 5 });
+    expect(shiftedInside.charts[1].range).toMatchObject({ startRow: 0, endRow: 1, startColumn: 0, endColumn: 1 });
+    const removed = removeSpreadsheetSheet(shiftedInside, firstId);
+    expect(removed.charts.map((chart) => chart.id)).toEqual(["chart_second"]);
   });
 
   it("inserts rows and columns without mutating source cells and shifts affected formula references", () => {
@@ -272,6 +332,9 @@ describe("Sheets instrument", () => {
     expect(editor).toContain('data-testid="sheet-save"');
     expect(editor).toContain('data-testid="sheet-revision"');
     expect(editor).toContain('data-testid="sheet-grid"');
+    expect(editor).toContain('data-testid="sheet-chart-create"');
+    expect(editor).toContain('data-testid="sheet-charts"');
+    expect(editor).toContain("SpreadsheetChartCard");
     expect(editor).toContain('data-testid="sheet-history"');
     expect(editor).toContain("sheet-history-version-${revision.revisionNumber}");
   });

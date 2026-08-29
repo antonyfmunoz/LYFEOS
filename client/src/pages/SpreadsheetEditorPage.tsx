@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useParams } from "wouter";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { AlignCenter, AlignLeft, AlignRight, Bold, ClipboardCopy, ClipboardPaste, Download, Eraser, History, Italic, Plus, Redo2, RotateCcw, Save, Trash2, Undo2, Upload } from "lucide-react";
+import { AlignCenter, AlignLeft, AlignRight, BarChart3, Bold, ClipboardCopy, ClipboardPaste, Download, Eraser, History, Italic, Plus, Redo2, RotateCcw, Save, Trash2, Undo2, Upload } from "lucide-react";
 import type { SpreadsheetColorToken, SpreadsheetDocument, SpreadsheetNumberFormat, SpreadsheetSheet } from "@shared/spreadsheets";
-import { createEmptySpreadsheetDocument, nextSpreadsheetSheetName, normalizeSpreadsheetDocument, removeSpreadsheetSheet, renameSpreadsheetSheet, uniqueSpreadsheetSheetName } from "@shared/spreadsheets";
+import { createEmptySpreadsheetDocument, createSpreadsheetChart, nextSpreadsheetSheetName, normalizeSpreadsheetDocument, removeSpreadsheetChart, removeSpreadsheetSheet, renameSpreadsheetSheet, shiftSpreadsheetChartsForAxis, uniqueSpreadsheetSheetName, updateSpreadsheetChart } from "@shared/spreadsheets";
 import { columnLabel, evaluateSpreadsheetCell, formatSpreadsheetDisplayValue, insertSpreadsheetAxis, parseCellAddress } from "@/lib/spreadsheetFormula";
 import { createSpreadsheetSheetFromDelimited, formatSpreadsheetRange, pasteSpreadsheetRange, serializeSpreadsheetRange, spreadsheetRangeBounds } from "@/lib/spreadsheetRange";
 import { calculateSpreadsheetViewportWindow, moveSpreadsheetAddress, SPREADSHEET_COLUMN_HEADER_HEIGHT, SPREADSHEET_COLUMN_WIDTH, SPREADSHEET_ROW_HEADER_WIDTH, SPREADSHEET_ROW_HEIGHT, type SpreadsheetNavigationDirection } from "@/lib/spreadsheetViewport";
@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { usePageTitle } from "@/hooks/use-page-title";
+import { SpreadsheetChartCard } from "@/components/spreadsheets/SpreadsheetChartCard";
 
 type SpreadsheetRecord = {
   id: number;
@@ -203,11 +204,44 @@ export default function SpreadsheetEditorPage() {
   const insertAxis = (axis: "row" | "column") => {
     try {
       const shifted = insertSpreadsheetAxis(activeSheet, axis, axis === "row" ? selectedPosition.row : selectedPosition.column);
-      updateDocument({ ...document, sheets: document.sheets.map((sheet) => sheet.id === activeSheet.id ? shifted : sheet) });
+      const withShiftedCells = { ...document, sheets: document.sheets.map((sheet) => sheet.id === activeSheet.id ? shifted : sheet) };
+      updateDocument(shiftSpreadsheetChartsForAxis(withShiftedCells, activeSheet.id, axis, axis === "row" ? selectedPosition.row : selectedPosition.column));
       setRangeAnchor(selectedAddress); setRangeEnd(selectedAddress); setExtendSelection(false);
     } catch (error) {
       toast({ title: `Could not insert ${axis}`, description: error instanceof Error ? error.message : "The sheet could not be changed.", variant: "destructive" });
     }
+  };
+  const addChart = () => {
+    try {
+      if (selectedRange.endRow <= selectedRange.startRow || selectedRange.endColumn <= selectedRange.startColumn) {
+        throw new Error("Select at least two rows and two columns. Use the first row for series names and the first column for observation labels.");
+      }
+      const id = `chart_${Math.random().toString(36).slice(2, 12)}`;
+      updateDocument(createSpreadsheetChart(document, {
+        id,
+        title: `${activeSheet.name} chart ${document.charts.length + 1}`,
+        kind: "line",
+        sheetId: activeSheet.id,
+        range: {
+          startRow: selectedRange.startRow,
+          endRow: selectedRange.endRow,
+          startColumn: selectedRange.startColumn,
+          endColumn: selectedRange.endColumn,
+        },
+      }));
+      toast({ title: "Live chart added", description: "The chart reads this selected range directly. Review it, then save the spreadsheet." });
+    } catch (error) {
+      toast({ title: "Could not add chart", description: error instanceof Error ? error.message : "The selected range could not become a chart.", variant: "destructive" });
+    }
+  };
+  const reviseChart = (chartId: string, patch: Parameters<typeof updateSpreadsheetChart>[2]) => {
+    try { updateDocument(updateSpreadsheetChart(document, chartId, patch)); }
+    catch (error) { toast({ title: "Could not update chart", description: error instanceof Error ? error.message : "The chart could not be updated.", variant: "destructive" }); }
+  };
+  const deleteChart = (chartId: string, chartTitle: string) => {
+    if (!window.confirm(`Remove chart “${chartTitle}”? Its source cells will not be changed.`)) return;
+    try { updateDocument(removeSpreadsheetChart(document, chartId)); }
+    catch (error) { toast({ title: "Could not remove chart", description: error instanceof Error ? error.message : "The chart could not be removed.", variant: "destructive" }); }
   };
   const selectCell = (address: string, extendRange: boolean) => {
     setSelectedAddress(address);
@@ -365,6 +399,7 @@ export default function SpreadsheetEditorPage() {
         <Button type="button" size="icon" variant="outline" className="h-8 w-8 shrink-0" aria-label={`Copy selected range of ${selectedRange.cellCount} cells`} onClick={() => void copyRange()}><ClipboardCopy className="h-3.5 w-3.5" /></Button>
         <Button type="button" size="icon" variant="outline" className="h-8 w-8 shrink-0" aria-label={`Paste range starting at ${selectedAddress}`} onClick={() => void pasteRange()}><ClipboardPaste className="h-3.5 w-3.5" /></Button>
         <Button type="button" size="sm" variant={extendSelection ? "default" : "outline"} className="h-8 shrink-0" aria-pressed={extendSelection} aria-label={`Extend range from ${rangeAnchor}`} onClick={() => setExtendSelection((current) => !current)}>Extend</Button>
+        <Button data-testid="sheet-chart-create" type="button" size="sm" variant="outline" className="h-8 shrink-0" disabled={document.charts.length >= 20} aria-label={`Create chart from selected range of ${selectedRange.cellCount} cells`} onClick={addChart}><BarChart3 className="mr-1 h-3.5 w-3.5" />Chart</Button>
         <Button type="button" size="icon" variant={activeCellFormat?.bold ? "default" : "outline"} className="h-8 w-8 shrink-0" aria-label="Toggle bold on selected populated cells" aria-pressed={Boolean(activeCellFormat?.bold)} onClick={() => applyRangeFormat({ bold: !activeCellFormat?.bold })}><Bold className="h-3.5 w-3.5" /></Button>
         <Button type="button" size="icon" variant={activeCellFormat?.italic ? "default" : "outline"} className="h-8 w-8 shrink-0" aria-label="Toggle italic on selected populated cells" aria-pressed={Boolean(activeCellFormat?.italic)} onClick={() => applyRangeFormat({ italic: !activeCellFormat?.italic })}><Italic className="h-3.5 w-3.5" /></Button>
         <Button type="button" size="icon" variant="outline" className="h-8 w-8 shrink-0" aria-label="Align selected populated cells left" onClick={() => applyRangeFormat({ align: "left" })}><AlignLeft className="h-3.5 w-3.5" /></Button>
@@ -416,7 +451,11 @@ export default function SpreadsheetEditorPage() {
         </div>
       </div>
     </div>
-    <p className="text-[11px] leading-relaxed text-muted-foreground">The grid renders only the visible rows and columns plus a small safety margin, even at the 500-row × 100-column limit. Use arrow keys to move one cell at a time and Shift+Arrow to extend a selection; choose Extend and then a cell on touch devices. Undo and Redo retain up to 20 unsaved grid and tab changes on this device and reset after save, reload, or restore. Shift-click also selects a rectangular range for copy or formatting. Number, percent, USD currency, text-color, and fill-color formats change display only; raw values and formula inputs remain authoritative. Formatting applies only to populated cells; clipboard and CSV/TSV transfer values and formulas, not presentation, while plain-text paste preserves existing destination formatting. Paste starts at the active cell and remains unsaved until you review and save. Insertions preserve populated cells, formatting, and affected formula references. Formulas support cell references, +, −, ×, ÷, parentheses, and SUM, AVERAGE, MIN, or MAX. CSV export writes unformatted calculated formula results and protects text beginning with spreadsheet-executable prefixes.</p>
+    <p className="text-[11px] leading-relaxed text-muted-foreground">The grid renders only the visible rows and columns plus a small safety margin, even at the 500-row × 100-column limit. Use arrow keys to move one cell at a time and Shift+Arrow to extend a selection; choose Extend and then a cell on touch devices. Undo and Redo retain up to 20 unsaved grid, tab, and chart changes on this device and reset after save, reload, or restore. Shift-click also selects a rectangular range for copy, formatting, or a chart. Number, percent, USD currency, text-color, and fill-color formats change display only; raw values and formula inputs remain authoritative. Formatting applies only to populated cells; clipboard and CSV/TSV transfer values and formulas, not presentation, while plain-text paste preserves existing destination formatting. Paste starts at the active cell and remains unsaved until you review and save. Insertions preserve populated cells, formatting, affected formula references, and chart source alignment. Formulas support cell references, +, −, ×, ÷, parentheses, and SUM, AVERAGE, MIN, or MAX. CSV export writes unformatted calculated formula results and protects text beginning with spreadsheet-executable prefixes.</p>
+    {document.charts.length > 0 && <section data-testid="sheet-charts" aria-labelledby="sheet-charts-heading" className="space-y-3">
+      <div><h2 id="sheet-charts-heading" className="text-lg font-semibold">Charts</h2><p className="text-xs text-muted-foreground">Charts are saved definitions over canonical sheet cells. Editing a source cell updates its chart; missing values remain missing rather than becoming zero.</p></div>
+      <div className="grid gap-3 xl:grid-cols-2">{document.charts.map((chart) => <SpreadsheetChartCard key={chart.id} document={document} chart={chart} onUpdate={(patch) => reviseChart(chart.id, patch)} onRemove={() => deleteChart(chart.id, chart.title)} />)}</div>
+    </section>}
     {!isNew && <details data-testid="sheet-history" className="rounded-xl border border-primary/15 bg-card/30 p-4">
       <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-medium"><History className="h-4 w-4" />Saved version history</summary>
       <p className="mt-2 text-xs text-muted-foreground">Saved versions are immutable. Restoring copies the selected snapshot into a new version; it never deletes or rewrites history. The 100 most recent versions are shown.</p>
