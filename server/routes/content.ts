@@ -185,15 +185,21 @@ export function registerContentRoutes(app: Express): void {
         if (existingQuestPage) return res.status(200).json({ page: existingQuestPage });
       }
       
-      // Check if the slug is already taken
-      const existingPage = await storage.getMissionPageBySlug(pageData.slug);
-      if (existingPage) {
-        return res.status(400).json({ error: "A mission page with this slug already exists" });
+      // Converge competing renders at the database boundary. The pre-insert
+      // Quest lookup above is a fast path, but it cannot make a read-then-write
+      // sequence atomic when two mounted views request the same page together.
+      const [page] = await db.insert(missionPages).values(pageData).onConflictDoNothing().returning();
+      if (page) return res.status(201).json({ page });
+      if (pageData.questId) {
+        const [convergedQuestPage] = await db.select().from(missionPages).where(and(
+          eq(missionPages.questId, pageData.questId),
+          eq(missionPages.userId, req.session.userId!),
+        )).limit(1);
+        if (convergedQuestPage) return res.status(200).json({ page: convergedQuestPage });
       }
-      
-      const page = await storage.createMissionPage(pageData);
-      
-      return res.status(201).json({ page });
+      const existingPage = await storage.getMissionPageBySlug(pageData.slug);
+      if (existingPage) return res.status(400).json({ error: "A mission page with this slug already exists" });
+      throw new Error("Mission page insert did not return a row or a reconcilable conflict.");
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: error.errors });

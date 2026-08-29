@@ -17,6 +17,8 @@ describe("canonical Mission page ownership", () => {
     expect(route).toContain('eq(quests.userId, req.session.userId!)');
     expect(route).toContain('eq(missionPages.questId, pageData.questId)');
     expect(route).toContain('if (existingQuestPage) return res.status(200).json({ page: existingQuestPage });');
+    expect(route).toContain('.onConflictDoNothing().returning()');
+    expect(route).toContain('if (convergedQuestPage) return res.status(200).json({ page: convergedQuestPage });');
     expect(detail).toContain('missionPages.find(page => page.questId === mission.id)');
     expect(detail).toContain('questId: mission.id');
     expect(detail).not.toContain('eventId: mission.id');

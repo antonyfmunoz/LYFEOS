@@ -147,6 +147,30 @@ describeApi("canonical Mission source convergence", () => {
       .sort((left, right) => left.quest_id - right.quest_id));
   });
 
+  it("converges concurrent canonical Mission-page creation without surfacing a unique collision", async () => {
+    const payload = {
+      userId,
+      questId: uiMissionId,
+      eventId: null,
+      title: `Mission page ${stamp}`,
+      slug: `mission-page-${stamp.replaceAll("_", "-")}`,
+      content: "# Source convergence proof",
+      completed: false,
+      xpValue: 5,
+      tags: ["mission"],
+      date: "2026-08-28",
+    };
+    const [first, second] = await Promise.all([
+      request("POST", "/api/mission-pages", payload, cookie),
+      request("POST", "/api/mission-pages", payload, cookie),
+    ]);
+    expect([first.status, second.status].sort()).toEqual([200, 201]);
+    expect(first.data.page.id).toBe(second.data.page.id);
+    expect(first.data.page.questId).toBe(uiMissionId);
+    const rows = await pool.query(`SELECT "id", "quest_id", "slug" FROM "mission_pages" WHERE "quest_id" = $1`, [uiMissionId]);
+    expect(rows.rows).toEqual([{ id: first.data.page.id, quest_id: uiMissionId, slug: payload.slug }]);
+  });
+
   it("routes an approved AI Mission and a replayed automation follow-up through the same authority", async () => {
     const [{ db }, schema] = await Promise.all([import("../server/db"), import("../shared/schema")]);
     const [actionRecord] = await db.insert(schema.aiActionRecords).values({
