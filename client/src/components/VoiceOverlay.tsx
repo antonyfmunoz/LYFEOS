@@ -17,6 +17,36 @@ interface VoiceSessionRef {
   version: number;
 }
 
+interface VoiceSessionRecord extends VoiceSessionRef {
+  status: "active" | "completed" | "cancelled";
+}
+
+const ACTIVE_VOICE_SESSION_KEY = "lyfeos-active-voice-session-v1";
+
+function readStoredVoiceSession(): VoiceSessionRef | null {
+  try {
+    const value = window.sessionStorage.getItem(ACTIVE_VOICE_SESSION_KEY);
+    if (!value) return null;
+    const parsed = JSON.parse(value) as Partial<VoiceSessionRef>;
+    if (typeof parsed.id !== "string" || !/^[0-9a-f-]{36}$/i.test(parsed.id) || !Number.isInteger(parsed.version) || Number(parsed.version) < 1) {
+      window.sessionStorage.removeItem(ACTIVE_VOICE_SESSION_KEY);
+      return null;
+    }
+    return { id: parsed.id, version: Number(parsed.version) };
+  } catch {
+    return null;
+  }
+}
+
+function storeVoiceSession(session: VoiceSessionRef | null): void {
+  try {
+    if (session) window.sessionStorage.setItem(ACTIVE_VOICE_SESSION_KEY, JSON.stringify(session));
+    else window.sessionStorage.removeItem(ACTIVE_VOICE_SESSION_KEY);
+  } catch {
+    // Private browsing or a restricted storage policy must not disable voice input.
+  }
+}
+
 export default function VoiceOverlay() {
   const { activeChatSessionId, chatSessions, aiCompanionName } = useLYFEOS();
   const { executeToolActions } = useNovaActions();
@@ -41,8 +71,26 @@ export default function VoiceOverlay() {
     return match ? match[1] : null;
   }, [activeChatSessionId, chatSessions]);
 
+  const restoreVoiceSession = useCallback(async (): Promise<boolean> => {
+    if (voiceSessionRef.current) return true;
+    const stored = readStoredVoiceSession();
+    if (!stored) return false;
+    try {
+      const data = await apiRequest<{ session: VoiceSessionRecord }>(`/api/ai/voice-sessions/${stored.id}`);
+      if (data.session.status === "active" && data.session.version === stored.version) {
+        voiceSessionRef.current = stored;
+        return true;
+      }
+    } catch {
+      // A prior account/session may no longer own this opaque reference.
+    }
+    storeVoiceSession(null);
+    return false;
+  }, []);
+
   const createVoiceSession = useCallback(async (): Promise<void> => {
     if (voiceSessionRef.current) return;
+    if (await restoreVoiceSession()) return;
     const conversationId = getDbConversationId();
     const data = await apiRequest<{ session: VoiceSessionRef }>("/api/ai/voice-sessions", {
       method: "POST",
@@ -53,8 +101,9 @@ export default function VoiceOverlay() {
       }),
     });
     voiceSessionRef.current = { id: data.session.id, version: data.session.version };
+    storeVoiceSession(voiceSessionRef.current);
     queryClient.invalidateQueries({ queryKey: ["/api/ai/voice-sessions"] });
-  }, [getDbConversationId]);
+  }, [getDbConversationId, restoreVoiceSession]);
 
   const appendVoiceSegment = useCallback(async (speaker: "user" | "assistant", value: string): Promise<void> => {
     const session = voiceSessionRef.current;
@@ -74,13 +123,14 @@ export default function VoiceOverlay() {
 
   const completeVoiceSession = useCallback(async (): Promise<void> => {
     const session = voiceSessionRef.current;
-    voiceSessionRef.current = null;
     if (!session) return;
     try {
       await apiRequest(`/api/ai/voice-sessions/${session.id}/complete`, {
         method: "POST",
         body: JSON.stringify({ expectedVersion: session.version }),
       });
+      voiceSessionRef.current = null;
+      storeVoiceSession(null);
       queryClient.invalidateQueries({ queryKey: ["/api/ai/voice-sessions"] });
     } catch (error) {
       console.error("Voice session completion error:", error);
@@ -156,14 +206,10 @@ export default function VoiceOverlay() {
       setShowOverlay(true);
       setTranscript('');
       setFeedback('');
-      try {
-        await createVoiceSession();
-      } catch (error) {
-        console.error("Voice session creation error:", error);
-      }
+      await restoreVoiceSession();
       startListening();
     }
-  }, [showOverlay, isListening, stopListening, startListening, resetPosition, createVoiceSession, completeVoiceSession]);
+  }, [showOverlay, isListening, stopListening, startListening, resetPosition, restoreVoiceSession, completeVoiceSession]);
 
   const handleStop = useCallback(() => {
     if (isListening) {
@@ -193,8 +239,6 @@ export default function VoiceOverlay() {
     window.addEventListener('toggle-voice-control', handler);
     return () => window.removeEventListener('toggle-voice-control', handler);
   }, [handleToggleVoice]);
-
-  useEffect(() => () => { void completeVoiceSession(); }, [completeVoiceSession]);
 
   if (!isSupported || !showOverlay) return null;
 
@@ -232,6 +276,8 @@ export default function VoiceOverlay() {
               <button
                 onClick={handlePauseResume}
                 disabled={isProcessing}
+                data-testid="voice-pause-resume"
+                aria-label={isListening ? "Pause dictation" : "Resume dictation"}
                 className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors disabled:opacity-40"
                 title={isListening ? "Pause dictation" : "Resume dictation"}
               >
@@ -239,13 +285,17 @@ export default function VoiceOverlay() {
               </button>
               <button
                 onClick={handleStop}
-                className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                disabled={isProcessing}
+                data-testid="voice-stop"
+                aria-label="Stop and close"
+                className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-40"
                 title="Stop and close"
               >
                 <Square className="h-3 w-3" />
               </button>
               <button
                 onClick={() => setIsCollapsed(false)}
+                aria-label="Expand voice controls"
                 className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
                 title="Expand"
               >
@@ -274,6 +324,8 @@ export default function VoiceOverlay() {
             <button
               onClick={handlePauseResume}
               disabled={isProcessing}
+              data-testid="voice-pause-resume"
+              aria-label={isListening ? "Pause dictation" : "Resume dictation"}
               className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors disabled:opacity-40"
               title={isListening ? "Pause dictation" : "Resume dictation"}
             >
@@ -281,13 +333,17 @@ export default function VoiceOverlay() {
             </button>
             <button
               onClick={handleStop}
-              className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors"
+              disabled={isProcessing}
+              data-testid="voice-stop"
+              aria-label="Stop and close"
+              className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-40"
               title="Stop and close"
             >
               <Square className="h-3 w-3" />
             </button>
             <button
               onClick={() => setIsCollapsed(true)}
+              aria-label="Collapse voice controls"
               className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
               title="Collapse"
             >

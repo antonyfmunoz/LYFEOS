@@ -24,7 +24,7 @@ export default function VoiceSessionArchive() {
   const sessions = (query.data?.sessions || []).filter((session) => session.status === "completed").slice(0, 5);
 
   return (
-    <section className="border-t border-primary/20 py-3" aria-labelledby="voice-session-history-heading">
+    <section data-testid="voice-session-archive" className="border-t border-primary/20 py-3" aria-labelledby="voice-session-history-heading">
       <div className="flex items-center gap-2 mb-2">
         <Mic className="h-3.5 w-3.5 text-primary" />
         <h3 id="voice-session-history-heading" className="text-xs font-semibold text-foreground">Voice records</h3>
@@ -39,7 +39,7 @@ export default function VoiceSessionArchive() {
             const isOpen = expanded === session.id;
             return (
               <div key={session.id} className="rounded border border-primary/15 bg-card/30">
-                <button type="button" onClick={() => setExpanded(isOpen ? null : session.id)} className="w-full flex items-start gap-1.5 p-2 text-left hover:bg-primary/5" aria-expanded={isOpen}>
+                <button data-testid={`voice-session-record-${session.id}`} type="button" onClick={() => setExpanded(isOpen ? null : session.id)} className="w-full flex items-start gap-1.5 p-2 text-left hover:bg-primary/5" aria-expanded={isOpen}>
                   {isOpen ? <ChevronDown className="h-3 w-3 mt-0.5 text-primary shrink-0" /> : <ChevronRight className="h-3 w-3 mt-0.5 text-primary shrink-0" />}
                   <span className="min-w-0">
                     <span className="block text-[11px] text-foreground truncate">{session.title}</span>
