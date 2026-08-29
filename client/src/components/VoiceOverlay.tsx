@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import { Loader2, Mic, MicOff, Square, ChevronUp, ChevronDown, GripHorizontal } from 'lucide-react';
 import { useVoiceControl } from '@/hooks/use-voice-control';
 import { useLYFEOS } from '@/lib/context';
@@ -232,7 +232,9 @@ export default function VoiceOverlay() {
     }
   }, [isListening, stopListening, startListening]);
 
-  useEffect(() => {
+  // The launch button is rendered by the Router sibling. Register during the
+  // layout phase so its first rendered click cannot outrun this listener.
+  useLayoutEffect(() => {
     const handler = () => {
       void handleToggleVoice();
     };

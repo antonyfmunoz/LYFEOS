@@ -35,6 +35,12 @@ describe("durable Voice overlay lifecycle", () => {
     expect(overlay).toContain("disabled={isProcessing}");
   });
 
+  it("registers the cross-tree launch listener before the first rendered click", () => {
+    expect(overlay).toContain("useLayoutEffect(() => {");
+    expect(overlay).toContain("window.addEventListener('toggle-voice-control', handler)");
+    expect(overlay).toContain("window.removeEventListener('toggle-voice-control', handler)");
+  });
+
   it("has an exact-source disposable production browser contract with truthful provider boundaries", () => {
     expect(acceptance).not.toMatch(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
     expect(acceptance).toContain('BASE_URL.origin === "https://lyfeos.net"');
