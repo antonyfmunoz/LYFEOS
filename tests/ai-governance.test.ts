@@ -113,6 +113,7 @@ describe("AI and memory governance", () => {
     expect(acceptance).toContain('release.body?.sourceRevision === SOURCE');
     expect(acceptance).toContain('"lyfeos.production-ai-memory-browser.v1"');
     expect(acceptance).toContain('privateContentAbsent');
+    expect(acceptance).toContain('waitForSelector(selector, { visible: true, timeout: 30_000 })');
     expect(acceptance).toContain('HTMLButtonElement | null)?.disabled === false');
     expect(acceptance).toContain("Browser-owned documents can deny storage before the target origin loads.");
     expect(acceptance).toContain('localStorage.getItem("lyfeos_user")');
