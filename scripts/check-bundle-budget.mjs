@@ -10,7 +10,7 @@ if (!javascript.length) throw new Error("Bundle budget could not find built Java
 const checks = [
   { label: "largest JavaScript chunk", match: () => true, limit: 420_000 },
   { label: "Health route chunk", match: (name) => /^HealthDetailPage-.*\.js$/.test(name), limit: 100_000 },
-  { label: "deferred Health feature chunk", match: (name) => /^(?:NutritionDiary|WorkoutLog|BodyProgress|RecoveryLog|RecoveryRoutines|HealthMetricsLedger|IngredientScanner|CapabilityEvidencePanel|SleepLog|HealthTimeline|ExerciseLibrary|TrainingPrograms|WorkoutAnalytics|SupplementSchedules|MealPlanner|HealthTrendWorkbench|HealthConnections|HealthDataRights|HealthProgression)-.*\.js$/.test(name), limit: 50_000 },
+  { label: "deferred Health feature chunk", match: (name) => /^(?:NutritionDiary|NutritionReportsPanel|NutritionTrendChart|WorkoutLog|BodyProgress|RecoveryLog|RecoveryRoutines|HealthMetricsLedger|IngredientScanner|CapabilityEvidencePanel|SleepLog|HealthTimeline|ExerciseLibrary|TrainingPrograms|WorkoutAnalytics|SupplementSchedules|MealPlanner|HealthTrendWorkbench|HealthConnections|HealthDataRights|HealthProgression)-.*\.js$/.test(name), limit: 50_000 },
 ];
 
 for (const check of checks) {

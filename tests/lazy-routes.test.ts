@@ -16,6 +16,9 @@ describe("route loading boundary", () => {
 
   it("progressively loads below-the-fold Health modules without changing their order", () => {
     const health = readFileSync(resolve(process.cwd(), "client/src/pages/HealthDetailPage.tsx"), "utf8");
+    const nutrition = readFileSync(resolve(process.cwd(), "client/src/components/health/NutritionDiary.tsx"), "utf8");
+    const nutritionReports = readFileSync(resolve(process.cwd(), "client/src/components/health/NutritionReportsPanel.tsx"), "utf8");
+    const nutritionChart = readFileSync(resolve(process.cwd(), "client/src/components/health/NutritionTrendChart.tsx"), "utf8");
     expect(health).toContain('lazy(() => import("@/components/health/NutritionDiary"))');
     expect(health).toContain('lazy(() => import("@/components/health/WorkoutLog"))');
     expect(health).toContain('lazy(() => import("@/components/health/HealthConnections"))');
@@ -24,6 +27,12 @@ describe("route loading boundary", () => {
     expect(health).toContain('<DeferredHealthSection label="nutrition diary" targetId="health-section-nutrition"><NutritionDiary /></DeferredHealthSection>');
     expect(health).toContain('id={targetId} className="scroll-mt-6"');
     expect(health).not.toContain('import NutritionDiary from "@/components/health/NutritionDiary"');
+    expect(nutrition).toContain('lazy(() => import("./NutritionReportsPanel"))');
+    expect(nutrition).not.toContain('from "recharts"');
+    expect(nutritionReports).toContain('lazy(() => import("./NutritionTrendChart"))');
+    expect(nutritionReports).toContain("View accessible nutrition history table");
+    expect(nutritionChart).toContain('from "recharts"');
+    expect(nutritionChart).toContain('connectNulls={false}');
     const budget = readFileSync(resolve(process.cwd(), "scripts/check-bundle-budget.mjs"), "utf8");
     expect(budget).toContain('{ label: "Health route chunk"');
     expect(budget).toContain("limit: 100_000");

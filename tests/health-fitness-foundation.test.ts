@@ -173,9 +173,9 @@ describe("health and fitness foundation", () => {
       current: { days: 3, diaryDays: 2, diaryEntries: 2, energyKcal: { recordedDays: 2, totalRecorded: 200, averagePerRecordedDay: 100 } },
       previous: { days: 3, diaryDays: 0, diaryEntries: 0, energyKcal: { recordedDays: 0, totalRecorded: null, averagePerRecordedDay: null } },
     });
-    const client = readFileSync(resolve(process.cwd(), "client/src/components/health/NutritionDiary.tsx"), "utf8");
-    expect(client).toContain("Compare with the immediately preceding period");
-    expect(client).toContain("never by missing days");
+    const reports = readFileSync(resolve(process.cwd(), "client/src/components/health/NutritionReportsPanel.tsx"), "utf8");
+    expect(reports).toContain("Compare with the immediately preceding period");
+    expect(reports).toContain("never by missing days");
   });
 
   it("exports a reconcilable nutrition ledger without collapsing unknown values into zero", () => {
@@ -191,12 +191,12 @@ describe("health and fitness foundation", () => {
     expect(csv).toContain("2026-08-14,protein_g,Protein,g,,unknown,0,1");
     expect(csv).toContain("2026-08-15,energy_kcal,Energy,kcal,,not_recorded,0,0");
     const routes = readFileSync(resolve(process.cwd(), "server/routes/nutrition.ts"), "utf8");
-    const client = readFileSync(resolve(process.cwd(), "client/src/components/health/NutritionDiary.tsx"), "utf8");
+    const reports = readFileSync(resolve(process.cwd(), "client/src/components/health/NutritionReportsPanel.tsx"), "utf8");
     expect(routes).toContain('app.get("/api/nutrition/reports/daily.csv", isAuthenticated');
     expect(routes).toContain('eq(nutritionDiaryEntries.userId, req.session.userId!)');
     expect(routes).toContain('"Cache-Control", "private, no-store"');
-    expect(client).toContain("View accessible nutrition history table");
-    expect(client).toContain("Could not download the nutrition report.");
+    expect(reports).toContain("View accessible nutrition history table");
+    expect(reports).toContain("Could not download the nutrition report.");
   });
 
   it("converts only an explicit product serving or grams and preserves the source-unit path", () => {
@@ -321,7 +321,7 @@ describe("health and fitness foundation", () => {
     expect(routes).toContain('app.get("/api/nutrition/trends", isAuthenticated');
     expect(routes).toContain("A missing value means no recorded value, not zero intake");
     expect(routes).toContain("eq(nutritionDiaryEntries.userId, req.session.userId!)");
-    expect(readFileSync(resolve(process.cwd(), "client/src/components/health/NutritionDiary.tsx"), "utf8")).toContain("Nutrition history period");
+    expect(readFileSync(resolve(process.cwd(), "client/src/components/health/NutritionReportsPanel.tsx"), "utf8")).toContain("Nutrition history period");
   });
 
   it("records newly logged workouts at the individual-set level without losing legacy exercise compatibility", () => {
@@ -497,10 +497,10 @@ describe("health and fitness foundation", () => {
     expect(report.find((item) => item.nutrientKey === "fiber_g")).toMatchObject({ total: 5, recordedEntries: 1, totalEntries: 2 });
     expect(report.find((item) => item.nutrientKey === "sodium_mg")).toMatchObject({ total: null, recordedEntries: 0, totalEntries: 2 });
     const routes = readFileSync(resolve(process.cwd(), "server/routes/nutrition.ts"), "utf8");
-    const client = readFileSync(resolve(process.cwd(), "client/src/components/health/NutritionDiary.tsx"), "utf8");
+    const reports = readFileSync(resolve(process.cwd(), "client/src/components/health/NutritionReportsPanel.tsx"), "utf8");
     expect(routes).toContain('app.get("/api/nutrition/contributions", isAuthenticated');
     expect(routes).toContain("Missing coverage means unknown data");
-    expect(client).toContain("Coverage: {selectedContribution.recordedEntries} of {selectedContribution.totalEntries} diary entries");
+    expect(reports).toContain("Coverage: {selectedContribution.recordedEntries} of {selectedContribution.totalEntries} diary entries");
   });
 
   it("exposes a broad unit-safe nutrient registry while leaving omitted values unknown", () => {
