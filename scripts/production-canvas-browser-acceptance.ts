@@ -153,7 +153,9 @@ async function activate(page: Page, selector: string): Promise<void> {
 async function selectNode(page: Page, testId: string): Promise<void> {
   const selector = `[data-testid="canvas-node-${testId}"]`;
   await page.waitForSelector(selector, { timeout: 30_000 });
-  await page.$eval(selector, (node) => node.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+  await page.focus(selector);
+  await page.keyboard.press("Enter");
+  await page.waitForFunction((targetSelector) => document.querySelector(targetSelector)?.getAttribute("aria-pressed") === "true", { timeout: 30_000 }, selector);
 }
 
 async function waitForCanvas(account: Account, canvasId: number, predicate: (canvas: any) => boolean, label: string): Promise<any> {
