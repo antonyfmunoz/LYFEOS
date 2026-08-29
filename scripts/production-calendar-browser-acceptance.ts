@@ -67,6 +67,15 @@ async function request(method: string, pathname: string, body?: unknown, cookie 
   };
 }
 
+async function restoreOnline(page: Page): Promise<void> {
+  await page.setOfflineMode(false);
+  await page.waitForFunction(() => navigator.onLine, { timeout: 15_000 });
+  // Chromium can restore CDP network access without delivering the DOM event
+  // that the application uses to start its queue flush. Dispatching after
+  // navigator.onLine is true exercises the same browser contract deterministically.
+  await page.evaluate(() => window.dispatchEvent(new Event("online")));
+}
+
 async function findChromium(): Promise<string> {
   const candidates = [
     process.env.LYFEOS_CHROMIUM_PATH,
@@ -289,7 +298,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     }, { timeout: 45_000 }, offlineTitle);
     const offlineCreateQueued = true;
     intentionallyOffline = false;
-    await page.setOfflineMode(false);
+    await restoreOnline(page);
     const created = await waitForMission(account, date, (mission) => mission.title === offlineTitle, "offline create reconnect");
     const reconnectCreateConverged = created.revision === 1;
     assert(reconnectCreateConverged, "Offline Calendar create did not converge as revision one.");
@@ -309,7 +318,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     const serverChange = await request("PATCH", `/api/quests/${missionId}`, { title: serverTitle }, account.cookie, { "x-lyfeos-mutation-id": `calendar-server-${stamp}`, "x-lyfeos-expected-revision": "1" });
     assert(serverChange.status === 200 && serverChange.body.quest?.revision === 2, `Competing server edit returned ${serverChange.status}.`);
     intentionallyOffline = false;
-    await page.setOfflineMode(false);
+    await restoreOnline(page);
     await page.waitForFunction((title) => {
       const text = document.querySelector('[data-testid="calendar-offline-queue"]')?.textContent || "";
       return text.includes(String(title)) && text.includes("Current server version") && text.includes("v2");
@@ -335,7 +344,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     if (page) await page.screenshot({ path: path.join(OUTPUT_DIR, `calendar-${viewport.name}-failure.png`), fullPage: true }).catch(() => undefined);
     failure = new Error(`${safeError(error)}; rendered=${rendered}`);
   } finally {
-    if (page && intentionallyOffline) await page.setOfflineMode(false).catch(() => undefined);
+    if (page && intentionallyOffline) await restoreOnline(page).catch(() => undefined);
     if (context) await context.close().catch(() => undefined);
     erased = await eraseAccount(account);
   }
