@@ -28,6 +28,11 @@ describe("production Calendar evidence custody", () => {
     expect(acceptance).toContain("acknowledgeReconciledConflict(signals)");
     expect(acceptance).toContain("explicitConflictApplyConverged");
     expect(acceptance).toContain("queueDrained");
+    expect(acceptance).toContain("enterOffline(page)");
+    expect(acceptance).toContain('window.dispatchEvent(new Event("offline"))');
+    expect(acceptance).toContain('window.dispatchEvent(new Event("online"))');
+    expect(acceptance).toContain("registerDisposableAccount");
+    expect(acceptance).toContain('response.headers.get("retry-after")');
     expect(acceptance).toContain('CALENDAR_TIME_ZONE = "America/Los_Angeles"');
     expect(acceptance).toContain("page.emulateTimezone(CALENDAR_TIME_ZONE)");
     expect(acceptance).toContain("lyfeos-tutorial-done-missions-");

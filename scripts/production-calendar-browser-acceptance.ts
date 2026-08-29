@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import puppeteer, { type Browser, type BrowserContext, type Page, type Viewport } from "puppeteer-core";
 
-type ApiResult = { status: number; body: any; cookie: string };
+type ApiResult = { status: number; body: any; cookie: string; retryAfterSeconds: number | null };
 type Account = { id: number; email: string; displayName: string; cookie: string };
 type Signals = { consoleErrors: string[]; pageErrors: string[]; failedRequests: string[]; serverErrors: string[] };
 type PageAudit = { mainCount: number; duplicateIds: string[]; invalidLabelReferences: string[]; unlabeledControls: string[]; horizontalOverflowPx: number };
@@ -64,7 +64,33 @@ async function request(method: string, pathname: string, body?: unknown, cookie 
     status: response.status,
     body: await response.json().catch(() => ({})),
     cookie: (response.headers.get("set-cookie") || "").split(";", 1)[0],
+    retryAfterSeconds: Number.isFinite(Number(response.headers.get("retry-after"))) ? Number(response.headers.get("retry-after")) : null,
   };
+}
+
+async function registerDisposableAccount(account: Account): Promise<ApiResult> {
+  let result: ApiResult | null = null;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    result = await request("POST", "/api/auth/complete-registration", { email: account.email, password: PASSWORD, displayName: account.displayName, termsAccepted: true });
+    if (result.status === 201) {
+      Object.assign(account, { id: Number(result.body.user?.id), cookie: result.cookie });
+      return result;
+    }
+    if (result.status !== 429 || attempt === 1) return result;
+    const waitSeconds = Math.min(61, Math.max(1, result.retryAfterSeconds || 60));
+    await new Promise((resolve) => setTimeout(resolve, waitSeconds * 1_000 + 250));
+  }
+  return result!;
+}
+
+async function enterOffline(page: Page): Promise<void> {
+  await page.setOfflineMode(true);
+  await page.waitForFunction(() => !navigator.onLine, { timeout: 15_000 });
+  await page.evaluate(() => window.dispatchEvent(new Event("offline")));
+  await page.waitForFunction(() => {
+    const text = document.querySelector('[data-testid="calendar-offline-queue"]')?.textContent || "";
+    return text.includes("Calendar is offline") && text.includes("Offline");
+  }, { timeout: 15_000 });
 }
 
 async function restoreOnline(page: Page): Promise<void> {
@@ -249,9 +275,8 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
   let failure: unknown = null;
   let stage = "register disposable owner";
   try {
-    const registration = await request("POST", "/api/auth/complete-registration", { email: account.email, password: PASSWORD, displayName: account.displayName, termsAccepted: true });
+    const registration = await registerDisposableAccount(account);
     assert(registration.status === 201, `Disposable owner registration returned ${registration.status}.`);
-    Object.assign(account, { id: Number(registration.body.user?.id), cookie: registration.cookie });
     const seeded = await request("POST", "/api/quests", { userId: account.id, title: conflictTitle, description: "Production conflict fixture", category: "general", completed: false, startDate: date, endDate: date, startTime: "10:00", endTime: "10:30" }, account.cookie, { "x-lyfeos-mutation-id": `calendar-seed-${stamp}` });
     assert(seeded.status === 201 && seeded.body.quest?.revision === 1, `Conflict fixture creation returned ${seeded.status}.`);
     const missionId = Number(seeded.body.quest.id);
@@ -289,7 +314,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     await activate(page, `[aria-label^="Create mission on "][aria-label$=" at 9 AM"]`);
     await setValue(page, "#create-title", offlineTitle);
     intentionallyOffline = true;
-    await page.setOfflineMode(true);
+    await enterOffline(page);
     await activate(page, '[data-testid="mission-create-submit"]');
     await page.waitForFunction((title) => {
       const text = document.querySelector('[data-testid="calendar-offline-queue"]')?.textContent || "";
@@ -311,7 +336,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     await activate(page, `[aria-label="Edit mission ${conflictTitle} at 10:00"]`);
     await setValue(page, "#edit-title", queuedTitle);
     intentionallyOffline = true;
-    await page.setOfflineMode(true);
+    await enterOffline(page);
     await activate(page, '[data-testid="mission-update-submit"]');
     await page.waitForFunction((title) => document.querySelector('[data-testid="calendar-offline-queue"]')?.textContent?.includes(String(title)), { timeout: 30_000 }, queuedTitle);
     const serverChange = await request("PATCH", `/api/quests/${missionId}`, { title: serverTitle }, account.cookie, { "x-lyfeos-mutation-id": `calendar-server-${stamp}`, "x-lyfeos-expected-revision": "1" });
