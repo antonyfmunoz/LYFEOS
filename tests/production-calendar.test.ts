@@ -26,6 +26,7 @@ describe("production Calendar evidence custody", () => {
     expect(acceptance).toContain("staleEditStoppedAsConflict");
     expect(acceptance).toContain("explicitConflictApplyConverged");
     expect(acceptance).toContain("queueDrained");
+    expect(acceptance).toContain('text === "Skip tour"');
     expect(acceptance).toContain("service-worker cold-start offline navigation");
   });
 

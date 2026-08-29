@@ -105,14 +105,30 @@ function captureSignals(page: Page, intentionallyOffline: () => boolean): Signal
 }
 
 async function dismissBlockingTutorial(page: Page): Promise<void> {
-  const selector = 'button[aria-label="Skip this tutorial"]';
-  const control = await page.$(selector);
-  if (!control) return;
-  const visible = await control.evaluate((element) => getComputedStyle(element).display !== "none" && element.getClientRects().length > 0);
-  if (visible) {
-    await page.click(selector);
-    await page.waitForSelector(selector, { hidden: true, timeout: 10_000 });
+  const deadline = Date.now() + 10_000;
+  while (Date.now() < deadline) {
+    const state = await page.evaluate(() => {
+      const buttons = [...document.querySelectorAll<HTMLButtonElement>("button")];
+      const control = buttons.find((button) => {
+        const label = button.getAttribute("aria-label") || "";
+        const text = button.textContent?.trim() || "";
+        return (label === "Skip this tutorial" || text === "Skip tour") && button.getClientRects().length > 0;
+      });
+      if (control) { control.click(); return "dismissed"; }
+      return document.body?.textContent?.includes("TUTORIAL 1/") ? "blocked" : "clear";
+    });
+    if (state === "dismissed") {
+      await page.waitForFunction(() => !document.body?.textContent?.includes("TUTORIAL 1/"), { timeout: 10_000 });
+      return;
+    }
+    if (state === "clear") {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      const stillClear = await page.evaluate(() => !document.body?.textContent?.includes("TUTORIAL 1/"));
+      if (stillClear) return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 150));
   }
+  throw new Error("The rendered Missions tutorial could not be dismissed through its named control.");
 }
 
 async function setValue(page: Page, selector: string, value: string): Promise<void> {
