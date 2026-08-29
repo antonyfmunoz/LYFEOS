@@ -256,6 +256,20 @@ describe("Sheets instrument", () => {
     expect(vault).toContain("navigate('/spreadsheets')");
   });
 
+  it("exposes stable nonvisual seams for production browser qualification", () => {
+    const catalog = source("client/src/pages/SpreadsheetsPage.tsx");
+    const editor = source("client/src/pages/SpreadsheetEditorPage.tsx");
+    expect(catalog).toContain('data-testid="sheets-page"');
+    expect(catalog).toContain('data-testid="sheets-new"');
+    expect(catalog).toContain("sheet-card-${sheet.id}");
+    expect(editor).toContain('data-testid="sheet-editor"');
+    expect(editor).toContain('data-testid="sheet-save"');
+    expect(editor).toContain('data-testid="sheet-revision"');
+    expect(editor).toContain('data-testid="sheet-grid"');
+    expect(editor).toContain('data-testid="sheet-history"');
+    expect(editor).toContain("sheet-history-version-${revision.revisionNumber}");
+  });
+
   it("persists an immutable, owner-scoped version ledger with a baseline backfill", () => {
     const migration = source("migrations/0106_spreadsheet_revisions.sql");
     const release = source("server/release-migrate.ts");

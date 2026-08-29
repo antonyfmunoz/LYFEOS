@@ -50,7 +50,7 @@ export default function SpreadsheetsPage() {
     return matchesSearch && (category === "all" || sheet.category === category);
   }).sort((a, b) => Number(b.favorite) - Number(a.favorite) || new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()), [all, category, search]);
 
-  return <div className="container max-w-6xl py-6 space-y-5">
+  return <div data-testid="sheets-page" className="container max-w-6xl py-6 space-y-5">
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div>
         <p className="text-xs font-mono uppercase tracking-[0.14em] text-primary">Personal information system</p>
@@ -59,7 +59,7 @@ export default function SpreadsheetsPage() {
       </div>
       <div className="flex gap-2">
         <Link href="/document-vault"><Button variant="outline">Data Vault</Button></Link>
-        <Button onClick={() => navigate("/spreadsheets/new")}><Plus className="mr-1 h-4 w-4" />New sheet</Button>
+        <Button data-testid="sheets-new" onClick={() => navigate("/spreadsheets/new")}><Plus className="mr-1 h-4 w-4" />New sheet</Button>
       </div>
     </div>
     <div className="grid gap-2 sm:grid-cols-[1fr_180px]">
@@ -70,7 +70,7 @@ export default function SpreadsheetsPage() {
       </select>
     </div>
     {sheets.isLoading ? <p className="text-sm text-muted-foreground">Loading sheets…</p> : filtered.length ? <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-      {filtered.map((sheet) => <article key={sheet.id} className="rounded-xl border border-primary/15 bg-card/35 p-4 transition hover:border-primary/35">
+      {filtered.map((sheet) => <article data-testid={`sheet-card-${sheet.id}`} key={sheet.id} className="rounded-xl border border-primary/15 bg-card/35 p-4 transition hover:border-primary/35">
         <div className="flex items-start justify-between gap-2">
           <button type="button" className="min-w-0 flex-1 text-left" onClick={() => navigate(`/spreadsheets/${sheet.id}`)}>
             <div className="flex items-center gap-2"><FileSpreadsheet className="h-4 w-4 text-primary" /><h2 className="truncate font-medium">{sheet.title}</h2></div>

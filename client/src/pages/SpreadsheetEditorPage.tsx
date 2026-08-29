@@ -328,12 +328,12 @@ export default function SpreadsheetEditorPage() {
   if (query.isLoading) return <div className="container py-8 text-sm text-muted-foreground">Loading sheet…</div>;
   if (query.isError) return <div className="container py-8 text-sm text-destructive">{query.error instanceof Error ? query.error.message : "Sheet unavailable."}</div>;
 
-  return <div className="container max-w-[1500px] py-5 space-y-4">
+  return <div data-testid="sheet-editor" className="container max-w-[1500px] py-5 space-y-4">
     <div className="flex flex-wrap items-center justify-between gap-2">
       <div className="flex min-w-0 flex-1 items-center gap-2">
         <Link href="/spreadsheets"><Button variant="outline">Sheets</Button></Link>
         <Input aria-label="Sheet title" value={title} maxLength={160} onChange={(event) => { setTitle(event.target.value); setDirty(true); }} className="max-w-md font-medium" />
-        {!isNew && query.data?.spreadsheet.revision && <span className="whitespace-nowrap text-xs text-muted-foreground">version {query.data.spreadsheet.revision}</span>}
+        {!isNew && query.data?.spreadsheet.revision && <span data-testid="sheet-revision" className="whitespace-nowrap text-xs text-muted-foreground">version {query.data.spreadsheet.revision}</span>}
         {dirty && <span className="text-xs text-amber-400">unsaved</span>}
       </div>
       <div className="flex flex-wrap gap-2">
@@ -342,7 +342,7 @@ export default function SpreadsheetEditorPage() {
         <input ref={importInput} className="sr-only" type="file" accept=".csv,.tsv,text/csv,text/tab-separated-values" aria-label="Choose a CSV or TSV file" onChange={(event) => void readImportFile(event.target.files?.[0])} />
         <Button variant="outline" disabled={document.sheets.length >= 20} onClick={() => importInput.current?.click()}><Upload className="mr-1 h-4 w-4" />Import</Button>
         <Button variant="outline" onClick={exportCsv}><Download className="mr-1 h-4 w-4" />CSV</Button>
-        <Button disabled={!dirty || !title.trim() || save.isPending} onClick={() => save.mutate()}><Save className="mr-1 h-4 w-4" />{save.isPending ? "Saving…" : "Save"}</Button>
+        <Button data-testid="sheet-save" disabled={!dirty || !title.trim() || save.isPending} onClick={() => save.mutate()}><Save className="mr-1 h-4 w-4" />{save.isPending ? "Saving…" : "Save"}</Button>
       </div>
     </div>
     {save.isError && <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{save.error instanceof Error ? save.error.message : "The sheet could not be saved."} If this sheet changed in another session, reload it before applying your changes again.</p>}
@@ -384,7 +384,7 @@ export default function SpreadsheetEditorPage() {
         </Select>
         <Button type="button" size="icon" variant="outline" className="h-8 w-8 shrink-0" aria-label="Clear formatting from selected populated cells" onClick={() => applyRangeFormat(null)}><Eraser className="h-3.5 w-3.5" /></Button>
       </div>
-      <div ref={gridViewportRef} className="overflow-auto max-h-[65vh]" role="region" aria-label={`${activeSheet.name} spreadsheet grid`} onScroll={(event) => setGridViewport({ scrollLeft: event.currentTarget.scrollLeft, scrollTop: event.currentTarget.scrollTop, viewportWidth: event.currentTarget.clientWidth || 1200, viewportHeight: event.currentTarget.clientHeight || 600 })}>
+      <div data-testid="sheet-grid" ref={gridViewportRef} className="overflow-auto max-h-[65vh]" role="region" aria-label={`${activeSheet.name} spreadsheet grid`} onScroll={(event) => setGridViewport({ scrollLeft: event.currentTarget.scrollLeft, scrollTop: event.currentTarget.scrollTop, viewportWidth: event.currentTarget.clientWidth || 1200, viewportHeight: event.currentTarget.clientHeight || 600 })}>
         <div className="relative" style={{ width: viewportWindow.totalWidth, height: viewportWindow.totalHeight }}>
           <div className="absolute z-30 border-b border-r border-primary/15 bg-background" style={{ left: gridViewport.scrollLeft, top: gridViewport.scrollTop, width: SPREADSHEET_ROW_HEADER_WIDTH, height: SPREADSHEET_COLUMN_HEADER_HEIGHT }} />
           {visibleColumnIndexes.map((columnIndex) => <div key={`column-${columnIndex}`} className="absolute z-20 flex items-center justify-center border-b border-r border-primary/15 bg-background font-mono text-xs text-muted-foreground" style={{ left: SPREADSHEET_ROW_HEADER_WIDTH + columnIndex * SPREADSHEET_COLUMN_WIDTH, top: gridViewport.scrollTop, width: SPREADSHEET_COLUMN_WIDTH, height: SPREADSHEET_COLUMN_HEADER_HEIGHT }}>{columnLabel(columnIndex)}</div>)}
@@ -417,7 +417,7 @@ export default function SpreadsheetEditorPage() {
       </div>
     </div>
     <p className="text-[11px] leading-relaxed text-muted-foreground">The grid renders only the visible rows and columns plus a small safety margin, even at the 500-row × 100-column limit. Use arrow keys to move one cell at a time and Shift+Arrow to extend a selection; choose Extend and then a cell on touch devices. Undo and Redo retain up to 20 unsaved grid and tab changes on this device and reset after save, reload, or restore. Shift-click also selects a rectangular range for copy or formatting. Number, percent, USD currency, text-color, and fill-color formats change display only; raw values and formula inputs remain authoritative. Formatting applies only to populated cells; clipboard and CSV/TSV transfer values and formulas, not presentation, while plain-text paste preserves existing destination formatting. Paste starts at the active cell and remains unsaved until you review and save. Insertions preserve populated cells, formatting, and affected formula references. Formulas support cell references, +, −, ×, ÷, parentheses, and SUM, AVERAGE, MIN, or MAX. CSV export writes unformatted calculated formula results and protects text beginning with spreadsheet-executable prefixes.</p>
-    {!isNew && <details className="rounded-xl border border-primary/15 bg-card/30 p-4">
+    {!isNew && <details data-testid="sheet-history" className="rounded-xl border border-primary/15 bg-card/30 p-4">
       <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-medium"><History className="h-4 w-4" />Saved version history</summary>
       <p className="mt-2 text-xs text-muted-foreground">Saved versions are immutable. Restoring copies the selected snapshot into a new version; it never deletes or rewrites history. The 100 most recent versions are shown.</p>
       {revisions.isLoading && <p className="mt-3 text-sm text-muted-foreground">Loading saved versions…</p>}
@@ -427,7 +427,7 @@ export default function SpreadsheetEditorPage() {
         {revisions.data.revisions.map((revision) => {
           const isCurrent = revision.revisionNumber === query.data?.spreadsheet.revision;
           const action = revision.action === "restored" ? `restored from version ${revision.sourceRevision}` : revision.action;
-          return <li key={revision.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+          return <li data-testid={`sheet-history-version-${revision.revisionNumber}`} key={revision.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
             <div><p className="text-sm font-medium">Version {revision.revisionNumber}{isCurrent ? " · current" : ""}</p><p className="text-xs text-muted-foreground">{action} · {new Date(revision.createdAt).toLocaleString()}</p></div>
             <Button type="button" size="sm" variant="outline" disabled={isCurrent || restoreRevision.isPending || dirty} onClick={() => { if (window.confirm(`Restore version ${revision.revisionNumber} as a new saved version? Your existing history will remain available.`)) restoreRevision.mutate(revision.revisionNumber); }}><RotateCcw className="mr-1 h-3.5 w-3.5" />Restore</Button>
           </li>;
