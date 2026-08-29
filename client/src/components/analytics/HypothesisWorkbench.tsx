@@ -45,7 +45,7 @@ function HypothesisCard({ hypothesis }: { hypothesis: Hypothesis }) {
   const marker = result?.status === "available" ? Math.max(0, Math.min(100, ((result.coefficient || 0) + 1) * 50)) : 50;
 
   return (
-    <article className="rounded-xl border border-primary/15 bg-background/35 p-4" aria-labelledby={`hypothesis-${hypothesis.id}`}>
+    <article className="rounded-xl border border-primary/15 bg-background/35 p-4" aria-labelledby={`hypothesis-${hypothesis.id}`} data-testid={`hypothesis-card-${hypothesis.id}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h4 id={`hypothesis-${hypothesis.id}`} className="font-medium text-foreground">{hypothesis.title}</h4>
@@ -85,9 +85,9 @@ function HypothesisCard({ hypothesis }: { hypothesis: Hypothesis }) {
             <select id={`interpretation-${hypothesis.id}`} value={interpretation} onChange={(event) => setInterpretation(event.target.value)} className="mt-1 w-full rounded-md border border-muted/30 bg-background px-3 py-2 text-sm">
               <option value="worth_revisiting">Worth revisiting</option><option value="needs_more_context">Needs more context</option><option value="not_meaningful_to_me">Not meaningful to me</option>
             </select>
-            <Input className="mt-2" value={note} onChange={(event) => setNote(event.target.value)} maxLength={2000} placeholder="Optional context only you can see" />
+            <Input className="mt-2" aria-label="Private interpretation context" value={note} onChange={(event) => setNote(event.target.value)} maxLength={2000} placeholder="Optional context only you can see" />
             <label className="mt-2 flex items-start gap-2 text-xs text-muted-foreground"><input type="checkbox" checked={acknowledged} onChange={(event) => setAcknowledged(event.target.checked)} />I understand this is my interpretation of an exploratory association, not a verified fact, cause, prediction, diagnosis, or instruction.</label>
-            <Button className="mt-2" size="sm" variant="outline" disabled={!acknowledged || saveInterpretation.isPending} onClick={() => saveInterpretation.mutate()}>Save private interpretation</Button>
+            <Button className="mt-2" size="sm" variant="outline" data-testid={`hypothesis-save-interpretation-${hypothesis.id}`} disabled={!acknowledged || saveInterpretation.isPending} onClick={() => saveInterpretation.mutate()}>Save private interpretation</Button>
           </div>
         </div>
       ) : null}
@@ -115,12 +115,12 @@ export default function HypothesisWorkbench() {
   });
 
   return (
-    <section className="mt-6 rounded-xl border border-primary/20 bg-card/30 p-4" aria-labelledby="cross-domain-hypotheses-title">
+    <section className="mt-6 rounded-xl border border-primary/20 bg-card/30 p-4" aria-labelledby="cross-domain-hypotheses-title" data-testid="hypothesis-workbench">
       <div className="flex items-start gap-3"><BrainCircuit className="mt-0.5 h-5 w-5 text-primary" /><div><h3 id="cross-domain-hypotheses-title" className="font-medium text-foreground">Your hypothesis lab</h3><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Choose what LyfeOS may compare, then test one question at a time. Results stay private and never become automatic advice, Missions, XP, rank, or badges.</p></div></div>
       <div className="mt-4 grid gap-2 md:grid-cols-3">
         {(Object.keys(domainCopy) as Domain[]).map((domain) => {
           const enabled = signals.data?.consents[domain] === "enabled";
-          return <button key={domain} type="button" aria-pressed={enabled} disabled={consent.isPending} onClick={() => consent.mutate({ domain, state: enabled ? "revoked" : "enabled" })} className={`rounded-lg border p-3 text-left transition-colors ${enabled ? "border-primary/45 bg-primary/10" : "border-muted/20 bg-background/30"}`}><span className="text-sm font-medium text-foreground">{domainCopy[domain].title}</span><span className="mt-1 block text-xs text-muted-foreground">{domainCopy[domain].detail}</span><span className={`mt-2 block text-[11px] font-mono uppercase ${enabled ? "text-primary" : "text-muted-foreground"}`}>{enabled ? "Enabled" : "Off"}</span></button>;
+          return <button key={domain} type="button" data-testid={`hypothesis-consent-${domain}`} aria-pressed={enabled} disabled={consent.isPending} onClick={() => consent.mutate({ domain, state: enabled ? "revoked" : "enabled" })} className={`rounded-lg border p-3 text-left transition-colors ${enabled ? "border-primary/45 bg-primary/10" : "border-muted/20 bg-background/30"}`}><span className="text-sm font-medium text-foreground">{domainCopy[domain].title}</span><span className="mt-1 block text-xs text-muted-foreground">{domainCopy[domain].detail}</span><span className={`mt-2 block text-[11px] font-mono uppercase ${enabled ? "text-primary" : "text-muted-foreground"}`}>{enabled ? "Enabled" : "Off"}</span></button>;
         })}
       </div>
       <details className="mt-3 rounded-lg border border-muted/20 p-3 text-xs text-muted-foreground"><summary className="cursor-pointer text-foreground">Signal definitions and source quality</summary><div className="mt-2 grid gap-2 sm:grid-cols-2">{(signals.data?.signals || []).map((signal) => <div key={signal.id}><p className="font-medium text-foreground">{signal.label} ({signal.unit})</p><p>{signal.provenance} · {signal.quality.replaceAll("_", " ")} · {signal.aggregation}</p></div>)}</div><p className="mt-2">{signals.data?.disclosure}</p></details>
@@ -134,7 +134,7 @@ export default function HypothesisWorkbench() {
           <div><Label htmlFor="hypothesis-lag" className="text-xs">Day alignment</Label><select id="hypothesis-lag" value={lagDays} onChange={(event) => setLagDays(Number(event.target.value))} className="mt-1 w-full rounded-md border border-muted/30 bg-background px-3 py-2 text-sm">{Array.from({ length: 29 }, (_, index) => index - 14).map((value) => <option key={value} value={value}>{value === 0 ? "Same day" : value > 0 ? `Second signal ${value} day${value === 1 ? "" : "s"} later` : `First signal ${Math.abs(value)} day${value === -1 ? "" : "s"} later`}</option>)}</select></div>
         </div>
         <label className="mt-3 flex items-start gap-2 text-xs text-muted-foreground"><input type="checkbox" checked={acknowledged} onChange={(event) => setAcknowledged(event.target.checked)} />I am choosing this comparison. I understand missing records, repeated testing, changing routines, and other factors can change the result, and association is not causation.</label>
-        <Button className="mt-3" size="sm" disabled={!acknowledged || title.trim().length < 3 || !leftSignalId || !rightSignalId || leftSignalId === rightSignalId || create.isPending} onClick={() => create.mutate()}>Create and calculate</Button>
+        <Button className="mt-3" size="sm" data-testid="hypothesis-create" disabled={!acknowledged || title.trim().length < 3 || !leftSignalId || !rightSignalId || leftSignalId === rightSignalId || create.isPending} onClick={() => create.mutate()}>Create and calculate</Button>
         {create.error ? <p className="mt-2 text-xs text-destructive" role="alert">{create.error instanceof Error ? create.error.message : "The hypothesis could not be created."}</p> : null}
       </div>
       <div className="mt-4 space-y-3">{records.data?.hypotheses.length ? records.data.hypotheses.map((hypothesis) => <HypothesisCard key={hypothesis.id} hypothesis={hypothesis} />) : <p className="rounded-lg border border-dashed border-muted/25 p-4 text-center text-sm text-muted-foreground">No saved hypotheses yet. Enable only the domains you want, then create one focused comparison.</p>}</div>

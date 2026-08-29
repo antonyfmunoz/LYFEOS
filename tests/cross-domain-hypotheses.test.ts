@@ -29,6 +29,8 @@ describe("Cross-domain hypothesis workspace", () => {
     const profile = source("server/routes/profile.ts");
     const health = source("server/routes/health-insights.ts");
     const ui = source("client/src/components/analytics/HypothesisWorkbench.tsx");
+    const productionAcceptance = source("scripts/production-pattern-explorer-browser-acceptance.ts");
+    const productionWorkflow = source(".github/workflows/production-browser-acceptance.yml");
     expect(migration).toContain("hypothesis_domain_consents");
     expect(migration).toContain("cross_domain_hypothesis_snapshots_fingerprint_unique");
     expect(engine).toContain("aligned: _privateAlignedValues");
@@ -40,5 +42,11 @@ describe("Cross-domain hypothesis workspace", () => {
     expect(health).toContain("Health-derived cross-domain hypotheses");
     expect(ui).toContain("never become automatic advice, Missions, XP, rank, or badges");
     expect(ui).toContain("Scheduled recalculation runs at most daily");
+    expect(ui).toContain('aria-label="Private interpretation context"');
+    expect(ui).toContain('data-testid="hypothesis-workbench"');
+    expect(productionAcceptance).toContain('contract: "lyfeos.production-pattern-explorer-browser.v1"');
+    expect(productionAcceptance).toContain("domainsDefaultedOff");
+    expect(productionAcceptance).toContain("noProgressionOrAutomaticAction");
+    expect(productionWorkflow).toContain("npm run acceptance:production-pattern-explorer");
   });
 });
