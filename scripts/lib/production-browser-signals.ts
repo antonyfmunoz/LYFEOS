@@ -12,6 +12,13 @@ export const CHUNK_RECOVERY_STORAGE_KEY = "lyfeos-chunk-recovery";
 export const CHUNK_RECOVERY_EVIDENCE_WINDOW_MS = 120_000;
 
 const BOUNDED_ROUTE_CHUNK_TIMEOUT = /^ChunkLoadError: Failed to fetch dynamically imported module: route chunk timed out after 15000ms(?: @ https?:\/\/[^\s]+\/assets\/[^\s]+\.js)?$/;
+const SENTRY_BROWSER_INGEST = /https:\/\/o\d+\.ingest(?:\.[a-z0-9-]+)?\.sentry\.io\/api\/\d+\/envelope\//i;
+const POSTHOG_BROWSER_INGEST = /https:\/\/(?:[a-z0-9-]+\.)?i\.posthog\.com\/(?:e|batch)\//i;
+
+export function isExternalProviderTransportError(message: string, locationUrl = ""): boolean {
+  const evidence = `${message} ${locationUrl}`;
+  return SENTRY_BROWSER_INGEST.test(evidence) || POSTHOG_BROWSER_INGEST.test(evidence);
+}
 
 export function reconcileBoundedChunkRecovery(
   signals: BrowserSignals,

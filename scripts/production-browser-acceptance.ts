@@ -3,6 +3,11 @@ import os from "node:os";
 import path from "node:path";
 import { access } from "node:fs/promises";
 import puppeteer, { type Browser, type Page, type Viewport } from "puppeteer-core";
+import {
+  acknowledgeBoundedChunkRecovery,
+  isExternalProviderTransportError,
+  type BrowserSignals,
+} from "./lib/production-browser-signals";
 
 type RouteKind = "public" | "authenticated";
 
@@ -32,6 +37,9 @@ type RouteResult = {
   failedRequests: string[];
   serverErrors: string[];
   consoleErrors: string[];
+  pageErrors: string[];
+  externalProviderErrors: string[];
+  recoveredChunkLoads: string[];
   attemptCount: number;
   recoveredFailures: string[];
   failures: string[];
@@ -271,6 +279,9 @@ async function auditRoute(page: Page, route: string, kind: RouteKind, viewportNa
   const failedRequests: string[] = [];
   const serverErrors: string[] = [];
   const consoleErrors: string[] = [];
+  const pageErrors: string[] = [];
+  const externalProviderErrors: string[] = [];
+  const recoveredChunkLoads: string[] = [];
 
   const requestFailed = (request: import("puppeteer-core").HTTPRequest) => {
     if (!sameOrigin(request.url())) return;
@@ -286,20 +297,27 @@ async function auditRoute(page: Page, route: string, kind: RouteKind, viewportNa
   const consoleReceived = (message: import("puppeteer-core").ConsoleMessage) => {
     if (message.type() !== "error") return;
     const text = message.text();
-    if (/posthog|sentry.*transport|favicon/i.test(text)) return;
     const locationUrl = message.location().url;
+    const detail = `${text.slice(0, 500)}${locationUrl ? ` @ ${locationUrl}` : ""}`;
+    if (isExternalProviderTransportError(text, locationUrl)) {
+      externalProviderErrors.push(detail);
+      return;
+    }
+    if (/favicon/i.test(text)) return;
     if (
       kind === "public"
       && /Failed to load resource: the server responded with a status of 401/i.test(text)
       && locationUrl
       && new URL(locationUrl).pathname === "/api/auth/me"
     ) return;
-    consoleErrors.push(`${text.slice(0, 500)}${locationUrl ? ` @ ${locationUrl}` : ""}`);
+    consoleErrors.push(detail);
   };
+  const pageErrorReceived = (error: Error) => pageErrors.push(error.message.slice(0, 500));
 
   page.on("requestfailed", requestFailed);
   page.on("response", responseReceived);
   page.on("console", consoleReceived);
+  page.on("pageerror", pageErrorReceived);
 
   try {
     if (navigation === "document") {
@@ -397,6 +415,8 @@ async function auditRoute(page: Page, route: string, kind: RouteKind, viewportNa
 
     const finalPath = new URL(page.url()).pathname;
     const failures: string[] = [];
+    const signals: BrowserSignals = { consoleErrors, pageErrors, failedRequests, serverErrors, recoveredChunkLoads };
+    await acknowledgeBoundedChunkRecovery(page, signals);
     if (kind === "authenticated" && (finalPath.startsWith("/login") || finalPath.startsWith("/onboarding") || finalPath.startsWith("/ceremony"))) {
       failures.push(`protected route redirected to ${finalPath}`);
     }
@@ -414,6 +434,7 @@ async function auditRoute(page: Page, route: string, kind: RouteKind, viewportNa
     if (failedRequests.length) failures.push(`${failedRequests.length} same-origin request failure(s)`);
     if (serverErrors.length) failures.push(`${serverErrors.length} same-origin server error response(s)`);
     if (consoleErrors.length) failures.push(`${consoleErrors.length} console error(s)`);
+    if (pageErrors.length) failures.push(`${pageErrors.length} uncaught page error(s)`);
 
     // Navigation Timing and paint entries describe document loads, not client-
     // side route changes. Do not misattribute the previous document's metrics
@@ -457,6 +478,9 @@ async function auditRoute(page: Page, route: string, kind: RouteKind, viewportNa
       failedRequests: [...new Set(failedRequests)],
       serverErrors: [...new Set(serverErrors)],
       consoleErrors: [...new Set(consoleErrors)],
+      pageErrors: [...new Set(pageErrors)],
+      externalProviderErrors: [...new Set(externalProviderErrors)],
+      recoveredChunkLoads: [...new Set(recoveredChunkLoads)],
       attemptCount: 1,
       recoveredFailures: [],
       failures,
@@ -471,6 +495,7 @@ async function auditRoute(page: Page, route: string, kind: RouteKind, viewportNa
     page.off("requestfailed", requestFailed);
     page.off("response", responseReceived);
     page.off("console", consoleReceived);
+    page.off("pageerror", pageErrorReceived);
   }
 }
 
@@ -518,6 +543,9 @@ async function auditRouteWithEvidence(page: Page, route: string, kind: RouteKind
         failedRequests: [],
         serverErrors: [],
         consoleErrors: [],
+        pageErrors: [],
+        externalProviderErrors: [],
+        recoveredChunkLoads: [],
         attemptCount: 1,
         recoveredFailures: [],
         failures: [`route audit failed: ${message}`],
@@ -531,6 +559,7 @@ async function auditRouteWithEvidence(page: Page, route: string, kind: RouteKind
     && first.failedRequests.length === 0
     && first.serverErrors.length === 0
     && first.consoleErrors.length === 0
+    && first.pageErrors.length === 0
     && first.failures.every((failure) =>
       /^(?:domContentLoadedMs|loadMs|firstContentfulPaintMs|largestContentfulPaintMs) .* exceeded /.test(failure)
       || failure === "route audit failed: Waiting failed: 30000ms exceeded"
@@ -547,6 +576,8 @@ async function auditRouteWithEvidence(page: Page, route: string, kind: RouteKind
   return {
     ...second,
     attemptCount: 2,
+    externalProviderErrors: [...new Set([...first.externalProviderErrors, ...second.externalProviderErrors])],
+    recoveredChunkLoads: [...new Set([...first.recoveredChunkLoads, ...second.recoveredChunkLoads])],
     recoveredFailures: second.failures.length === 0 ? first.failures : [],
   };
 }
@@ -599,7 +630,7 @@ async function writeSummary(report: AcceptanceReport): Promise<void> {
     "",
     "| Viewport | Route | Navigation | Result | LCP | CLS |",
     "| --- | --- | --- | --- | ---: | ---: |",
-    ...report.results.map((result) => `| ${result.viewport} | ${result.route} | ${result.navigation} | ${result.failures.length ? `FAIL: ${result.failures.join("; ")}` : result.recoveredFailures.length ? `PASS after one document retry: ${result.recoveredFailures.join("; ")}` : "PASS"} | ${result.timings.largestContentfulPaintMs ?? "n/a"} | ${result.timings.cumulativeLayoutShift ?? "n/a"} |`),
+    ...report.results.map((result) => `| ${result.viewport} | ${result.route} | ${result.navigation} | ${result.failures.length ? `FAIL: ${result.failures.join("; ")}` : result.recoveredChunkLoads.length ? `PASS after one bounded chunk recovery: ${result.recoveredChunkLoads.join("; ")}` : result.recoveredFailures.length ? `PASS after one document retry: ${result.recoveredFailures.join("; ")}` : "PASS"}${result.externalProviderErrors.length ? `; external provider transport signal(s): ${result.externalProviderErrors.length}` : ""} | ${result.timings.largestContentfulPaintMs ?? "n/a"} | ${result.timings.cumulativeLayoutShift ?? "n/a"} |`),
     "",
     "This is automated lab evidence. It does not substitute for human screen-reader comprehension, real-field Core Web Vitals, or provider authorization evidence.",
   ];
@@ -679,7 +710,7 @@ async function main(): Promise<void> {
       routes: results.length,
       passed: results.filter((result) => result.failures.length === 0).length,
       failed: results.filter((result) => result.failures.length > 0).length,
-      recoveredRoutes: results.filter((result) => result.recoveredFailures.length > 0).length,
+      recoveredRoutes: results.filter((result) => result.recoveredFailures.length > 0 || result.recoveredChunkLoads.length > 0).length,
     },
   };
 

@@ -83,6 +83,11 @@ describe("production browser acceptance custody", () => {
     expect(script).toContain("failedRequests");
     expect(script).toContain("serverErrors");
     expect(script).toContain("consoleErrors");
+    expect(script).toContain("pageErrors");
+    expect(script).toContain("externalProviderErrors");
+    expect(script).toContain("recoveredChunkLoads");
+    expect(script).toContain("isExternalProviderTransportError");
+    expect(script).toContain("acknowledgeBoundedChunkRecovery");
     expect(script).toContain('new URL(locationUrl).pathname === "/api/auth/me"');
     expect(script).toContain("does not substitute for human screen-reader comprehension");
     expect(script).toContain('fetch("/api/profile"');
@@ -101,6 +106,7 @@ describe("production browser acceptance custody", () => {
     expect(script).toContain("first.failedRequests.length === 0");
     expect(script).toContain("first.serverErrors.length === 0");
     expect(script).toContain("first.consoleErrors.length === 0");
+    expect(script).toContain("first.pageErrors.length === 0");
   });
 
   it("creates optional Google typography only after the document load event", () => {

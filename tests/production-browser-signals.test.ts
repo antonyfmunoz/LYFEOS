@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import {
   CHUNK_RECOVERY_EVIDENCE_WINDOW_MS,
   hasUnexpectedBrowserSignals,
+  isExternalProviderTransportError,
   reconcileBoundedChunkRecovery,
   type BrowserSignals,
 } from "../scripts/lib/production-browser-signals";
@@ -21,6 +22,22 @@ function signals(consoleErrors: string[] = []): BrowserSignals {
 const exactTimeout = "ChunkLoadError: Failed to fetch dynamically imported module: route chunk timed out after 15000ms @ https://lyfeos.net/assets/index-ByYtYs3v.js";
 
 describe("production browser signal reconciliation", () => {
+  it.each([
+    ["Sentry CORS", "Access to fetch at 'https://o4511899686797312.ingest.us.sentry.io/api/4511899799977984/envelope/?sentry_version=7' has been blocked by CORS policy", "https://lyfeos.net/login"],
+    ["Sentry resource", "Failed to load resource: net::ERR_FAILED", "https://o4511899686797312.ingest.us.sentry.io/api/4511899799977984/envelope/"],
+    ["PostHog ingest", "Failed to load resource: net::ERR_FAILED", "https://us.i.posthog.com/e/"],
+  ])("classifies an exact %s endpoint as external transport evidence", (_label, message, location) => {
+    expect(isExternalProviderTransportError(message, location)).toBe(true);
+  });
+
+  it.each([
+    ["ordinary app error", "TypeError: Cannot read properties of undefined", "https://lyfeos.net/assets/index.js"],
+    ["loose provider word", "PostHog initialization threw", "https://lyfeos.net/assets/index.js"],
+    ["lookalike host", "Failed", "https://sentry.io.example.com/api/1/envelope/"],
+  ])("does not hide %s", (_label, message, location) => {
+    expect(isExternalProviderTransportError(message, location)).toBe(false);
+  });
+
   it("keeps every protected long-running journey on the bounded recovery contract", () => {
     const journeys = [
       "production-ai-memory-browser-acceptance.ts",
