@@ -22,6 +22,9 @@ export type SpreadsheetChartData = {
   missingValueCount: number;
 };
 
+export type SpreadsheetPieDatum = { key: string; label: string; value: number };
+export type SpreadsheetScatterDatum = { label: string; x: number; y: number };
+
 function resolvedCell(document: SpreadsheetDocument, sheetId: string, row: number, column: number): string {
   const sheet = document.sheets.find((candidate) => candidate.id === sheetId);
   if (!sheet) return "";
@@ -70,4 +73,23 @@ export function buildSpreadsheetChartData(document: SpreadsheetDocument, chart: 
   const numericValueCount = series.reduce((total, entry) => total + entry.validCount, 0);
   const missingValueCount = series.reduce((total, entry) => total + entry.missingCount, 0);
   return { sheetName: sheet.name, sourceRange: spreadsheetChartRangeLabel(chart), rows, series, numericValueCount, missingValueCount };
+}
+
+export function buildSpreadsheetPieData(data: SpreadsheetChartData): SpreadsheetPieDatum[] {
+  const series = data.series[0];
+  if (!series) return [];
+  return data.rows.flatMap((row, index) => {
+    const value = row.values[series.key];
+    return value === null ? [] : [{ key: `slice_${index}`, label: row.label, value }];
+  });
+}
+
+export function buildSpreadsheetScatterData(data: SpreadsheetChartData): SpreadsheetScatterDatum[] {
+  const [xSeries, ySeries] = data.series;
+  if (!xSeries || !ySeries) return [];
+  return data.rows.flatMap((row) => {
+    const x = row.values[xSeries.key];
+    const y = row.values[ySeries.key];
+    return x === null || y === null ? [] : [{ label: row.label, x, y }];
+  });
 }

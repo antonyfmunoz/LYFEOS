@@ -16,9 +16,9 @@ type ViewResult = {
   formulasCalculated: boolean;
   undoRedoReconciled: boolean;
   controlledClipboardAdapterRoundTrip: boolean;
-  chartRenderedFromCanonicalRange: boolean;
-  chartDefinitionPersisted: boolean;
-  chartReloadedAndRestored: boolean;
+  chartFamiliesRenderedFromCanonicalRanges: boolean;
+  chartDefinitionsPersisted: boolean;
+  chartFamiliesReloadedAndRestored: boolean;
   localImportReviewedAndPersisted: boolean;
   immutableCreationRevisionReconciled: boolean;
   crossOwnerIsolationReconciled: boolean;
@@ -172,6 +172,32 @@ async function selectCellAndEnter(page: Page, address: string, value: string): P
   await setValue(page, 'input[aria-label="Cell input or formula"]', value);
 }
 
+async function createChartFromRange(page: Page, startAddress: string, endAddress: string, kind: "line" | "bar" | "area" | "pie" | "scatter", expectedCount: number): Promise<void> {
+  await activate(page, `[data-sheet-address="${startAddress}"]`);
+  await page.$eval(`[data-sheet-address="${endAddress}"]`, (element) => element.dispatchEvent(new MouseEvent("click", { bubbles: true, shiftKey: true })));
+  await activate(page, '[data-testid="sheet-chart-create"]');
+  await page.waitForFunction((count) => document.querySelectorAll('[data-testid^="sheet-chart-chart_"]').length === count, { timeout: 30_000 }, expectedCount);
+  if (kind !== "line") {
+    const cards = await page.$$('[data-testid^="sheet-chart-chart_"]');
+    const card = cards.at(-1);
+    assert(card, `Chart ${expectedCount} was not rendered.`);
+    const trigger = await card.$('[aria-label="Chart type"]');
+    assert(trigger, `Chart ${expectedCount} has no type selector.`);
+    await trigger.click();
+    await page.waitForSelector('[role="option"]', { visible: true, timeout: 10_000 });
+    const selected = await page.evaluate((expected) => {
+      const option = Array.from(document.querySelectorAll<HTMLElement>('[role="option"]')).find((candidate) => candidate.innerText.trim().toLocaleLowerCase() === expected);
+      option?.click();
+      return Boolean(option);
+    }, kind);
+    assert(selected, `Could not select the ${kind} chart type.`);
+    await page.waitForFunction(({ count, expectedKind }) => {
+      const charts = document.querySelectorAll<HTMLElement>('[data-testid^="sheet-chart-chart_"]');
+      return charts.length === count && charts[count - 1]?.dataset.chartKind === expectedKind;
+    }, { timeout: 30_000 }, { count: expectedCount, expectedKind: kind });
+  }
+}
+
 async function waitForSpreadsheet(account: Account, spreadsheetId: number, predicate: (spreadsheet: any) => boolean, label: string): Promise<any> {
   const deadline = Date.now() + 45_000;
   let latest: ApiResult | null = null;
@@ -316,11 +342,8 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     await selectCellAndEnter(page, "C4", "Three");
     await selectCellAndEnter(page, "D4", "0");
     await selectCellAndEnter(page, "E4", "=D4+3");
-    await activate(page, '[data-sheet-address="C1"]');
-    await page.$eval('[data-sheet-address="E4"]', (element) => element.dispatchEvent(new MouseEvent("click", { bubbles: true, shiftKey: true })));
-    await activate(page, '[data-testid="sheet-chart-create"]');
-    await page.waitForSelector('[data-testid^="sheet-chart-chart_"]', { visible: true, timeout: 30_000 });
-    const chartRenderedFromCanonicalRange = await page.$eval('[data-testid^="sheet-chart-chart_"]', (element) => {
+    await createChartFromRange(page, "C1", "E4", "line", 1);
+    const primaryChartRendered = await page.$eval('[data-testid^="sheet-chart-chart_"]', (element) => {
       const text = element.textContent || "";
       const details = element.querySelector("details");
       if (details) details.open = true;
@@ -329,11 +352,29 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
         && text.includes("2 blank, text, or error values not plotted")
         && text.includes("Missing values are never converted to zero");
     });
-    assert(chartRenderedFromCanonicalRange, "Rendered chart did not reconcile the canonical range, formulas and missing-value boundary.");
+    assert(primaryChartRendered, "Rendered line chart did not reconcile the canonical range, formulas and missing-value boundary.");
     await page.waitForFunction(() => {
       const text = document.querySelector('[data-testid^="sheet-chart-chart_"] table')?.textContent || "";
       return text.includes("Calls") && text.includes("Sales") && text.includes("One") && text.includes("Three") && text.includes("Not recorded");
     }, { timeout: 30_000 });
+    await createChartFromRange(page, "C1", "E4", "bar", 2);
+    await createChartFromRange(page, "C1", "E4", "area", 3);
+    await createChartFromRange(page, "C1", "D4", "pie", 4);
+    await createChartFromRange(page, "C1", "E4", "scatter", 5);
+    const chartFamiliesRenderedFromCanonicalRanges = await page.evaluate(() => {
+      const charts = Array.from(document.querySelectorAll<HTMLElement>('[data-testid^="sheet-chart-chart_"]'));
+      const kinds = charts.map((chart) => chart.dataset.chartKind);
+      const pie = charts.find((chart) => chart.dataset.chartKind === "pie");
+      const scatter = charts.find((chart) => chart.dataset.chartKind === "scatter");
+      return charts.length === 5
+        && ["line", "bar", "area", "pie", "scatter"].every((kind) => kinds.includes(kind))
+        && pie?.dataset.sourceRange === "C1:D4"
+        && scatter?.dataset.sourceRange === "C1:E4"
+        && (scatter.textContent || "").includes("2 complete numeric pairs plotted")
+        && (scatter.textContent || "").includes("1 observation without a complete numeric pair not plotted")
+        && (pie?.textContent || "").includes("Pie charts require one label column and one value column");
+    });
+    assert(chartFamiliesRenderedFromCanonicalRanges, "Rendered trend, proportion, or correlation chart semantics did not reconcile their canonical ranges.");
     const fileInput = await page.$('input[aria-label="Choose a CSV or TSV file"]');
     assert(fileInput, "Local CSV input is unavailable.");
     await fileInput.uploadFile(importPath);
@@ -350,14 +391,20 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     const created = await waitForSpreadsheet(owner, spreadsheetId, (sheet) => sheet.revision === 1, "creation revision");
     const creationSheet = created.content?.sheets?.find((sheet: any) => sheet.cells?.A3?.input === "=SUM(A1:A2)");
     const importSheet = created.content?.sheets?.find((sheet: any) => sheet.name?.startsWith("sheets-import-"));
-    const creationChart = created.content?.charts?.[0];
-    const chartDefinitionPersisted = creationChart?.sheetId === creationSheet?.id
-      && creationChart?.kind === "line"
-      && creationChart?.range?.startRow === 0
-      && creationChart?.range?.endRow === 3
-      && creationChart?.range?.startColumn === 2
-      && creationChart?.range?.endColumn === 4;
-    assert(chartDefinitionPersisted, `Creation revision did not persist the live chart definition over canonical cells; observed=${JSON.stringify({ creationSheetId: creationSheet?.id, creationChart })}.`);
+    const creationCharts = created.content?.charts || [];
+    const hasChart = (kind: string, endColumn: number) => creationCharts.some((chart: any) => chart?.sheetId === creationSheet?.id
+      && chart?.kind === kind
+      && chart?.range?.startRow === 0
+      && chart?.range?.endRow === 3
+      && chart?.range?.startColumn === 2
+      && chart?.range?.endColumn === endColumn);
+    const chartDefinitionsPersisted = creationCharts.length === 5
+      && hasChart("line", 4)
+      && hasChart("bar", 4)
+      && hasChart("area", 4)
+      && hasChart("pie", 3)
+      && hasChart("scatter", 4);
+    assert(chartDefinitionsPersisted, `Creation revision did not persist every governed chart definition over canonical cells; observed=${JSON.stringify({ creationSheetId: creationSheet?.id, creationCharts })}.`);
     const immutableCreationRevisionReconciled = Boolean(creationSheet && importSheet?.cells?.A2?.input === "sleep" && creationSheet.cells?.B1?.input === "2");
     assert(immutableCreationRevisionReconciled, "Creation revision did not persist formula, clipboard and reviewed import state.");
     const revisionsV1 = await request("GET", `/api/spreadsheets/${spreadsheetId}/revisions`, undefined, owner.cookie);
@@ -416,9 +463,13 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
       && revisionsV4.body.revisions[0]?.sourceRevision === 1;
     assert(restoreCreatedNewImmutableRevision, "Rendered restore did not preserve history and create immutable revision four from version one.");
     await page.waitForSelector('[data-testid^="sheet-chart-chart_"]', { visible: true, timeout: 30_000 });
-    const chartReloadedAndRestored = restored.content?.charts?.length === 1
-      && await page.$eval('[data-testid^="sheet-chart-chart_"]', (element) => (element.textContent || "").includes("Sheet 1!C1:E4"));
-    assert(chartReloadedAndRestored, "The live chart did not survive reload and immutable restore.");
+    const chartFamiliesReloadedAndRestored = restored.content?.charts?.length === 5
+      && await page.evaluate(() => {
+        const charts = Array.from(document.querySelectorAll<HTMLElement>('[data-testid^="sheet-chart-chart_"]'));
+        const kinds = charts.map((chart) => chart.dataset.chartKind);
+        return charts.length === 5 && ["line", "bar", "area", "pie", "scatter"].every((kind) => kinds.includes(kind));
+      });
+    assert(chartFamiliesReloadedAndRestored, "The governed chart family did not survive reload and immutable restore.");
 
     stage = "render restored catalog state and audit responsive semantics";
     await page.goto(new URL("/spreadsheets", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
@@ -428,7 +479,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     const audit = await auditPage(page);
     assert(audit.mainCount === 1 && audit.duplicateIds.length === 0 && audit.invalidLabelReferences.length === 0 && audit.unlabeledControls.length === 0 && audit.horizontalOverflowPx <= 2, `${viewport.name} Sheets failed semantics or overflow checks.`);
     assert(Object.values(signals).every((items) => items.length === 0), `${viewport.name} Sheets journey produced application errors: ${JSON.stringify(signals)}.`);
-    view = { viewport: viewport.name, catalogAndEditorRendered, formulasCalculated, undoRedoReconciled: true, controlledClipboardAdapterRoundTrip, chartRenderedFromCanonicalRange, chartDefinitionPersisted, chartReloadedAndRestored, localImportReviewedAndPersisted, immutableCreationRevisionReconciled, crossOwnerIsolationReconciled, staleSaveStoppedAsConflict, largeGridWindowed, renderedCellCountAtLimit, reconciledSaveCreatedNewRevision, restoreCreatedNewImmutableRevision, catalogPersistenceRendered, audit, signals };
+    view = { viewport: viewport.name, catalogAndEditorRendered, formulasCalculated, undoRedoReconciled: true, controlledClipboardAdapterRoundTrip, chartFamiliesRenderedFromCanonicalRanges, chartDefinitionsPersisted, chartFamiliesReloadedAndRestored, localImportReviewedAndPersisted, immutableCreationRevisionReconciled, crossOwnerIsolationReconciled, staleSaveStoppedAsConflict, largeGridWindowed, renderedCellCountAtLimit, reconciledSaveCreatedNewRevision, restoreCreatedNewImmutableRevision, catalogPersistenceRendered, audit, signals };
   } catch (error) {
     const rendered = page ? await page.evaluate(() => document.body?.innerText.slice(0, 2_000) || "page unavailable").catch(() => "page unavailable") : "page unavailable";
     if (page) await page.screenshot({ path: path.join(OUTPUT_DIR, `sheets-${viewport.name}-failure.png`), fullPage: true }).catch(() => undefined);
@@ -468,7 +519,7 @@ async function main(): Promise<void> {
     if (browser) await browser.close().catch(() => undefined);
     const passed = failure === null && views.length === VIEWPORTS.length && cleanups.length === VIEWPORTS.length && cleanups.every((cleanup) => cleanup.accountErased && cleanup.otherAccountErased);
     const report = {
-      contract: "lyfeos.production-sheets-browser.v2",
+      contract: "lyfeos.production-sheets-browser.v3",
       generatedAt: new Date().toISOString(),
       baseUrl: BASE_URL.origin,
       sourceRevision: SOURCE,
@@ -476,7 +527,7 @@ async function main(): Promise<void> {
       views,
       cleanups,
       summary: { passed, failure },
-      boundary: "Disposable production-account Chromium evidence for Sheets. It proves desktop/mobile catalog and editor rendering; raw-value and formula persistence; calculated formula display; local undo/redo; persisted live line-chart definitions over canonical cells; formula-derived chart values; explicit missing-value handling with an accessible data table; chart reload and immutable restore; copy/paste through a controlled in-page Clipboard API adapter; explicit local CSV review before persistence; immutable create, update, conflict and restore revisions; cross-owner isolation; bounded rendering at the documented 500-row by 100-column limit; responsive semantics; and verified account/session/identifier erasure. It does not prove native spreadsheet-file import, OS clipboard permissions, real-device clipboard or file-picker behavior, browser permission denial recovery, simultaneous multi-tab editing, broader chart families, full Excel or Google Sheets formula compatibility, human assistive-technology comprehension, or longitudinal calculation correctness for user-authored models.",
+      boundary: "Disposable production-account Chromium evidence for Sheets. It proves desktop/mobile catalog and editor rendering; raw-value and formula persistence; calculated formula display; local undo/redo; persisted live line, bar, area, pie and scatter definitions over canonical cells; formula-derived chart values; explicit missing-value and complete-pair handling with accessible source tables; chart-family reload and immutable restore; copy/paste through a controlled in-page Clipboard API adapter; explicit local CSV review before persistence; immutable create, update, conflict and restore revisions; cross-owner isolation; bounded rendering at the documented 500-row by 100-column limit; responsive semantics; and verified account/session/identifier erasure. It does not prove native spreadsheet-file import, OS clipboard permissions, real-device clipboard or file-picker behavior, browser permission denial recovery, simultaneous multi-tab editing, stacked or combination charts, full Excel or Google Sheets formula compatibility, human assistive-technology comprehension, statistical causality, or longitudinal calculation correctness for user-authored models.",
     };
     await fs.writeFile(OUTPUT_FILE, `${JSON.stringify(report, null, 2)}\n`, "utf8");
     if (process.env.GITHUB_STEP_SUMMARY) {

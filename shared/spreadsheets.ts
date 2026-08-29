@@ -3,7 +3,7 @@ import { z } from "zod";
 export const spreadsheetAddressPattern = /^[A-Z]{1,3}[1-9][0-9]{0,3}$/;
 export const spreadsheetNumberFormats = ["decimal", "percent", "currency_usd"] as const;
 export const spreadsheetColorTokens = ["red", "amber", "green", "blue", "purple"] as const;
-export const spreadsheetChartKinds = ["line", "bar"] as const;
+export const spreadsheetChartKinds = ["line", "bar", "area", "pie", "scatter"] as const;
 export type SpreadsheetNumberFormat = typeof spreadsheetNumberFormats[number];
 export type SpreadsheetColorToken = typeof spreadsheetColorTokens[number];
 export type SpreadsheetChartKind = typeof spreadsheetChartKinds[number];
@@ -46,6 +46,14 @@ export const spreadsheetChartSchema = z.object({
   }).refine((range) => (range.endRow - range.startRow) * (range.endColumn - range.startColumn) <= 500, {
     message: "A chart can render at most 500 data points.",
   }),
+}).superRefine((chart, ctx) => {
+  const dataColumnCount = chart.range.endColumn - chart.range.startColumn;
+  if (chart.kind === "pie" && dataColumnCount !== 1) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Pie charts require one label column and exactly one value column.", path: ["range"] });
+  }
+  if (chart.kind === "scatter" && dataColumnCount !== 2) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Scatter charts require one label column and exactly two numeric series columns.", path: ["range"] });
+  }
 });
 
 export const spreadsheetDocumentSchema = z.object({

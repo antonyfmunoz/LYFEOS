@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createEmptySpreadsheetDocument, createSpreadsheetChart, nextSpreadsheetSheetName, removeSpreadsheetChart, removeSpreadsheetSheet, renameSpreadsheetSheet, shiftSpreadsheetChartsForAxis, spreadsheetDocumentSchema, spreadsheetRevisionSnapshotSchema, uniqueSpreadsheetSheetName, updateSpreadsheetChart } from "../shared/spreadsheets";
 import { columnLabel, evaluateSpreadsheetCell, formatSpreadsheetDisplayValue, insertSpreadsheetAxis, parseCellAddress } from "../client/src/lib/spreadsheetFormula";
-import { buildSpreadsheetChartData, spreadsheetChartRangeLabel } from "../client/src/lib/spreadsheetChart";
+import { buildSpreadsheetChartData, buildSpreadsheetPieData, buildSpreadsheetScatterData, spreadsheetChartRangeLabel } from "../client/src/lib/spreadsheetChart";
 import { createSpreadsheetSheetFromDelimited, formatSpreadsheetRange, parseSpreadsheetClipboard, parseSpreadsheetCsv, pasteSpreadsheetRange, serializeSpreadsheetRange, spreadsheetRangeBounds } from "../client/src/lib/spreadsheetRange";
 import { calculateSpreadsheetViewportWindow, moveSpreadsheetAddress } from "../client/src/lib/spreadsheetViewport";
 
@@ -105,6 +105,17 @@ describe("Sheets instrument", () => {
     expect(() => createSpreadsheetChart(document, { id: "bad", title: "No labels", kind: "bar", sheetId: document.activeSheetId, range: { startRow: 0, endRow: 1, startColumn: 0, endColumn: 0 } })).toThrow("header row");
   });
 
+  it("governs trend, proportion, and correlation chart shapes without inventing series roles", () => {
+    const document = createEmptySpreadsheetDocument();
+    const oneSeriesRange = { startRow: 0, endRow: 3, startColumn: 0, endColumn: 1 };
+    const twoSeriesRange = { startRow: 0, endRow: 3, startColumn: 0, endColumn: 2 };
+    expect(createSpreadsheetChart(document, { id: "area", title: "Trend", kind: "area", sheetId: document.activeSheetId, range: twoSeriesRange }).charts[0].kind).toBe("area");
+    expect(createSpreadsheetChart(document, { id: "pie", title: "Share", kind: "pie", sheetId: document.activeSheetId, range: oneSeriesRange }).charts[0].kind).toBe("pie");
+    expect(createSpreadsheetChart(document, { id: "scatter", title: "Relationship", kind: "scatter", sheetId: document.activeSheetId, range: twoSeriesRange }).charts[0].kind).toBe("scatter");
+    expect(() => createSpreadsheetChart(document, { id: "ambiguous-pie", title: "Share", kind: "pie", sheetId: document.activeSheetId, range: twoSeriesRange })).toThrow("exactly one value column");
+    expect(() => createSpreadsheetChart(document, { id: "ambiguous-scatter", title: "Relationship", kind: "scatter", sheetId: document.activeSheetId, range: oneSeriesRange })).toThrow("exactly two numeric series columns");
+  });
+
   it("derives chart values from canonical cells and never converts missing or invalid values to zero", () => {
     const document = createEmptySpreadsheetDocument();
     const sheet = document.sheets[0];
@@ -124,6 +135,14 @@ describe("Sheets instrument", () => {
       { label: "Three", values: { series_1: 0, series_2: 3 } },
     ]);
     expect(data).toMatchObject({ numericValueCount: 4, missingValueCount: 2 });
+    expect(buildSpreadsheetPieData(data)).toEqual([
+      { key: "slice_0", label: "One", value: 4 },
+      { key: "slice_2", label: "Three", value: 0 },
+    ]);
+    expect(buildSpreadsheetScatterData(data)).toEqual([
+      { label: "One", x: 4, y: 2 },
+      { label: "Three", x: 0, y: 3 },
+    ]);
   });
 
   it("updates and removes chart definitions without mutating source cells", () => {
@@ -335,6 +354,12 @@ describe("Sheets instrument", () => {
     expect(editor).toContain('data-testid="sheet-chart-create"');
     expect(editor).toContain('data-testid="sheet-charts"');
     expect(editor).toContain("SpreadsheetChartCard");
+    const chart = source("client/src/components/spreadsheets/SpreadsheetChartCard.tsx");
+    expect(chart).toContain('<SelectItem value="area">Area</SelectItem>');
+    expect(chart).toContain('<SelectItem value="pie">Pie</SelectItem>');
+    expect(chart).toContain('<SelectItem value="scatter">Scatter</SelectItem>');
+    expect(chart).toContain("only complete pairs become points");
+    expect(chart).toContain("Accessible chart data");
     expect(editor).toContain('data-testid="sheet-history"');
     expect(editor).toContain("sheet-history-version-${revision.revisionNumber}");
   });
