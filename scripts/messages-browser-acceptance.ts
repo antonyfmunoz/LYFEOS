@@ -6,7 +6,7 @@ import path from "node:path";
 import pg from "pg";
 import puppeteer, { type Browser, type BrowserContext, type Page, type Viewport } from "puppeteer-core";
 
-type ApiResult = { status: number; body: any; cookie: string };
+type ApiResult = { status: number; body: any; cookie: string; retryAfterSeconds: number | null };
 type FixtureAccount = { id: number; displayName: string; email: string; password: string; cookie: string };
 type BrowserSignals = { consoleErrors: string[]; pageErrors: string[]; failedRequests: string[]; serverErrors: string[]; isolatedProviderErrors: string[] };
 type ViewResult = {
@@ -20,9 +20,12 @@ type ViewResult = {
 };
 
 const BASE_URL = new URL(process.env.LYFEOS_TEST_API_URL || "http://127.0.0.1:5099");
+const MODE = process.env.LYFEOS_MESSAGES_ACCEPTANCE_MODE || (["127.0.0.1", "localhost"].includes(BASE_URL.hostname) ? "isolated" : "production");
+const SOURCE = process.env.LYFEOS_ACCEPTANCE_SOURCE || "";
+const HARNESS_SOURCE = process.env.LYFEOS_ACCEPTANCE_HARNESS_SOURCE || process.env.GITHUB_SHA || "";
 const DATABASE_URL = process.env.DATABASE_URL?.trim() || "";
 const OUTPUT_DIR = path.resolve(process.env.LYFEOS_MESSAGES_OUTPUT_DIR || path.join(os.tmpdir(), "lyfeos-messages-browser"));
-const OUTPUT_FILE = path.join(OUTPUT_DIR, "report.json");
+const OUTPUT_FILE = path.join(OUTPUT_DIR, "messages-report.json");
 const FIXTURE_ID = randomUUID();
 const LABEL = FIXTURE_ID.slice(0, 8);
 const PASSWORD = "TestPass123!";
@@ -42,13 +45,15 @@ function assert(condition: unknown, message: string): asserts condition {
 function safeError(error: unknown): string {
   let message = error instanceof Error ? error.message : String(error);
   for (const value of [FIXTURE_ID, INITIAL_MESSAGE, EDITED_MESSAGE, REPLY_MESSAGE, PRIVATE_NOTE]) message = message.replaceAll(value, "[redacted fixture]");
+  message = message.replace(/[a-z0-9._%+-]+@example\.com/gi, "[redacted fixture]").replace(/msg_browser_(sender|recipient)_[a-z0-9]+/gi, "[redacted fixture]");
   return message.slice(0, 1_000);
 }
 
 async function request(method: string, pathname: string, body?: unknown, cookie = ""): Promise<ApiResult> {
   const response = await fetch(new URL(pathname, BASE_URL), {
     method,
-    headers: { "Content-Type": "application/json", "X-Forwarded-Proto": "https", ...(cookie ? { Cookie: cookie } : {}) },
+    signal: AbortSignal.timeout(30_000),
+    headers: { "Content-Type": "application/json", ...(MODE === "isolated" ? { "X-Forwarded-Proto": "https" } : {}), ...(cookie ? { Cookie: cookie } : {}) },
     body: body === undefined ? undefined : JSON.stringify(body),
     redirect: "manual",
   });
@@ -56,6 +61,7 @@ async function request(method: string, pathname: string, body?: unknown, cookie 
     status: response.status,
     body: await response.json().catch(() => ({})),
     cookie: (response.headers.get("set-cookie") || "").split(";", 1)[0],
+    retryAfterSeconds: Number.isFinite(Number(response.headers.get("retry-after"))) ? Number(response.headers.get("retry-after")) : null,
   };
 }
 
@@ -140,12 +146,12 @@ function captureBrowserSignals(page: Page): BrowserSignals {
     if (entry.type() !== "error") return;
     const source = entry.location().url;
     const detail = `${entry.text().slice(0, 500)}${source ? ` @ ${source}` : ""}`;
-    if (entry.text().includes("Failed to load Clerk") || (entry.text().includes("ERR_NAME_NOT_RESOLVED") && source.startsWith("https://local.lyfeos.dev/npm/@clerk/clerk-js@5/"))) signals.isolatedProviderErrors.push(detail);
+    if (MODE === "isolated" && (entry.text().includes("Failed to load Clerk") || (entry.text().includes("ERR_NAME_NOT_RESOLVED") && source.startsWith("https://local.lyfeos.dev/npm/@clerk/clerk-js@5/")))) signals.isolatedProviderErrors.push(detail);
     else signals.consoleErrors.push(detail);
   });
   page.on("pageerror", (error) => {
     const detail = error.message.slice(0, 500);
-    if (detail.includes("Clerk: Failed to load Clerk") && detail.includes("https://local.lyfeos.dev/")) signals.isolatedProviderErrors.push(detail);
+    if (MODE === "isolated" && detail.includes("Clerk: Failed to load Clerk") && detail.includes("https://local.lyfeos.dev/")) signals.isolatedProviderErrors.push(detail);
     else signals.pageErrors.push(detail);
   });
   page.on("requestfailed", (failed) => {
@@ -168,12 +174,19 @@ async function createAccount(label: string): Promise<FixtureAccount> {
     password: PASSWORD,
     cookie: "",
   };
-  const registration = await request("POST", "/api/auth/complete-registration", {
-    email: account.email,
-    password: account.password,
-    displayName: account.displayName,
-    termsAccepted: true,
-  });
+  let registration: ApiResult | null = null;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    registration = await request("POST", "/api/auth/complete-registration", {
+      email: account.email,
+      password: account.password,
+      displayName: account.displayName,
+      termsAccepted: true,
+    });
+    if (registration.status === 201 || registration.status !== 429 || attempt === 1) break;
+    const waitSeconds = Math.min(61, Math.max(1, registration.retryAfterSeconds || 60));
+    await new Promise((resolve) => setTimeout(resolve, waitSeconds * 1_000 + 250));
+  }
+  assert(registration !== null, `${label} registration did not run.`);
   assert(registration.status === 201, `${label} registration returned ${registration.status}.`);
   account.id = Number(registration.body.user?.id);
   account.cookie = registration.cookie;
@@ -188,10 +201,24 @@ async function createPage(browser: Browser, account: FixtureAccount): Promise<{ 
   const page = await context.newPage();
   const signals = captureBrowserSignals(page);
   const session = cookieParts(account.cookie);
-  await page.setCookie({ ...session, url: BASE_URL.origin, path: "/", httpOnly: true, secure: false, sameSite: "Lax" });
+  await page.setCookie({ ...session, url: BASE_URL.origin, path: "/", httpOnly: true, secure: BASE_URL.protocol === "https:", sameSite: "Lax" });
   await page.evaluateOnNewDocument((fixtureUser) => localStorage.setItem("lyfeos_user", JSON.stringify(fixtureUser)), { id: account.id, displayName: account.displayName });
   await page.setCacheEnabled(false);
   return { context, page, signals };
+}
+
+async function eraseAccount(account: FixtureAccount): Promise<boolean> {
+  if (!account.cookie) return true;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const deletion = await request("DELETE", "/api/account", { confirmation: "DELETE MY ACCOUNT" }, account.cookie).catch(() => null);
+    if (deletion && deletion.status >= 200 && deletion.status < 300) break;
+    const session = await request("GET", "/api/auth/me", undefined, account.cookie).catch(() => null);
+    if (session?.status === 401) break;
+  }
+  const session = await request("GET", "/api/auth/me", undefined, account.cookie).catch(() => null);
+  const email = await request("GET", `/api/auth/check-email?email=${encodeURIComponent(account.email)}`).catch(() => null);
+  const displayName = await request("GET", `/api/auth/check-display-name?displayName=${encodeURIComponent(account.displayName)}`).catch(() => null);
+  return session?.status === 401 && email?.status === 200 && email.body?.available === true && displayName?.status === 200 && displayName.body?.available === true;
 }
 
 async function openMessages(page: Page): Promise<void> {
@@ -230,12 +257,21 @@ async function inspectView(page: Page, account: "sender" | "recipient", viewport
 }
 
 async function main(): Promise<void> {
-  assert(process.env.LYFEOS_TEST_ENV === "isolated", "Rendered Messages acceptance is restricted to an explicit isolated environment.");
-  assert(["127.0.0.1", "localhost"].includes(BASE_URL.hostname), "Rendered Messages acceptance may target only localhost.");
-  assert(DATABASE_URL.length > 0, "Rendered Messages acceptance requires disposable PostgreSQL.");
+  assert(MODE === "isolated" || MODE === "production", "Messages acceptance mode must be isolated or production.");
+  if (MODE === "isolated") {
+    assert(process.env.LYFEOS_TEST_ENV === "isolated", "Isolated Messages acceptance requires an explicit isolated environment.");
+    assert(["127.0.0.1", "localhost"].includes(BASE_URL.hostname), "Isolated Messages acceptance may target only localhost.");
+    assert(DATABASE_URL.length > 0, "Isolated Messages acceptance requires disposable PostgreSQL.");
+  } else {
+    assert(BASE_URL.origin === "https://lyfeos.net", "Production Messages acceptance is pinned to https://lyfeos.net.");
+    assert(/^[0-9a-f]{40}$/.test(SOURCE), "Production Messages acceptance requires an immutable runtime source.");
+    assert(/^[0-9a-f]{40}$/.test(HARNESS_SOURCE), "Production Messages acceptance requires an immutable harness source.");
+    const release = await request("GET", "/api/release");
+    assert(release.status === 200 && release.body?.sourceRevision === SOURCE, "Production Messages runtime does not match the requested immutable source.");
+  }
   await fs.mkdir(OUTPUT_DIR, { recursive: true });
 
-  const pool = new pg.Pool({ connectionString: DATABASE_URL });
+  const pool = MODE === "isolated" ? new pg.Pool({ connectionString: DATABASE_URL }) : null;
   const accounts: FixtureAccount[] = [];
   let browser: Browser | null = null;
   let senderContext: BrowserContext | null = null;
@@ -250,6 +286,7 @@ async function main(): Promise<void> {
   let privateNoteOwnerOnly = false;
   let blockLifecycleRendered = false;
   let accountErased = false;
+  let identifierErasure = { sender: false, recipient: false };
   let residualCounts = { users: -1, conversations: -1, participants: -1, messages: -1, notes: -1, reactions: -1, receipts: -1 };
   const views: ViewResult[] = [];
   const signals: BrowserSignals[] = [];
@@ -398,9 +435,10 @@ async function main(): Promise<void> {
     if (recipientContext) await recipientContext.close().catch(() => undefined);
     if (browser) await browser.close().catch(() => undefined);
     for (const account of [...accounts].reverse()) {
-      if (account.cookie) await request("DELETE", "/api/account", { confirmation: "DELETE MY ACCOUNT" }, account.cookie).catch(() => null);
+      const erased = await eraseAccount(account);
+      identifierErasure[account.displayName.includes("_sender_") ? "sender" : "recipient"] = erased;
     }
-    if (accounts.length && conversationId) {
+    if (pool && accounts.length && conversationId) {
       const ids = accounts.map((account) => account.id);
       const residual = await pool.query<{
         users: string; conversations: string; participants: string; messages: string; notes: string; reactions: string; receipts: string;
@@ -416,9 +454,11 @@ async function main(): Promise<void> {
         [ids, conversationId],
       );
       residualCounts = Object.fromEntries(Object.entries(residual.rows[0] || {}).map(([key, value]) => [key, Number(value)])) as typeof residualCounts;
-      accountErased = Object.values(residualCounts).every((count) => count === 0);
+      accountErased = Object.values(identifierErasure).every(Boolean) && Object.values(residualCounts).every((count) => count === 0);
+    } else if (accounts.length === 2) {
+      accountErased = Object.values(identifierErasure).every(Boolean);
     }
-    await pool.end();
+    await pool?.end();
 
     const allSignals = signals.reduce<BrowserSignals>((combined, current) => ({
       consoleErrors: [...combined.consoleErrors, ...current.consoleErrors],
@@ -439,16 +479,18 @@ async function main(): Promise<void> {
       && browserClean
       && accountErased;
     const report = {
-      contract: "lyfeos.isolated-messages-browser.v1",
+      contract: MODE === "production" ? "lyfeos.production-messages-browser.v1" : "lyfeos.isolated-messages-browser.v1",
       generatedAt: new Date().toISOString(),
       baseUrl: BASE_URL.origin,
+      sourceRevision: MODE === "production" ? SOURCE : "",
+      harnessSource: MODE === "production" ? HARNESS_SOURCE : "",
       fixture: { conversationId, initialMessageId, replyMessageId, accountCount: accounts.length },
       lifecycle: { readReceiptRendered, reactionRendered, replyRendered, editRendered, privateNoteOwnerOnly, blockLifecycleRendered },
       views,
       browserSignals: allSignals,
-      cleanup: { accountErased, residualCounts },
+      cleanup: { accountErased, identifierErasure, residualCounts: MODE === "isolated" ? residualCounts : null },
       summary: { passed, failure },
-      boundary: "Disposable isolated PostgreSQL plus Chromium evidence for the native LyfeOS Messages UI. It proves rendered two-account delivery, read evidence, reaction, reply, edit, author-only note, block/unblock, responsive semantics and complete fixture erasure. It is not external-provider delivery, a production-account journey, or human assistive-technology comprehension.",
+      boundary: `Disposable ${MODE === "production" ? "production-account" : "isolated PostgreSQL"} plus Chromium evidence for the native LyfeOS Messages UI. It proves rendered two-account delivery, read evidence, reaction, reply, edit, author-only note, block/unblock, responsive semantics and verified account/session/identifier erasure. It is not external-provider delivery, human assistive-technology comprehension, physical-device behavior, or authorization for autonomous sending.`,
     };
     await fs.writeFile(OUTPUT_FILE, `${JSON.stringify(report, null, 2)}\n`, "utf8");
     console.log(JSON.stringify({ contract: report.contract, passed, viewCount: views.length, lifecycle: report.lifecycle, accountErased }));
