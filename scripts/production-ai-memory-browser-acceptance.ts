@@ -125,15 +125,26 @@ async function selectPolicy(page: Page, testId: string, value: string): Promise<
 }
 
 async function clickMemoryAction(page: Page, testId: string): Promise<void> {
+  const selector = `[data-testid="${testId}"]`;
+  await page.waitForFunction(
+    (candidate) => (document.querySelector(candidate) as HTMLButtonElement | null)?.disabled === false,
+    { timeout: 30_000 },
+    selector,
+  );
   const [response] = await Promise.all([
     page.waitForResponse((candidate) => candidate.request().method() === "DELETE" && new URL(candidate.url()).pathname === "/api/account/ai-memory", { timeout: 30_000 }),
-    page.$eval(`[data-testid="${testId}"]`, (element) => {
+    page.$eval(selector, (element) => {
       const button = element as HTMLButtonElement;
       if (button.disabled) throw new Error(`${button.dataset.testid || "AI-memory control"} is disabled.`);
       button.click();
     }),
   ]);
   assert(response.status() === 200, `AI-memory control ${testId} returned ${response.status()}.`);
+  await page.waitForFunction(
+    (candidate) => (document.querySelector(candidate) as HTMLButtonElement | null)?.disabled === false,
+    { timeout: 30_000 },
+    selector,
+  );
 }
 
 function captureSignals(page: Page): Signals {
