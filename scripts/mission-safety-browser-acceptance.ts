@@ -23,11 +23,17 @@ type ViewResult = {
 
 const BASE_URL = new URL(process.env.LYFEOS_TEST_API_URL || "http://127.0.0.1:5099");
 const DATABASE_URL = process.env.DATABASE_URL?.trim() || "";
+const MODE = process.env.LYFEOS_MISSION_SAFETY_MODE?.trim() || "isolated";
+const ISOLATED = MODE === "isolated";
+const SOURCE = process.env.LYFEOS_ACCEPTANCE_SOURCE || process.env.GITHUB_SHA || process.env.LYFEOS_RELEASE || "local";
+const HARNESS_SOURCE = process.env.LYFEOS_ACCEPTANCE_HARNESS_SOURCE || process.env.GITHUB_SHA || "local";
 const OUTPUT_DIR = path.resolve(process.env.LYFEOS_MISSION_SAFETY_OUTPUT_DIR || path.join(os.tmpdir(), "lyfeos-mission-safety-browser"));
-const OUTPUT_FILE = path.join(OUTPUT_DIR, "report.json");
+const OUTPUT_FILE = path.join(OUTPUT_DIR, ISOLATED ? "report.json" : "mission-safety-report.json");
 const FIXTURE_ID = randomUUID();
 const LABEL = FIXTURE_ID.slice(0, 8);
 const PASSWORD = "TestPass123!";
+const DISPLAY_NAME = `mission_safety_${LABEL}`;
+const EMAIL = `${DISPLAY_NAME}@example.com`;
 const MISSION_TITLE = `[AUTOMATED ACCEPTANCE] Consequential plan ${LABEL}`;
 const PREREQUISITE_TITLE = `[AUTOMATED ACCEPTANCE] Prerequisite ${LABEL}`;
 const PURPOSE = "Make one consequential commitment only after an explicit downside review.";
@@ -45,7 +51,7 @@ function assert(condition: unknown, message: string): asserts condition {
 
 function safeError(error: unknown): string {
   let message = error instanceof Error ? error.message : String(error);
-  for (const value of [FIXTURE_ID, LABEL, MISSION_TITLE, PREREQUISITE_TITLE, PURPOSE, INITIAL_OUTPUT, REVISED_OUTPUT, REQUIRED_EVIDENCE]) {
+  for (const value of [FIXTURE_ID, LABEL, DISPLAY_NAME, EMAIL, MISSION_TITLE, PREREQUISITE_TITLE, PURPOSE, INITIAL_OUTPUT, REVISED_OUTPUT, REQUIRED_EVIDENCE]) {
     message = message.replaceAll(value, "[redacted fixture]");
   }
   return message.slice(0, 1_000);
@@ -54,7 +60,7 @@ function safeError(error: unknown): string {
 async function request(method: string, pathname: string, body?: unknown, cookie = ""): Promise<ApiResult> {
   const response = await fetch(new URL(pathname, BASE_URL), {
     method,
-    headers: { "Content-Type": "application/json", "X-Forwarded-Proto": "https", ...(cookie ? { Cookie: cookie } : {}) },
+    headers: { "Content-Type": "application/json", ...(ISOLATED ? { "X-Forwarded-Proto": "https" } : {}), ...(cookie ? { Cookie: cookie } : {}) },
     body: body === undefined ? undefined : JSON.stringify(body),
     redirect: "manual",
   });
@@ -85,7 +91,7 @@ async function findChromium(): Promise<string> {
       // Continue through explicit bounded locations.
     }
   }
-  throw new Error("No Chromium executable found for isolated Mission-safety acceptance.");
+  throw new Error("No Chromium executable found for Mission-safety acceptance.");
 }
 
 function cookieParts(cookie: string): { name: string; value: string } {
@@ -176,12 +182,12 @@ function captureBrowserSignals(page: Page): BrowserSignals {
     if (entry.type() !== "error") return;
     const source = entry.location().url;
     const detail = `${entry.text().slice(0, 500)}${source ? ` @ ${source}` : ""}`;
-    if (entry.text().includes("Failed to load Clerk") || (entry.text().includes("ERR_NAME_NOT_RESOLVED") && source.startsWith("https://local.lyfeos.dev/npm/@clerk/clerk-js@5/"))) signals.isolatedProviderErrors.push(detail);
+    if (ISOLATED && (entry.text().includes("Failed to load Clerk") || (entry.text().includes("ERR_NAME_NOT_RESOLVED") && source.startsWith("https://local.lyfeos.dev/npm/@clerk/clerk-js@5/")))) signals.isolatedProviderErrors.push(detail);
     else signals.consoleErrors.push(detail);
   });
   page.on("pageerror", (error) => {
     const detail = error.message.slice(0, 500);
-    if (detail.includes("Clerk: Failed to load Clerk") && detail.includes("https://local.lyfeos.dev/")) signals.isolatedProviderErrors.push(detail);
+    if (ISOLATED && detail.includes("Clerk: Failed to load Clerk") && detail.includes("https://local.lyfeos.dev/")) signals.isolatedProviderErrors.push(detail);
     else signals.pageErrors.push(detail);
   });
   page.on("requestfailed", (failed) => {
@@ -199,8 +205,8 @@ function captureBrowserSignals(page: Page): BrowserSignals {
 async function createAccount(): Promise<FixtureAccount> {
   const account: FixtureAccount = {
     id: 0,
-    displayName: `mission_safety_${LABEL}`,
-    email: `mission_safety_${LABEL}@example.com`,
+    displayName: DISPLAY_NAME,
+    email: EMAIL,
     cookie: "",
   };
   const registration = await request("POST", "/api/auth/complete-registration", {
@@ -213,8 +219,6 @@ async function createAccount(): Promise<FixtureAccount> {
   account.id = Number(registration.body.user?.id);
   account.cookie = registration.cookie;
   assert(Number.isInteger(account.id) && account.id > 0 && account.cookie, "Registration did not create an isolated owner and session.");
-  const onboarding = await request("PATCH", "/api/profile", { onboardingCompleted: true }, account.cookie);
-  assert(onboarding.status === 200 && onboarding.body?.onboardingCompleted === true, `Onboarding setup returned ${onboarding.status}.`);
   return account;
 }
 
@@ -239,7 +243,7 @@ async function createPage(browser: Browser, account: FixtureAccount): Promise<{ 
   const page = await context.newPage();
   const signals = captureBrowserSignals(page);
   const session = cookieParts(account.cookie);
-  await page.setCookie({ ...session, url: BASE_URL.origin, path: "/", httpOnly: true, secure: false, sameSite: "Lax" });
+  await page.setCookie({ ...session, url: BASE_URL.origin, path: "/", httpOnly: true, secure: BASE_URL.protocol === "https:", sameSite: "Lax" });
   await page.evaluateOnNewDocument((fixtureUser) => localStorage.setItem("lyfeos_user", JSON.stringify(fixtureUser)), { id: account.id, displayName: account.displayName });
   await page.setCacheEnabled(false);
   return { context, page, signals };
@@ -337,12 +341,21 @@ async function inspectView(page: Page, viewport: string): Promise<ViewResult> {
 }
 
 async function main(): Promise<void> {
-  assert(process.env.LYFEOS_TEST_ENV === "isolated", "Rendered Mission-safety acceptance is restricted to an explicit isolated environment.");
-  assert(["127.0.0.1", "localhost"].includes(BASE_URL.hostname), "Rendered Mission-safety acceptance may target only localhost.");
-  assert(DATABASE_URL.length > 0, "Rendered Mission-safety acceptance requires disposable PostgreSQL.");
+  if (ISOLATED) {
+    assert(process.env.LYFEOS_TEST_ENV === "isolated", "Isolated Mission-safety acceptance requires an explicit isolated environment.");
+    assert(["127.0.0.1", "localhost"].includes(BASE_URL.hostname), "Isolated Mission-safety acceptance may target only localhost.");
+    assert(DATABASE_URL.length > 0, "Isolated Mission-safety acceptance requires disposable PostgreSQL.");
+  } else {
+    assert(MODE === "production", "Mission-safety acceptance mode must be isolated or production.");
+    assert(BASE_URL.origin === "https://lyfeos.net", "Production Mission-safety acceptance may target only https://lyfeos.net.");
+    assert(/^[0-9a-f]{40}$/.test(SOURCE), "Production Mission-safety acceptance requires the exact deployed source revision.");
+    assert(/^[0-9a-f]{40}$/.test(HARNESS_SOURCE), "Production Mission-safety acceptance requires the exact harness source revision.");
+    const release = await request("GET", "/api/release");
+    assert(release.status === 200 && release.body?.sourceRevision === SOURCE, "Production Mission-safety runtime does not match the requested immutable source.");
+  }
   await fs.mkdir(OUTPUT_DIR, { recursive: true });
 
-  const pool = new pg.Pool({ connectionString: DATABASE_URL });
+  const pool = ISOLATED ? new pg.Pool({ connectionString: DATABASE_URL }) : null;
   let account: FixtureAccount | null = null;
   let browser: Browser | null = null;
   let context: BrowserContext | null = null;
@@ -356,14 +369,25 @@ async function main(): Promise<void> {
   let acceptedExactRevision = false;
   let completedAfterAllGates = false;
   let accountErased = false;
-  let residualCounts = { users: -1, missions: -1, contracts: -1, preflights: -1, dependencies: -1 };
+  let sessionInvalidated = false;
+  let emailReleased = false;
+  let displayNameReleased = false;
+  let residualCounts: { users: number | null; missions: number | null; contracts: number | null; preflights: number | null; dependencies: number | null } = {
+    users: null,
+    missions: null,
+    contracts: null,
+    preflights: null,
+    dependencies: null,
+  };
   const views: ViewResult[] = [];
-  let stage = "initialize isolated Mission-safety journey";
+  let stage = `initialize ${MODE} Mission-safety journey`;
   let failure: string | null = null;
 
   try {
     stage = "register disposable owner and seed two canonical Missions";
     account = await createAccount();
+    const onboarding = await request("PATCH", "/api/profile", { onboardingCompleted: true }, account.cookie);
+    assert(onboarding.status === 200 && onboarding.body?.onboardingCompleted === true, `Onboarding setup returned ${onboarding.status}.`);
     prerequisiteId = await createMission(account, PREREQUISITE_TITLE, "Complete the bounded preparation before the consequential commitment.");
     missionId = await createMission(account, MISSION_TITLE, "Prove exact-revision consequence review and prerequisite ordering.");
 
@@ -470,8 +494,25 @@ async function main(): Promise<void> {
   } finally {
     if (context) await context.close().catch(() => undefined);
     if (browser) await browser.close().catch(() => undefined);
-    if (account?.cookie) await request("DELETE", "/api/account", { confirmation: "DELETE MY ACCOUNT" }, account.cookie).catch(() => null);
-    if (account && missionId && prerequisiteId) {
+    if (account?.cookie) {
+      let deletion: ApiResult | null = null;
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        deletion = await request("DELETE", "/api/account", { confirmation: "DELETE MY ACCOUNT" }, account.cookie).catch(() => null);
+        if (deletion && deletion.status >= 200 && deletion.status < 300) break;
+        const session = await request("GET", "/api/auth/me", undefined, account.cookie).catch(() => null);
+        if (session?.status === 401) break;
+      }
+      if (!ISOLATED) {
+        const session = await request("GET", "/api/auth/me", undefined, account.cookie).catch(() => null);
+        const email = await request("GET", `/api/auth/check-email?email=${encodeURIComponent(account.email)}`).catch(() => null);
+        const displayName = await request("GET", `/api/auth/check-display-name?displayName=${encodeURIComponent(account.displayName)}`).catch(() => null);
+        sessionInvalidated = session?.status === 401;
+        emailReleased = email?.status === 200 && email.body?.available === true;
+        displayNameReleased = displayName?.status === 200 && displayName.body?.available === true;
+        accountErased = sessionInvalidated && emailReleased && displayNameReleased;
+      }
+    }
+    if (pool && account && missionId && prerequisiteId) {
       const residual = await pool.query<{ users: string; missions: string; contracts: string; preflights: string; dependencies: string }>(
         `SELECT
           (SELECT count(*)::text FROM users WHERE id = $1) AS users,
@@ -484,7 +525,7 @@ async function main(): Promise<void> {
       residualCounts = Object.fromEntries(Object.entries(residual.rows[0] || {}).map(([key, value]) => [key, Number(value)])) as typeof residualCounts;
       accountErased = Object.values(residualCounts).every((count) => count === 0);
     }
-    await pool.end();
+    await pool?.end();
 
     const browserClean = [signals.consoleErrors, signals.pageErrors, signals.failedRequests, signals.serverErrors].every((items) => items.length === 0);
     const passed = failure === null
@@ -498,19 +539,37 @@ async function main(): Promise<void> {
       && browserClean
       && accountErased;
     const report = {
-      contract: "lyfeos.isolated-mission-safety-browser.v1",
+      contract: ISOLATED ? "lyfeos.isolated-mission-safety-browser.v1" : "lyfeos.production-mission-safety-browser.v1",
       generatedAt: new Date().toISOString(),
       baseUrl: BASE_URL.origin,
-      sourceRevision: process.env.GITHUB_SHA || process.env.LYFEOS_RELEASE || "local",
+      sourceRevision: SOURCE,
+      harnessSource: HARNESS_SOURCE,
       fixture: { missionId, prerequisiteId, accountCount: account ? 1 : 0 },
       lifecycle: { initialCompletionBlocked, reviseDecisionWithheldAcceptance, prerequisiteBlockedCompletion, materialRevisionInvalidatedDecision, acceptedExactRevision, completedAfterAllGates },
       views,
       browserSignals: signals,
-      cleanup: { accountErased, residualCounts },
+      cleanup: { accountErased, sessionInvalidated, emailReleased, displayNameReleased, residualCounts },
       summary: { passed, failure },
-      boundary: "Disposable isolated PostgreSQL plus Chromium evidence for the canonical LyfeOS Mission safety UI. It proves rendered high-risk proof-plan authoring, explicit revise/proceed decisions, exact-revision acceptance, material-revision invalidation, prerequisite completion blocking, responsive semantics and complete fixture erasure. It does not validate the user's assumptions, predict safety, grant external authority, replace professional advice, prove a production-account journey, or establish human assistive-technology comprehension.",
+      boundary: ISOLATED
+        ? "Disposable isolated PostgreSQL plus Chromium evidence for the canonical LyfeOS Mission safety UI. It proves rendered high-risk proof-plan authoring, explicit revise/proceed decisions, exact-revision acceptance, material-revision invalidation, prerequisite completion blocking, responsive semantics and complete fixture erasure. It does not validate the user's assumptions, predict safety, grant external authority, replace professional advice, prove a production-account journey, or establish human assistive-technology comprehension."
+        : "Disposable production-account Chromium evidence for the canonical LyfeOS Mission safety UI. It proves the deployed immutable source rendered high-risk proof-plan authoring, explicit revise/proceed decisions, exact-revision acceptance, material-revision invalidation, prerequisite completion blocking, responsive semantics, session invalidation and released synthetic identifiers after erasure. It does not validate assumptions, predict safety, grant external authority, replace professional advice, establish human assistive-technology comprehension, or prove longitudinal effectiveness.",
     };
     await fs.writeFile(OUTPUT_FILE, `${JSON.stringify(report, null, 2)}\n`, "utf8");
+    if (process.env.GITHUB_STEP_SUMMARY) {
+      await fs.appendFile(process.env.GITHUB_STEP_SUMMARY, [
+        `## LyfeOS ${ISOLATED ? "isolated" : "production"} Mission safety acceptance`,
+        "",
+        `- Runtime source: ${SOURCE}`,
+        `- Harness source: ${HARNESS_SOURCE}`,
+        `- Passed: ${passed}`,
+        `- All six safety lifecycle gates: ${Object.values(report.lifecycle).every(Boolean)}`,
+        `- Desktop/mobile views: ${views.length}/${VIEWPORTS.length}`,
+        `- Account erased: ${accountErased}`,
+        "",
+        report.boundary,
+        "",
+      ].join("\n"), "utf8");
+    }
     console.log(JSON.stringify({ contract: report.contract, passed, viewCount: views.length, lifecycle: report.lifecycle, accountErased }));
     if (!passed && !failure) failure = "Rendered Mission-safety acceptance did not satisfy every lifecycle, browser and cleanup invariant.";
   }

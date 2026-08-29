@@ -42,7 +42,7 @@ describe("Mission consequence preflight", () => {
     const workflow = source(".github/workflows/verify.yml");
     const packageJson = source("package.json");
     const detail = source("client/src/pages/MissionDetailPage.tsx");
-    expect(acceptance).toContain('contract: "lyfeos.isolated-mission-safety-browser.v1"');
+    expect(acceptance).toContain('ISOLATED ? "lyfeos.isolated-mission-safety-browser.v1"');
     expect(acceptance).toContain('process.env.GITHUB_SHA');
     expect(acceptance).toContain('recordPreflight(page, missionId, "revise", 1');
     expect(acceptance).toContain('recordPreflight(page, missionId, "proceed", 2');
@@ -58,5 +58,20 @@ describe("Mission consequence preflight", () => {
     expect(workflow).toContain('npm run acceptance:mission-safety');
     expect(workflow).toContain('name: lyfeos-isolated-mission-safety-${{ github.sha }}');
     expect(workflow).toContain('path: ${{ runner.temp }}/lyfeos-mission-safety-browser');
+  });
+
+  it("repeats the exact-revision safety journey with a source-pinned disposable production account", () => {
+    const acceptance = source("scripts/mission-safety-browser-acceptance.ts");
+    const workflow = source(".github/workflows/production-browser-acceptance.yml");
+    expect(acceptance).toContain('MODE === "production"');
+    expect(acceptance).toContain('BASE_URL.origin === "https://lyfeos.net"');
+    expect(acceptance).toContain('release.body?.sourceRevision === SOURCE');
+    expect(acceptance).toContain('"lyfeos.production-mission-safety-browser.v1"');
+    expect(acceptance).toContain('sessionInvalidated');
+    expect(acceptance).toContain('emailReleased');
+    expect(acceptance).toContain('displayNameReleased');
+    expect(workflow).toContain('name: Run disposable production Mission safety acceptance');
+    expect(workflow).toContain('LYFEOS_MISSION_SAFETY_MODE: production');
+    expect(workflow).toContain('LYFEOS_TEST_API_URL: https://lyfeos.net');
   });
 });

@@ -22,4 +22,13 @@ describe("production operations workflow boundary", () => {
     expect(verify).toContain("lyfeos_restore_ci");
     expect(verify.match(/= "132"/g)).toHaveLength(2);
   });
+
+  it("keeps production browser qualification source-pinned and disposable", () => {
+    const browser = workflow("production-browser-acceptance.yml");
+    expect(browser).toContain("Resolve deployed immutable source");
+    expect(browser).toContain("Run disposable production onboarding acceptance");
+    expect(browser).toContain("Run disposable production Mission safety acceptance");
+    expect(browser).toContain("LYFEOS_ACCEPTANCE_SOURCE: ${{ steps.release.outputs.source }}");
+    expect(browser).toContain("LYFEOS_ACCEPTANCE_HARNESS_SOURCE: ${{ github.sha }}");
+  });
 });
