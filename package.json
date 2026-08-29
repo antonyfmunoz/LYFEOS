@@ -133,6 +133,7 @@
   "devDependencies": {
     "@replit/vite-plugin-cartographer": "^0.4.4",
     "@replit/vite-plugin-runtime-error-modal": "^0.0.3",
+    "@sentry/vite-plugin": "^5.4.0",
     "@tailwindcss/typography": "^0.5.15",
     "@types/adm-zip": "^0.5.8",
     "@types/bcrypt": "^5.0.2",
