@@ -245,7 +245,14 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
         localStorage.setItem(`lyfeos-tutorial-done-missions-${fixtureUser.id}`, "true");
       } catch { /* Origin is not ready. */ }
     }, { id: owner.id, displayName: owner.displayName });
-    await page.evaluateOnNewDocument(() => {
+    await page.setViewport(viewport.value);
+    await page.setCacheEnabled(false);
+    await page.goto(new URL("/spreadsheets", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
+    await page.waitForSelector('[data-testid="sheets-page"]', { visible: true, timeout: 60_000 });
+    await dismissBlockingTutorial(page);
+    await activate(page, '[data-testid="sheets-new"]');
+    await page.waitForSelector('[data-testid="sheet-editor"]', { visible: true, timeout: 45_000 });
+    await page.evaluate(() => {
       let value = "";
       Object.defineProperty(navigator, "clipboard", {
         configurable: true,
@@ -255,13 +262,6 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
         },
       });
     });
-    await page.setViewport(viewport.value);
-    await page.setCacheEnabled(false);
-    await page.goto(new URL("/spreadsheets", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
-    await page.waitForSelector('[data-testid="sheets-page"]', { visible: true, timeout: 60_000 });
-    await dismissBlockingTutorial(page);
-    await activate(page, '[data-testid="sheets-new"]');
-    await page.waitForSelector('[data-testid="sheet-editor"]', { visible: true, timeout: 45_000 });
     const catalogAndEditorRendered = true;
 
     stage = "exercise formulas, undo/redo, clipboard and reviewed local import";
