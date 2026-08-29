@@ -353,8 +353,11 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     const creationChart = created.content?.charts?.[0];
     const chartDefinitionPersisted = creationChart?.sheetId === creationSheet?.id
       && creationChart?.kind === "line"
-      && JSON.stringify(creationChart?.range) === JSON.stringify({ startRow: 0, endRow: 3, startColumn: 2, endColumn: 4 });
-    assert(chartDefinitionPersisted, "Creation revision did not persist the live chart definition over canonical cells.");
+      && creationChart?.range?.startRow === 0
+      && creationChart?.range?.endRow === 3
+      && creationChart?.range?.startColumn === 2
+      && creationChart?.range?.endColumn === 4;
+    assert(chartDefinitionPersisted, `Creation revision did not persist the live chart definition over canonical cells; observed=${JSON.stringify({ creationSheetId: creationSheet?.id, creationChart })}.`);
     const immutableCreationRevisionReconciled = Boolean(creationSheet && importSheet?.cells?.A2?.input === "sleep" && creationSheet.cells?.B1?.input === "2");
     assert(immutableCreationRevisionReconciled, "Creation revision did not persist formula, clipboard and reviewed import state.");
     const revisionsV1 = await request("GET", `/api/spreadsheets/${spreadsheetId}/revisions`, undefined, owner.cookie);
