@@ -225,6 +225,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
   const stamp = `${Date.now()}_${ordinal}_${randomUUID().slice(0, 8)}`;
   const account: Account = { id: 0, email: `pattern_production_${stamp}@example.com`, displayName: `pattern_production_${ordinal}_${stamp.slice(-8)}`, cookie: "" };
   let context: BrowserContext | null = null;
+  let page: Page | null = null;
   let view: ViewResult | null = null;
   let cleanup: Cleanup = { viewport: viewport.name, accountErased: false, sessionInvalidated: false, emailReleased: false, displayNameReleased: false };
   let failure: unknown = null;
@@ -242,7 +243,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
 
     stage = "open rendered Tracker";
     context = await browser.createBrowserContext();
-    const page = await context.newPage();
+    page = await context.newPage();
     const signals = captureSignals(page);
     const session = cookieParts(account.cookie);
     await page.setCookie({ ...session, url: BASE_URL.origin, path: "/", httpOnly: true, secure: true, sameSite: "Lax" });
@@ -270,7 +271,9 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     await page.select("#hypothesis-period", "14");
     await page.$eval('[data-testid="hypothesis-workbench"] input[type="checkbox"]', (input) => (input as HTMLInputElement).click());
     await page.click('[data-testid="hypothesis-create"]');
+    stage = "wait for created hypothesis card";
     await waitForText(page, TITLE, '[data-testid="hypothesis-workbench"]');
+    stage = "wait for available association result";
     await waitForText(page, "r = 1.000", '[data-testid="hypothesis-workbench"]');
 
     stage = "reconcile rendered association to owner API";
@@ -343,7 +346,9 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
       signals,
     };
   } catch (error) {
-    failure = error;
+    const rendered = page ? await page.$eval('[data-testid="hypothesis-workbench"]', (element) => (element as HTMLElement).innerText.slice(0, 2_000)).catch(() => "workbench unavailable") : "page unavailable";
+    if (page) await page.screenshot({ path: path.join(OUTPUT_DIR, `pattern-explorer-${viewport.name}-failure.png`), fullPage: true }).catch(() => undefined);
+    failure = new Error(`${safeError(error)}; rendered=${rendered}`);
   } finally {
     if (context) await context.close().catch(() => undefined);
     if (account.cookie) cleanup = await eraseAccount(account, viewport.name);
