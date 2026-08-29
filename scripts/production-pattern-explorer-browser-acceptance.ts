@@ -263,7 +263,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     await page.select("#hypothesis-left", "daily_state.mental_state");
     await page.select("#hypothesis-right", "health.hydration_ml");
     await page.select("#hypothesis-period", "14");
-    await page.$eval('#hypothesis-workbench input[type="checkbox"]', (input) => (input as HTMLInputElement).click());
+    await page.$eval('[data-testid="hypothesis-workbench"] input[type="checkbox"]', (input) => (input as HTMLInputElement).click());
     await page.click('[data-testid="hypothesis-create"]');
     await waitForText(page, TITLE, '[data-testid="hypothesis-workbench"]');
     await waitForText(page, "r = 1.000", '[data-testid="hypothesis-workbench"]');
