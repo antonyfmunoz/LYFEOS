@@ -483,6 +483,7 @@ async function main(): Promise<void> {
       await page.setViewport(viewport.value);
       await page.reload({ waitUntil: "domcontentloaded" });
       await waitForText(page, REVISED_OUTPUT);
+      await waitForText(page, `✓ ${PREREQUISITE_TITLE}`);
       const view = await inspectView(page, viewport.name);
       views.push(view);
       assert(view.mainCount === 1, `${viewport.name} rendered ${view.mainCount} main landmarks.`);
