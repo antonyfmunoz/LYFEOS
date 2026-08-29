@@ -248,7 +248,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     }, { id: account.id, displayName: account.displayName });
     await page.setViewport(viewport.value);
     await page.setCacheEnabled(false);
-    await page.goto(new URL("/analytics", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
+    await page.goto(new URL("/tracker", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
     await page.waitForSelector('[data-testid="hypothesis-workbench"]', { visible: true, timeout: 60_000 });
     const tutorialDismissed = await dismissBlockingTutorial(page);
     await waitForText(page, "No saved hypotheses yet.", '[data-testid="hypothesis-workbench"]');

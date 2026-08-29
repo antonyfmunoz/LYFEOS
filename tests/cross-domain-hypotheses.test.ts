@@ -45,6 +45,7 @@ describe("Cross-domain hypothesis workspace", () => {
     expect(ui).toContain('aria-label="Private interpretation context"');
     expect(ui).toContain('data-testid="hypothesis-workbench"');
     expect(productionAcceptance).toContain('contract: "lyfeos.production-pattern-explorer-browser.v1"');
+    expect(productionAcceptance).toContain('new URL("/tracker", BASE_URL)');
     expect(productionAcceptance).toContain("domainsDefaultedOff");
     expect(productionAcceptance).toContain("noProgressionOrAutomaticAction");
     expect(productionWorkflow).toContain("npm run acceptance:production-pattern-explorer");
