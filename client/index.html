@@ -9,19 +9,33 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=4" />
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png?v=4" />
     <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png?v=4" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <!-- Keep third-party typography out of the critical rendering path. The
-         local system-font fallbacks render immediately; these styles retain
-         the same branded type and icon glyphs once Google Fonts responds. -->
-    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" media="print" onload="this.media='all'" />
-    <link rel="preload" as="style" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" media="print" onload="this.media='all'" />
-    <noscript>
-      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" />
-      <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
-    </noscript>
+    <!-- Typography and legacy icon glyphs are visual enhancements, not app
+         boot dependencies. Create their stylesheets only after the complete
+         document has loaded, during idle time, so a third-party DNS/TLS/font
+         stall cannot delay the app shell, authentication or first content. -->
+    <script>
+      (function() {
+        function loadOptionalTypography() {
+          [
+            "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap",
+            "https://fonts.googleapis.com/icon?family=Material+Icons"
+          ].forEach(function(href) {
+            var stylesheet = document.createElement("link");
+            stylesheet.rel = "stylesheet";
+            stylesheet.href = href;
+            document.head.appendChild(stylesheet);
+          });
+        }
+
+        window.addEventListener("load", function() {
+          if ("requestIdleCallback" in window) {
+            window.requestIdleCallback(loadOptionalTypography, { timeout: 3000 });
+          } else {
+            window.setTimeout(loadOptionalTypography, 0);
+          }
+        }, { once: true });
+      })();
+    </script>
     <!-- Theme initialization script -->
     <script src="/theme-init.js"></script>
     <style>

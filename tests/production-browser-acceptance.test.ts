@@ -101,13 +101,14 @@ describe("production browser acceptance custody", () => {
     expect(script).toContain("first.consoleErrors.length === 0");
   });
 
-  it("does not block first paint on third-party font stylesheets", () => {
-    const googleFontStylesheets = [...clientShell.matchAll(/<link rel="stylesheet" href="https:\/\/fonts\.googleapis\.com\/[^"]+"([^>]*)\/>/g)];
-    expect(googleFontStylesheets).toHaveLength(4);
-    expect(googleFontStylesheets.filter((match) => match[1].includes('media="print"'))).toHaveLength(2);
-    expect(clientShell.match(/<link rel="preload" as="style" href="https:\/\/fonts\.googleapis\.com\//g)).toHaveLength(2);
-    expect(clientShell).toContain("onload=\"this.media='all'\"");
-    expect(clientShell).toContain("<noscript>");
+  it("creates optional Google typography only after the document load event", () => {
+    expect(clientShell).not.toMatch(/<link[^>]+href="https:\/\/fonts\.googleapis\.com\//);
+    expect(clientShell).not.toContain('rel="preload" as="style"');
+    expect(clientShell).not.toContain('rel="preconnect" href="https://fonts.googleapis.com"');
+    expect(clientShell).toContain('window.addEventListener("load"');
+    expect(clientShell).toContain('window.requestIdleCallback(loadOptionalTypography, { timeout: 3000 })');
+    expect(clientShell).toContain('stylesheet.rel = "stylesheet"');
+    expect(clientShell.match(/https:\/\/fonts\.googleapis\.com\//g)).toHaveLength(2);
   });
 
   it("authenticates once and reuses the verified session across responsive viewports", () => {
