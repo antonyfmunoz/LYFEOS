@@ -160,6 +160,9 @@ describe("production browser acceptance custody", () => {
     expect(packageJson).toContain('"acceptance:onboarding": "tsx scripts/production-onboarding-browser-acceptance.ts"');
     expect(onboardingScript).toContain('contract: "lyfeos.production-onboarding-acceptance.v2"');
     expect(onboardingScript).toContain('"/register"');
+    expect(onboardingScript).toContain('"#trust-disclosures"');
+    expect(onboardingScript).toContain("registrationDisclosureVersionExact");
+    expect(onboardingScript).toContain("REGISTRATION_DISCLOSURE_VERSION");
     expect(onboardingScript).toContain('"/api/auth/check-display-name"');
     expect(onboardingScript).toContain('"/api/auth/me"');
     expect(onboardingScript).toContain('"/api/transformation-thread"');

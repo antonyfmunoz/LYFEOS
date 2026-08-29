@@ -4,6 +4,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import puppeteer, { type Browser, type Page } from "puppeteer-core";
+import { REGISTRATION_DISCLOSURE_VERSION } from "../shared/registration-disclosure";
 
 type ViewportCase = {
   name: "desktop" | "mobile";
@@ -18,6 +19,7 @@ type JourneyEvidence = {
   invalidUsernameBlocked: boolean;
   availableUsernameAdvanced: boolean;
   verificationScreenAbsent: boolean;
+  registrationDisclosureVersionExact: boolean;
   progressSurvivedReload: boolean;
   completedMissionIds: number[];
   onboardingCompleted: boolean;
@@ -444,6 +446,7 @@ async function runJourney(browser: Browser, viewport: ViewportCase): Promise<Jou
     invalidUsernameBlocked: false,
     availableUsernameAdvanced: false,
     verificationScreenAbsent: false,
+    registrationDisclosureVersionExact: false,
     progressSurvivedReload: false,
     completedMissionIds: [],
     onboardingCompleted: false,
@@ -495,7 +498,7 @@ async function runJourney(browser: Browser, viewport: ViewportCase): Promise<Jou
     await fill(page, "#email", email);
     await fill(page, "#password", password);
     await fill(page, "#confirmPassword", password);
-    await page.click("#terms");
+    await page.click("#trust-disclosures");
     await page.waitForFunction(() => document.querySelector('[role="checkbox"]')?.getAttribute("data-state") === "checked", { timeout: 10_000 });
     await page.click('button[type="submit"]');
     await page.waitForFunction(() => window.location.pathname.startsWith("/onboarding"), { timeout: 60_000 });
@@ -507,6 +510,12 @@ async function runJourney(browser: Browser, viewport: ViewportCase): Promise<Jou
     const session = await browserApiRequest(page, "/api/auth/me");
     evidence.sessionEstablished = session.status === 200;
     assert(evidence.sessionEstablished, `Rendered registration did not establish a session (${session.status}).`);
+    const accountExport = await browserApiRequest(page, "/api/account/export");
+    evidence.registrationDisclosureVersionExact = accountExport.status === 200
+      && accountExport.body?.user?.registrationDisclosureVersion === REGISTRATION_DISCLOSURE_VERSION
+      && typeof accountExport.body?.user?.registrationDisclosureAcknowledgedAt === "string"
+      && accountExport.body?.user?.termsAccepted === false;
+    assert(evidence.registrationDisclosureVersionExact, "Rendered registration did not retain the exact factual disclosure provenance independently from the legacy legal-terms flag.");
     await page.reload({ waitUntil: "domcontentloaded", timeout: 60_000 });
     const reloadedSession = await browserApiRequest(page, "/api/auth/me");
     evidence.sessionSurvivedReload = reloadedSession.status === 200;
@@ -547,6 +556,7 @@ async function writeReport(): Promise<void> {
       && journey.invalidUsernameBlocked
       && journey.availableUsernameAdvanced
       && journey.verificationScreenAbsent
+      && journey.registrationDisclosureVersionExact
       && journey.progressSurvivedReload
       && journey.completedMissionIds.join(",") === "0,1,2,3,4,5,6,7"
       && journey.onboardingCompleted
@@ -574,7 +584,7 @@ async function writeReport(): Promise<void> {
     passed,
     journeys,
     failure: fatalError,
-    boundary: "This disposable synthetic journey proves the rendered local email/password registration path, username validation and availability, absence of an email-verification ceremony, in-progress answer and Mission continuity through reload, all eight onboarding Missions, onboarding-derived active Thread, session persistence, and rendered account erasure at desktop and mobile viewport sizes. It does not approve legal terms, exercise Clerk/OAuth or recovery-email delivery, establish human screen-reader comprehension, or validate longitudinal outcomes.",
+    boundary: "This disposable synthetic journey proves the rendered local email/password registration path, exact factual disclosure provenance with the legacy legal-terms flag false, username validation and availability, absence of an email-verification ceremony, in-progress answer and Mission continuity through reload, all eight onboarding Missions, onboarding-derived active Thread, session persistence, and rendered account erasure at desktop and mobile viewport sizes. It does not approve legal terms, exercise Clerk/OAuth or recovery-email delivery, establish human screen-reader comprehension, or validate longitudinal outcomes.",
   };
   await fs.mkdir(OUTPUT_DIR, { recursive: true });
   await fs.writeFile(OUTPUT_FILE, `${JSON.stringify(report, null, 2)}\n`, "utf8");
@@ -587,6 +597,7 @@ async function writeReport(): Promise<void> {
       `- Passed: ${passed}`,
       `- Desktop/mobile disposable journeys: ${journeys.length}/${VIEWPORTS.length}`,
       `- All eight rendered onboarding Missions per journey: ${journeys.every((journey) => journey.completedMissionIds.length === 8)}`,
+      `- Exact factual disclosure provenance retained: ${journeys.every((journey) => journey.registrationDisclosureVersionExact)}`,
       `- In-progress Mission and answer state survived reload: ${journeys.every((journey) => journey.progressSurvivedReload)}`,
       `- Rendered account erasure and released identifiers: ${journeys.every((journey) => journey.accountDeletedThroughRenderedControl && journey.emailReleased && journey.displayNameReleased)}`,
       "",
