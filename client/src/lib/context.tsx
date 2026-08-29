@@ -836,6 +836,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
               }
             } else {
               console.log("No conversations found, using default");
+              resetChatHistoryState();
             }
           } else {
             console.error("Failed to fetch conversations, status:", response.status);
@@ -856,10 +857,21 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         activeController = new AbortController();
         void fetchConversations(activeController.signal);
       };
+      const handleChatRetentionStart = () => {
+        activeController.abort();
+      };
+      const reconcileChatRetention = () => {
+        activeController.abort();
+        activeController = new AbortController();
+        void fetchConversations(activeController.signal);
+      };
 
       window.addEventListener("lyfeos:ai-memory-chat-erasure-start", handleChatErasureStart);
       window.addEventListener("lyfeos:ai-memory-chat-erasure-complete", handleChatErasureComplete);
       window.addEventListener("lyfeos:ai-memory-chat-erasure-failed", handleChatErasureFailed);
+      window.addEventListener("lyfeos:ai-memory-chat-retention-start", handleChatRetentionStart);
+      window.addEventListener("lyfeos:ai-memory-chat-retention-complete", reconcileChatRetention);
+      window.addEventListener("lyfeos:ai-memory-chat-retention-failed", reconcileChatRetention);
       void fetchConversations(activeController.signal);
 
       return () => {
@@ -867,6 +879,9 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         window.removeEventListener("lyfeos:ai-memory-chat-erasure-start", handleChatErasureStart);
         window.removeEventListener("lyfeos:ai-memory-chat-erasure-complete", handleChatErasureComplete);
         window.removeEventListener("lyfeos:ai-memory-chat-erasure-failed", handleChatErasureFailed);
+        window.removeEventListener("lyfeos:ai-memory-chat-retention-start", handleChatRetentionStart);
+        window.removeEventListener("lyfeos:ai-memory-chat-retention-complete", reconcileChatRetention);
+        window.removeEventListener("lyfeos:ai-memory-chat-retention-failed", reconcileChatRetention);
       };
     }
   }, [isAuthenticated, user]);

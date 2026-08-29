@@ -88,6 +88,9 @@ describe("AI and memory governance", () => {
     expect(profilePage).toContain('new Event("lyfeos:ai-memory-chat-erasure-start")');
     expect(profilePage).toContain('new Event("lyfeos:ai-memory-chat-erasure-complete")');
     expect(profilePage).toContain('new Event("lyfeos:ai-memory-chat-erasure-failed")');
+    expect(profilePage).toContain('new Event("lyfeos:ai-memory-chat-retention-start")');
+    expect(profilePage).toContain('new Event("lyfeos:ai-memory-chat-retention-complete")');
+    expect(profilePage).toContain('new Event("lyfeos:ai-memory-chat-retention-failed")');
     expect(appContext).toContain("let activeController = new AbortController()");
     expect(appContext).toContain('credentials: "include", signal');
     expect(appContext).toContain("fetchConversations(activeController.signal)");
@@ -95,6 +98,10 @@ describe("AI and memory governance", () => {
     expect(appContext).toContain('window.addEventListener("lyfeos:ai-memory-chat-erasure-start"');
     expect(appContext).toContain('window.addEventListener("lyfeos:ai-memory-chat-erasure-complete"');
     expect(appContext).toContain('window.addEventListener("lyfeos:ai-memory-chat-erasure-failed"');
+    expect(appContext).toContain('window.addEventListener("lyfeos:ai-memory-chat-retention-start"');
+    expect(appContext).toContain('window.addEventListener("lyfeos:ai-memory-chat-retention-complete"');
+    expect(appContext).toContain('window.addEventListener("lyfeos:ai-memory-chat-retention-failed"');
+    expect(appContext).toContain("No conversations found, using default");
     expect(acceptance).toContain('LYFEOS_TEST_ENV === "isolated"');
     expect(acceptance).toContain('["127.0.0.1", "localhost"].includes(BASE_URL.hostname)');
     expect(acceptance).toContain('"lyfeos.ai-memory-browser-acceptance.v1"');

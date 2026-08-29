@@ -834,17 +834,26 @@ export default function ProfilePage() {
     queryKey: ["/api/account/ai-memory-policy"], enabled: !!user?.id,
   });
   const updateMemoryPolicyMutation = useMutation({
-    mutationFn: (changes: Partial<{ chatHistoryDays: number | null; contextReceiptDays: number; actionReceiptDays: number }>) => {
+    mutationFn: async (changes: Partial<{ chatHistoryDays: number | null; contextReceiptDays: number; actionReceiptDays: number }>) => {
       const current = aiMemoryPolicy?.policy;
       if (!current) throw new Error("Memory policy is still loading.");
-      return apiRequest("/api/account/ai-memory-policy", { method: "PATCH", body: JSON.stringify({
-        chatHistoryDays: changes.chatHistoryDays !== undefined ? changes.chatHistoryDays : current.chatHistoryDays,
-        contextReceiptDays: changes.contextReceiptDays ?? current.contextReceiptDays,
-        actionReceiptDays: changes.actionReceiptDays ?? current.actionReceiptDays,
-        crossProductMemoryEnabled: current.crossProductMemoryEnabled,
-        allowedDestinations: current.allowedDestinations,
-        expectedRevision: current.revision,
-      }) });
+      const chatRetentionChanged = changes.chatHistoryDays !== undefined && changes.chatHistoryDays !== current.chatHistoryDays;
+      if (chatRetentionChanged) window.dispatchEvent(new Event("lyfeos:ai-memory-chat-retention-start"));
+      try {
+        const result = await apiRequest("/api/account/ai-memory-policy", { method: "PATCH", body: JSON.stringify({
+          chatHistoryDays: changes.chatHistoryDays !== undefined ? changes.chatHistoryDays : current.chatHistoryDays,
+          contextReceiptDays: changes.contextReceiptDays ?? current.contextReceiptDays,
+          actionReceiptDays: changes.actionReceiptDays ?? current.actionReceiptDays,
+          crossProductMemoryEnabled: current.crossProductMemoryEnabled,
+          allowedDestinations: current.allowedDestinations,
+          expectedRevision: current.revision,
+        }) });
+        if (chatRetentionChanged) window.dispatchEvent(new Event("lyfeos:ai-memory-chat-retention-complete"));
+        return result;
+      } catch (error) {
+        if (chatRetentionChanged) window.dispatchEvent(new Event("lyfeos:ai-memory-chat-retention-failed"));
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/account/ai-memory-policy"] });
