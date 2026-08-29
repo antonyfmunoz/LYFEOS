@@ -107,6 +107,7 @@ describe("AI and memory governance", () => {
     expect(acceptance).toContain('"lyfeos.ai-memory-browser-acceptance.v1"');
     expect(acceptance).toContain("1 active action receipt will remain until execution finishes.");
     expect(acceptance).toContain("verified-zero-residue");
+    expect(acceptance).toContain('waitForSelector(selector, { visible: true, timeout: 30_000 })');
     expect(workflow).toContain("npm run acceptance:ai-memory");
     expect(workflow).toContain("lyfeos-isolated-ai-memory-${{ github.sha }}");
     expect(packageJson).toContain('"acceptance:ai-memory"');

@@ -115,19 +115,21 @@ async function waitForBodyText(page: Page, expected: string): Promise<void> {
 }
 
 async function selectPolicy(page: Page, testId: string, value: string): Promise<void> {
+  const selector = `[data-testid="${testId}"]`;
+  await page.waitForSelector(selector, { visible: true, timeout: 30_000 });
   const [response] = await Promise.all([
     page.waitForResponse((candidate) => candidate.request().method() === "PATCH" && new URL(candidate.url()).pathname === "/api/account/ai-memory-policy", { timeout: 30_000 }),
-    page.select(`[data-testid="${testId}"]`, value),
+    page.select(selector, value),
   ]);
   assert(response.status() === 200, `Memory-policy control ${testId} returned ${response.status()}.`);
   try {
     await page.waitForFunction(
       ({ selector, expected }) => (document.querySelector(selector) as HTMLSelectElement | null)?.value === expected,
       { timeout: 30_000 },
-      { selector: `[data-testid="${testId}"]`, expected: value },
+      { selector, expected: value },
     );
   } catch {
-    const current = await page.$eval(`[data-testid="${testId}"]`, (element) => (element as HTMLSelectElement).value);
+    const current = await page.$eval(selector, (element) => (element as HTMLSelectElement).value);
     throw new Error(`${testId} did not settle at ${value}; current value is ${current}.`);
   }
 }
