@@ -316,14 +316,18 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     await selectNode(page, "project_outcome");
     const connectionLabel = await page.$('input[aria-label^="Connection label"]');
     assert(connectionLabel, "The selected template node did not expose governed connection editing.");
-    await setValue(page, 'input[aria-label^="Connection label"]', `evidence ${ordinal}`);
-    const nodeAndConnectionEditingReconciled = await page.$eval('input[aria-label^="Connection label"]', (element) => (element as HTMLInputElement).value.startsWith("evidence"));
+    await connectionLabel.evaluate((element, value) => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(element, value);
+      element.dispatchEvent(new Event("input", { bubbles: true }));
+      element.dispatchEvent(new Event("change", { bubbles: true }));
+    }, `evidence ${ordinal}`);
+    await page.waitForFunction((label) => [...document.querySelectorAll("svg text")].some((element) => element.textContent === label), { timeout: 30_000 }, `evidence ${ordinal}`);
+    const nodeAndConnectionEditingReconciled = true;
     assert(nodeAndConnectionEditingReconciled, "Directed connection editing did not reconcile in the rendered inspector.");
     await activate(page, '[data-testid="canvas-undo"]');
-    const undone = await page.$eval('input[aria-label^="Connection label"]', (element) => !(element as HTMLInputElement).value.startsWith("evidence"));
+    await page.waitForFunction((label) => ![...document.querySelectorAll("svg text")].some((element) => element.textContent === label), { timeout: 30_000 }, `evidence ${ordinal}`);
     await activate(page, '[data-testid="canvas-redo"]');
-    const redone = await page.$eval('input[aria-label^="Connection label"]', (element) => (element as HTMLInputElement).value.startsWith("evidence"));
-    assert(undone && redone, "Canvas local Undo/Redo did not reconcile the connection edit.");
+    await page.waitForFunction((label) => [...document.querySelectorAll("svg text")].some((element) => element.textContent === label), { timeout: 30_000 }, `evidence ${ordinal}`);
     const undoRedoReconciled = true;
     await activate(page, 'button[aria-label="Zoom in"]');
     await page.waitForFunction(() => document.querySelector('button[aria-label="Reset canvas view to 100 percent"]')?.textContent?.includes("125%"), { timeout: 30_000 });
