@@ -3,6 +3,7 @@ import { access } from "node:fs/promises";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
 import puppeteer, { type Browser, type BrowserContext, type Page, type Viewport } from "puppeteer-core";
 import { acknowledgeBoundedChunkRecovery, hasUnexpectedBrowserSignals, type BrowserSignals } from "./lib/production-browser-signals";
 
@@ -26,6 +27,8 @@ type ViewResult = {
   chartDefinitionsPersisted: boolean;
   chartFamiliesReloadedAndRestored: boolean;
   localImportReviewedAndPersisted: boolean;
+  xlsxWorkbookReviewedAndPersisted: boolean;
+  xlsxWorkbookExportGenerated: boolean;
   immutableCreationRevisionReconciled: boolean;
   crossOwnerIsolationReconciled: boolean;
   staleSaveStoppedAsConflict: boolean;
@@ -58,6 +61,37 @@ function safeError(error: unknown): string {
     .replace(/[a-z0-9._%+-]+@example\.com/gi, "[redacted fixture]")
     .replace(/sheets_(owner|other)_[a-z0-9_]+/gi, "[redacted fixture]")
     .slice(0, 1_500);
+}
+
+function xlsxAcceptanceFixture(): Uint8Array {
+  const declaration = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
+  return zipSync({
+    "[Content_Types].xml": strToU8(`${declaration}<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>`),
+    "_rels/.rels": strToU8(`${declaration}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`),
+    "xl/workbook.xml": strToU8(`${declaration}<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Sheet 1" sheetId="1" r:id="rId1"/><sheet name="Imported Summary" sheetId="2" state="hidden" r:id="rId2"/></sheets></workbook>`),
+    "xl/_rels/workbook.xml.rels": strToU8(`${declaration}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="/xl/worksheets/sheet2.xml"/></Relationships>`),
+    "xl/worksheets/sheet1.xml": strToU8(`${declaration}<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>Sleep score</t></is></c></row><row r="2"><c r="A2"><v>8</v></c><c r="B2"><f>A2*2</f><v>16</v></c></row></sheetData></worksheet>`),
+    "xl/worksheets/sheet2.xml": strToU8(`${declaration}<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row r="1"><c r="A1"><f>'Sheet 1'!B2</f><v>16</v></c></row></sheetData></worksheet>`),
+  }, { level: 1 });
+}
+
+async function captureXlsxExport(page: Page): Promise<Uint8Array> {
+  await page.evaluate(() => {
+    const originalCreateObjectUrl = URL.createObjectURL.bind(URL);
+    (window as any).__lyfeosXlsxExport = null;
+    URL.createObjectURL = (object: Blob | MediaSource) => {
+      if (object instanceof Blob && object.type === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") {
+        const reader = new FileReader();
+        reader.onload = () => { (window as any).__lyfeosXlsxExport = String(reader.result || "").split(",", 2)[1] || ""; };
+        reader.readAsDataURL(object);
+      }
+      return originalCreateObjectUrl(object);
+    };
+  });
+  await activate(page, '[data-testid="sheet-export-xlsx"]');
+  await page.waitForFunction(() => typeof (window as any).__lyfeosXlsxExport === "string" && (window as any).__lyfeosXlsxExport.length > 0, { timeout: 30_000 });
+  const encoded = await page.evaluate(() => (window as any).__lyfeosXlsxExport as string);
+  return new Uint8Array(Buffer.from(encoded, "base64"));
 }
 
 async function request(method: string, pathname: string, body?: unknown, cookie = "", headers: Record<string, string> = {}): Promise<ApiResult> {
@@ -319,6 +353,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
   const serverTitle = `Server revision ${ordinal}`;
   const reconciledTitle = `Reconciled revision ${ordinal}`;
   const importPath = path.join(OUTPUT_DIR, `sheets-import-${ordinal}.csv`);
+  const xlsxImportPath = path.join(OUTPUT_DIR, `sheets-import-${ordinal}.xlsx`);
   let context: BrowserContext | null = null;
   let page: Page | null = null;
   let view: ViewResult | null = null;
@@ -328,6 +363,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
   let stage = "register disposable owners";
   try {
     await fs.writeFile(importPath, "habit,score\nsleep,8\ntraining,5\n", "utf8");
+    await fs.writeFile(xlsxImportPath, xlsxAcceptanceFixture());
     const ownerRegistration = await registerDisposableAccount(owner);
     const otherRegistration = await registerDisposableAccount(other);
     assert(ownerRegistration.status === 201 && otherRegistration.status === 201, `Disposable owner registration returned ${ownerRegistration.status}/${otherRegistration.status}.`);
@@ -465,7 +501,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
       return combo?.dataset.seriesRoles === "line,bar" && (combo.textContent || "").includes("Every source series has one explicit rendering role");
     });
     assert(explicitSeriesRolesReconciled, "Combination chart did not retain the explicitly assigned series roles.");
-    const fileInput = await page.$('input[aria-label="Choose a CSV or TSV file"]');
+    const fileInput = await page.$('input[aria-label="Choose a CSV, TSV, or XLSX file"]');
     assert(fileInput, "Local CSV input is unavailable.");
     await fileInput.uploadFile(importPath);
     await page.waitForSelector("#sheet-import-review-heading", { visible: true, timeout: 30_000 });
@@ -476,6 +512,32 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     assert(importedSheetName.startsWith("sheets-import-"), "Reviewed import did not become the active governed sheet tab.");
     await selectCellAndEnter(page, "C1", "='Sheet 1'!$A$3+B2");
     await page.waitForFunction(() => document.querySelector('[data-sheet-address="C1"]')?.getAttribute("aria-label") === "C1: 13", { timeout: 30_000 });
+
+    stage = "review a bounded multi-tab XLSX import and generate an XLSX export";
+    await fileInput.uploadFile(xlsxImportPath);
+    await page.waitForFunction(() => {
+      const review = document.querySelector<HTMLElement>('section[aria-labelledby="sheet-import-review-heading"]');
+      const text = review?.textContent || "";
+      return text.includes("2 workbook tabs") && text.includes("Detected but omitted: hidden sheet state") && text.includes("nothing changes until you add these tabs");
+    }, { timeout: 30_000 });
+    await activate(page, 'section[aria-labelledby="sheet-import-review-heading"] button');
+    await page.waitForSelector('button[aria-label="Open sheet tab Sheet 1 (2)"][aria-pressed="true"]', { visible: true, timeout: 30_000 });
+    await page.waitForFunction(() => document.querySelector('[data-sheet-address="B2"]')?.getAttribute("aria-label") === "B2: 16", { timeout: 30_000 });
+    await activate(page, 'button[aria-label="Open sheet tab Imported Summary"]');
+    await page.waitForFunction(() => document.querySelector('[data-sheet-address="A1"]')?.getAttribute("aria-label") === "A1: 16", { timeout: 30_000 });
+    const xlsxWorkbookReviewedAndPersisted = true;
+    const exportedBytes = await captureXlsxExport(page);
+    const exportedFiles = unzipSync(exportedBytes);
+    const exportedWorkbook = strFromU8(exportedFiles["xl/workbook.xml"] || new Uint8Array());
+    const exportedImportedSummary = strFromU8(exportedFiles["xl/worksheets/sheet4.xml"] || new Uint8Array());
+    const xlsxWorkbookExportGenerated = exportedBytes.length > 0
+      && exportedWorkbook.includes('name="Sheet 1 (2)"')
+      && exportedWorkbook.includes('name="Imported Summary"')
+      && !exportedWorkbook.includes('state="hidden"')
+      && exportedImportedSummary.includes("<f>'Sheet 1 (2)'!B2</f>");
+    assert(xlsxWorkbookExportGenerated, "Rendered XLSX export did not preserve the reviewed workbook tabs and rewritten cross-tab formula.");
+
+    await activate(page, `button[aria-label="Open sheet tab ${importedSheetName}"]`);
     await activate(page, 'button[aria-label="Open sheet tab Sheet 1"]');
     await setValue(page, 'input[aria-label="Active sheet name"]', "Reality");
     await activate(page, 'button[aria-label="Rename active sheet"]');
@@ -495,6 +557,8 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     const created = await waitForSpreadsheet(owner, spreadsheetId, (sheet) => sheet.revision === 1, "creation revision");
     const creationSheet = created.content?.sheets?.find((sheet: any) => sheet.cells?.A3?.input === "=SUM(A1:A2)");
     const importSheet = created.content?.sheets?.find((sheet: any) => sheet.name?.startsWith("sheets-import-"));
+    const xlsxDataSheet = created.content?.sheets?.find((sheet: any) => sheet.name === "Sheet 1 (2)");
+    const xlsxSummarySheet = created.content?.sheets?.find((sheet: any) => sheet.name === "Imported Summary");
     const creationCharts = created.content?.charts || [];
     const hasChart = (kind: string, endColumn: number, axisMode?: "shared" | "dual") => creationCharts.some((chart: any) => chart?.sheetId === creationSheet?.id
       && chart?.kind === kind
@@ -517,6 +581,9 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
       && creationSheet.name === "Reality"
       && importSheet?.cells?.A2?.input === "sleep"
       && importSheet?.cells?.C1?.input === "='Reality'!$A$3+B2"
+      && xlsxDataSheet?.cells?.A1?.input === "Sleep score"
+      && xlsxDataSheet?.cells?.B2?.input === "=A2*2"
+      && xlsxSummarySheet?.cells?.A1?.input === "='Sheet 1 (2)'!B2"
       && creationSheet.cells?.B1?.input === "2"
       && creationSheet.cells?.B4?.input === "=IF(A1<A2,ROUND(A2/A1,1),1/0)"
       && creationSheet.cells?.B8?.input === "=A1<A2"
@@ -596,7 +663,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     assert(audit.mainCount === 1 && audit.duplicateIds.length === 0 && audit.invalidLabelReferences.length === 0 && audit.unlabeledControls.length === 0 && audit.horizontalOverflowPx <= 2, `${viewport.name} Sheets failed semantics or overflow checks.`);
     await acknowledgeBoundedChunkRecovery(page, signals);
     assert(!hasUnexpectedBrowserSignals(signals), `${viewport.name} Sheets journey produced application errors: ${JSON.stringify(signals)}.`);
-    view = { viewport: viewport.name, catalogAndEditorRendered, formulasCalculated, extendedFormulaCompatibility, absoluteReferencesReconciled, crossSheetReferencesReconciled, undoRedoReconciled: true, controlledClipboardAdapterRoundTrip, chartFamiliesRenderedFromCanonicalRanges, dualAxisCombinationReconciled, explicitSeriesRolesReconciled, chartDefinitionsPersisted, chartFamiliesReloadedAndRestored, localImportReviewedAndPersisted, immutableCreationRevisionReconciled, crossOwnerIsolationReconciled, staleSaveStoppedAsConflict, largeGridWindowed, renderedCellCountAtLimit, reconciledSaveCreatedNewRevision, restoreCreatedNewImmutableRevision, catalogPersistenceRendered, audit, signals };
+    view = { viewport: viewport.name, catalogAndEditorRendered, formulasCalculated, extendedFormulaCompatibility, absoluteReferencesReconciled, crossSheetReferencesReconciled, undoRedoReconciled: true, controlledClipboardAdapterRoundTrip, chartFamiliesRenderedFromCanonicalRanges, dualAxisCombinationReconciled, explicitSeriesRolesReconciled, chartDefinitionsPersisted, chartFamiliesReloadedAndRestored, localImportReviewedAndPersisted, xlsxWorkbookReviewedAndPersisted, xlsxWorkbookExportGenerated, immutableCreationRevisionReconciled, crossOwnerIsolationReconciled, staleSaveStoppedAsConflict, largeGridWindowed, renderedCellCountAtLimit, reconciledSaveCreatedNewRevision, restoreCreatedNewImmutableRevision, catalogPersistenceRendered, audit, signals };
   } catch (error) {
     const rendered = page ? await page.evaluate(() => document.body?.innerText.slice(0, 2_000) || "page unavailable").catch(() => "page unavailable") : "page unavailable";
     if (page) await page.screenshot({ path: path.join(OUTPUT_DIR, `sheets-${viewport.name}-failure.png`), fullPage: true }).catch(() => undefined);
@@ -636,7 +703,7 @@ async function main(): Promise<void> {
     if (browser) await browser.close().catch(() => undefined);
     const passed = failure === null && views.length === VIEWPORTS.length && cleanups.length === VIEWPORTS.length && cleanups.every((cleanup) => cleanup.accountErased && cleanup.otherAccountErased);
     const report = {
-      contract: "lyfeos.production-sheets-browser.v9",
+      contract: "lyfeos.production-sheets-browser.v10",
       generatedAt: new Date().toISOString(),
       baseUrl: BASE_URL.origin,
       sourceRevision: SOURCE,
@@ -644,7 +711,7 @@ async function main(): Promise<void> {
       views,
       cleanups,
       summary: { passed, failure },
-      boundary: "Disposable production-account Chromium evidence for Sheets. It proves desktop/mobile catalog and editor rendering; raw-value and formula persistence; calculated formula display; safe relative, $A$1-style absolute and quoted-name cross-sheet references; reference preservation across tab rename; safe arithmetic, comparisons, quoted text, booleans, SUM, AVERAGE, MIN, MAX, COUNT, COUNTA, ROUND, ABS and lazy IF behavior; local undo/redo; persisted live line, bar, stacked bar, area, combination, pie and scatter definitions over canonical cells; explicit per-series bar/line assignment for combination charts with deterministic legacy defaults and safe last-role swapping; an explicit shared-versus-dual combination-axis choice with bar values on the left, line values on the independently scaled right, a visual-risk disclosure and unchanged canonical raw-value table; formula-derived chart values; explicit missing-value and complete-pair handling with accessible source tables; chart-family reload and immutable restore; copy/paste through a controlled in-page Clipboard API adapter; explicit local CSV review before persistence; immutable create, update, conflict and restore revisions; cross-owner isolation; bounded rendering at the documented 500-row by 100-column limit; responsive semantics; and verified account/session/identifier erasure. It does not prove native spreadsheet-file import, OS clipboard permissions, real-device clipboard or file-picker behavior, browser permission denial recovery, simultaneous multi-tab editing, full Excel or Google Sheets formula compatibility, human assistive-technology comprehension, statistical causality, or longitudinal calculation correctness for user-authored models.",
+      boundary: "Disposable production-account Chromium evidence for Sheets. It proves desktop/mobile catalog and editor rendering; raw-value and formula persistence; calculated formula display; safe relative, $A$1-style absolute and quoted-name cross-sheet references; reference preservation across tab rename; safe arithmetic, comparisons, quoted text, booleans, SUM, AVERAGE, MIN, MAX, COUNT, COUNTA, ROUND, ABS and lazy IF behavior; local undo/redo; persisted live line, bar, stacked bar, area, combination, pie and scatter definitions over canonical cells; explicit per-series bar/line assignment for combination charts with deterministic legacy defaults and safe last-role swapping; an explicit shared-versus-dual combination-axis choice with bar values on the left, line values on the independently scaled right, a visual-risk disclosure and unchanged canonical raw-value table; formula-derived chart values; explicit missing-value and complete-pair handling with accessible source tables; chart-family reload and immutable restore; copy/paste through a controlled in-page Clipboard API adapter; explicit local CSV review; bounded two-tab XLSX review with detected hidden-state disclosure, collision-safe cross-tab formula rewriting, persistence and browser-generated OOXML export; immutable create, update, conflict and restore revisions; cross-owner isolation; bounded rendering at the documented 500-row by 100-column limit; responsive semantics; and verified account/session/identifier erasure. It does not prove OS-native file-picker or download behavior, ODS or legacy XLS transfer, advanced OOXML presentation or formulas, real-device clipboard/file behavior, browser permission denial recovery, simultaneous multi-tab editing, full Excel or Google Sheets compatibility, human assistive-technology comprehension, statistical causality, or longitudinal calculation correctness for user-authored models.",
     };
     await fs.writeFile(OUTPUT_FILE, `${JSON.stringify(report, null, 2)}\n`, "utf8");
     if (process.env.GITHUB_STEP_SUMMARY) {

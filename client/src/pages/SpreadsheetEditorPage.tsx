@@ -3,7 +3,7 @@ import { Link, useLocation, useParams } from "wouter";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { AlignCenter, AlignLeft, AlignRight, BarChart3, Bold, ClipboardCopy, ClipboardPaste, Download, Eraser, History, Italic, Plus, Redo2, RotateCcw, Save, Trash2, Undo2, Upload } from "lucide-react";
 import type { SpreadsheetColorToken, SpreadsheetDocument, SpreadsheetNumberFormat, SpreadsheetSheet } from "@shared/spreadsheets";
-import { createEmptySpreadsheetDocument, createSpreadsheetChart, nextSpreadsheetSheetName, normalizeSpreadsheetDocument, removeSpreadsheetChart, removeSpreadsheetSheet, renameSpreadsheetSheet, shiftSpreadsheetChartsForAxis, uniqueSpreadsheetSheetName, updateSpreadsheetChart } from "@shared/spreadsheets";
+import { appendSpreadsheetImportedSheets, createEmptySpreadsheetDocument, createSpreadsheetChart, nextSpreadsheetSheetName, normalizeSpreadsheetDocument, removeSpreadsheetChart, removeSpreadsheetSheet, renameSpreadsheetSheet, shiftSpreadsheetChartsForAxis, uniqueSpreadsheetSheetName, updateSpreadsheetChart } from "@shared/spreadsheets";
 import { columnLabel, evaluateSpreadsheetCell, formatSpreadsheetDisplayValue, insertSpreadsheetDocumentAxis, parseCellAddress } from "@/lib/spreadsheetFormula";
 import { createSpreadsheetSheetFromDelimited, formatSpreadsheetRange, pasteSpreadsheetRange, serializeSpreadsheetRange, spreadsheetRangeBounds } from "@/lib/spreadsheetRange";
 import { calculateSpreadsheetViewportWindow, moveSpreadsheetAddress, SPREADSHEET_COLUMN_HEADER_HEIGHT, SPREADSHEET_COLUMN_WIDTH, SPREADSHEET_ROW_HEADER_WIDTH, SPREADSHEET_ROW_HEIGHT, type SpreadsheetNavigationDirection } from "@/lib/spreadsheetViewport";
@@ -32,6 +32,18 @@ type SpreadsheetRevisionRecord = {
   action: "created" | "updated" | "restored";
   sourceRevision: number | null;
   createdAt: string;
+};
+
+type PendingSpreadsheetImport = {
+  sheets: SpreadsheetSheet[];
+  sourceSheetCount: number;
+  sourceRows?: number;
+  sourceColumns?: number;
+  populatedCellCount: number;
+  formulaCount: number;
+  fileName: string;
+  format: "csv" | "tsv" | "xlsx";
+  omittedFeatureKinds: string[];
 };
 
 const spreadsheetTextColorClasses: Record<SpreadsheetColorToken, string> = {
@@ -65,7 +77,7 @@ export default function SpreadsheetEditorPage() {
   const [rangeEnd, setRangeEnd] = useState("A1");
   const [extendSelection, setExtendSelection] = useState(false);
   const [sheetNameDraft, setSheetNameDraft] = useState("Sheet 1");
-  const [pendingImport, setPendingImport] = useState<{ sheet: SpreadsheetSheet; sourceRows: number; sourceColumns: number; populatedCellCount: number; formulaCount: number; fileName: string } | null>(null);
+  const [pendingImport, setPendingImport] = useState<PendingSpreadsheetImport | null>(null);
   const [dirty, setDirty] = useState(isNew);
   const [localHistoryState, setLocalHistoryState] = useState({ canUndo: false, canRedo: false });
   const [gridViewport, setGridViewport] = useState({ scrollLeft: 0, scrollTop: 0, viewportWidth: 1200, viewportHeight: 600 });
@@ -316,12 +328,22 @@ export default function SpreadsheetEditorPage() {
     if (!file) return;
     try {
       if (document.sheets.length >= 20) throw new Error("Remove a sheet tab before importing another one.");
-      const format = file.name.toLocaleLowerCase().endsWith(".csv") ? "csv" : file.name.toLocaleLowerCase().endsWith(".tsv") ? "tsv" : null;
-      if (!format) throw new Error("Choose a .csv or .tsv file.");
-      if (file.size > 2_000_000) throw new Error("Import files can be at most 2 MB.");
-      const id = `sheet_${Math.random().toString(36).slice(2, 12)}`;
-      const requestedName = file.name.replace(/\.(csv|tsv)$/i, "");
-      setPendingImport({ ...createSpreadsheetSheetFromDelimited(id, uniqueSpreadsheetSheetName(document, requestedName), await file.text(), format), fileName: file.name });
+      const lowerName = file.name.toLocaleLowerCase();
+      const format = lowerName.endsWith(".csv") ? "csv" : lowerName.endsWith(".tsv") ? "tsv" : lowerName.endsWith(".xlsx") ? "xlsx" : null;
+      if (!format) throw new Error("Choose a .csv, .tsv, or .xlsx file.");
+      if (format === "xlsx") {
+        if (file.size > 10_000_000) throw new Error("XLSX files can be at most 10 MB.");
+        const { importSpreadsheetXlsx } = await import("@/lib/spreadsheetXlsx");
+        const imported = await importSpreadsheetXlsx(new Uint8Array(await file.arrayBuffer()));
+        if (document.sheets.length + imported.sourceSheetCount > 20) throw new Error(`This workbook would exceed the 20-sheet limit by ${document.sheets.length + imported.sourceSheetCount - 20}.`);
+        setPendingImport({ ...imported, fileName: file.name, format: "xlsx" });
+      } else {
+        if (file.size > 2_000_000) throw new Error("CSV and TSV files can be at most 2 MB.");
+        const id = `sheet_${Math.random().toString(36).slice(2, 12)}`;
+        const requestedName = file.name.replace(/\.(csv|tsv)$/i, "");
+        const imported = createSpreadsheetSheetFromDelimited(id, uniqueSpreadsheetSheetName(document, requestedName), await file.text(), format);
+        setPendingImport({ ...imported, sheets: [imported.sheet], sourceSheetCount: 1, fileName: file.name, format, omittedFeatureKinds: [] });
+      }
     } catch (error) {
       setPendingImport(null);
       toast({ title: "Could not review import", description: error instanceof Error ? error.message : "The file could not be read.", variant: "destructive" });
@@ -332,11 +354,10 @@ export default function SpreadsheetEditorPage() {
   const confirmImport = () => {
     if (!pendingImport) return;
     try {
-      if (document.sheets.length >= 20) throw new Error("Remove a sheet tab before adding this import.");
-      const sheet = { ...pendingImport.sheet, name: uniqueSpreadsheetSheetName(document, pendingImport.sheet.name) };
-      updateDocument({ ...document, activeSheetId: sheet.id, sheets: [...document.sheets, sheet] });
+      if (document.sheets.length + pendingImport.sheets.length > 20) throw new Error("Remove enough sheet tabs before adding this import.");
+      updateDocument(appendSpreadsheetImportedSheets(document, pendingImport.sheets));
       setSelectedAddress("A1"); setRangeAnchor("A1"); setRangeEnd("A1"); setExtendSelection(false); setPendingImport(null);
-      toast({ title: "Import added as a new tab", description: "Review the imported cells, then save the spreadsheet when they are correct." });
+      toast({ title: pendingImport.sheets.length === 1 ? "Import added as a new tab" : `${pendingImport.sheets.length} imported tabs added`, description: "Review the imported cells, then save the spreadsheet when they are correct." });
     } catch (error) {
       toast({ title: "Could not add import", description: error instanceof Error ? error.message : "The import could not be added.", variant: "destructive" });
     }
@@ -358,6 +379,25 @@ export default function SpreadsheetEditorPage() {
     anchor.click();
     URL.revokeObjectURL(url);
   };
+  const exportXlsx = async () => {
+    try {
+      const { exportSpreadsheetXlsxWithReport, spreadsheetXlsxFileName } = await import("@/lib/spreadsheetXlsx");
+      const exported = exportSpreadsheetXlsxWithReport(document);
+      const bytes = exported.bytes;
+      const blob = new Blob([bytes], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const url = URL.createObjectURL(blob);
+      const anchor = window.document.createElement("a");
+      anchor.href = url;
+      anchor.download = spreadsheetXlsxFileName(title);
+      anchor.click();
+      URL.revokeObjectURL(url);
+      if (exported.renamedSheets.length) {
+        toast({ title: "Workbook exported with Excel-compatible tab names", description: exported.renamedSheets.map(({ from, to }) => `“${from}” → “${to}”`).join(" · ") });
+      }
+    } catch (error) {
+      toast({ title: "Could not export workbook", description: error instanceof Error ? error.message : "The XLSX workbook could not be created.", variant: "destructive" });
+    }
+  };
 
   if (query.isLoading) return <div className="container py-8 text-sm text-muted-foreground">Loading sheet…</div>;
   if (query.isError) return <div className="container py-8 text-sm text-destructive">{query.error instanceof Error ? query.error.message : "Sheet unavailable."}</div>;
@@ -373,9 +413,10 @@ export default function SpreadsheetEditorPage() {
       <div className="flex flex-wrap gap-2">
         <Button type="button" size="icon" variant="outline" aria-label="Undo last unsaved spreadsheet change" disabled={!localHistoryState.canUndo} onClick={undoDocument}><Undo2 className="h-4 w-4" /></Button>
         <Button type="button" size="icon" variant="outline" aria-label="Redo last undone spreadsheet change" disabled={!localHistoryState.canRedo} onClick={redoDocument}><Redo2 className="h-4 w-4" /></Button>
-        <input ref={importInput} className="sr-only" type="file" accept=".csv,.tsv,text/csv,text/tab-separated-values" aria-label="Choose a CSV or TSV file" onChange={(event) => void readImportFile(event.target.files?.[0])} />
+        <input ref={importInput} className="sr-only" type="file" accept=".csv,.tsv,.xlsx,text/csv,text/tab-separated-values,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" aria-label="Choose a CSV, TSV, or XLSX file" onChange={(event) => void readImportFile(event.target.files?.[0])} />
         <Button variant="outline" disabled={document.sheets.length >= 20} onClick={() => importInput.current?.click()}><Upload className="mr-1 h-4 w-4" />Import</Button>
         <Button variant="outline" onClick={exportCsv}><Download className="mr-1 h-4 w-4" />CSV</Button>
+        <Button data-testid="sheet-export-xlsx" variant="outline" onClick={() => void exportXlsx()}><Download className="mr-1 h-4 w-4" />XLSX</Button>
         <Button data-testid="sheet-save" disabled={!dirty || !title.trim() || save.isPending} onClick={() => save.mutate()}><Save className="mr-1 h-4 w-4" />{save.isPending ? "Saving…" : "Save"}</Button>
       </div>
     </div>
@@ -386,8 +427,9 @@ export default function SpreadsheetEditorPage() {
     </div>
     {pendingImport && <section className="rounded-lg border border-primary/20 bg-primary/5 p-3" aria-labelledby="sheet-import-review-heading">
       <h2 id="sheet-import-review-heading" className="text-sm font-medium">Review local import: {pendingImport.fileName}</h2>
-      <p className="mt-1 text-xs text-muted-foreground">New tab “{pendingImport.sheet.name}” · {pendingImport.sourceRows} rows × {pendingImport.sourceColumns} columns · {pendingImport.populatedCellCount} populated cells · {pendingImport.formulaCount} formula inputs. The file stays on this device and nothing changes until you add the tab, review it, and save.</p>
-      <div className="mt-2 flex gap-2"><Button type="button" size="sm" onClick={confirmImport}>Add as new tab</Button><Button type="button" size="sm" variant="ghost" onClick={() => setPendingImport(null)}>Cancel</Button></div>
+      <p className="mt-1 text-xs text-muted-foreground">{pendingImport.format === "xlsx" ? `${pendingImport.sourceSheetCount} workbook tab${pendingImport.sourceSheetCount === 1 ? "" : "s"}` : `New tab “${pendingImport.sheets[0].name}” · ${pendingImport.sourceRows} rows × ${pendingImport.sourceColumns} columns`} · {pendingImport.populatedCellCount} populated cells · {pendingImport.formulaCount} formula inputs. The file stays on this device and nothing changes until you add {pendingImport.sourceSheetCount === 1 ? "the tab" : "these tabs"}, review {pendingImport.sourceSheetCount === 1 ? "it" : "them"}, and save.</p>
+      {pendingImport.format === "xlsx" && <p className="mt-1 text-xs text-muted-foreground">Values, ordinary formulas, booleans, and sheet relationships are imported. Dates stored as Excel serial numbers remain raw values because source number formats are not imported. Workbook presentation, charts, drawings, macros, external links, pivot tables, hidden state, validation, named ranges, comments, and unsupported formula features do not become LyfeOS records.{pendingImport.omittedFeatureKinds.length ? ` Detected but omitted: ${pendingImport.omittedFeatureKinds.join(", ")}.` : ""}</p>}
+      <div className="mt-2 flex gap-2"><Button type="button" size="sm" onClick={confirmImport}>{pendingImport.sourceSheetCount === 1 ? "Add as new tab" : `Add ${pendingImport.sourceSheetCount} tabs`}</Button><Button type="button" size="sm" variant="ghost" onClick={() => setPendingImport(null)}>Cancel</Button></div>
     </section>}
     <div className="rounded-xl border border-primary/15 bg-card/30 overflow-hidden">
       <div className="flex flex-wrap items-center gap-2 border-b border-primary/15 p-2">
@@ -451,7 +493,7 @@ export default function SpreadsheetEditorPage() {
         </div>
       </div>
     </div>
-    <p className="text-[11px] leading-relaxed text-muted-foreground">The grid renders only the visible rows and columns plus a small safety margin, even at the 500-row × 100-column limit. Use arrow keys to move one cell at a time and Shift+Arrow to extend a selection; choose Extend and then a cell on touch devices. Undo and Redo retain up to 20 unsaved grid, tab, and chart changes on this device and reset after save, reload, or restore. Shift-click also selects a rectangular range for copy, formatting, or a chart. Number, percent, USD currency, text-color, and fill-color formats change display only; raw values and formula inputs remain authoritative. Formatting applies only to populated cells; clipboard and CSV/TSV transfer values and formulas, not presentation, while plain-text paste preserves existing destination formatting. Paste starts at the active cell and remains unsaved until you review and save. Insertions preserve populated cells, formatting, affected same-sheet and cross-sheet formula references, chart source alignment, and explicit combination-chart series roles; address-like text inside quoted formula strings remains text. Formulas support relative or `$A$1`-style absolute references and `'Sheet 2'!$A$1` cross-sheet references, plus arithmetic, parentheses, comparisons, quoted text, TRUE/FALSE, SUM, AVERAGE, MIN, MAX, COUNT, COUNTA, ROUND, ABS, and lazy IF branches. Renaming a tab safely rewrites its formula references; removing a referenced tab yields `#REF!`. CSV export writes unformatted calculated formula results and protects text beginning with spreadsheet-executable prefixes.</p>
+    <p className="text-[11px] leading-relaxed text-muted-foreground">The grid renders only the visible rows and columns plus a small safety margin, even at the 500-row × 100-column limit. Use arrow keys to move one cell at a time and Shift+Arrow to extend a selection; choose Extend and then a cell on touch devices. Undo and Redo retain up to 20 unsaved grid, tab, and chart changes on this device and reset after save, reload, or restore. Shift-click also selects a rectangular range for copy, formatting, or a chart. Number, percent, USD currency, text-color, and fill-color formats change display only; raw values and formula inputs remain authoritative. Formatting applies only to populated cells; clipboard and CSV/TSV transfer values and formulas, not presentation, while plain-text paste preserves existing destination formatting. XLSX import stays local and additive, preserves supported values, ordinary formulas, booleans, and cross-sheet references, and explicitly omits workbook presentation and unsupported features; XLSX export includes all LyfeOS tabs, raw inputs, formulas, and governed cell formatting. Paste starts at the active cell and remains unsaved until you review and save. Insertions preserve populated cells, formatting, affected same-sheet and cross-sheet formula references, chart source alignment, and explicit combination-chart series roles; address-like text inside quoted formula strings remains text. Formulas support relative or `$A$1`-style absolute references and `'Sheet 2'!$A$1` cross-sheet references, plus arithmetic, parentheses, comparisons, quoted text, TRUE/FALSE, SUM, AVERAGE, MIN, MAX, COUNT, COUNTA, ROUND, ABS, and lazy IF branches. Renaming a tab safely rewrites its formula references; removing a referenced tab yields `#REF!`. CSV export writes unformatted calculated formula results and protects text beginning with spreadsheet-executable prefixes.</p>
     {document.charts.length > 0 && <section data-testid="sheet-charts" aria-labelledby="sheet-charts-heading" className="space-y-3">
       <div><h2 id="sheet-charts-heading" className="text-lg font-semibold">Charts</h2><p className="text-xs text-muted-foreground">Charts are saved definitions over canonical sheet cells. Editing a source cell updates its chart; missing values remain missing rather than becoming zero.</p></div>
       <div className="grid gap-3 xl:grid-cols-2">{document.charts.map((chart) => <SpreadsheetChartCard key={chart.id} document={document} chart={chart} onUpdate={(patch) => reviseChart(chart.id, patch)} onRemove={() => deleteChart(chart.id, chart.title)} />)}</div>

@@ -600,13 +600,16 @@ describe("Sheets instrument", () => {
     expect(editor).toContain("Review before saving");
   });
 
-  it("keeps CSV and TSV import local, additive, and explicitly reviewed", () => {
+  it("keeps CSV, TSV, and XLSX import local, additive, and explicitly reviewed", () => {
     const editor = source("client/src/pages/SpreadsheetEditorPage.tsx");
-    expect(editor).toContain('accept=".csv,.tsv,text/csv,text/tab-separated-values"');
+    expect(editor).toContain('accept=".csv,.tsv,.xlsx,text/csv,text/tab-separated-values,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"');
     expect(editor).toContain("createSpreadsheetSheetFromDelimited");
+    expect(editor).toContain('await import("@/lib/spreadsheetXlsx")');
+    expect(editor).toContain("appendSpreadsheetImportedSheets");
     expect(editor).toContain("The file stays on this device");
-    expect(editor).toContain("nothing changes until you add the tab, review it, and save");
+    expect(editor).toContain("nothing changes until you add");
     expect(editor).toContain("Add as new tab");
+    expect(editor).toContain("Workbook presentation");
     expect(editor).not.toContain("FormData");
   });
 
@@ -623,6 +626,7 @@ describe("Sheets instrument", () => {
     expect(editor).toContain("raw values and formula inputs remain authoritative");
     expect(editor).toContain("plain-text paste preserves existing destination formatting");
     expect(editor).toContain("clipboard and CSV/TSV transfer values and formulas, not presentation");
+    expect(editor).toContain("XLSX export includes all LyfeOS tabs, raw inputs, formulas, and governed cell formatting");
   });
 
   it("virtualizes the bounded grid and supports keyboard cell movement", () => {

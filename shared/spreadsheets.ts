@@ -40,7 +40,7 @@ export function parseSpreadsheetSheetQualifier(input: string): { sheetName: stri
   return unquoted ? { sheetName: unquoted[1], length: unquoted[0].length } : null;
 }
 
-export function rewriteSpreadsheetFormulaSheetName(input: string, previousName: string, nextName: string): string {
+export function rewriteSpreadsheetFormulaSheetNames(input: string, renames: ReadonlyMap<string, string>): string {
   if (!input.startsWith("=")) return input;
   let rewritten = "";
   let position = 0;
@@ -61,7 +61,8 @@ export function rewriteSpreadsheetFormulaSheetName(input: string, previousName: 
     const previous = position > 0 ? input[position - 1] : "";
     const cell = qualifier ? /^\$?[A-Za-z]{1,3}\$?[1-9][0-9]{0,3}(?![A-Za-z0-9_$])/.exec(input.slice(position + qualifier.length)) : null;
     if (qualifier && cell && !/[A-Za-z0-9_.]/.test(previous)) {
-      rewritten += qualifier.sheetName.toLocaleLowerCase() === previousName.toLocaleLowerCase()
+      const nextName = renames.get(qualifier.sheetName.toLocaleLowerCase());
+      rewritten += nextName
         ? quoteSpreadsheetSheetName(nextName)
         : input.slice(position, position + qualifier.length - 1);
       rewritten += "!";
@@ -72,6 +73,10 @@ export function rewriteSpreadsheetFormulaSheetName(input: string, previousName: 
     position += 1;
   }
   return rewritten;
+}
+
+export function rewriteSpreadsheetFormulaSheetName(input: string, previousName: string, nextName: string): string {
+  return rewriteSpreadsheetFormulaSheetNames(input, new Map([[previousName.toLocaleLowerCase(), nextName]]));
 }
 
 export const spreadsheetCellSchema = z.object({
@@ -218,6 +223,55 @@ export function uniqueSpreadsheetSheetName(document: SpreadsheetDocument, reques
     if (!existing.has(candidate.toLocaleLowerCase())) return candidate;
   }
   throw new Error("No unique imported sheet name is available.");
+}
+
+export function appendSpreadsheetImportedSheets(document: SpreadsheetDocument, importedSheets: SpreadsheetSheet[]): SpreadsheetDocument {
+  if (!importedSheets.length) throw new Error("Choose at least one imported sheet.");
+  if (document.sheets.length + importedSheets.length > 20) throw new Error("A spreadsheet can contain at most 20 sheet tabs.");
+  const existingIds = new Set(document.sheets.map((sheet) => sheet.id));
+  const usedNames = new Set(document.sheets.map((sheet) => sheet.name.trim().toLocaleLowerCase()));
+  const sourceNames = new Set<string>();
+  const renames = new Map<string, string>();
+  const allocatedNames: string[] = [];
+  for (const candidate of importedSheets) {
+    const sheet = spreadsheetSheetSchema.parse(candidate);
+    if (existingIds.has(sheet.id)) throw new Error("Imported sheet IDs must not overlap existing sheets.");
+    existingIds.add(sheet.id);
+    const sourceKey = sheet.name.trim().toLocaleLowerCase();
+    if (sourceNames.has(sourceKey)) throw new Error("Imported sheet names must be unique.");
+    sourceNames.add(sourceKey);
+    const base = sheet.name.trim().slice(0, 80) || "Imported";
+    let allocated = base;
+    if (usedNames.has(allocated.toLocaleLowerCase())) {
+      let found = false;
+      for (let index = 2; index <= 20; index += 1) {
+        const suffix = ` (${index})`;
+        const candidateName = `${base.slice(0, 80 - suffix.length)}${suffix}`;
+        if (!usedNames.has(candidateName.toLocaleLowerCase())) {
+          allocated = candidateName;
+          found = true;
+          break;
+        }
+      }
+      if (!found) throw new Error("No unique imported sheet name is available.");
+    }
+    usedNames.add(allocated.toLocaleLowerCase());
+    allocatedNames.push(allocated);
+    renames.set(sourceKey, allocated);
+  }
+  const sheets = importedSheets.map((sheet, index) => ({
+    ...sheet,
+    name: allocatedNames[index],
+    cells: Object.fromEntries(Object.entries(sheet.cells).map(([address, cell]) => [address, {
+      ...cell,
+      input: rewriteSpreadsheetFormulaSheetNames(cell.input, renames),
+    }])),
+  }));
+  return spreadsheetDocumentSchema.parse({
+    ...document,
+    activeSheetId: sheets[0].id,
+    sheets: [...document.sheets, ...sheets],
+  });
 }
 
 export function renameSpreadsheetSheet(document: SpreadsheetDocument, sheetId: string, requestedName: string): SpreadsheetDocument {

@@ -12,7 +12,7 @@ describe("production Sheets evidence custody", () => {
   const editor = source("client/src/pages/SpreadsheetEditorPage.tsx");
 
   it("binds the production-only contract to immutable runtime and harness sources", () => {
-    expect(acceptance).toContain('contract: "lyfeos.production-sheets-browser.v9"');
+    expect(acceptance).toContain('contract: "lyfeos.production-sheets-browser.v10"');
     expect(acceptance).toContain('BASE_URL.origin === "https://lyfeos.net"');
     expect(acceptance).toContain("release.body?.sourceRevision === SOURCE");
     expect(acceptance).toContain("HARNESS_SOURCE");
@@ -42,6 +42,10 @@ describe("production Sheets evidence custody", () => {
     expect(acceptance).toContain("complete numeric pairs");
     expect(acceptance).toContain("Missing values are never converted to zero");
     expect(acceptance).toContain("localImportReviewedAndPersisted");
+    expect(acceptance).toContain("xlsxWorkbookReviewedAndPersisted");
+    expect(acceptance).toContain("xlsxWorkbookExportGenerated");
+    expect(acceptance).toContain("Detected but omitted: hidden sheet state");
+    expect(acceptance).toContain("collision-safe cross-tab formula rewriting");
     expect(acceptance).toContain("staleSaveStoppedAsConflict");
     expect(acceptance).toContain("largeGridWindowed");
     expect(acceptance).toContain("restoreCreatedNewImmutableRevision");
@@ -51,7 +55,7 @@ describe("production Sheets evidence custody", () => {
     expect(acceptance).toContain('response.headers.get("retry-after")');
     expect(acceptance).toContain("Object.assign(account");
     expect(acceptance).toContain("human assistive-technology comprehension");
-    expect(acceptance).toContain("OS clipboard permissions");
+    expect(acceptance).toContain("OS-native file-picker or download behavior");
     expect(acceptance).toContain("quoted-name cross-sheet references");
     expect(editor).toContain('aria-label="Rename active sheet"');
   });
@@ -63,6 +67,7 @@ describe("production Sheets evidence custody", () => {
     expect(editor).toContain('data-testid="sheet-editor"');
     expect(editor).toContain('data-testid="sheet-grid"');
     expect(editor).toContain('data-testid="sheet-history"');
+    expect(editor).toContain('data-testid="sheet-export-xlsx"');
     expect(packageJson).toContain('"acceptance:production-sheets"');
     expect(workflow).toContain("npm run acceptance:production-sheets");
     expect(workflow).toContain("LYFEOS_SHEETS_OUTPUT_DIR");
