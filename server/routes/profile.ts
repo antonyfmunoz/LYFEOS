@@ -9,7 +9,7 @@ import { sanitizeIntegrationSettingsForExport } from "../google-calendar-sync";
 import { db } from "../db";
 import { logger, formatLocalDate } from "../utils";
 import { assessObservedPatternQuality } from "../insight-quality";
-import { isAuthenticated, isOwner, calculateLevelFromTotalXP, calculateTotalXPForLevel } from "./middleware";
+import { isAuthenticated, isOwner, calculateTotalXPForLevel } from "./middleware";
 import { InsertUser, InsertUserProfile, InsertUserStats, userDailyLogs, quests as questsTable, userStats, users } from "@shared/schema";
 import { eq, desc, and, gte, asc, sql } from "drizzle-orm";
 import { recordTransformationThreadEvidence } from "../transformation-thread-evidence";
@@ -23,19 +23,20 @@ import { SESSION_COOKIE_NAME } from "../session-config";
 import { InFlightRequestCoalescer } from "../in-flight-request-coalescer";
 
 async function loadFreshUserStats(userId: number) {
-  // Daily resets and progression reconciliation intentionally happen before
-  // the response is assembled so every completed read is exact-current.
+  // Daily token/streak resets stay exact-current. Activity XP is a stored
+  // projection maintained by canonical mission, goal, evidence, and Thread
+  // mutations; an ordinary read must never rebuild the full activity ledger.
   await storage.processLoginStreak(userId);
 
-  let [dbStats, userProfile] = await Promise.all([
+  const [dbStats, userProfile] = await Promise.all([
     storage.getUserStats(userId),
     storage.getUserProfile(userId),
   ]);
   if (!dbStats) return null;
-
-  const xpData = await storage.recalculateXP(userId);
-  dbStats = await storage.getUserStats(userId);
-  if (!dbStats) return null;
+  const level = dbStats.level || 1;
+  const experienceCurrent = dbStats.experienceCurrent || 0;
+  const totalXP = userProfile?.totalXP
+    ?? calculateTotalXPForLevel(level) + experienceCurrent;
 
   return {
     stats: {
@@ -60,10 +61,10 @@ async function loadFreshUserStats(userId: number) {
         max: dbStats.wealthTokensMax ?? 100,
       },
       experience: {
-        current: xpData.experienceCurrent,
-        max: xpData.experienceMax,
-        level: xpData.level,
-        totalXP: xpData.totalXP,
+        current: experienceCurrent,
+        max: dbStats.experienceMax || 1000,
+        level,
+        totalXP,
         showLevelUp: false,
       },
       streakDays: dbStats.streakDays || 0,
@@ -961,7 +962,7 @@ Generate the complete affirmation now:`;
       }
 
       // Concurrent page bootstraps for the same user share one exact-current
-      // reconciliation. The entry is removed as soon as the read settles, so
+      // projection read. The entry is removed as soon as the read settles, so
       // later requests never receive a stale cached snapshot.
       const payload = await userStatsReads.run(userId, () => loadFreshUserStats(userId));
       if (!payload) return res.status(404).json({ error: "User stats not found" });
@@ -1891,7 +1892,7 @@ Generate the complete affirmation now:`;
   app.get("/api/streaks", isAuthenticated, async (req, res) => {
     try {
       const userId = req.session.userId!;
-      await storage.recalculateXP(userId);
+      await storage.processLoginStreak(userId);
       const stats = await storage.getUserStats(userId);
       const currentStreak = stats?.streakDays ?? 0;
 

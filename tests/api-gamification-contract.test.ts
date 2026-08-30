@@ -95,6 +95,22 @@ describeApi("unified gamification authenticated journey", () => {
     expect(stats.data.stats.efficiencyScore).not.toBe(100);
   });
 
+  it("keeps normal reads passive and exposes a bounded owner repair path", async () => {
+    const before = await request("GET", "/api/progression", undefined, cookie);
+    expect(before.status).toBe(200);
+
+    const repaired = await request("POST", "/api/progression/reconcile", undefined, cookie);
+    expect(repaired.status).toBe(200);
+    expect(repaired.cacheControl).toContain("private");
+    expect(repaired.cacheControl).toContain("no-store");
+    expect(repaired.data.repaired.badgeEventsWritten).toBe(0);
+    expect(repaired.data.progression.tracks.activity.totalExperience).toBe(1000);
+
+    const after = await request("GET", "/api/progression", undefined, cookie);
+    expect(after.status).toBe(200);
+    expect(after.data.progression).toEqual(before.data.progression);
+  });
+
   it("reverses unsupported XP and badges, then re-earns them exactly once", async () => {
     const reopened = await request("POST", `/api/quests/${questId}/toggle`, undefined, cookie);
     expect(reopened.status).toBe(200);

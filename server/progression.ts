@@ -280,9 +280,20 @@ async function buildProgressionSummary(userId: number, historyDays = 30) {
 }
 
 export async function getProgressionSummary(userId: number, historyDays = 30) {
-  await storage.recalculateXP(userId);
-  await reconcileBadges(userId);
   return buildProgressionSummary(userId, historyDays);
+}
+
+/** Explicitly repair stored activity and badge projections from canonical evidence. */
+export async function reconcileProgressionState(userId: number, historyDays = 30) {
+  const xp = await storage.recalculateXP(userId);
+  const badgeEvents = await reconcileBadges(userId);
+  const progression = await buildProgressionSummary(userId, historyDays);
+  return {
+    progression: { ...progression, totalExperience: xp.totalXP },
+    repaired: {
+      badgeEventsWritten: badgeEvents.length,
+    },
+  };
 }
 
 /** Rebuild deterministic, LyfeOS-local progression after a real action. */
