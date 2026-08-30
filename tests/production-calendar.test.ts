@@ -42,7 +42,10 @@ describe("production Calendar evidence custody", () => {
     expect(acceptance).toContain("page.emulateTimezone(CALENDAR_TIME_ZONE)");
     expect(acceptance).toContain("lyfeos-tutorial-done-missions-");
     expect(acceptance).toContain('text === "Skip tour"');
-    expect(acceptance).toContain('session.send("ServiceWorker.stopAllWorkers")');
+    const enableServiceWorker = acceptance.indexOf('session.send("ServiceWorker.enable")');
+    const stopServiceWorkers = acceptance.indexOf('session.send("ServiceWorker.stopAllWorkers")');
+    expect(enableServiceWorker).toBeGreaterThan(-1);
+    expect(stopServiceWorkers).toBeGreaterThan(enableServiceWorker);
     expect(acceptance).toContain('contract: "lyfeos.production-calendar-browser.v3"');
     expect(acceptance).not.toContain("service-worker cold-start offline navigation, storage eviction recovery");
   });

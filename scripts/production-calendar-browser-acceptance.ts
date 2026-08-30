@@ -128,6 +128,10 @@ async function primeCurrentAppShell(page: Page): Promise<void> {
 async function stopServiceWorkers(page: Page): Promise<void> {
   const session = await page.createCDPSession();
   try {
+    // Chromium rejects stopAllWorkers until this CDP session has enabled the
+    // ServiceWorker domain. Enabling it is observational only; the following
+    // command is what forces the cold-start path under test.
+    await session.send("ServiceWorker.enable");
     await session.send("ServiceWorker.stopAllWorkers");
   } finally {
     await session.detach();
