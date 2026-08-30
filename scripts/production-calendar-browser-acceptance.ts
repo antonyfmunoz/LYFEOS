@@ -362,12 +362,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     await dismissBlockingTutorial(page);
     await activate(page, '[aria-label="Show day calendar"]');
     await activate(page, `[aria-label="Edit mission ${conflictTitle} at 10:00"]`);
-    await setValue(page, "#edit-title", queuedTitle);
-    intentionallyOffline = true;
-    await enterOffline(page);
-    await activate(page, '[data-testid="mission-update-submit"]');
-    await page.waitForFunction((title) => document.querySelector('[data-testid="calendar-offline-queue"]')?.textContent?.includes(String(title)), { timeout: 30_000 }, queuedTitle);
-    stage = "commit the competing canonical edit from a second live tab";
+    stage = "open a second live tab on the same canonical revision";
     competingPage = await context.newPage();
     captureSignals(competingPage, () => false, signals);
     await competingPage.evaluateOnNewDocument((fixtureUser) => {
@@ -385,6 +380,17 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     await dismissBlockingTutorial(competingPage);
     await activate(competingPage, '[aria-label="Show day calendar"]');
     await competingPage.waitForSelector(`[aria-label="Edit mission ${conflictTitle} at 10:00"]`, { visible: true, timeout: 45_000 });
+
+    stage = "queue the first-tab edit while offline";
+    await page.bringToFront();
+    await setValue(page, "#edit-title", queuedTitle);
+    intentionallyOffline = true;
+    await enterOffline(page);
+    await activate(page, '[data-testid="mission-update-submit"]');
+    await page.waitForFunction((title) => document.querySelector('[data-testid="calendar-offline-queue"]')?.textContent?.includes(String(title)), { timeout: 30_000 }, queuedTitle);
+
+    stage = "commit the competing canonical edit from the already-open second tab";
+    await competingPage.bringToFront();
     await activate(competingPage, `[aria-label="Edit mission ${conflictTitle} at 10:00"]`);
     await setValue(competingPage, "#edit-title", serverTitle);
     await activate(competingPage, '[data-testid="mission-update-submit"]');
