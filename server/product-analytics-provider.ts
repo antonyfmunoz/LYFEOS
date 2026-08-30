@@ -1,11 +1,13 @@
 export type ProductAnalyticsProviderConfig = {
   personalApiKey: string;
   projectId: string;
+  projectKey: string;
   adminHost: string;
 };
 
 export type ProductAnalyticsProviderProject = {
   id?: number | string;
+  api_token?: string;
   anonymize_ips?: boolean;
   autocapture_opt_out?: boolean;
   autocapture_web_vitals_opt_in?: boolean;
@@ -28,9 +30,11 @@ export const APPROVED_PRODUCT_ANALYTICS_RETENTION_MONTHS = 3;
 export function productAnalyticsProviderPrivacyViolations(
   project: ProductAnalyticsProviderProject,
   expectedProjectId: string,
+  expectedProjectKey: string,
 ): string[] {
   const violations: string[] = [];
   if (String(project.id ?? "") !== expectedProjectId) violations.push("project_identity_unverified");
+  if (project.api_token !== expectedProjectKey) violations.push("project_token_unverified");
   if (project.anonymize_ips !== true) violations.push("client_ip_discard_disabled");
   if (project.autocapture_opt_out !== true) violations.push("autocapture_enabled");
   if (project.autocapture_web_vitals_opt_in !== false) violations.push("web_vitals_capture_enabled_or_unverified");
@@ -59,7 +63,7 @@ export async function inspectProductAnalyticsProvider(
     });
     if (!response.ok) return { ready: false, violations: [`project_read_failed_${response.status}`] };
     const project = await response.json() as ProductAnalyticsProviderProject;
-    const violations = productAnalyticsProviderPrivacyViolations(project, config.projectId);
+    const violations = productAnalyticsProviderPrivacyViolations(project, config.projectId, config.projectKey);
     return { ready: violations.length === 0, violations };
   } catch {
     return { ready: false, violations: ["project_read_unavailable"] };

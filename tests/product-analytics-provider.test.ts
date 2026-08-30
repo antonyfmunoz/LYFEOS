@@ -8,6 +8,7 @@ import {
 
 const safeProject: ProductAnalyticsProviderProject = {
   id: 330797,
+  api_token: "phc_safe-project-key",
   anonymize_ips: true,
   autocapture_opt_out: true,
   autocapture_web_vitals_opt_in: false,
@@ -22,11 +23,12 @@ const safeProject: ProductAnalyticsProviderProject = {
 
 describe("product analytics provider privacy preflight", () => {
   it("accepts only the expected project with every required control explicitly safe", () => {
-    expect(productAnalyticsProviderPrivacyViolations(safeProject, "330797")).toEqual([]);
+    expect(productAnalyticsProviderPrivacyViolations(safeProject, "330797", "phc_safe-project-key")).toEqual([]);
   });
 
   it("fails closed when provider fields are absent or retention is not explicitly enforced", () => {
-    expect(productAnalyticsProviderPrivacyViolations({ id: 330797 }, "330797")).toEqual([
+    expect(productAnalyticsProviderPrivacyViolations({ id: 330797 }, "330797", "phc_safe-project-key")).toEqual([
+      "project_token_unverified",
       "client_ip_discard_disabled",
       "autocapture_enabled",
       "web_vitals_capture_enabled_or_unverified",
@@ -40,15 +42,20 @@ describe("product analytics provider privacy preflight", () => {
   });
 
   it("rejects a valid-looking response from a different project", () => {
-    expect(productAnalyticsProviderPrivacyViolations({ ...safeProject, id: 541367 }, "330797"))
+    expect(productAnalyticsProviderPrivacyViolations({ ...safeProject, id: 541367 }, "330797", "phc_safe-project-key"))
       .toContain("project_identity_unverified");
+  });
+
+  it("rejects a public project token from a different project", () => {
+    expect(productAnalyticsProviderPrivacyViolations(safeProject, "330797", "phc_other-project-key"))
+      .toContain("project_token_unverified");
   });
 
   it.each([1, 6, 12, 84])("rejects an explicitly enforced but unapproved %s-month retention period", (months) => {
     expect(productAnalyticsProviderPrivacyViolations({
       ...safeProject,
       event_retention_months: months,
-    }, "330797")).toContain("event_retention_not_approved");
+    }, "330797", "phc_safe-project-key")).toContain("event_retention_not_approved");
   });
 
   it("uses the server-only credential for a project read and returns bounded violations", async () => {
@@ -59,6 +66,7 @@ describe("product analytics provider privacy preflight", () => {
     const result = await inspectProductAnalyticsProvider({
       adminHost: "https://us.posthog.com",
       projectId: "330797",
+      projectKey: "phc_safe-project-key",
       personalApiKey: "private-test-value",
     }, fetchMock as typeof fetch);
     expect(result).toEqual({ ready: true, violations: [] });
@@ -71,6 +79,7 @@ describe("product analytics provider privacy preflight", () => {
     const result = await inspectProductAnalyticsProvider({
       adminHost: "https://us.posthog.com",
       projectId: "330797",
+      projectKey: "phc_safe-project-key",
       personalApiKey: "private-test-value",
     }, vi.fn(async () => new Response("sensitive upstream body", { status: 403 })) as typeof fetch);
     expect(result).toEqual({ ready: false, violations: ["project_read_failed_403"] });

@@ -68,7 +68,7 @@ let providerReadinessInFlight: {
 export async function productAnalyticsProviderReadiness(): Promise<ProductAnalyticsProviderReadiness> {
   const config = productAnalyticsConfig();
   if (!config) return { ready: false, violations: ["configuration_incomplete"] };
-  const key = `${config.adminHost}\n${config.projectId}\n${config.personalApiKey}`;
+  const key = `${config.adminHost}\n${config.ingestionHost}\n${config.projectId}\n${config.projectKey}\n${config.personalApiKey}`;
   const now = Date.now();
   if (providerReadinessCache?.key === key && now - providerReadinessCache.checkedAt < PROVIDER_READINESS_TTL_MS) {
     return providerReadinessCache.result;
