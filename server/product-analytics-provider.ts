@@ -23,6 +23,8 @@ export type ProductAnalyticsProviderReadiness = {
   violations: string[];
 };
 
+export const APPROVED_PRODUCT_ANALYTICS_RETENTION_MONTHS = 3;
+
 export function productAnalyticsProviderPrivacyViolations(
   project: ProductAnalyticsProviderProject,
   expectedProjectId: string,
@@ -37,8 +39,10 @@ export function productAnalyticsProviderPrivacyViolations(
   if (project.session_recording_opt_in !== false) violations.push("session_recording_enabled_or_unverified");
   if (project.heatmaps_opt_in !== false) violations.push("heatmaps_enabled_or_unverified");
   if (project.capture_dead_clicks !== false) violations.push("dead_click_capture_enabled_or_unverified");
-  if (project.events_retention_enforced !== true || !Number.isInteger(project.event_retention_months) || (project.event_retention_months ?? 0) <= 0) {
+  if (project.events_retention_enforced !== true || !Number.isInteger(project.event_retention_months)) {
     violations.push("event_retention_not_explicitly_enforced");
+  } else if (project.event_retention_months !== APPROVED_PRODUCT_ANALYTICS_RETENTION_MONTHS) {
+    violations.push("event_retention_not_approved");
   }
   return violations;
 }

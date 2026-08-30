@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  APPROVED_PRODUCT_ANALYTICS_RETENTION_MONTHS,
   inspectProductAnalyticsProvider,
   productAnalyticsProviderPrivacyViolations,
   type ProductAnalyticsProviderProject,
@@ -15,7 +16,7 @@ const safeProject: ProductAnalyticsProviderProject = {
   session_recording_opt_in: false,
   heatmaps_opt_in: false,
   capture_dead_clicks: false,
-  event_retention_months: 12,
+  event_retention_months: APPROVED_PRODUCT_ANALYTICS_RETENTION_MONTHS,
   events_retention_enforced: true,
 };
 
@@ -41,6 +42,13 @@ describe("product analytics provider privacy preflight", () => {
   it("rejects a valid-looking response from a different project", () => {
     expect(productAnalyticsProviderPrivacyViolations({ ...safeProject, id: 541367 }, "330797"))
       .toContain("project_identity_unverified");
+  });
+
+  it.each([1, 6, 12, 84])("rejects an explicitly enforced but unapproved %s-month retention period", (months) => {
+    expect(productAnalyticsProviderPrivacyViolations({
+      ...safeProject,
+      event_retention_months: months,
+    }, "330797")).toContain("event_retention_not_approved");
   });
 
   it("uses the server-only credential for a project read and returns bounded violations", async () => {
