@@ -338,6 +338,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     await selectValue(page, '[data-testid="project-state"]', "completed");
     await activate(page, '[data-testid="project-change-state"]');
     await waitForProject(owner, projectId, (body) => body.project?.state === "completed" && body.project?.revision === 6 && Boolean(body.project?.completedAt), "Project completion");
+    await page.waitForFunction(() => document.querySelector('[data-testid="project-revision"]')?.textContent?.includes("Revision 6"), { timeout: 45_000 });
     await selectValue(page, '[data-testid="project-state"]', "active");
     await activate(page, '[data-testid="project-change-state"]');
     detail = await waitForProject(owner, projectId, (body) => body.project?.state === "active" && body.project?.revision === 7 && body.project?.completedAt === null, "Project reopen");
@@ -351,6 +352,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     detail = await waitForProject(owner, projectId, (body) => body.project?.revision === 8 && body.missions?.[0]?.id === mission.id, "existing Mission relink");
     const existingMissionRelinked = detail.missions.length === 1 && detail.missions[0].title === missionTitle;
     assert(existingMissionRelinked, "Existing canonical Mission did not relink through the rendered selector.");
+    await page.waitForFunction(() => document.querySelector('[data-testid="project-revision"]')?.textContent?.includes("Revision 8"), { timeout: 45_000 });
     const isolated = await request("GET", `/api/projects/${projectId}`, undefined, other.cookie);
     const crossOwnerIsolationReconciled = isolated.status === 404;
     assert(crossOwnerIsolationReconciled, `Cross-owner Project read returned ${isolated.status}.`);
