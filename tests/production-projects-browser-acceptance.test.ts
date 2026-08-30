@@ -39,9 +39,10 @@ describe("production Projects browser acceptance custody", () => {
     expect(script).toContain("ownerMissions.body.quests");
     expect(script).toContain("competingPage = await context.newPage()");
     expect(script).toContain("await page.bringToFront()");
-    expect(script).toContain('includes("Revision 6")');
-    expect(script).toContain('includes("Revision 8")');
-    expect(script).toContain('includes("Revision 10")');
+    expect(script).toContain("async function waitForRenderedRevision");
+    for (const revision of [1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 13]) {
+      expect(script).toContain(`await waitForRenderedRevision(page, ${revision})`);
+    }
     expect(script).toContain("second live tab's Project revision");
     expect(script).toContain("account/session/identifier erasure");
     expect(script).toContain("does not prove human assistive-technology comprehension");

@@ -190,6 +190,12 @@ async function waitForProject(account: Account, projectId: number, predicate: (b
   throw new Error(`${label} did not reconcile; status=${latest?.status}; body=${JSON.stringify(latest?.body || {}).slice(0, 1_000)}.`);
 }
 
+async function waitForRenderedRevision(page: Page, revision: number): Promise<void> {
+  await page.waitForFunction((expectedRevision) =>
+    document.querySelector('[data-testid="project-revision"]')?.textContent?.includes(`Revision ${expectedRevision}.`),
+  { timeout: 45_000 }, revision);
+}
+
 async function auditPage(page: Page): Promise<PageAudit> {
   return page.evaluate(() => {
     const ids = new Map<string, number>();
@@ -288,6 +294,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     await page.waitForSelector(`[data-testid="project-card-${projectId}"]`, { visible: true, timeout: 30_000 });
     await page.waitForSelector('[data-testid="project-detail"]', { visible: true, timeout: 30_000 });
     let detail = await waitForProject(owner, projectId, (body) => body.project?.revision === 1 && body.missions?.length === 0, "Project creation");
+    await waitForRenderedRevision(page, 1);
     const catalogAndDetailRendered = detail.project.title === initialTitle;
     const deepLinkPersisted = new URL(page.url()).searchParams.get("project") === String(projectId);
     assert(catalogAndDetailRendered && deepLinkPersisted, "Created Project did not reconcile across catalog, detail and URL.");
@@ -299,6 +306,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     await setValue(page, '[aria-label="Project due date"]', "2026-09-30");
     await activate(page, '[data-testid="project-save"]');
     detail = await waitForProject(owner, projectId, (body) => body.project?.revision === 2, "Project contract save");
+    await waitForRenderedRevision(page, 2);
     const declaredOutcomeAndDatesPersisted = detail.project.outcome === `Observable outcome ${ordinal}`
       && detail.project.description === `Bounded delivery context ${ordinal}`
       && detail.project.startDate === "2026-08-29"
@@ -309,9 +317,11 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     await selectValue(page, '[data-testid="project-state"]', "active");
     await activate(page, '[data-testid="project-change-state"]');
     await waitForProject(owner, projectId, (body) => body.project?.state === "active" && body.project?.revision === 3, "Project activation");
+    await waitForRenderedRevision(page, 3);
     await setValue(page, '[aria-label="New Project Mission title"]', missionTitle);
     await activate(page, '[data-testid="project-create-mission"]');
     detail = await waitForProject(owner, projectId, (body) => body.project?.revision === 4 && body.missions?.length === 1, "atomic Project Mission creation");
+    await waitForRenderedRevision(page, 4);
     const mission = detail.missions[0];
     await page.waitForSelector(`[data-testid="project-mission-${mission.id}"]`, { visible: true, timeout: 30_000 });
     const canonicalMissionCreatedAtomically = mission.title === missionTitle && mission.projectId === projectId && mission.completed === false;
@@ -322,6 +332,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     await activate(page, '[data-testid="project-change-state"]');
     await page.waitForFunction(() => document.body.innerText.includes("Complete or unlink every open mission"), { timeout: 30_000 });
     detail = await waitForProject(owner, projectId, (body) => body.project?.state === "active" && body.project?.revision === 4 && body.missions?.length === 1, "blocked Project completion");
+    await waitForRenderedRevision(page, 4);
     const prematureCompletionBlocked = detail.project.completedAt === null;
     assert(prematureCompletionBlocked, "Project completed while an open canonical Mission remained.");
     acknowledgeExpectedConflict(signals);
@@ -329,6 +340,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     stage = "unlink without deleting the canonical Mission";
     await activate(page, `[aria-label="Unlink ${missionTitle}"]`);
     detail = await waitForProject(owner, projectId, (body) => body.project?.revision === 5 && body.missions?.length === 0, "Mission unlink");
+    await waitForRenderedRevision(page, 5);
     const ownerMissions = await request("GET", `/api/users/${owner.id}/quests`, undefined, owner.cookie);
     const preservedMission = ownerMissions.body.quests?.find((item: any) => item.id === mission.id);
     const unlinkPreservedCanonicalMission = ownerMissions.status === 200 && preservedMission?.projectId === null && preservedMission?.title === missionTitle;
@@ -338,10 +350,11 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     await selectValue(page, '[data-testid="project-state"]', "completed");
     await activate(page, '[data-testid="project-change-state"]');
     await waitForProject(owner, projectId, (body) => body.project?.state === "completed" && body.project?.revision === 6 && Boolean(body.project?.completedAt), "Project completion");
-    await page.waitForFunction(() => document.querySelector('[data-testid="project-revision"]')?.textContent?.includes("Revision 6"), { timeout: 45_000 });
+    await waitForRenderedRevision(page, 6);
     await selectValue(page, '[data-testid="project-state"]', "active");
     await activate(page, '[data-testid="project-change-state"]');
     detail = await waitForProject(owner, projectId, (body) => body.project?.state === "active" && body.project?.revision === 7 && body.project?.completedAt === null, "Project reopen");
+    await waitForRenderedRevision(page, 7);
     const completionAndReopenReconciled = detail.project.state === "active" && detail.project.completedAt === null;
     assert(completionAndReopenReconciled, "Completion and reopen state did not reconcile.");
 
@@ -352,7 +365,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     detail = await waitForProject(owner, projectId, (body) => body.project?.revision === 8 && body.missions?.[0]?.id === mission.id, "existing Mission relink");
     const existingMissionRelinked = detail.missions.length === 1 && detail.missions[0].title === missionTitle;
     assert(existingMissionRelinked, "Existing canonical Mission did not relink through the rendered selector.");
-    await page.waitForFunction(() => document.querySelector('[data-testid="project-revision"]')?.textContent?.includes("Revision 8"), { timeout: 45_000 });
+    await waitForRenderedRevision(page, 8);
     const isolated = await request("GET", `/api/projects/${projectId}`, undefined, other.cookie);
     const crossOwnerIsolationReconciled = isolated.status === 404;
     assert(crossOwnerIsolationReconciled, `Cross-owner Project read returned ${isolated.status}.`);
@@ -387,10 +400,11 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     stage = "archive, recoverably remove and restore the Project";
     await activate(page, `[aria-label="Unlink ${missionTitle}"]`);
     await waitForProject(owner, projectId, (body) => body.project?.revision === 10 && body.missions?.length === 0, "final Mission unlink");
-    await page.waitForFunction(() => document.querySelector('[data-testid="project-revision"]')?.textContent?.includes("Revision 10"), { timeout: 45_000 });
+    await waitForRenderedRevision(page, 10);
     await selectValue(page, '[data-testid="project-state"]', "archived");
     await activate(page, '[data-testid="project-change-state"]');
     await waitForProject(owner, projectId, (body) => body.project?.state === "archived" && body.project?.revision === 11, "Project archive");
+    await waitForRenderedRevision(page, 11);
     page.once("dialog", (dialog) => void dialog.accept(serverTitle));
     await activate(page, '[data-testid="project-remove"]');
     await page.waitForSelector(`[data-testid="project-removed-${projectId}"]`, { visible: true, timeout: 45_000 });
@@ -400,6 +414,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     detail = await waitForProject(owner, projectId, (body) => body.project?.state === "archived" && body.project?.revision === 13 && body.project?.deletedAt === null, "Project restore");
     await page.waitForSelector(`[data-testid="project-card-${projectId}"]`, { visible: true, timeout: 45_000 });
     await page.waitForSelector('[data-testid="project-detail"]', { visible: true, timeout: 45_000 });
+    await waitForRenderedRevision(page, 13);
     const recoverableRemovalAndRestoreReconciled = detail.project.state === "archived" && detail.project.deletedAt === null;
     assert(recoverableRemovalAndRestoreReconciled, "Recoverable Project removal/restore did not preserve archived state.");
 
