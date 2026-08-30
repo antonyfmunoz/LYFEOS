@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { createEmptySpreadsheetDocument, createSpreadsheetChart, nextSpreadsheetSheetName, removeSpreadsheetChart, removeSpreadsheetSheet, renameSpreadsheetSheet, shiftSpreadsheetChartsForAxis, spreadsheetDocumentSchema, spreadsheetRevisionSnapshotSchema, uniqueSpreadsheetSheetName, updateSpreadsheetChart } from "../shared/spreadsheets";
+import { createEmptySpreadsheetDocument, createSpreadsheetChart, nextSpreadsheetSheetName, removeSpreadsheetChart, removeSpreadsheetSheet, renameSpreadsheetSheet, resolveSpreadsheetChartSeriesRoles, shiftSpreadsheetChartsForAxis, spreadsheetDocumentSchema, spreadsheetRevisionSnapshotSchema, uniqueSpreadsheetSheetName, updateSpreadsheetChart } from "../shared/spreadsheets";
 import { columnLabel, evaluateSpreadsheetCell, formatSpreadsheetDisplayValue, insertSpreadsheetAxis, parseCellAddress } from "../client/src/lib/spreadsheetFormula";
 import { buildSpreadsheetChartData, buildSpreadsheetPieData, buildSpreadsheetScatterData, spreadsheetChartRangeLabel } from "../client/src/lib/spreadsheetChart";
 import { createSpreadsheetSheetFromDelimited, formatSpreadsheetRange, parseSpreadsheetClipboard, parseSpreadsheetCsv, pasteSpreadsheetRange, serializeSpreadsheetRange, spreadsheetRangeBounds } from "../client/src/lib/spreadsheetRange";
@@ -98,7 +98,7 @@ describe("Sheets instrument", () => {
   it("persists bounded chart definitions only over an existing in-sheet range", () => {
     const document = createEmptySpreadsheetDocument();
     const charted = createSpreadsheetChart(document, { id: "chart_one", title: "  Weekly output  ", kind: "line", sheetId: document.activeSheetId, range: { startRow: 0, endRow: 3, startColumn: 0, endColumn: 2 } });
-    expect(charted.charts[0]).toMatchObject({ title: "Weekly output", kind: "line", axisMode: "shared", range: { startRow: 0, endRow: 3, startColumn: 0, endColumn: 2 } });
+    expect(charted.charts[0]).toMatchObject({ title: "Weekly output", kind: "line", axisMode: "shared", seriesRoles: [], range: { startRow: 0, endRow: 3, startColumn: 0, endColumn: 2 } });
     expect(document.charts).toEqual([]);
     expect(spreadsheetDocumentSchema.safeParse({ ...charted, charts: [{ ...charted.charts[0], sheetId: "missing" }] }).success).toBe(false);
     expect(spreadsheetDocumentSchema.safeParse({ ...charted, charts: [{ ...charted.charts[0], range: { startRow: 0, endRow: 40, startColumn: 0, endColumn: 2 } }] }).success).toBe(false);
@@ -120,6 +120,13 @@ describe("Sheets instrument", () => {
     expect(() => createSpreadsheetChart(document, { id: "ambiguous-combo", title: "Trend", kind: "combo", sheetId: document.activeSheetId, range: oneSeriesRange })).toThrow("at least two numeric series columns");
     const dual = createSpreadsheetChart(document, { id: "dual-combo", title: "Volume and conversion", kind: "combo", axisMode: "dual", sheetId: document.activeSheetId, range: twoSeriesRange });
     expect(dual.charts[0].axisMode).toBe("dual");
+    expect(dual.charts[0].seriesRoles).toEqual([]);
+    expect(resolveSpreadsheetChartSeriesRoles(dual.charts[0])).toEqual(["bar", "line"]);
+    const assigned = createSpreadsheetChart(document, { id: "assigned-combo", title: "Conversion and volume", kind: "combo", axisMode: "dual", seriesRoles: ["line", "bar"], sheetId: document.activeSheetId, range: twoSeriesRange });
+    expect(resolveSpreadsheetChartSeriesRoles(assigned.charts[0])).toEqual(["line", "bar"]);
+    expect(() => createSpreadsheetChart(document, { id: "missing-role", title: "Incomplete", kind: "combo", seriesRoles: ["bar"], sheetId: document.activeSheetId, range: twoSeriesRange })).toThrow("cover every source series");
+    expect(() => createSpreadsheetChart(document, { id: "one-role", title: "Not combined", kind: "combo", seriesRoles: ["bar", "bar"], sheetId: document.activeSheetId, range: twoSeriesRange })).toThrow("at least one bar series and one line series");
+    expect(() => createSpreadsheetChart(document, { id: "misplaced-role", title: "Trend", kind: "line", seriesRoles: ["bar"], sheetId: document.activeSheetId, range: oneSeriesRange })).toThrow("only for combination charts");
     expect(() => createSpreadsheetChart(document, { id: "misleading-axis", title: "Trend", kind: "line", axisMode: "dual", sheetId: document.activeSheetId, range: oneSeriesRange })).toThrow("only for combination charts");
   });
 
@@ -156,11 +163,11 @@ describe("Sheets instrument", () => {
     const document = createEmptySpreadsheetDocument();
     document.sheets[0].cells = { A1: { input: "Day" }, B1: { input: "Volume" }, C1: { input: "Rate" }, A2: { input: "Mon" }, B2: { input: "100" }, C2: { input: "0.2" } };
     const charted = createSpreadsheetChart(document, { id: "chart_edit", title: "Original", kind: "line", sheetId: document.activeSheetId, range: { startRow: 0, endRow: 1, startColumn: 0, endColumn: 2 } });
-    const combo = updateSpreadsheetChart(charted, "chart_edit", { title: "Revised", kind: "combo", axisMode: "dual" });
+    const combo = updateSpreadsheetChart(charted, "chart_edit", { title: "Revised", kind: "combo", axisMode: "dual", seriesRoles: ["line", "bar"] });
     const updated = updateSpreadsheetChart(combo, "chart_edit", { kind: "bar" });
     const removed = removeSpreadsheetChart(updated, "chart_edit");
-    expect(combo.charts[0]).toMatchObject({ title: "Revised", kind: "combo", axisMode: "dual" });
-    expect(updated.charts[0]).toMatchObject({ title: "Revised", kind: "bar", axisMode: "shared" });
+    expect(combo.charts[0]).toMatchObject({ title: "Revised", kind: "combo", axisMode: "dual", seriesRoles: ["line", "bar"] });
+    expect(updated.charts[0]).toMatchObject({ title: "Revised", kind: "bar", axisMode: "shared", seriesRoles: [] });
     expect(removed.charts).toEqual([]);
     expect(removed.sheets[0].cells).toEqual(document.sheets[0].cells);
     expect(charted.charts[0]).toMatchObject({ title: "Original", kind: "line" });
@@ -170,12 +177,13 @@ describe("Sheets instrument", () => {
     const document = createEmptySpreadsheetDocument();
     const firstId = document.activeSheetId;
     document.sheets.push({ ...document.sheets[0], id: "sheet_second", name: "Second", cells: {} });
-    let charted = createSpreadsheetChart(document, { id: "chart_first", title: "First", kind: "line", sheetId: firstId, range: { startRow: 2, endRow: 4, startColumn: 2, endColumn: 4 } });
+    let charted = createSpreadsheetChart(document, { id: "chart_first", title: "First", kind: "combo", seriesRoles: ["line", "bar"], sheetId: firstId, range: { startRow: 2, endRow: 4, startColumn: 2, endColumn: 4 } });
     charted = createSpreadsheetChart(charted, { id: "chart_second", title: "Second", kind: "bar", sheetId: "sheet_second", range: { startRow: 0, endRow: 1, startColumn: 0, endColumn: 1 } });
     const shiftedBefore = shiftSpreadsheetChartsForAxis(charted, firstId, "row", 1);
     expect(shiftedBefore.charts[0].range).toMatchObject({ startRow: 3, endRow: 5, startColumn: 2, endColumn: 4 });
     const shiftedInside = shiftSpreadsheetChartsForAxis(shiftedBefore, firstId, "column", 3);
     expect(shiftedInside.charts[0].range).toMatchObject({ startRow: 3, endRow: 5, startColumn: 2, endColumn: 5 });
+    expect(shiftedInside.charts[0].seriesRoles).toEqual(["line", "line", "bar"]);
     expect(shiftedInside.charts[1].range).toMatchObject({ startRow: 0, endRow: 1, startColumn: 0, endColumn: 1 });
     const removed = removeSpreadsheetSheet(shiftedInside, firstId);
     expect(removed.charts.map((chart) => chart.id)).toEqual(["chart_second"]);
@@ -368,17 +376,20 @@ describe("Sheets instrument", () => {
     expect(chart).toContain('<SelectItem value="stacked_bar">Stacked bar</SelectItem>');
     expect(chart).toContain('<SelectItem value="combo">Combination</SelectItem>');
     expect(chart).toContain('stackId="source-series"');
-    expect(chart).toContain("const comboBarSeries = data.series[0]");
-    expect(chart).toContain("const comboLineSeries = data.series.slice(1)");
+    expect(chart).toContain("resolveSpreadsheetChartSeriesRoles(chart)");
+    expect(chart).toContain('comboSeriesRoles[index] === "bar"');
+    expect(chart).toContain('comboSeriesRoles[index] === "line"');
     expect(chart).toContain('aria-label="Combination chart axes"');
     expect(chart).toContain('<SelectItem value="dual">Dual axes</SelectItem>');
     expect(chart).toContain('data-axis-mode={chart.axisMode}');
+    expect(chart).toContain('data-series-roles={comboSeriesRoles.join(",")}');
+    expect(chart).toContain("Series role: ${series.name}");
     expect(chart).toContain('yAxisId={usesDualAxes ? "secondary" : "primary"}');
     expect(chart).toContain("Dual axes can exaggerate visual relationships");
     expect(chart).toContain('<SelectItem value="pie">Pie</SelectItem>');
     expect(chart).toContain('<SelectItem value="scatter">Scatter</SelectItem>');
     expect(chart).toContain("only complete pairs become points");
-    expect(chart).toContain("source-column order defines these roles");
+    expect(chart).toContain("Every source series has one explicit rendering role");
     expect(chart).toContain("Accessible chart data");
     expect(editor).toContain('data-testid="sheet-history"');
     expect(editor).toContain("sheet-history-version-${revision.revisionNumber}");

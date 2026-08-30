@@ -19,6 +19,7 @@ type ViewResult = {
   controlledClipboardAdapterRoundTrip: boolean;
   chartFamiliesRenderedFromCanonicalRanges: boolean;
   dualAxisCombinationReconciled: boolean;
+  explicitSeriesRolesReconciled: boolean;
   chartDefinitionsPersisted: boolean;
   chartFamiliesReloadedAndRestored: boolean;
   localImportReviewedAndPersisted: boolean;
@@ -225,6 +226,31 @@ async function selectDualAxesForCombinationChart(page: Page): Promise<void> {
   }, { timeout: 30_000 }, cardTestId);
 }
 
+async function reverseCombinationSeriesRoles(page: Page): Promise<void> {
+  const cardTestId = await page.evaluate(() => {
+    const combo = Array.from(document.querySelectorAll<HTMLElement>('[data-testid^="sheet-chart-chart_"]')).find((chart) => chart.dataset.chartKind === "combo");
+    const details = combo?.querySelector<HTMLDetailsElement>('details[data-testid^="sheet-chart-series-roles-"]');
+    if (details) details.open = true;
+    return combo?.dataset.testid || null;
+  });
+  assert(cardTestId, "Combination chart has no stable test identifier.");
+  await activate(page, `[data-testid="${cardTestId}"] [aria-label="Series role: Calls"]`);
+  await page.waitForSelector('[role="option"]', { visible: true, timeout: 10_000 });
+  const selected = await page.evaluate(() => {
+    const option = Array.from(document.querySelectorAll<HTMLElement>('[role="option"]')).find((candidate) => candidate.innerText.trim().toLocaleLowerCase() === "line");
+    option?.click();
+    return Boolean(option);
+  });
+  assert(selected, "Could not assign Calls to the line role.");
+  await page.waitForFunction((testId) => {
+    const chart = document.querySelector<HTMLElement>(`[data-testid="${testId}"]`);
+    const text = chart?.textContent || "";
+    return chart?.dataset.seriesRoles === "line,bar"
+      && text.includes("Calls (line, right axis)")
+      && text.includes("Sales (bar, left axis)");
+  }, { timeout: 30_000 }, cardTestId);
+}
+
 async function waitForSpreadsheet(account: Account, spreadsheetId: number, predicate: (spreadsheet: any) => boolean, label: string): Promise<any> {
   const deadline = Date.now() + 45_000;
   let latest: ApiResult | null = null;
@@ -389,6 +415,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     await createChartFromRange(page, "C1", "E4", "stacked_bar", 4);
     await createChartFromRange(page, "C1", "E4", "combo", 5);
     await selectDualAxesForCombinationChart(page);
+    await reverseCombinationSeriesRoles(page);
     await createChartFromRange(page, "C1", "D4", "pie", 6);
     await createChartFromRange(page, "C1", "E4", "scatter", 7);
     const chartFamiliesRenderedFromCanonicalRanges = await page.evaluate(() => {
@@ -407,6 +434,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
         && (pie?.textContent || "").includes("Pie charts require one label column and one value column")
         && (stacked?.textContent || "").includes("missing segments stay missing")
         && combo?.dataset.axisMode === "dual"
+        && combo?.dataset.seriesRoles === "line,bar"
         && (combo?.textContent || "").includes("Dual axes can exaggerate visual relationships");
     });
     assert(chartFamiliesRenderedFromCanonicalRanges, "Rendered trend, proportion, or correlation chart semantics did not reconcile their canonical ranges.");
@@ -415,6 +443,11 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
       return combo?.dataset.axisMode === "dual" && (combo.textContent || "").includes("canonical raw-value table");
     });
     assert(dualAxisCombinationReconciled, "Combination chart did not retain its explicit dual-axis disclosure.");
+    const explicitSeriesRolesReconciled = await page.evaluate(() => {
+      const combo = Array.from(document.querySelectorAll<HTMLElement>('[data-testid^="sheet-chart-chart_"]')).find((chart) => chart.dataset.chartKind === "combo");
+      return combo?.dataset.seriesRoles === "line,bar" && (combo.textContent || "").includes("Every source series has one explicit rendering role");
+    });
+    assert(explicitSeriesRolesReconciled, "Combination chart did not retain the explicitly assigned series roles.");
     const fileInput = await page.$('input[aria-label="Choose a CSV or TSV file"]');
     assert(fileInput, "Local CSV input is unavailable.");
     await fileInput.uploadFile(importPath);
@@ -445,6 +478,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
       && hasChart("area", 4)
       && hasChart("stacked_bar", 4)
       && hasChart("combo", 4, "dual")
+      && creationCharts.some((chart: any) => chart?.kind === "combo" && JSON.stringify(chart?.seriesRoles) === JSON.stringify(["line", "bar"]))
       && hasChart("pie", 3)
       && hasChart("scatter", 4);
     assert(chartDefinitionsPersisted, `Creation revision did not persist every governed chart definition over canonical cells; observed=${JSON.stringify({ creationSheetId: creationSheet?.id, creationCharts })}.`);
@@ -511,7 +545,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
         const charts = Array.from(document.querySelectorAll<HTMLElement>('[data-testid^="sheet-chart-chart_"]'));
         const kinds = charts.map((chart) => chart.dataset.chartKind);
         const combo = charts.find((chart) => chart.dataset.chartKind === "combo");
-        return charts.length === 7 && ["line", "bar", "stacked_bar", "area", "combo", "pie", "scatter"].every((kind) => kinds.includes(kind)) && combo?.dataset.axisMode === "dual";
+        return charts.length === 7 && ["line", "bar", "stacked_bar", "area", "combo", "pie", "scatter"].every((kind) => kinds.includes(kind)) && combo?.dataset.axisMode === "dual" && combo?.dataset.seriesRoles === "line,bar";
       });
     assert(chartFamiliesReloadedAndRestored, "The governed chart family did not survive reload and immutable restore.");
 
@@ -524,7 +558,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     assert(audit.mainCount === 1 && audit.duplicateIds.length === 0 && audit.invalidLabelReferences.length === 0 && audit.unlabeledControls.length === 0 && audit.horizontalOverflowPx <= 2, `${viewport.name} Sheets failed semantics or overflow checks.`);
     await acknowledgeBoundedChunkRecovery(page, signals);
     assert(!hasUnexpectedBrowserSignals(signals), `${viewport.name} Sheets journey produced application errors: ${JSON.stringify(signals)}.`);
-    view = { viewport: viewport.name, catalogAndEditorRendered, formulasCalculated, undoRedoReconciled: true, controlledClipboardAdapterRoundTrip, chartFamiliesRenderedFromCanonicalRanges, dualAxisCombinationReconciled, chartDefinitionsPersisted, chartFamiliesReloadedAndRestored, localImportReviewedAndPersisted, immutableCreationRevisionReconciled, crossOwnerIsolationReconciled, staleSaveStoppedAsConflict, largeGridWindowed, renderedCellCountAtLimit, reconciledSaveCreatedNewRevision, restoreCreatedNewImmutableRevision, catalogPersistenceRendered, audit, signals };
+    view = { viewport: viewport.name, catalogAndEditorRendered, formulasCalculated, undoRedoReconciled: true, controlledClipboardAdapterRoundTrip, chartFamiliesRenderedFromCanonicalRanges, dualAxisCombinationReconciled, explicitSeriesRolesReconciled, chartDefinitionsPersisted, chartFamiliesReloadedAndRestored, localImportReviewedAndPersisted, immutableCreationRevisionReconciled, crossOwnerIsolationReconciled, staleSaveStoppedAsConflict, largeGridWindowed, renderedCellCountAtLimit, reconciledSaveCreatedNewRevision, restoreCreatedNewImmutableRevision, catalogPersistenceRendered, audit, signals };
   } catch (error) {
     const rendered = page ? await page.evaluate(() => document.body?.innerText.slice(0, 2_000) || "page unavailable").catch(() => "page unavailable") : "page unavailable";
     if (page) await page.screenshot({ path: path.join(OUTPUT_DIR, `sheets-${viewport.name}-failure.png`), fullPage: true }).catch(() => undefined);
@@ -564,7 +598,7 @@ async function main(): Promise<void> {
     if (browser) await browser.close().catch(() => undefined);
     const passed = failure === null && views.length === VIEWPORTS.length && cleanups.length === VIEWPORTS.length && cleanups.every((cleanup) => cleanup.accountErased && cleanup.otherAccountErased);
     const report = {
-      contract: "lyfeos.production-sheets-browser.v5",
+      contract: "lyfeos.production-sheets-browser.v6",
       generatedAt: new Date().toISOString(),
       baseUrl: BASE_URL.origin,
       sourceRevision: SOURCE,
@@ -572,7 +606,7 @@ async function main(): Promise<void> {
       views,
       cleanups,
       summary: { passed, failure },
-      boundary: "Disposable production-account Chromium evidence for Sheets. It proves desktop/mobile catalog and editor rendering; raw-value and formula persistence; calculated formula display; local undo/redo; persisted live line, bar, stacked bar, area, combination, pie and scatter definitions over canonical cells; deterministic source-column roles for stacked and combination charts; an explicit shared-versus-dual combination-axis choice with bar values on the left, line values on the independently scaled right, a visual-risk disclosure and unchanged canonical raw-value table; formula-derived chart values; explicit missing-value and complete-pair handling with accessible source tables; chart-family reload and immutable restore; copy/paste through a controlled in-page Clipboard API adapter; explicit local CSV review before persistence; immutable create, update, conflict and restore revisions; cross-owner isolation; bounded rendering at the documented 500-row by 100-column limit; responsive semantics; and verified account/session/identifier erasure. It does not prove native spreadsheet-file import, OS clipboard permissions, real-device clipboard or file-picker behavior, browser permission denial recovery, simultaneous multi-tab editing, arbitrary per-series chart roles, full Excel or Google Sheets formula compatibility, human assistive-technology comprehension, statistical causality, or longitudinal calculation correctness for user-authored models.",
+      boundary: "Disposable production-account Chromium evidence for Sheets. It proves desktop/mobile catalog and editor rendering; raw-value and formula persistence; calculated formula display; local undo/redo; persisted live line, bar, stacked bar, area, combination, pie and scatter definitions over canonical cells; explicit per-series bar/line assignment for combination charts with deterministic legacy defaults and safe last-role swapping; an explicit shared-versus-dual combination-axis choice with bar values on the left, line values on the independently scaled right, a visual-risk disclosure and unchanged canonical raw-value table; formula-derived chart values; explicit missing-value and complete-pair handling with accessible source tables; chart-family reload and immutable restore; copy/paste through a controlled in-page Clipboard API adapter; explicit local CSV review before persistence; immutable create, update, conflict and restore revisions; cross-owner isolation; bounded rendering at the documented 500-row by 100-column limit; responsive semantics; and verified account/session/identifier erasure. It does not prove native spreadsheet-file import, OS clipboard permissions, real-device clipboard or file-picker behavior, browser permission denial recovery, simultaneous multi-tab editing, full Excel or Google Sheets formula compatibility, human assistive-technology comprehension, statistical causality, or longitudinal calculation correctness for user-authored models.",
     };
     await fs.writeFile(OUTPUT_FILE, `${JSON.stringify(report, null, 2)}\n`, "utf8");
     if (process.env.GITHUB_STEP_SUMMARY) {

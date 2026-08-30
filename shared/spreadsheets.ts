@@ -5,10 +5,12 @@ export const spreadsheetNumberFormats = ["decimal", "percent", "currency_usd"] a
 export const spreadsheetColorTokens = ["red", "amber", "green", "blue", "purple"] as const;
 export const spreadsheetChartKinds = ["line", "bar", "stacked_bar", "area", "combo", "pie", "scatter"] as const;
 export const spreadsheetChartAxisModes = ["shared", "dual"] as const;
+export const spreadsheetChartSeriesRoles = ["bar", "line"] as const;
 export type SpreadsheetNumberFormat = typeof spreadsheetNumberFormats[number];
 export type SpreadsheetColorToken = typeof spreadsheetColorTokens[number];
 export type SpreadsheetChartKind = typeof spreadsheetChartKinds[number];
 export type SpreadsheetChartAxisMode = typeof spreadsheetChartAxisModes[number];
+export type SpreadsheetChartSeriesRole = typeof spreadsheetChartSeriesRoles[number];
 
 export const spreadsheetCellSchema = z.object({
   input: z.string().max(10_000),
@@ -38,6 +40,7 @@ export const spreadsheetChartSchema = z.object({
   title: z.string().trim().min(1).max(120),
   kind: z.enum(spreadsheetChartKinds),
   axisMode: z.enum(spreadsheetChartAxisModes).default("shared"),
+  seriesRoles: z.array(z.enum(spreadsheetChartSeriesRoles)).max(99).default([]),
   sheetId: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/),
   range: z.object({
     startRow: z.number().int().min(0).max(499),
@@ -62,6 +65,15 @@ export const spreadsheetChartSchema = z.object({
   }
   if (chart.kind !== "combo" && chart.axisMode !== "shared") {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Dual axes are available only for combination charts.", path: ["axisMode"] });
+  }
+  if (chart.kind !== "combo" && chart.seriesRoles.length > 0) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Per-series rendering roles are available only for combination charts.", path: ["seriesRoles"] });
+  }
+  if (chart.kind === "combo" && chart.seriesRoles.length > 0 && chart.seriesRoles.length !== dataColumnCount) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Combination chart roles must cover every source series.", path: ["seriesRoles"] });
+  }
+  if (chart.kind === "combo" && chart.seriesRoles.length > 0 && (!chart.seriesRoles.includes("bar") || !chart.seriesRoles.includes("line"))) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Combination charts must retain at least one bar series and one line series.", path: ["seriesRoles"] });
   }
 });
 
@@ -175,6 +187,7 @@ export function createSpreadsheetChart(document: SpreadsheetDocument, input: {
   title: string;
   kind: SpreadsheetChartKind;
   axisMode?: SpreadsheetChartAxisMode;
+  seriesRoles?: SpreadsheetChartSeriesRole[];
   sheetId: string;
   range: SpreadsheetChart["range"];
 }): SpreadsheetDocument {
@@ -182,14 +195,14 @@ export function createSpreadsheetChart(document: SpreadsheetDocument, input: {
   return spreadsheetDocumentSchema.parse({ ...document, charts: [...document.charts, spreadsheetChartSchema.parse(input)] });
 }
 
-export function updateSpreadsheetChart(document: SpreadsheetDocument, chartId: string, patch: { title?: string; kind?: SpreadsheetChartKind; axisMode?: SpreadsheetChartAxisMode }): SpreadsheetDocument {
+export function updateSpreadsheetChart(document: SpreadsheetDocument, chartId: string, patch: { title?: string; kind?: SpreadsheetChartKind; axisMode?: SpreadsheetChartAxisMode; seriesRoles?: SpreadsheetChartSeriesRole[] }): SpreadsheetDocument {
   if (!document.charts.some((chart) => chart.id === chartId)) throw new Error("That chart no longer exists.");
   return spreadsheetDocumentSchema.parse({
     ...document,
     charts: document.charts.map((chart) => {
       if (chart.id !== chartId) return chart;
       const updated = { ...chart, ...patch };
-      return updated.kind === "combo" ? updated : { ...updated, axisMode: "shared" as const };
+      return updated.kind === "combo" ? updated : { ...updated, axisMode: "shared" as const, seriesRoles: [] };
     }),
   });
 }
@@ -197,6 +210,13 @@ export function updateSpreadsheetChart(document: SpreadsheetDocument, chartId: s
 export function removeSpreadsheetChart(document: SpreadsheetDocument, chartId: string): SpreadsheetDocument {
   if (!document.charts.some((chart) => chart.id === chartId)) throw new Error("That chart no longer exists.");
   return spreadsheetDocumentSchema.parse({ ...document, charts: document.charts.filter((chart) => chart.id !== chartId) });
+}
+
+export function resolveSpreadsheetChartSeriesRoles(chart: SpreadsheetChart): SpreadsheetChartSeriesRole[] {
+  if (chart.kind !== "combo") return [];
+  const seriesCount = chart.range.endColumn - chart.range.startColumn;
+  if (chart.seriesRoles.length === seriesCount) return [...chart.seriesRoles];
+  return Array.from({ length: seriesCount }, (_, index) => index === 0 ? "bar" : "line");
 }
 
 export function shiftSpreadsheetChartsForAxis(document: SpreadsheetDocument, sheetId: string, axis: "row" | "column", atIndex: number): SpreadsheetDocument {
@@ -210,7 +230,15 @@ export function shiftSpreadsheetChartsForAxis(document: SpreadsheetDocument, she
         else if (atIndex <= range.endRow) range.endRow += 1;
       } else {
         if (atIndex <= range.startColumn) { range.startColumn += 1; range.endColumn += 1; }
-        else if (atIndex <= range.endColumn) range.endColumn += 1;
+        else if (atIndex <= range.endColumn) {
+          range.endColumn += 1;
+          if (chart.kind === "combo" && chart.seriesRoles.length > 0) {
+            const insertionIndex = atIndex - chart.range.startColumn - 1;
+            const seriesRoles = [...chart.seriesRoles];
+            seriesRoles.splice(insertionIndex, 0, "line");
+            return { ...chart, range, seriesRoles };
+          }
+        }
       }
       return { ...chart, range };
     }),

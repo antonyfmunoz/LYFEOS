@@ -12,7 +12,7 @@ describe("production Sheets evidence custody", () => {
   const editor = source("client/src/pages/SpreadsheetEditorPage.tsx");
 
   it("binds the production-only contract to immutable runtime and harness sources", () => {
-    expect(acceptance).toContain('contract: "lyfeos.production-sheets-browser.v5"');
+    expect(acceptance).toContain('contract: "lyfeos.production-sheets-browser.v6"');
     expect(acceptance).toContain('BASE_URL.origin === "https://lyfeos.net"');
     expect(acceptance).toContain("release.body?.sourceRevision === SOURCE");
     expect(acceptance).toContain("HARNESS_SOURCE");
@@ -25,10 +25,11 @@ describe("production Sheets evidence custody", () => {
     expect(acceptance).toContain("controlledClipboardAdapterRoundTrip");
     expect(acceptance).toContain("chartFamiliesRenderedFromCanonicalRanges");
     expect(acceptance).toContain("dualAxisCombinationReconciled");
+    expect(acceptance).toContain("explicitSeriesRolesReconciled");
     expect(acceptance).toContain("chartDefinitionsPersisted");
     expect(acceptance).toContain("chartFamiliesReloadedAndRestored");
     expect(acceptance).toContain('["line", "bar", "stacked_bar", "area", "combo", "pie", "scatter"]');
-    expect(acceptance).toContain("source-column roles for stacked and combination charts");
+    expect(acceptance).toContain("explicit per-series bar/line assignment");
     expect(acceptance).toContain("shared-versus-dual combination-axis choice");
     expect(acceptance).toContain("Dual axes can exaggerate visual relationships");
     expect(acceptance).toContain("complete numeric pairs");
