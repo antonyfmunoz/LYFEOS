@@ -41,6 +41,7 @@ describe("production Projects browser acceptance custody", () => {
     expect(script).toContain("await page.bringToFront()");
     expect(script).toContain('includes("Revision 6")');
     expect(script).toContain('includes("Revision 8")');
+    expect(script).toContain('includes("Revision 10")');
     expect(script).toContain("second live tab's Project revision");
     expect(script).toContain("account/session/identifier erasure");
     expect(script).toContain("does not prove human assistive-technology comprehension");

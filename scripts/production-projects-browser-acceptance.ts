@@ -387,6 +387,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     stage = "archive, recoverably remove and restore the Project";
     await activate(page, `[aria-label="Unlink ${missionTitle}"]`);
     await waitForProject(owner, projectId, (body) => body.project?.revision === 10 && body.missions?.length === 0, "final Mission unlink");
+    await page.waitForFunction(() => document.querySelector('[data-testid="project-revision"]')?.textContent?.includes("Revision 10"), { timeout: 45_000 });
     await selectValue(page, '[data-testid="project-state"]', "archived");
     await activate(page, '[data-testid="project-change-state"]');
     await waitForProject(owner, projectId, (body) => body.project?.state === "archived" && body.project?.revision === 11, "Project archive");
