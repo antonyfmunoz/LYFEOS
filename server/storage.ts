@@ -433,12 +433,16 @@ export class DatabaseStorage implements IStorage {
     if (!lastActiveDate) {
       isNewDay = true;
     } else {
-      const lastDate = new Date(lastActiveDate);
-      lastDate.setHours(0, 0, 0, 0);
-      const lastDateStr = formatLocalDate(lastDate);
+      // PostgreSQL DATE values are already canonical YYYY-MM-DD strings.
+      // Converting one through Date would interpret it as UTC midnight and can
+      // shift it to the prior local day before comparison.
+      const lastDateStr = lastActiveDate;
       
       if (lastDateStr === todayStr) {
-        isNewDay = false;
+        // The daily reset has already run. Avoid rewriting an unchanged row on
+        // every stats read; progression reconciliation below remains
+        // responsible for any mission-backed streak change.
+        return { streakDays: newStreak, isNewDay: false };
       } else {
         const yesterday = new Date(today);
         yesterday.setDate(yesterday.getDate() - 1);

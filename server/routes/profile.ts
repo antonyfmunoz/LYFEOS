@@ -20,6 +20,68 @@ import { sleepDurationMinutes } from "../health-fitness";
 import { missionExperience } from "@shared/progression";
 import { LYFEOS_DATA_RIGHTS } from "@shared/data-rights";
 import { SESSION_COOKIE_NAME } from "../session-config";
+import { InFlightRequestCoalescer } from "../in-flight-request-coalescer";
+
+async function loadFreshUserStats(userId: number) {
+  // Daily resets and progression reconciliation intentionally happen before
+  // the response is assembled so every completed read is exact-current.
+  await storage.processLoginStreak(userId);
+
+  let [dbStats, userProfile] = await Promise.all([
+    storage.getUserStats(userId),
+    storage.getUserProfile(userId),
+  ]);
+  if (!dbStats) return null;
+
+  const xpData = await storage.recalculateXP(userId);
+  dbStats = await storage.getUserStats(userId);
+  if (!dbStats) return null;
+
+  return {
+    stats: {
+      attentionTokens: {
+        current: dbStats.attentionTokensCurrent,
+        max: dbStats.attentionTokensMax,
+      },
+      timeTokens: {
+        current: dbStats.timeTokensCurrent,
+        max: dbStats.timeTokensMax,
+      },
+      energyPoints: {
+        current: dbStats.energyPointsCurrent,
+        max: dbStats.energyPointsMax,
+      },
+      healthPoints: {
+        current: dbStats.healthPointsCurrent,
+        max: dbStats.healthPointsMax,
+      },
+      wealthTokens: {
+        current: dbStats.wealthTokensCurrent ?? 100,
+        max: dbStats.wealthTokensMax ?? 100,
+      },
+      experience: {
+        current: xpData.experienceCurrent,
+        max: xpData.experienceMax,
+        level: xpData.level,
+        totalXP: xpData.totalXP,
+        showLevelUp: false,
+      },
+      streakDays: dbStats.streakDays || 0,
+      efficiencyScore: dbStats.efficiencyScore || 0,
+      aiAssistantName: dbStats.aiAssistantName,
+      notificationsEnabled: dbStats.notificationsEnabled,
+      darkThemeEnabled: dbStats.darkThemeEnabled,
+      autoSyncEnabled: dbStats.autoSyncEnabled,
+      aiAssistantEnabled: dbStats.aiAssistantEnabled,
+      primaryColor: (userProfile?.primaryThemeColor && userProfile.primaryThemeColor !== "#ffe03d" ? userProfile.primaryThemeColor : null)
+        || (dbStats.primaryColor && dbStats.primaryColor !== "#ffffff" ? dbStats.primaryColor : null)
+        || "#00e0ff",
+    },
+  };
+}
+
+type FreshUserStats = Awaited<ReturnType<typeof loadFreshUserStats>>;
+const userStatsReads = new InFlightRequestCoalescer<number, FreshUserStats>();
 
 const accountExportTables = [
   "user_stats", "user_profile", "user_daily_logs", "user_integrations", "quests", "ai_messages",
@@ -897,67 +959,14 @@ Generate the complete affirmation now:`;
       if (isNaN(userId)) {
         return res.status(400).json({ error: "Invalid user ID" });
       }
-      
-      // Process login streak and daily resets before returning stats
-      // This ensures streak, HP, EP, time tokens, and attention tokens are always current
-      await storage.processLoginStreak(userId);
-      
-      let [dbStats, userProfile] = await Promise.all([
-        storage.getUserStats(userId),
-        storage.getUserProfile(userId),
-      ]);
-      if (!dbStats) {
-        return res.status(404).json({ error: "User stats not found" });
-      }
-      
-      // Recalculate XP from completed missions to ensure consistency
-      const xpData = await storage.recalculateXP(userId);
-      dbStats = await storage.getUserStats(userId);
-      if (!dbStats) return res.status(404).json({ error: "User stats not found" });
-      
-      // Transform database stats into the nested object structure expected by the frontend
-      const transformedStats = {
-        attentionTokens: {
-          current: dbStats.attentionTokensCurrent,
-          max: dbStats.attentionTokensMax,
-        },
-        timeTokens: {
-          current: dbStats.timeTokensCurrent,
-          max: dbStats.timeTokensMax,
-        },
-        energyPoints: {
-          current: dbStats.energyPointsCurrent,
-          max: dbStats.energyPointsMax,
-        },
-        healthPoints: {
-          current: dbStats.healthPointsCurrent,
-          max: dbStats.healthPointsMax,
-        },
-        wealthTokens: {
-          current: dbStats.wealthTokensCurrent ?? 100,
-          max: dbStats.wealthTokensMax ?? 100,
-        },
-        experience: {
-          current: xpData.experienceCurrent,
-          max: xpData.experienceMax,
-          level: xpData.level,
-          totalXP: xpData.totalXP,
-          showLevelUp: false
-        },
-        streakDays: dbStats.streakDays || 0,
-        efficiencyScore: dbStats.efficiencyScore || 0,
-        aiAssistantName: dbStats.aiAssistantName,
-        // Include system settings in the transformed stats
-        notificationsEnabled: dbStats.notificationsEnabled,
-        darkThemeEnabled: dbStats.darkThemeEnabled, 
-        autoSyncEnabled: dbStats.autoSyncEnabled,
-        aiAssistantEnabled: dbStats.aiAssistantEnabled,
-        primaryColor: (userProfile?.primaryThemeColor && userProfile.primaryThemeColor !== "#ffe03d" ? userProfile.primaryThemeColor : null)
-          || (dbStats.primaryColor && dbStats.primaryColor !== "#ffffff" ? dbStats.primaryColor : null)
-          || "#00e0ff",
-      };
-      
-      return res.status(200).json({ stats: transformedStats });
+
+      // Concurrent page bootstraps for the same user share one exact-current
+      // reconciliation. The entry is removed as soon as the read settles, so
+      // later requests never receive a stale cached snapshot.
+      const payload = await userStatsReads.run(userId, () => loadFreshUserStats(userId));
+      if (!payload) return res.status(404).json({ error: "User stats not found" });
+
+      return res.status(200).json(payload);
     } catch (error) {
       return res.status(500).json({ error: "Internal server error" });
     }
