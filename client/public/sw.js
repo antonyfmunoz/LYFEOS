@@ -1,5 +1,8 @@
 const CACHE_NAME = 'lyfeos-v27';
 const MAX_APP_SHELL_URLS = 200;
+const APP_SHELL_CACHE_CONCURRENCY = 8;
+const pendingAppShellUrls = new Set();
+let appShellCacheInFlight = null;
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
@@ -70,26 +73,57 @@ function safeAppShellUrl(value) {
   }
 }
 
-async function cacheCurrentAppShell(values) {
-  const urls = [...new Set((Array.isArray(values) ? values : [])
+function boundedAppShellUrls(values) {
+  return [...new Set((Array.isArray(values) ? values : [])
     .slice(0, MAX_APP_SHELL_URLS)
     .map(safeAppShellUrl)
     .filter(Boolean))];
+}
+
+async function cacheCurrentAppShell(urls) {
   const cache = await caches.open(CACHE_NAME);
-  const results = await Promise.allSettled(urls.map(async (url) => {
-    const request = new Request(url, { method: 'GET', credentials: 'same-origin', cache: 'reload' });
-    const response = await fetch(request);
-    const cacheControl = response.headers.get('cache-control') || '';
-    if (!response.ok || /(?:^|,)\s*(?:private|no-store)\b/i.test(cacheControl)) return false;
-    await cache.put(request, response.clone());
-    return true;
-  }));
-  return results.filter((result) => result.status === 'fulfilled' && result.value === true).length;
+  let cached = 0;
+  for (let index = 0; index < urls.length; index += APP_SHELL_CACHE_CONCURRENCY) {
+    const batch = urls.slice(index, index + APP_SHELL_CACHE_CONCURRENCY);
+    const results = await Promise.allSettled(batch.map(async (url) => {
+      const request = new Request(url, { method: 'GET', credentials: 'same-origin', cache: 'reload' });
+      const response = await fetch(request);
+      const cacheControl = response.headers.get('cache-control') || '';
+      if (!response.ok || /(?:^|,)\s*(?:private|no-store)\b/i.test(cacheControl)) return false;
+      await cache.put(request, response.clone());
+      return true;
+    }));
+    cached += results.filter((result) => result.status === 'fulfilled' && result.value === true).length;
+  }
+  return cached;
+}
+
+async function drainAppShellCacheQueue() {
+  let cached = 0;
+  while (pendingAppShellUrls.size > 0) {
+    const urls = [...pendingAppShellUrls];
+    cached += await cacheCurrentAppShell(urls);
+    for (const url of urls) pendingAppShellUrls.delete(url);
+  }
+  return cached;
+}
+
+function requestCurrentAppShellCache(values) {
+  for (const url of boundedAppShellUrls(values)) {
+    if (pendingAppShellUrls.size >= MAX_APP_SHELL_URLS) break;
+    pendingAppShellUrls.add(url);
+  }
+  if (!appShellCacheInFlight) {
+    appShellCacheInFlight = drainAppShellCacheQueue().finally(() => {
+      appShellCacheInFlight = null;
+    });
+  }
+  return appShellCacheInFlight;
 }
 
 self.addEventListener('message', (event) => {
   if (event.data?.type !== 'CACHE_CURRENT_APP_SHELL') return;
-  const operation = cacheCurrentAppShell(event.data.urls)
+  const operation = requestCurrentAppShellCache(event.data.urls)
     .then((cached) => event.ports?.[0]?.postMessage({ type: 'CURRENT_APP_SHELL_CACHED', cached }))
     .catch(() => event.ports?.[0]?.postMessage({ type: 'CURRENT_APP_SHELL_CACHED', cached: 0 }));
   event.waitUntil(operation);
