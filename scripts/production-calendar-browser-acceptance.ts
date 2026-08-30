@@ -398,7 +398,8 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     await page.waitForSelector('[data-testid="calendar-page"]', { visible: true, timeout: 60_000 });
     await page.waitForFunction((title) => {
       const text = document.querySelector('[data-testid="calendar-offline-queue"]')?.textContent || "";
-      return text.includes(String(title)) && text.includes("Waiting for a connection");
+      const pendingOffline = text.includes("Waiting for a connection") || text.includes("Waiting for the next safe sync attempt");
+      return text.includes(String(title)) && pendingOffline;
     }, { timeout: 45_000 }, offlineTitle);
     const serviceWorkerColdStartRecovered = await page.evaluate(() => Boolean(navigator.serviceWorker?.controller));
     assert(serviceWorkerColdStartRecovered, "Calendar did not recover through a restarted service worker while offline.");

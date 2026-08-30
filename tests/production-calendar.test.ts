@@ -46,6 +46,7 @@ describe("production Calendar evidence custody", () => {
     const stopServiceWorkers = acceptance.indexOf('session.send("ServiceWorker.stopAllWorkers")');
     expect(enableServiceWorker).toBeGreaterThan(-1);
     expect(stopServiceWorkers).toBeGreaterThan(enableServiceWorker);
+    expect(acceptance).toContain('text.includes("Waiting for the next safe sync attempt")');
     expect(acceptance).toContain('contract: "lyfeos.production-calendar-browser.v3"');
     expect(acceptance).not.toContain("service-worker cold-start offline navigation, storage eviction recovery");
   });
