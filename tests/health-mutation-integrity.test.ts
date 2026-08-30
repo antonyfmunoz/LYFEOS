@@ -84,6 +84,10 @@ describe("health mutation integrity", () => {
     expect(daily).toContain('url: "/api/health-fitness/measurements"');
     expect(body).toContain('url: "/api/health-fitness/measurements"');
     expect(observations).toContain('url: "/api/health-observations"');
+    expect(daily.match(/networkMode: "always"/g)).toHaveLength(3);
+    for (const offlineCaptureComponent of [nutrition, workouts, sleep, recovery, body, observations]) {
+      expect(offlineCaptureComponent).toContain('networkMode: "always"');
+    }
     for (const routes of [sleepRoutes, recoveryRoutes]) {
       expect(routes).toContain('req.header("x-lyfeos-mutation-id")');
       expect(routes).toContain("healthMutationPayloadHash(parsed.data)");
@@ -106,6 +110,8 @@ describe("health mutation integrity", () => {
     Object.defineProperty(globalThis, "indexedDB", { configurable: true, value: undefined });
     try {
       await expect(countHealthMutationQueue(1)).rejects.toMatchObject({ name: "HealthOfflineStorageError", code: "unavailable" });
+      Object.defineProperty(globalThis, "indexedDB", { configurable: true, value: { open: () => { throw new DOMException("full", "QuotaExceededError"); } } });
+      await expect(countHealthMutationQueue(1)).rejects.toMatchObject({ name: "HealthOfflineStorageError", code: "quota" });
     } finally {
       if (descriptor) Object.defineProperty(globalThis, "indexedDB", descriptor);
       else delete (globalThis as { indexedDB?: IDBFactory }).indexedDB;

@@ -40,6 +40,7 @@ export default function BodyProgress() {
     });
   }, [measurements.data, measurementMethod, metric, unit]);
   const addMeasurement = useMutation({
+    networkMode: "always",
     mutationFn: () => {
       const body = { metric, value: Number(value), unit, measurementMethod, measurementProtocol: measurementProtocol || null, ...(editingId ? {} : { observedAt: getLocalDateString() }), source: "manual" };
       if (!editingId) {

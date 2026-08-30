@@ -57,6 +57,7 @@ export default function RecoveryLog() {
     setIntensity(""); setEffect(""); setNote(""); setTags("");
   };
   const log = useMutation({
+    networkMode: "always",
     mutationFn: () => {
       const body = {
         activityType, customLabel: activityType === "other" ? customLabel : null,

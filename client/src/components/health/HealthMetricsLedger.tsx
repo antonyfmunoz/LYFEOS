@@ -117,6 +117,7 @@ export default function HealthMetricsLedger() {
     setDeviceName(""); setLabName(""); setSpecimenType(""); setCollectedAt(""); setReferenceLow(""); setReferenceHigh("");
   };
   const save = useMutation({
+    networkMode: "always",
     mutationFn: () => {
       const body = {
         metricDefinitionId: selectedDefinitionId ? Number(selectedDefinitionId) : null,

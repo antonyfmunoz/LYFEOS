@@ -212,6 +212,7 @@ export default function WorkoutLog() {
     })),
   });
   const save = useMutation({
+    networkMode: "always",
     mutationFn: async () => {
       const payload = workoutPayload();
       if (editingWorkoutId) {

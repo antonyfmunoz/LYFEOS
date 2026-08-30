@@ -57,17 +57,21 @@ function openDatabase(): Promise<IDBDatabase> {
       reject(offlineHealthStorageError({ name: "NotSupportedError" }, "unavailable"));
       return;
     }
-    const request = indexedDB.open(DATABASE_NAME, DATABASE_VERSION);
-    request.onupgradeneeded = () => {
-      const database = request.result;
-      const store = database.objectStoreNames.contains(STORE_NAME)
-        ? request.transaction!.objectStore(STORE_NAME)
-        : database.createObjectStore(STORE_NAME, { keyPath: "id" });
-      if (!store.indexNames.contains("userId")) store.createIndex("userId", "userId", { unique: false });
-    };
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(offlineHealthStorageError(request.error, "unavailable"));
-    request.onblocked = () => reject(offlineHealthStorageError({ name: "BlockedError" }, "blocked"));
+    try {
+      const request = indexedDB.open(DATABASE_NAME, DATABASE_VERSION);
+      request.onupgradeneeded = () => {
+        const database = request.result;
+        const store = database.objectStoreNames.contains(STORE_NAME)
+          ? request.transaction!.objectStore(STORE_NAME)
+          : database.createObjectStore(STORE_NAME, { keyPath: "id" });
+        if (!store.indexNames.contains("userId")) store.createIndex("userId", "userId", { unique: false });
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(offlineHealthStorageError(request.error, "unavailable"));
+      request.onblocked = () => reject(offlineHealthStorageError({ name: "BlockedError" }, "blocked"));
+    } catch (error) {
+      reject(offlineHealthStorageError(error, "unavailable"));
+    }
   });
 }
 

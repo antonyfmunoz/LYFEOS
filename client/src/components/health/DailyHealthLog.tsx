@@ -136,11 +136,13 @@ export default function DailyHealthLog() {
   }, [editingHydrationId, profile.data?.profile?.volumeUnit]);
 
   const addHydration = useMutation({
+    networkMode: "always",
     mutationFn: () => { const body = { quantity: Number(hydrationMl), inputUnit: hydrationUnit, ...(editingHydrationId ? {} : { occurredAt: localNoonIso(date) }) }; if (!editingHydrationId) { if (!user?.id) throw new Error("Sign in before saving hydration."); return submitHealthMutation({ userId: user.id, url: "/api/health-fitness/hydration", body }); } return apiRequest(`/api/health-fitness/hydration/${editingHydrationId}`, { method: "PATCH", body: JSON.stringify(body) }); },
     onSuccess: (result) => { setHydrationMl(hydrationUnit === "ml" ? "250" : "1"); setEditingHydrationId(null); if (result && typeof result === "object" && "queued" in result && result.queued) { void queryClient.invalidateQueries({ queryKey: ["health-offline-queue", user?.id] }); toast({ title: "Hydration saved on this device", description: "LyfeOS will add it to your account when this device is online." }); } else void Promise.all([refreshHealth(), queryClient.invalidateQueries({ queryKey: ["/api/health-fitness/hydration"] })]); },
     onError: (error: Error) => toast({ title: "Hydration was not saved", description: error.message, variant: "destructive" }),
   });
   const addWeight = useMutation({
+    networkMode: "always",
     mutationFn: () => { if (!user?.id) throw new Error("Sign in before saving weight."); return submitHealthMutation({ userId: user.id, url: "/api/health-fitness/measurements", body: { metric: "weight", value: Number(weight), unit: profile.data?.profile?.weightUnit || "kg", observedAt: date, source: "manual" } }); },
     onSuccess: (result) => { setWeight(""); if (result.queued) { void queryClient.invalidateQueries({ queryKey: ["health-offline-queue", user?.id] }); toast({ title: "Weight saved on this device", description: "LyfeOS will add it to your account when this device is online." }); } else void refreshHealth(); },
     onError: (error: Error) => toast({ title: "Weight was not saved", description: error.message, variant: "destructive" }),
@@ -150,6 +152,7 @@ export default function DailyHealthLog() {
     onSuccess: () => { setHydrationTarget(""); void refreshHealth(); },
   });
   const addSupplement = useMutation({
+    networkMode: "always",
     mutationFn: () => { const body = { name: supplementName, amount: supplementAmount ? Number(supplementAmount) : null, unit: supplementAmount ? supplementUnit : null, brand: supplementBrand.trim() || null, manufacturer: supplementManufacturer.trim() || null, form: supplementForm.trim() || null, barcode: supplementBarcode.trim() || null, lotNumber: supplementLotNumber.trim() || null, expiresOn: supplementExpiresOn || null, ...(editingSupplementId ? {} : { occurredAt: localNoonIso(date) }) }; if (!editingSupplementId) { if (!user?.id) throw new Error("Sign in before saving a supplement entry."); return submitHealthMutation({ userId: user.id, url: "/api/health-fitness/supplements", body }); } return apiRequest(`/api/health-fitness/supplements/${editingSupplementId}`, { method: "PATCH", body: JSON.stringify(body) }); },
     onSuccess: (result) => { setSupplementName(""); setSupplementAmount(""); setSupplementBrand(""); setSupplementManufacturer(""); setSupplementForm(""); setSupplementBarcode(""); setSupplementLotNumber(""); setSupplementExpiresOn(""); setEditingSupplementId(null); if (result && typeof result === "object" && "queued" in result && result.queued) { void queryClient.invalidateQueries({ queryKey: ["health-offline-queue", user?.id] }); toast({ title: "Supplement entry saved on this device", description: "LyfeOS will add it to your account when this device is online." }); } else void queryClient.invalidateQueries({ queryKey: ["/api/health-fitness/supplements"] }); },
     onError: (error: Error) => toast({ title: "Supplement entry was not saved", description: error.message, variant: "destructive" }),

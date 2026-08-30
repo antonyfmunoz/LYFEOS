@@ -138,6 +138,7 @@ export default function NutritionDiary() {
   const removePortion = useMutation({ mutationFn: (id: number) => apiRequest(`/api/nutrition/food-portions/${id}`, { method: "DELETE" }), onSuccess: () => { setInputPortionId(""); void refresh(); } });
   const toggleFavorite = useMutation({ mutationFn: (food: Food) => apiRequest(`/api/nutrition/foods/${food.id}/favorite`, { method: "PATCH", body: JSON.stringify({ favorite: !food.favorite }) }), onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["/api/nutrition/foods"] }) });
   const logFood = useMutation({
+    networkMode: "always",
     mutationFn: async () => {
       if (editingEntryId) return apiRequest(`/api/nutrition/diary/${editingEntryId}`, { method: "PATCH", body: JSON.stringify({ quantity: Number(servingGrams), inputUnit, portionId: inputUnit === "portion" ? Number(inputPortionId) : null, mealSlot }) });
       if (!user?.id) throw new Error("Sign in before recording nutrition.");

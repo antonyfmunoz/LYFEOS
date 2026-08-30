@@ -154,32 +154,22 @@ async function clickReady(page: Page, selector: string): Promise<void> {
 }
 
 async function installQuotaFailure(page: Page): Promise<void> {
-  await page.evaluate(() => {
-    const target = window as typeof window & { __lyfeosOriginalIndexedDB?: IDBFactory };
-    target.__lyfeosOriginalIndexedDB = window.indexedDB;
-    const failingFactory = {
-      open() {
-        const request = {
-          error: new DOMException("Acceptance fixture quota", "QuotaExceededError"),
-          onerror: null as ((event: Event) => void) | null,
-          onsuccess: null,
-          onblocked: null,
-          onupgradeneeded: null,
-        };
-        queueMicrotask(() => request.onerror?.(new Event("error")));
-        return request as unknown as IDBOpenDBRequest;
-      },
+  await page.waitForFunction(async () => (await indexedDB.databases()).some((database) => database.name === "lyfeos-health-mutations"), { timeout: 30_000 });
+  await page.evaluate(String.raw`
+    window.__lyfeosOriginalIndexedDBOpen = IDBFactory.prototype.open;
+    IDBFactory.prototype.open = function () {
+      throw new DOMException("Acceptance fixture quota", "QuotaExceededError");
     };
-    Object.defineProperty(window, "indexedDB", { configurable: true, value: failingFactory });
-  });
+  `);
 }
 
 async function restoreIndexedDb(page: Page): Promise<void> {
-  await page.evaluate(() => {
-    const target = window as typeof window & { __lyfeosOriginalIndexedDB?: IDBFactory };
-    if (target.__lyfeosOriginalIndexedDB) Object.defineProperty(window, "indexedDB", { configurable: true, value: target.__lyfeosOriginalIndexedDB });
-    delete target.__lyfeosOriginalIndexedDB;
-  });
+  await page.evaluate(String.raw`
+    if (window.__lyfeosOriginalIndexedDBOpen) {
+      IDBFactory.prototype.open = window.__lyfeosOriginalIndexedDBOpen;
+      delete window.__lyfeosOriginalIndexedDBOpen;
+    }
+  `);
 }
 
 async function auditPage(page: Page): Promise<Audit> {
@@ -248,16 +238,20 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
   const stamp = `${Date.now()}_${ordinal}_${randomUUID().slice(0, 8)}`;
   const account: Account = { id: 0, email: `health_offline_production_${stamp}@example.com`, displayName: `health_offline_owner_${ordinal}_${stamp.slice(-8)}`, cookie: "" };
   let context: BrowserContext | null = null;
+  let quotaFailureInstalled = false;
+  let page: Page | null = null;
   let view: ViewResult | null = null;
   let accountErased = false;
   let failure: unknown = null;
+  let stage = "register disposable account";
   try {
     await registerDisposableAccount(account);
+    stage = "complete onboarding fixture";
     const onboarding = await request("PATCH", "/api/profile", { onboardingCompleted: true }, account.cookie);
     assert(onboarding.status === 200, `Onboarding setup returned ${onboarding.status}.`);
 
     context = await browser.createBrowserContext();
-    const page = await context.newPage();
+    page = await context.newPage();
     const offlineState = { intentionalOffline: false };
     const signals = captureSignals(page, offlineState);
     const session = cookieParts(account.cookie);
@@ -267,10 +261,14 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     }, { id: account.id, displayName: account.displayName });
     await page.setViewport(viewport.value);
     await page.setCacheEnabled(false);
+    stage = "navigate to Health";
     await page.goto(new URL("/health", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
+    stage = "wait for Health page";
     await page.waitForSelector('[data-testid="health-page"]', { visible: true, timeout: 60_000 });
+    stage = "wait for daily Health log";
     await page.waitForSelector('[data-testid="daily-health-log"]', { visible: true, timeout: 60_000 });
     await dismissBlockingTutorial(page);
+    stage = "read browser date context";
     const localContext = await page.evaluate(() => {
       const now = new Date();
       return {
@@ -279,50 +277,87 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
         utcOffsetMinutes: -now.getTimezoneOffset(),
       };
     });
+    stage = "prove initial hydration absence";
     await waitForHydrationCount(account, localContext.date, localContext.timeZone, localContext.utcOffsetMinutes, 0);
 
+    stage = "prepare quota-failure hydration";
     await setValue(page, '[data-testid="health-hydration-amount"]', String(HYDRATION_ML));
     offlineState.intentionalOffline = true;
     await page.setOfflineMode(true);
     await installQuotaFailure(page);
+    quotaFailureInstalled = true;
+    const quotaFailureObserved = await page.evaluate(() => {
+      try { indexedDB.open("lyfeos-health-mutations", 1); return false; }
+      catch (error) { return error instanceof DOMException && error.name === "QuotaExceededError"; }
+    });
+    assert(quotaFailureObserved, "The browser did not observe the quota-refusal fixture.");
+    stage = "submit with unavailable offline storage";
     await clickReady(page, '[data-testid="health-hydration-save"]');
-    await page.waitForFunction(() => document.body.innerText.includes("Hydration was not saved"), { timeout: 30_000 });
+    stage = "wait for storage refusal";
+    await page.waitForFunction(() => document.body.innerText.includes("Hydration was not saved"), { timeout: 30_000 }).catch(async (error) => {
+      const state = await page.evaluate(() => ({
+        online: navigator.onLine,
+        amount: (document.querySelector('[data-testid="health-hydration-amount"]') as HTMLInputElement | null)?.value || null,
+        saveDisabled: (document.querySelector('[data-testid="health-hydration-save"]') as HTMLButtonElement | null)?.disabled ?? null,
+        storageUnavailable: Boolean(document.querySelector('[data-testid="health-offline-storage-unavailable"]')),
+        queueVisible: Boolean(document.querySelector('[data-testid="health-offline-queue"]')),
+        saveErrorVisible: document.body.innerText.includes("Could not save that hydration record"),
+      }));
+      throw new Error(`${safeError(error)}; state=${JSON.stringify(state)}`);
+    });
     const quotaFailureLeftFormIntact = await page.$eval('[data-testid="health-hydration-amount"]', (input) => (input as HTMLInputElement).value === String(432.1));
     const quotaFailureCreatedNoQueueItem = (await page.$$('[data-testid="health-offline-queue"]')).length === 0;
     assert(quotaFailureLeftFormIntact && quotaFailureCreatedNoQueueItem, "Unavailable offline storage either cleared the form or falsely claimed a queued record.");
+    stage = "prove quota-refused record absent from server";
     await waitForHydrationCount(account, localContext.date, localContext.timeZone, localContext.utcOffsetMinutes, 0);
 
+    stage = "restore offline storage";
     await restoreIndexedDb(page);
+    quotaFailureInstalled = false;
+    stage = "submit durable offline hydration";
     await clickReady(page, '[data-testid="health-hydration-save"]');
+    stage = "wait for offline queue";
     await page.waitForSelector('[data-testid="health-offline-queue"]', { visible: true, timeout: 30_000 });
+    stage = "wait for queued hydration label";
     await page.waitForFunction(() => document.querySelector('[data-testid="health-offline-queue"]')?.textContent?.includes("Hydration record"), { timeout: 30_000 });
     const offlineRecordRenderedAsDeviceOnly = true;
+    stage = "prove queued record absent from server";
     await waitForHydrationCount(account, localContext.date, localContext.timeZone, localContext.utcOffsetMinutes, 0);
     const offlineRecordAbsentFromServer = true;
 
     offlineState.intentionalOffline = false;
     await page.setOfflineMode(false);
     await page.evaluate(() => window.dispatchEvent(new Event("online")));
+    stage = "wait for reconnect queue drainage";
     await page.waitForSelector('[data-testid="health-offline-queue"]', { hidden: true, timeout: 45_000 });
+    stage = "prove exactly one reconnected record";
     await waitForHydrationCount(account, localContext.date, localContext.timeZone, localContext.utcOffsetMinutes, 1);
     const reconnectSyncedExactlyOnce = true;
 
+    stage = "reload Health";
     await page.reload({ waitUntil: "domcontentloaded", timeout: 60_000 });
+    stage = "wait for reloaded Health page";
     await page.waitForSelector('[data-testid="health-page"]', { visible: true, timeout: 60_000 });
+    stage = "wait for persisted hydration rendering";
     await page.waitForFunction((value) => document.body.innerText.includes(`${value} ml`), { timeout: 45_000 }, String(HYDRATION_ML));
+    stage = "re-prove exactly one persisted record";
     await waitForHydrationCount(account, localContext.date, localContext.timeZone, localContext.utcOffsetMinutes, 1);
     const reloadRenderedPersistedRecord = true;
     const queueDrained = (await page.$$('[data-testid="health-offline-queue"]')).length === 0;
     assert(queueDrained, "The Health offline queue did not drain after the server accepted the record.");
 
+    stage = "audit final Health page";
     const audit = await auditPage(page);
     assert(audit.mainCount === 1 && audit.duplicateIds.length === 0 && audit.invalidLabelReferences.length === 0 && audit.unlabeledControls.length === 0 && audit.horizontalOverflowPx <= 2, `${viewport.name} failed Health semantics or overflow checks.`);
     await acknowledgeBoundedChunkRecovery(page, signals);
     assert(!hasUnexpectedBrowserSignals(signals), `${viewport.name} produced unexpected browser signals: ${JSON.stringify(signals)}.`);
     view = { viewport: viewport.name, quotaFailureLeftFormIntact, quotaFailureCreatedNoQueueItem, offlineRecordRenderedAsDeviceOnly, offlineRecordAbsentFromServer, reconnectSyncedExactlyOnce, reloadRenderedPersistedRecord, queueDrained, audit, signals };
   } catch (error) {
-    failure = error;
+    const pages = context ? await context.pages().catch(() => []) : [];
+    const rendered = pages[0] ? await pages[0].evaluate(() => document.body?.innerText.slice(0, 4_000) || "").catch(() => "") : "";
+    failure = new Error(`${stage}: ${safeError(error)}${rendered ? `; rendered=${rendered}` : ""}`);
   } finally {
+    if (quotaFailureInstalled && page) await restoreIndexedDb(page).catch(() => undefined);
     if (context) await context.close().catch(() => undefined);
     if (account.cookie) accountErased = await eraseAccount(account);
   }

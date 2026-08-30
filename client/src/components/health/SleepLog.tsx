@@ -98,6 +98,7 @@ export default function SleepLog() {
   };
   const resetSession = () => { setSessionStart(""); setSessionEnd(""); setSessionSource("manual"); setSessionDevice(""); setSessionMethod(""); setSessionStages({ awake: "", light: "", deep: "", rem: "" }); setSessionQuality(""); setSessionNote(""); setEditingSessionId(null); setEditingSessionRevision(null); };
   const saveSession = useMutation({
+    networkMode: "always",
     mutationFn: () => {
       const body = { startedAt: new Date(sessionStart).toISOString(), endedAt: new Date(sessionEnd).toISOString(), source: sessionSource, deviceName: sessionDevice.trim() || null, method: sessionMethod.trim() || null, awakeMinutes: sessionStages.awake ? Number(sessionStages.awake) : null, lightMinutes: sessionStages.light ? Number(sessionStages.light) : null, deepMinutes: sessionStages.deep ? Number(sessionStages.deep) : null, remMinutes: sessionStages.rem ? Number(sessionStages.rem) : null, subjectiveQuality: sessionQuality ? Number(sessionQuality) : null, note: sessionNote.trim() || null };
       if (!editingSessionId) {
