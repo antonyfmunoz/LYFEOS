@@ -37,7 +37,7 @@ export function columnLabel(index: number): string {
 }
 
 export function parseCellAddress(address: string): { column: number; row: number } | null {
-  const match = /^([A-Z]{1,3})([1-9][0-9]{0,3})$/.exec(address.toUpperCase());
+  const match = /^\$?([A-Z]{1,3})\$?([1-9][0-9]{0,3})$/.exec(address.toUpperCase());
   if (!match) return null;
   let column = 0;
   for (const char of match[1]) column = column * 26 + char.charCodeAt(0) - 64;
@@ -48,15 +48,43 @@ type SpreadsheetInsertionAxis = "row" | "column";
 
 function shiftFormulaReferences(input: string, axis: SpreadsheetInsertionAxis, beforeIndex: number): string {
   if (!input.startsWith("=")) return input;
-  return input.replace(/\b([A-Za-z]{1,3})([1-9][0-9]{0,3})\b/g, (reference) => {
-    const parsed = parseCellAddress(reference);
-    if (!parsed) return reference;
-    const column = axis === "column" && parsed.column >= beforeIndex ? parsed.column + 1 : parsed.column;
-    const row = axis === "row" && parsed.row >= beforeIndex ? parsed.row + 1 : parsed.row;
-    const shifted = `${columnLabel(column)}${row + 1}`;
-    if (!spreadsheetAddressPattern.test(shifted)) throw new Error("A formula reference would exceed the supported sheet boundary.");
-    return shifted;
-  });
+  let shiftedFormula = "";
+  let position = 0;
+  let insideString = false;
+  while (position < input.length) {
+    if (input[position] === '"') {
+      shiftedFormula += '"';
+      if (insideString && input[position + 1] === '"') {
+        shiftedFormula += '"';
+        position += 2;
+        continue;
+      }
+      insideString = !insideString;
+      position += 1;
+      continue;
+    }
+    const reference = insideString ? null : /^(\$?)([A-Za-z]{1,3})(\$?)([1-9][0-9]{0,3})/.exec(input.slice(position));
+    const previous = position > 0 ? input[position - 1] : "";
+    const next = reference ? input[position + reference[0].length] || "" : "";
+    if (reference && !/[A-Za-z0-9_$]/.test(previous) && !/[A-Za-z0-9_]/.test(next)) {
+      const parsed = parseCellAddress(reference[0]);
+      if (!parsed) {
+        shiftedFormula += reference[0];
+        position += reference[0].length;
+        continue;
+      }
+      const column = axis === "column" && parsed.column >= beforeIndex ? parsed.column + 1 : parsed.column;
+      const row = axis === "row" && parsed.row >= beforeIndex ? parsed.row + 1 : parsed.row;
+      const shifted = `${columnLabel(column)}${row + 1}`;
+      if (!spreadsheetAddressPattern.test(shifted)) throw new Error("A formula reference would exceed the supported sheet boundary.");
+      shiftedFormula += `${reference[1]}${columnLabel(column)}${reference[3]}${row + 1}`;
+      position += reference[0].length;
+      continue;
+    }
+    shiftedFormula += input[position];
+    position += 1;
+  }
+  return shiftedFormula;
 }
 
 export function insertSpreadsheetAxis(sheet: SpreadsheetSheet, axis: SpreadsheetInsertionAxis, beforeIndex: number): SpreadsheetSheet {
@@ -403,6 +431,14 @@ function tokenize(formula: string): FormulaToken[] | null {
       position += 1;
       continue;
     }
+    const cell = /^\$?[A-Za-z]{1,3}\$?[1-9][0-9]{0,3}(?![A-Za-z0-9_])/.exec(rest);
+    if (cell) {
+      const value = cell[0].replaceAll("$", "").toUpperCase();
+      if (!spreadsheetAddressPattern.test(value)) return null;
+      tokens.push({ kind: "cell", value });
+      position += cell[0].length;
+      continue;
+    }
     const number = /^\d+(?:\.\d+)?/.exec(rest);
     if (number) {
       tokens.push({ kind: "number", value: number[0] });
@@ -412,7 +448,7 @@ function tokenize(formula: string): FormulaToken[] | null {
     const word = /^[A-Za-z]+[0-9]*/.exec(rest);
     if (!word) return null;
     const value = word[0].toUpperCase();
-    tokens.push({ kind: spreadsheetAddressPattern.test(value) ? "cell" : "identifier", value });
+    tokens.push({ kind: "identifier", value });
     position += word[0].length;
   }
   return tokens;

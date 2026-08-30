@@ -16,6 +16,7 @@ type ViewResult = {
   catalogAndEditorRendered: boolean;
   formulasCalculated: boolean;
   extendedFormulaCompatibility: boolean;
+  absoluteReferencesReconciled: boolean;
   undoRedoReconciled: boolean;
   controlledClipboardAdapterRoundTrip: boolean;
   chartFamiliesRenderedFromCanonicalRanges: boolean;
@@ -381,6 +382,9 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     await selectCellAndEnter(page, "B8", "=A1<A2");
     await page.waitForFunction(() => document.querySelector('[data-sheet-address="B8"]')?.getAttribute("aria-label") === "B8: TRUE", { timeout: 30_000 });
     const extendedFormulaCompatibility = true;
+    await selectCellAndEnter(page, "B9", '=IF($A$1=2,"$A$1 stays text",$A$2)');
+    await page.waitForFunction(() => document.querySelector('[data-sheet-address="B9"]')?.getAttribute("aria-label") === "B9: $A$1 stays text", { timeout: 30_000 });
+    const absoluteReferencesReconciled = true;
     await selectCellAndEnter(page, "A1", "9");
     await activate(page, 'button[aria-label="Undo last unsaved spreadsheet change"]');
     const undone = await page.$eval('input[aria-label="Cell input or formula"]', (element) => (element as HTMLInputElement).value === "2");
@@ -498,7 +502,8 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
       && importSheet?.cells?.A2?.input === "sleep"
       && creationSheet.cells?.B1?.input === "2"
       && creationSheet.cells?.B4?.input === "=IF(A1<A2,ROUND(A2/A1,1),1/0)"
-      && creationSheet.cells?.B8?.input === "=A1<A2");
+      && creationSheet.cells?.B8?.input === "=A1<A2"
+      && creationSheet.cells?.B9?.input === '=IF($A$1=2,"$A$1 stays text",$A$2)');
     assert(immutableCreationRevisionReconciled, "Creation revision did not persist formula, clipboard and reviewed import state.");
     const revisionsV1 = await request("GET", `/api/spreadsheets/${spreadsheetId}/revisions`, undefined, owner.cookie);
     assert(revisionsV1.status === 200 && revisionsV1.body.revisions?.length === 1 && revisionsV1.body.revisions[0]?.action === "created", "Creation history is not an immutable version one.");
@@ -574,7 +579,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     assert(audit.mainCount === 1 && audit.duplicateIds.length === 0 && audit.invalidLabelReferences.length === 0 && audit.unlabeledControls.length === 0 && audit.horizontalOverflowPx <= 2, `${viewport.name} Sheets failed semantics or overflow checks.`);
     await acknowledgeBoundedChunkRecovery(page, signals);
     assert(!hasUnexpectedBrowserSignals(signals), `${viewport.name} Sheets journey produced application errors: ${JSON.stringify(signals)}.`);
-    view = { viewport: viewport.name, catalogAndEditorRendered, formulasCalculated, extendedFormulaCompatibility, undoRedoReconciled: true, controlledClipboardAdapterRoundTrip, chartFamiliesRenderedFromCanonicalRanges, dualAxisCombinationReconciled, explicitSeriesRolesReconciled, chartDefinitionsPersisted, chartFamiliesReloadedAndRestored, localImportReviewedAndPersisted, immutableCreationRevisionReconciled, crossOwnerIsolationReconciled, staleSaveStoppedAsConflict, largeGridWindowed, renderedCellCountAtLimit, reconciledSaveCreatedNewRevision, restoreCreatedNewImmutableRevision, catalogPersistenceRendered, audit, signals };
+    view = { viewport: viewport.name, catalogAndEditorRendered, formulasCalculated, extendedFormulaCompatibility, absoluteReferencesReconciled, undoRedoReconciled: true, controlledClipboardAdapterRoundTrip, chartFamiliesRenderedFromCanonicalRanges, dualAxisCombinationReconciled, explicitSeriesRolesReconciled, chartDefinitionsPersisted, chartFamiliesReloadedAndRestored, localImportReviewedAndPersisted, immutableCreationRevisionReconciled, crossOwnerIsolationReconciled, staleSaveStoppedAsConflict, largeGridWindowed, renderedCellCountAtLimit, reconciledSaveCreatedNewRevision, restoreCreatedNewImmutableRevision, catalogPersistenceRendered, audit, signals };
   } catch (error) {
     const rendered = page ? await page.evaluate(() => document.body?.innerText.slice(0, 2_000) || "page unavailable").catch(() => "page unavailable") : "page unavailable";
     if (page) await page.screenshot({ path: path.join(OUTPUT_DIR, `sheets-${viewport.name}-failure.png`), fullPage: true }).catch(() => undefined);
@@ -614,7 +619,7 @@ async function main(): Promise<void> {
     if (browser) await browser.close().catch(() => undefined);
     const passed = failure === null && views.length === VIEWPORTS.length && cleanups.length === VIEWPORTS.length && cleanups.every((cleanup) => cleanup.accountErased && cleanup.otherAccountErased);
     const report = {
-      contract: "lyfeos.production-sheets-browser.v7",
+      contract: "lyfeos.production-sheets-browser.v8",
       generatedAt: new Date().toISOString(),
       baseUrl: BASE_URL.origin,
       sourceRevision: SOURCE,
@@ -622,7 +627,7 @@ async function main(): Promise<void> {
       views,
       cleanups,
       summary: { passed, failure },
-      boundary: "Disposable production-account Chromium evidence for Sheets. It proves desktop/mobile catalog and editor rendering; raw-value and formula persistence; calculated formula display; safe arithmetic, comparisons, quoted text, booleans, SUM, AVERAGE, MIN, MAX, COUNT, COUNTA, ROUND, ABS and lazy IF behavior; local undo/redo; persisted live line, bar, stacked bar, area, combination, pie and scatter definitions over canonical cells; explicit per-series bar/line assignment for combination charts with deterministic legacy defaults and safe last-role swapping; an explicit shared-versus-dual combination-axis choice with bar values on the left, line values on the independently scaled right, a visual-risk disclosure and unchanged canonical raw-value table; formula-derived chart values; explicit missing-value and complete-pair handling with accessible source tables; chart-family reload and immutable restore; copy/paste through a controlled in-page Clipboard API adapter; explicit local CSV review before persistence; immutable create, update, conflict and restore revisions; cross-owner isolation; bounded rendering at the documented 500-row by 100-column limit; responsive semantics; and verified account/session/identifier erasure. It does not prove native spreadsheet-file import, OS clipboard permissions, real-device clipboard or file-picker behavior, browser permission denial recovery, simultaneous multi-tab editing, full Excel or Google Sheets formula compatibility, human assistive-technology comprehension, statistical causality, or longitudinal calculation correctness for user-authored models.",
+      boundary: "Disposable production-account Chromium evidence for Sheets. It proves desktop/mobile catalog and editor rendering; raw-value and formula persistence; calculated formula display; safe relative and $A$1-style absolute references; safe arithmetic, comparisons, quoted text, booleans, SUM, AVERAGE, MIN, MAX, COUNT, COUNTA, ROUND, ABS and lazy IF behavior; local undo/redo; persisted live line, bar, stacked bar, area, combination, pie and scatter definitions over canonical cells; explicit per-series bar/line assignment for combination charts with deterministic legacy defaults and safe last-role swapping; an explicit shared-versus-dual combination-axis choice with bar values on the left, line values on the independently scaled right, a visual-risk disclosure and unchanged canonical raw-value table; formula-derived chart values; explicit missing-value and complete-pair handling with accessible source tables; chart-family reload and immutable restore; copy/paste through a controlled in-page Clipboard API adapter; explicit local CSV review before persistence; immutable create, update, conflict and restore revisions; cross-owner isolation; bounded rendering at the documented 500-row by 100-column limit; responsive semantics; and verified account/session/identifier erasure. It does not prove cross-sheet references, native spreadsheet-file import, OS clipboard permissions, real-device clipboard or file-picker behavior, browser permission denial recovery, simultaneous multi-tab editing, full Excel or Google Sheets formula compatibility, human assistive-technology comprehension, statistical causality, or longitudinal calculation correctness for user-authored models.",
     };
     await fs.writeFile(OUTPUT_FILE, `${JSON.stringify(report, null, 2)}\n`, "utf8");
     if (process.env.GITHUB_STEP_SUMMARY) {

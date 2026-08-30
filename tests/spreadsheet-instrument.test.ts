@@ -15,6 +15,7 @@ describe("Sheets instrument", () => {
     expect(columnLabel(25)).toBe("Z");
     expect(columnLabel(26)).toBe("AA");
     expect(parseCellAddress("AA12")).toEqual({ column: 26, row: 11 });
+    expect(parseCellAddress("$AA$12")).toEqual({ column: 26, row: 11 });
   });
 
   it("evaluates safe arithmetic, references, ranges, and aggregate functions", () => {
@@ -73,6 +74,22 @@ describe("Sheets instrument", () => {
     expect(evaluateSpreadsheetCell(document, sheet.id, "B12")).toBe("130");
     expect(evaluateSpreadsheetCell(document, sheet.id, "B13")).toBe("3");
     expect(evaluateSpreadsheetCell(document, sheet.id, "B14")).toBe("5");
+  });
+
+  it("evaluates absolute and mixed references without treating their markers as executable syntax", () => {
+    const document = createEmptySpreadsheetDocument();
+    const sheet = document.sheets[0];
+    sheet.cells = {
+      A1: { input: "2" },
+      A2: { input: "3" },
+      A3: { input: "4" },
+      B1: { input: "=$A$1+A$2+$A3" },
+      B2: { input: "=SUM($A$1:$A$3)" },
+      B3: { input: '=IF($A$1=2,"$A$1 is text","")' },
+    };
+    expect(evaluateSpreadsheetCell(document, sheet.id, "B1")).toBe("9");
+    expect(evaluateSpreadsheetCell(document, sheet.id, "B2")).toBe("9");
+    expect(evaluateSpreadsheetCell(document, sheet.id, "B3")).toBe("$A$1 is text");
   });
 
   it("fails closed for malformed or incompatible extended formulas", () => {
@@ -260,11 +277,13 @@ describe("Sheets instrument", () => {
       A2: { input: "2", format: { bold: true, align: "right" } },
       B1: { input: "=SUM(A1:A2)" },
       C1: { input: "=B1+A2" },
+      D1: { input: '=IF(TRUE,"A2 stays text",$A$2)' },
     };
 
     const withRow = insertSpreadsheetAxis(sourceSheet, "row", 1);
     expect(withRow.rowCount).toBe(41);
     expect(withRow.cells).toMatchObject({ A1: { input: "1" }, A3: { input: "2", format: { bold: true, align: "right" } }, B1: { input: "=SUM(A1:A3)" }, C1: { input: "=B1+A3" } });
+    expect(withRow.cells.D1).toEqual({ input: '=IF(TRUE,"A2 stays text",$A$3)' });
     expect(withRow.cells.A2).toBeUndefined();
     expect(sourceSheet.cells.A2).toEqual({ input: "2", format: { bold: true, align: "right" } });
 
@@ -272,6 +291,7 @@ describe("Sheets instrument", () => {
     expect(withColumn.columnCount).toBe(11);
     expect(withColumn.cells.C1).toEqual({ input: "=SUM(A1:A3)" });
     expect(withColumn.cells.D1).toEqual({ input: "=C1+A3" });
+    expect(withColumn.cells.E1).toEqual({ input: '=IF(TRUE,"A2 stays text",$A$3)' });
     expect(evaluateSpreadsheetCell({ ...document, sheets: [withColumn] }, withColumn.id, "D1")).toBe("5");
   });
 
