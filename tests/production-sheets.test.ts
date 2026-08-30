@@ -12,7 +12,7 @@ describe("production Sheets evidence custody", () => {
   const editor = source("client/src/pages/SpreadsheetEditorPage.tsx");
 
   it("binds the production-only contract to immutable runtime and harness sources", () => {
-    expect(acceptance).toContain('contract: "lyfeos.production-sheets-browser.v6"');
+    expect(acceptance).toContain('contract: "lyfeos.production-sheets-browser.v7"');
     expect(acceptance).toContain('BASE_URL.origin === "https://lyfeos.net"');
     expect(acceptance).toContain("release.body?.sourceRevision === SOURCE");
     expect(acceptance).toContain("HARNESS_SOURCE");
@@ -22,6 +22,9 @@ describe("production Sheets evidence custody", () => {
     expect(acceptance).toContain('name: "desktop-1440x900"');
     expect(acceptance).toContain('name: "mobile-390x844"');
     expect(acceptance).toContain("formulasCalculated");
+    expect(acceptance).toContain("extendedFormulaCompatibility");
+    expect(acceptance).toContain('=IF(A1<A2,ROUND(A2/A1,1),1/0)');
+    expect(acceptance).toContain("COUNT, COUNTA, ROUND, ABS and lazy IF behavior");
     expect(acceptance).toContain("controlledClipboardAdapterRoundTrip");
     expect(acceptance).toContain("chartFamiliesRenderedFromCanonicalRanges");
     expect(acceptance).toContain("dualAxisCombinationReconciled");

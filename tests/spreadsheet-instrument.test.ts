@@ -34,6 +34,69 @@ describe("Sheets instrument", () => {
     expect(evaluateSpreadsheetCell(document, sheet.id, "C1")).toBe("#DIV/0!");
   });
 
+  it("supports common counting, rounding, comparison, and conditional formulas", () => {
+    const document = createEmptySpreadsheetDocument();
+    const sheet = document.sheets[0];
+    sheet.cells = {
+      A1: { input: "2" },
+      A2: { input: "3" },
+      A3: { input: "" },
+      A4: { input: "note" },
+      A5: { input: "-2.345" },
+      A6: { input: "=TRUE" },
+      B1: { input: "=COUNT(A1:A4)" },
+      B2: { input: "=COUNTA(A1:A4)" },
+      B3: { input: "=ROUND(ABS(A5),2)" },
+      B4: { input: '=IF(A1>A2,"Ahead","Focus")' },
+      B5: { input: "=IF(A1<A2,ROUND(A2/A1,1),1/0)" },
+      B6: { input: "=A1<=2" },
+      B7: { input: "=IF(COUNTA(A1:A4)=3,1,0)" },
+      B8: { input: '=IF(TRUE,"He said ""go""","Stop")' },
+      B9: { input: '=IF(TRUE,"#draft","")' },
+      B10: { input: '=IF(B9="#draft",1,0)' },
+      B11: { input: "=ROUND(-1.5,0)" },
+      B12: { input: "=ROUND(125,-1)" },
+      B13: { input: "=COUNT(A1:A6)" },
+      B14: { input: "=COUNTA(A1:A6)" },
+    };
+    expect(evaluateSpreadsheetCell(document, sheet.id, "B1")).toBe("2");
+    expect(evaluateSpreadsheetCell(document, sheet.id, "B2")).toBe("3");
+    expect(evaluateSpreadsheetCell(document, sheet.id, "B3")).toBe("2.35");
+    expect(evaluateSpreadsheetCell(document, sheet.id, "B4")).toBe("Focus");
+    expect(evaluateSpreadsheetCell(document, sheet.id, "B5")).toBe("1.5");
+    expect(evaluateSpreadsheetCell(document, sheet.id, "B6")).toBe("TRUE");
+    expect(evaluateSpreadsheetCell(document, sheet.id, "B7")).toBe("1");
+    expect(evaluateSpreadsheetCell(document, sheet.id, "B8")).toBe('He said "go"');
+    expect(evaluateSpreadsheetCell(document, sheet.id, "B9")).toBe("#draft");
+    expect(evaluateSpreadsheetCell(document, sheet.id, "B10")).toBe("1");
+    expect(evaluateSpreadsheetCell(document, sheet.id, "B11")).toBe("-2");
+    expect(evaluateSpreadsheetCell(document, sheet.id, "B12")).toBe("130");
+    expect(evaluateSpreadsheetCell(document, sheet.id, "B13")).toBe("3");
+    expect(evaluateSpreadsheetCell(document, sheet.id, "B14")).toBe("5");
+  });
+
+  it("fails closed for malformed or incompatible extended formulas", () => {
+    const document = createEmptySpreadsheetDocument();
+    const sheet = document.sheets[0];
+    sheet.cells = {
+      A1: { input: "text" },
+      B1: { input: "=ROUND(A1,2)" },
+      B2: { input: "=IF(TRUE,1)" },
+      B3: { input: "=ROUND(2.5,16)" },
+      B4: { input: '=IF("maybe",1,0)' },
+      B5: { input: '=IF(FALSE,1/0,"safe")' },
+      B6: { input: `=${"(".repeat(600)}1${")".repeat(600)}` },
+      B7: { input: "=SUM(A1:CV500,A1:CV500,A1:CV500)" },
+    };
+    expect(evaluateSpreadsheetCell(document, sheet.id, "B1")).toBe("#VALUE!");
+    expect(evaluateSpreadsheetCell(document, sheet.id, "B2")).toBe("#ERROR!");
+    expect(evaluateSpreadsheetCell(document, sheet.id, "B3")).toBe("#VALUE!");
+    expect(evaluateSpreadsheetCell(document, sheet.id, "B4")).toBe("#VALUE!");
+    expect(evaluateSpreadsheetCell(document, sheet.id, "B5")).toBe("safe");
+    expect(evaluateSpreadsheetCell(document, sheet.id, "B6")).toBe("#ERROR!");
+    expect(evaluateSpreadsheetCell(document, sheet.id, "B7")).toBe("#ERROR!");
+  });
+
   it("detects circular references instead of recursively trusting them", () => {
     const document = createEmptySpreadsheetDocument();
     const sheet = document.sheets[0];

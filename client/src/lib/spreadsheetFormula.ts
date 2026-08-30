@@ -1,7 +1,29 @@
 import type { SpreadsheetDocument, SpreadsheetNumberFormat, SpreadsheetSheet } from "@shared/spreadsheets";
 import { spreadsheetAddressPattern } from "@shared/spreadsheets";
 
-type FormulaValue = number | "#ERROR!" | "#VALUE!" | "#DIV/0!" | "#CYCLE!";
+type FormulaError = "#ERROR!" | "#VALUE!" | "#DIV/0!" | "#CYCLE!";
+type FormulaValue = number | string | boolean | FormulaError;
+type FormulaArithmeticOperator = "+" | "-" | "*" | "/";
+type FormulaComparisonOperator = "=" | "<>" | "<" | "<=" | ">" | ">=";
+type FormulaBinaryOperator = FormulaArithmeticOperator | FormulaComparisonOperator;
+
+type FormulaNode =
+  | { kind: "number"; value: number }
+  | { kind: "string"; value: string }
+  | { kind: "boolean"; value: boolean }
+  | { kind: "cell"; address: string }
+  | { kind: "range"; start: string; end: string }
+  | { kind: "unary"; operator: "+" | "-"; operand: FormulaNode }
+  | { kind: "binary"; operator: FormulaBinaryOperator; left: FormulaNode; right: FormulaNode }
+  | { kind: "function"; name: string; arguments: FormulaNode[] };
+
+type FormulaToken =
+  | { kind: "number"; value: string }
+  | { kind: "string"; value: string }
+  | { kind: "identifier"; value: string }
+  | { kind: "cell"; value: string }
+  | { kind: "operator"; value: string }
+  | { kind: "punctuation"; value: string };
 
 export function columnLabel(index: number): string {
   let value = index + 1;
@@ -66,7 +88,9 @@ export function evaluateSpreadsheetCell(document: SpreadsheetDocument, sheetId: 
   const sheet = document.sheets.find((candidate) => candidate.id === sheetId);
   if (!sheet || !spreadsheetAddressPattern.test(address)) return "";
   const result = evaluateAddress(sheet, address, new Set());
-  return typeof result === "number" ? formatNumber(result) : result;
+  if (typeof result === "number") return formatNumber(result);
+  if (typeof result === "boolean") return result ? "TRUE" : "FALSE";
+  return result;
 }
 
 export function formatSpreadsheetDisplayValue(value: string, numberFormat?: SpreadsheetNumberFormat): string {
@@ -80,6 +104,7 @@ export function formatSpreadsheetDisplayValue(value: string, numberFormat?: Spre
 
 function evaluateAddress(sheet: SpreadsheetSheet, address: string, stack: Set<string>): FormulaValue | string {
   if (stack.has(address)) return "#CYCLE!";
+  if (stack.size >= 200) return "#ERROR!";
   const input = sheet.cells[address]?.input ?? "";
   if (!input.startsWith("=")) return input;
   const nextStack = new Set(stack).add(address);
@@ -87,114 +112,308 @@ function evaluateAddress(sheet: SpreadsheetSheet, address: string, stack: Set<st
 }
 
 function evaluateFormula(sheet: SpreadsheetSheet, formula: string, stack: Set<string>): FormulaValue {
-  const parsedTokens = tokenize(formula);
-  if (!parsedTokens) return "#ERROR!";
-  const tokens: string[] = parsedTokens;
-  let index = 0;
+  const tokens = tokenize(formula);
+  if (!tokens || tokens.length > 500) return "#ERROR!";
+  const root = parseFormula(tokens);
+  if (!root) return "#ERROR!";
 
-  const numericCell = (address: string): FormulaValue => {
-    const value = evaluateAddress(sheet, address, stack);
+  const isError = (value: FormulaValue): value is FormulaError => typeof value === "string" && ["#ERROR!", "#VALUE!", "#DIV/0!", "#CYCLE!"].includes(value);
+  const evaluateCell = (address: string): FormulaValue => evaluateAddress(sheet, address, stack);
+  const toNumber = (value: FormulaValue): number | FormulaError => {
+    if (isError(value)) return value;
     if (typeof value === "number") return value;
-    if (value === "") return 0;
-    if (typeof value === "string" && value.startsWith("#")) return value as FormulaValue;
-    const number = Number(value);
-    return Number.isFinite(number) ? number : "#VALUE!";
+    if (typeof value === "boolean") return value ? 1 : 0;
+    if (value.trim() === "") return 0;
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric : "#VALUE!";
   };
-
-  const parseExpression = (): FormulaValue => {
-    let left = parseTerm();
-    while (tokens[index] === "+" || tokens[index] === "-") {
-      const operator = tokens[index++];
-      const right = parseTerm();
-      if (typeof left !== "number") return left;
-      if (typeof right !== "number") return right;
-      left = operator === "+" ? left + right : left - right;
+  const toBoolean = (value: FormulaValue): boolean | FormulaError => {
+    if (isError(value)) return value;
+    if (typeof value === "boolean") return value;
+    if (typeof value === "number") return value !== 0;
+    if (value.trim() === "") return false;
+    if (value.toUpperCase() === "TRUE") return true;
+    if (value.toUpperCase() === "FALSE") return false;
+    return "#VALUE!";
+  };
+  const compare = (left: FormulaValue, right: FormulaValue, operator: FormulaComparisonOperator): FormulaValue => {
+    if (isError(left)) return left;
+    if (isError(right)) return right;
+    const leftNumber = toNumber(left);
+    const rightNumber = toNumber(right);
+    const numeric = typeof leftNumber === "number" && typeof rightNumber === "number";
+    if (numeric) {
+      if (operator === "=") return leftNumber === rightNumber;
+      if (operator === "<>") return leftNumber !== rightNumber;
+      if (operator === "<") return leftNumber < rightNumber;
+      if (operator === "<=") return leftNumber <= rightNumber;
+      if (operator === ">") return leftNumber > rightNumber;
+      return leftNumber >= rightNumber;
     }
-    return left;
+    const first = String(left).toLocaleLowerCase();
+    const second = String(right).toLocaleLowerCase();
+    if (operator === "=") return first === second;
+    if (operator === "<>") return first !== second;
+    if (operator === "<") return first < second;
+    if (operator === "<=") return first <= second;
+    if (operator === ">") return first > second;
+    return first >= second;
   };
-
-  const parseTerm = (): FormulaValue => {
-    let left = parseFactor();
-    while (tokens[index] === "*" || tokens[index] === "/") {
-      const operator = tokens[index++];
-      const right = parseFactor();
-      if (typeof left !== "number") return left;
-      if (typeof right !== "number") return right;
-      if (operator === "/" && right === 0) return "#DIV/0!";
-      left = operator === "*" ? left * right : left / right;
-    }
-    return left;
-  };
-
-  const parseFunction = (name: string): FormulaValue => {
-    index += 2; // function name and opening parenthesis
-    const values: number[] = [];
-    while (index < tokens.length && tokens[index] !== ")") {
-      const start = tokens[index];
-      if (spreadsheetAddressPattern.test(start) && tokens[index + 1] === ":" && spreadsheetAddressPattern.test(tokens[index + 2] || "")) {
-        index += 3;
-        for (const address of expandRange(start, tokens[index - 1])) {
-          const value = numericCell(address);
-          if (typeof value !== "number") return value;
-          values.push(value);
-        }
+  let rangedCellReads = 0;
+  const flattenedArguments = (nodes: FormulaNode[]): Array<{ value: FormulaValue; fromRange: boolean }> => {
+    const values: Array<{ value: FormulaValue; fromRange: boolean }> = [];
+    for (const node of nodes) {
+      if (node.kind === "range") {
+        const addresses = expandRange(node.start, node.end);
+        rangedCellReads += addresses.length;
+        if (rangedCellReads > 100_000) return [{ value: "#ERROR!", fromRange: false }];
+        for (const address of addresses) values.push({ value: evaluateCell(address), fromRange: true });
       } else {
-        const value = parseExpression();
-        if (typeof value !== "number") return value;
-        values.push(value);
+        values.push({ value: evaluateNode(node), fromRange: false });
       }
-      if (tokens[index] === ",") index += 1;
-      else if (tokens[index] !== ")") return "#ERROR!";
     }
-    if (tokens[index] !== ")") return "#ERROR!";
-    index += 1;
-    if (!values.length) return 0;
-    if (name === "SUM") return values.reduce((sum, value) => sum + value, 0);
-    if (name === "AVERAGE") return values.reduce((sum, value) => sum + value, 0) / values.length;
-    if (name === "MIN") return Math.min(...values);
+    return values;
+  };
+  const aggregateNumbers = (nodes: FormulaNode[]): number[] | FormulaError => {
+    const values: number[] = [];
+    for (const entry of flattenedArguments(nodes)) {
+      if (isError(entry.value)) return entry.value;
+      if (entry.fromRange && (typeof entry.value === "boolean" || (typeof entry.value === "string" && entry.value.trim() !== "" && !Number.isFinite(Number(entry.value))))) continue;
+      if (entry.fromRange && entry.value === "") continue;
+      const numeric = toNumber(entry.value);
+      if (typeof numeric !== "number") return numeric;
+      values.push(numeric);
+    }
+    return values;
+  };
+  const evaluateFunction = (node: Extract<FormulaNode, { kind: "function" }>): FormulaValue => {
+    if (node.name === "IF") {
+      if (node.arguments.length !== 3) return "#ERROR!";
+      const condition = toBoolean(evaluateNode(node.arguments[0]));
+      if (typeof condition !== "boolean") return condition;
+      return evaluateNode(node.arguments[condition ? 1 : 2]);
+    }
+    if (node.name === "ABS") {
+      if (node.arguments.length !== 1 || node.arguments[0].kind === "range") return "#ERROR!";
+      const value = toNumber(evaluateNode(node.arguments[0]));
+      return typeof value === "number" ? Math.abs(value) : value;
+    }
+    if (node.name === "ROUND") {
+      if (node.arguments.length !== 2 || node.arguments.some((argument) => argument.kind === "range")) return "#ERROR!";
+      const value = toNumber(evaluateNode(node.arguments[0]));
+      if (typeof value !== "number") return value;
+      const digits = toNumber(evaluateNode(node.arguments[1]));
+      if (typeof digits !== "number") return digits;
+      if (!Number.isInteger(digits) || digits < -15 || digits > 15) return "#VALUE!";
+      const factor = 10 ** Math.abs(digits);
+      const magnitude = Math.abs(value);
+      const rounded = digits >= 0
+        ? Math.round((magnitude + Number.EPSILON) * factor) / factor
+        : Math.round((magnitude + Number.EPSILON) / factor) * factor;
+      return value < 0 ? -rounded : rounded;
+    }
+    if (node.name === "COUNT" || node.name === "COUNTA") {
+      const entries = flattenedArguments(node.arguments);
+      if (node.name === "COUNTA") return entries.filter(({ value }) => value !== "").length;
+      return entries.filter(({ value, fromRange }) => !isError(value) && value !== "" && !(fromRange && typeof value === "boolean") && typeof toNumber(value) === "number").length;
+    }
+    const values = aggregateNumbers(node.arguments);
+    if (!Array.isArray(values)) return values;
+    if (node.name === "SUM") return values.reduce((sum, value) => sum + value, 0);
+    if (!values.length) return node.name === "AVERAGE" ? "#DIV/0!" : 0;
+    if (node.name === "AVERAGE") return values.reduce((sum, value) => sum + value, 0) / values.length;
+    if (node.name === "MIN") return Math.min(...values);
     return Math.max(...values);
   };
+  const evaluateNode = (node: FormulaNode): FormulaValue => {
+    if (node.kind === "number" || node.kind === "string" || node.kind === "boolean") return node.value;
+    if (node.kind === "cell") return evaluateCell(node.address);
+    if (node.kind === "range") return "#VALUE!";
+    if (node.kind === "function") return evaluateFunction(node);
+    if (node.kind === "unary") {
+      const value = toNumber(evaluateNode(node.operand));
+      return typeof value === "number" ? (node.operator === "-" ? -value : value) : value;
+    }
+    const left = evaluateNode(node.left);
+    if (["=", "<>", "<", "<=", ">", ">="].includes(node.operator)) return compare(left, evaluateNode(node.right), node.operator as FormulaComparisonOperator);
+    const leftNumber = toNumber(left);
+    if (typeof leftNumber !== "number") return leftNumber;
+    const rightNumber = toNumber(evaluateNode(node.right));
+    if (typeof rightNumber !== "number") return rightNumber;
+    if (node.operator === "+") return leftNumber + rightNumber;
+    if (node.operator === "-") return leftNumber - rightNumber;
+    if (node.operator === "*") return leftNumber * rightNumber;
+    if (rightNumber === 0) return "#DIV/0!";
+    return leftNumber / rightNumber;
+  };
 
-  function parseFactor(): FormulaValue {
-    const token = tokens[index];
-    if (token === "+" || token === "-") {
-      index += 1;
-      const value = parseFactor();
-      return typeof value === "number" ? (token === "-" ? -value : value) : value;
-    }
-    if (token === "(") {
-      index += 1;
-      const value = parseExpression();
-      if (tokens[index] !== ")") return "#ERROR!";
-      index += 1;
-      return value;
-    }
-    if (["SUM", "AVERAGE", "MIN", "MAX"].includes(token) && tokens[index + 1] === "(") return parseFunction(token);
-    if (spreadsheetAddressPattern.test(token || "")) {
-      index += 1;
-      return numericCell(token);
-    }
-    if (token && /^\d+(?:\.\d+)?$/.test(token)) {
-      index += 1;
-      return Number(token);
-    }
-    return "#ERROR!";
-  }
-
-  const result = parseExpression();
-  return index === tokens.length ? result : "#ERROR!";
+  return evaluateNode(root);
 }
 
-function tokenize(formula: string): string[] | null {
-  const normalized = formula.toUpperCase();
-  const tokens: string[] = [];
+function parseFormula(tokens: FormulaToken[]): FormulaNode | null {
+  let index = 0;
+  const current = () => tokens[index];
+  const consume = (value?: string) => {
+    const token = tokens[index];
+    if (!token || (value !== undefined && token.value !== value)) return null;
+    index += 1;
+    return token;
+  };
+
+  const parseComparison = (): FormulaNode | null => {
+    let left = parseExpression();
+    if (!left) return null;
+    const token = current();
+    if (token?.kind === "operator" && ["=", "<>", "<", "<=", ">", ">="].includes(token.value)) {
+      consume();
+      const right = parseExpression();
+      if (!right) return null;
+      left = { kind: "binary", operator: token.value as FormulaComparisonOperator, left, right };
+    }
+    return left;
+  };
+  const parseExpression = (): FormulaNode | null => {
+    let left = parseTerm();
+    if (!left) return null;
+    while (current()?.value === "+" || current()?.value === "-") {
+      const operator = consume()!.value as "+" | "-";
+      const right = parseTerm();
+      if (!right) return null;
+      left = { kind: "binary", operator, left, right };
+    }
+    return left;
+  };
+  const parseTerm = (): FormulaNode | null => {
+    let left = parseFactor();
+    if (!left) return null;
+    while (current()?.value === "*" || current()?.value === "/") {
+      const operator = consume()!.value as "*" | "/";
+      const right = parseFactor();
+      if (!right) return null;
+      left = { kind: "binary", operator, left, right };
+    }
+    return left;
+  };
+  const parseFunction = (name: string): FormulaNode | null => {
+    consume("(");
+    const argumentsList: FormulaNode[] = [];
+    if (current()?.value !== ")") {
+      while (true) {
+        const argument = parseComparison();
+        if (!argument) return null;
+        argumentsList.push(argument);
+        if (current()?.value !== ",") break;
+        consume(",");
+      }
+    }
+    if (!consume(")")) return null;
+    return { kind: "function", name, arguments: argumentsList };
+  };
+  const parseFactor = (): FormulaNode | null => {
+    const token = current();
+    if (!token) return null;
+    if (token.value === "+" || token.value === "-") {
+      consume();
+      const operand = parseFactor();
+      return operand ? { kind: "unary", operator: token.value as "+" | "-", operand } : null;
+    }
+    if (token.value === "(") {
+      consume("(");
+      const value = parseComparison();
+      return value && consume(")") ? value : null;
+    }
+    if (token.kind === "number") {
+      consume();
+      return { kind: "number", value: Number(token.value) };
+    }
+    if (token.kind === "string") {
+      consume();
+      return { kind: "string", value: token.value };
+    }
+    if (token.kind === "cell") {
+      consume();
+      if (current()?.value === ":") {
+        consume(":");
+        const end = current();
+        if (end?.kind !== "cell") return null;
+        consume();
+        return { kind: "range", start: token.value, end: end.value };
+      }
+      return { kind: "cell", address: token.value };
+    }
+    if (token.kind === "identifier") {
+      consume();
+      if (token.value === "TRUE" || token.value === "FALSE") return { kind: "boolean", value: token.value === "TRUE" };
+      if (!["SUM", "AVERAGE", "MIN", "MAX", "COUNT", "COUNTA", "ROUND", "ABS", "IF"].includes(token.value) || current()?.value !== "(") return null;
+      return parseFunction(token.value);
+    }
+    return null;
+  };
+
+  const root = parseComparison();
+  return root && index === tokens.length ? root : null;
+}
+
+function tokenize(formula: string): FormulaToken[] | null {
+  const tokens: FormulaToken[] = [];
   let position = 0;
-  const pattern = /^\s*(AVERAGE|SUM|MIN|MAX|[A-Z]{1,3}[1-9][0-9]{0,3}|\d+(?:\.\d+)?|[()+\-*/,:])/;
-  while (position < normalized.length) {
-    const match = pattern.exec(normalized.slice(position));
-    if (!match) return null;
-    tokens.push(match[1]);
-    position += match[0].length;
+  while (position < formula.length) {
+    const rest = formula.slice(position);
+    const whitespace = /^\s+/.exec(rest);
+    if (whitespace) {
+      position += whitespace[0].length;
+      continue;
+    }
+    if (rest[0] === '"') {
+      let value = "";
+      let cursor = 1;
+      let closed = false;
+      while (cursor < rest.length) {
+        if (rest[cursor] !== '"') {
+          value += rest[cursor++];
+          continue;
+        }
+        if (rest[cursor + 1] === '"') {
+          value += '"';
+          cursor += 2;
+          continue;
+        }
+        cursor += 1;
+        closed = true;
+        break;
+      }
+      if (!closed) return null;
+      tokens.push({ kind: "string", value });
+      position += cursor;
+      continue;
+    }
+    const comparison = /^(<=|>=|<>)/.exec(rest);
+    if (comparison) {
+      tokens.push({ kind: "operator", value: comparison[1] });
+      position += comparison[1].length;
+      continue;
+    }
+    if (/^[+\-*/=<>]/.test(rest)) {
+      tokens.push({ kind: "operator", value: rest[0] });
+      position += 1;
+      continue;
+    }
+    if (/^[(),:]/.test(rest)) {
+      tokens.push({ kind: "punctuation", value: rest[0] });
+      position += 1;
+      continue;
+    }
+    const number = /^\d+(?:\.\d+)?/.exec(rest);
+    if (number) {
+      tokens.push({ kind: "number", value: number[0] });
+      position += number[0].length;
+      continue;
+    }
+    const word = /^[A-Za-z]+[0-9]*/.exec(rest);
+    if (!word) return null;
+    const value = word[0].toUpperCase();
+    tokens.push({ kind: spreadsheetAddressPattern.test(value) ? "cell" : "identifier", value });
+    position += word[0].length;
   }
   return tokens;
 }
