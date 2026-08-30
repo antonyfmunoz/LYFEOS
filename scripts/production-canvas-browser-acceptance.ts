@@ -415,6 +415,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     const secondTabState = await waitForCanvas(owner, canvasId, (canvas) => canvas.revision === 2, "second-tab Canvas save");
     const secondTabCommitted = secondTabState.title === serverTitle;
     assert(secondTabCommitted, "The second live tab did not commit Canvas revision two.");
+    await page.bringToFront();
     await setValue(page, 'input[aria-label="Canvas title"]', `Stale browser ${ordinal}`);
     await activate(page, '[data-testid="canvas-save"]');
     await page.waitForFunction(() => document.body.innerText.includes("changed after you opened it"), { timeout: 30_000 });

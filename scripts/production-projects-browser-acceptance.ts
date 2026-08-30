@@ -367,6 +367,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     const secondTabState = await waitForProject(owner, projectId, (body) => body.project?.revision === 9, "second-tab Project save");
     const secondTabCommitted = secondTabState.project?.title === serverTitle;
     assert(secondTabCommitted, "The second live tab did not commit Project revision nine.");
+    await page.bringToFront();
     await setValue(page, '[aria-label="Project title"]', `Stale Project ${ordinal}`);
     await activate(page, '[data-testid="project-save"]');
     await page.waitForFunction(() => document.body.innerText.includes("Project changed in another session"), { timeout: 30_000 });

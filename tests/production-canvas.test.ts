@@ -29,6 +29,7 @@ describe("production Canvas evidence custody", () => {
     expect(acceptance).toContain("staleSaveStoppedAsConflict");
     expect(acceptance).toContain("multiTabConflictReconciled");
     expect(acceptance).toContain("competingPage = await context.newPage()");
+    expect(acceptance).toContain("await page.bringToFront()");
     expect(acceptance).toContain("second live tab's Canvas revision");
     expect(acceptance).toContain("maximumDocumentRendered");
     expect(acceptance).toContain("restoreCreatedNewImmutableRevision");

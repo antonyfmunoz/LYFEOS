@@ -691,6 +691,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     const secondTabState = await waitForSpreadsheet(owner, spreadsheetId, (sheet) => sheet.revision === 2, "second-tab spreadsheet save");
     const secondTabCommitted = secondTabState.title === serverTitle;
     assert(secondTabCommitted, "The second live tab did not commit spreadsheet revision two.");
+    await page.bringToFront();
     await setValue(page, 'input[aria-label="Sheet title"]', `Stale browser ${ordinal}`);
     await activate(page, '[data-testid="sheet-save"]');
     await page.waitForFunction(() => document.querySelector('[role="alert"]')?.textContent?.includes("changed after you opened it"), { timeout: 30_000 });

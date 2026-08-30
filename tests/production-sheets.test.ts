@@ -53,6 +53,7 @@ describe("production Sheets evidence custody", () => {
     expect(acceptance).toContain("staleSaveStoppedAsConflict");
     expect(acceptance).toContain("multiTabConflictReconciled");
     expect(acceptance).toContain("competingPage = await context.newPage()");
+    expect(acceptance).toContain("await page.bringToFront()");
     expect(acceptance).toContain("second live tab's spreadsheet revision");
     expect(acceptance).toContain("largeGridWindowed");
     expect(acceptance).toContain("restoreCreatedNewImmutableRevision");
