@@ -20,6 +20,7 @@ type ViewResult = {
   unlinkPreservedCanonicalMission: boolean;
   completionAndReopenReconciled: boolean;
   existingMissionRelinked: boolean;
+  multiTabConflictReconciled: boolean;
   staleSaveStoppedAsConflict: boolean;
   recoverableRemovalAndRestoreReconciled: boolean;
   deepLinkPersisted: boolean;
@@ -244,6 +245,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
   const missionTitle = `Canonical Project Mission ${ordinal}`;
   let context: BrowserContext | null = null;
   let page: Page | null = null;
+  let competingPage: Page | null = null;
   let view: ViewResult | null = null;
   let failure: unknown = null;
   let ownerErased = false, otherErased = false;
@@ -353,15 +355,27 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     const crossOwnerIsolationReconciled = isolated.status === 404;
     assert(crossOwnerIsolationReconciled, `Cross-owner Project read returned ${isolated.status}.`);
 
-    stage = "stop a stale rendered save after a competing Project edit";
-    const competing = await request("PATCH", `/api/projects/${projectId}`, { title: serverTitle, expectedRevision: 8 }, owner.cookie);
-    assert(competing.status === 200 && competing.body.project?.revision === 9, `Competing Project edit returned ${competing.status}.`);
+    stage = "stop a stale rendered save after a second live tab commits";
+    competingPage = await context.newPage();
+    await competingPage.setViewport(viewport.value);
+    await competingPage.setCacheEnabled(false);
+    await competingPage.goto(new URL(`/projects?project=${projectId}`, BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
+    await competingPage.waitForSelector('[data-testid="project-detail"]', { visible: true, timeout: 60_000 });
+    await competingPage.waitForFunction((title) => (document.querySelector('[aria-label="Project title"]') as HTMLInputElement | null)?.value === title, { timeout: 30_000 }, initialTitle);
+    await setValue(competingPage, '[aria-label="Project title"]', serverTitle);
+    await activate(competingPage, '[data-testid="project-save"]');
+    const secondTabState = await waitForProject(owner, projectId, (body) => body.project?.revision === 9, "second-tab Project save");
+    const secondTabCommitted = secondTabState.project?.title === serverTitle;
+    assert(secondTabCommitted, "The second live tab did not commit Project revision nine.");
     await setValue(page, '[aria-label="Project title"]', `Stale Project ${ordinal}`);
     await activate(page, '[data-testid="project-save"]');
     await page.waitForFunction(() => document.body.innerText.includes("Project changed in another session"), { timeout: 30_000 });
     detail = await waitForProject(owner, projectId, (body) => body.project?.revision === 9, "stale Project save refusal");
     const staleSaveStoppedAsConflict = detail.project.title === serverTitle;
-    assert(staleSaveStoppedAsConflict, "A stale rendered save overwrote the competing Project revision.");
+    const multiTabConflictReconciled = secondTabCommitted && staleSaveStoppedAsConflict;
+    assert(multiTabConflictReconciled, "A stale first-tab save overwrote the second live tab's Project revision.");
+    await competingPage.close();
+    competingPage = null;
     acknowledgeExpectedConflict(signals);
     await page.reload({ waitUntil: "domcontentloaded", timeout: 60_000 });
     await page.waitForSelector('[data-testid="project-detail"]', { visible: true, timeout: 60_000 });
@@ -396,7 +410,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
       && audit.unlabeledControls.length === 0 && audit.horizontalOverflowPx <= 2, `${viewport.name} failed Projects semantics or overflow checks: ${JSON.stringify(audit)}.`);
     await acknowledgeBoundedChunkRecovery(page, signals);
     assert(!hasUnexpectedBrowserSignals(signals), `${viewport.name} Projects journey produced application errors: ${JSON.stringify(signals)}.`);
-    view = { viewport: viewport.name, catalogAndDetailRendered, declaredOutcomeAndDatesPersisted, canonicalMissionCreatedAtomically, prematureCompletionBlocked, unlinkPreservedCanonicalMission, completionAndReopenReconciled, existingMissionRelinked, staleSaveStoppedAsConflict, recoverableRemovalAndRestoreReconciled, deepLinkPersisted: deepLinkPersisted && restoredDeepLink, crossOwnerIsolationReconciled, appendOnlyHistoryReconciled, audit, signals };
+    view = { viewport: viewport.name, catalogAndDetailRendered, declaredOutcomeAndDatesPersisted, canonicalMissionCreatedAtomically, prematureCompletionBlocked, unlinkPreservedCanonicalMission, completionAndReopenReconciled, existingMissionRelinked, multiTabConflictReconciled, staleSaveStoppedAsConflict, recoverableRemovalAndRestoreReconciled, deepLinkPersisted: deepLinkPersisted && restoredDeepLink, crossOwnerIsolationReconciled, appendOnlyHistoryReconciled, audit, signals };
   } catch (error) {
     const rendered = page ? await page.evaluate(() => document.body?.innerText.slice(0, 2_000) || "page unavailable").catch(() => "page unavailable") : "page unavailable";
     if (page) await page.screenshot({ path: path.join(OUTPUT_DIR, `projects-${viewport.name}-failure.png`), fullPage: true }).catch(() => undefined);
@@ -448,7 +462,7 @@ async function main(): Promise<void> {
     if (browser) await browser.close().catch(() => undefined);
     const passed = failure === null && views.length === VIEWPORTS.length && cleanups.length === VIEWPORTS.length && cleanups.every((cleanup) => cleanup.ownerErased && cleanup.otherErased);
     const report = {
-      contract: MODE === "production" ? "lyfeos.production-projects-browser.v1" : "lyfeos.isolated-projects-browser.v1",
+      contract: MODE === "production" ? "lyfeos.production-projects-browser.v2" : "lyfeos.isolated-projects-browser.v2",
       generatedAt: new Date().toISOString(),
       baseUrl: BASE_URL.origin,
       sourceRevision: SOURCE,
@@ -456,7 +470,7 @@ async function main(): Promise<void> {
       views,
       cleanups,
       summary: { passed, failure },
-      boundary: `Disposable ${MODE === "production" ? "production-account" : "isolated-account"} Chromium evidence for Projects as outcome coordination over canonical Missions. It proves desktop/mobile catalog and detail rendering; declared outcome and dates; atomic canonical Mission creation; blocked premature completion; non-destructive unlink and relink; deliberate completion/reopen; optimistic stale-save refusal; owner isolation; recoverable removal/restore; deep-link persistence; append-only history; responsive semantics; and verified account/session/identifier erasure. It does not prove human assistive-technology comprehension, physical-device behavior, simultaneous multi-tab editing, longitudinal portfolio usefulness, shared cross-product milestones/dependencies, or organization-owned Projects.`,
+      boundary: `Disposable ${MODE === "production" ? "production-account" : "isolated-account"} Chromium evidence for Projects as outcome coordination over canonical Missions. It proves desktop/mobile catalog and detail rendering; declared outcome and dates; atomic canonical Mission creation; blocked premature completion; non-destructive unlink and relink; deliberate completion/reopen; same-account second-tab save and stale first-tab refusal; owner isolation; recoverable removal/restore; deep-link persistence; append-only history; responsive semantics; and verified account/session/identifier erasure. It does not prove human assistive-technology comprehension, physical-device behavior, real-time merge or coauthoring, longitudinal portfolio usefulness, shared cross-product milestones/dependencies, or organization-owned Projects.`,
     };
     await fs.writeFile(OUTPUT_FILE, `${JSON.stringify(report, null, 2)}\n`, "utf8");
     if (process.env.GITHUB_STEP_SUMMARY) {

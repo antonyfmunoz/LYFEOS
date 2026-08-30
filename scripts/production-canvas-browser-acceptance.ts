@@ -26,6 +26,7 @@ type ViewResult = {
   localImportReviewedAndPersisted: boolean;
   immutableCreationRevisionReconciled: boolean;
   crossOwnerIsolationReconciled: boolean;
+  multiTabConflictReconciled: boolean;
   staleSaveStoppedAsConflict: boolean;
   maximumDocumentRendered: boolean;
   renderedNodeCountAtLimit: number;
@@ -288,6 +289,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
   const importPath = path.join(OUTPUT_DIR, `canvas-import-${ordinal}.json`);
   let context: BrowserContext | null = null;
   let page: Page | null = null;
+  let competingPage: Page | null = null;
   let view: ViewResult | null = null;
   let ownerErased = false;
   let otherErased = false;
@@ -400,15 +402,32 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     const crossOwnerIsolationReconciled = isolated.status === 403;
     assert(crossOwnerIsolationReconciled, `Cross-owner Canvas read returned ${isolated.status}.`);
 
-    stage = "stop stale save and render the schema maximum";
-    const external = await request("PATCH", `/api/canvases/${canvasId}`, { title: serverTitle, content: maximumDocument() }, owner.cookie, { "x-lyfeos-expected-revision": "1" });
-    assert(external.status === 200 && external.body.canvas?.revision === 2, `Competing Canvas update returned ${external.status}.`);
+    stage = "stop a stale save after a second live tab commits";
+    competingPage = await context.newPage();
+    await competingPage.setViewport(viewport.value);
+    await competingPage.setCacheEnabled(false);
+    await competingPage.goto(new URL(`/canvases/${canvasId}`, BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
+    await competingPage.waitForSelector('[data-testid="canvas-editor"]', { visible: true, timeout: 60_000 });
+    await competingPage.waitForSelector('[data-testid="canvas-history-version-1"]', { timeout: 30_000 });
+    await setValue(competingPage, 'input[aria-label="Canvas title"]', serverTitle);
+    await activate(competingPage, '[data-testid="canvas-save"]');
+    await competingPage.waitForSelector('[data-testid="canvas-history-version-2"]', { timeout: 45_000 });
+    const secondTabState = await waitForCanvas(owner, canvasId, (canvas) => canvas.revision === 2, "second-tab Canvas save");
+    const secondTabCommitted = secondTabState.title === serverTitle;
+    assert(secondTabCommitted, "The second live tab did not commit Canvas revision two.");
     await setValue(page, 'input[aria-label="Canvas title"]', `Stale browser ${ordinal}`);
     await activate(page, '[data-testid="canvas-save"]');
     await page.waitForFunction(() => document.body.innerText.includes("changed after you opened it"), { timeout: 30_000 });
-    const conflictState = await waitForCanvas(owner, canvasId, (canvas) => canvas.revision === 2, "conflict state");
+    const conflictState = await waitForCanvas(owner, canvasId, (canvas) => canvas.revision === 2, "multi-tab conflict state");
     const staleSaveStoppedAsConflict = conflictState.title === serverTitle;
-    assert(staleSaveStoppedAsConflict, "Stale rendered save overwrote the competing Canvas revision.");
+    const multiTabConflictReconciled = secondTabCommitted && staleSaveStoppedAsConflict;
+    assert(multiTabConflictReconciled, "A stale first-tab save overwrote the second live tab's Canvas revision.");
+
+    stage = "render the schema maximum";
+    const boundedFixture = await request("PATCH", `/api/canvases/${canvasId}`, { title: serverTitle, content: maximumDocument() }, owner.cookie, { "x-lyfeos-expected-revision": "2" });
+    assert(boundedFixture.status === 200 && boundedFixture.body.canvas?.revision === 3, `Bounded Canvas fixture update returned ${boundedFixture.status}.`);
+    await competingPage.close();
+    competingPage = null;
     acknowledgeReconciledConflict(signals);
     page.once("dialog", (dialog) => void dialog.accept());
     await page.reload({ waitUntil: "domcontentloaded", timeout: 60_000 });
@@ -421,24 +440,24 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     stage = "reconcile a fresh save and restore version one as a new version";
     await setValue(page, 'input[aria-label="Canvas title"]', reconciledTitle);
     await activate(page, '[data-testid="canvas-save"]');
-    await page.waitForSelector('[data-testid="canvas-history-version-3"]', { timeout: 45_000 });
-    const revisionThree = await waitForCanvas(owner, canvasId, (canvas) => canvas.revision === 3, "reconciled save");
-    const reconciledSaveCreatedNewRevision = revisionThree.title === reconciledTitle;
-    assert(reconciledSaveCreatedNewRevision, "Fresh rendered Canvas save did not create revision three.");
+    await page.waitForSelector('[data-testid="canvas-history-version-4"]', { timeout: 45_000 });
+    const revisionFour = await waitForCanvas(owner, canvasId, (canvas) => canvas.revision === 4, "reconciled save");
+    const reconciledSaveCreatedNewRevision = revisionFour.title === reconciledTitle;
+    assert(reconciledSaveCreatedNewRevision, "Fresh rendered Canvas save did not create revision four.");
     await page.$eval('[data-testid="canvas-history"]', (element) => { (element as HTMLDetailsElement).open = true; });
     await page.waitForSelector('[data-testid="canvas-history-version-1"] button', { visible: true, timeout: 30_000 });
     page.once("dialog", (dialog) => void dialog.accept());
     await activate(page, '[data-testid="canvas-history-version-1"] button');
-    await page.waitForSelector('[data-testid="canvas-history-version-4"]', { timeout: 45_000 });
-    const restored = await waitForCanvas(owner, canvasId, (canvas) => canvas.revision === 4, "restored revision");
-    const revisionsV4 = await request("GET", `/api/canvases/${canvasId}/revisions`, undefined, owner.cookie);
+    await page.waitForSelector('[data-testid="canvas-history-version-5"]', { timeout: 45_000 });
+    const restored = await waitForCanvas(owner, canvasId, (canvas) => canvas.revision === 5, "restored revision");
+    const revisionsV5 = await request("GET", `/api/canvases/${canvasId}/revisions`, undefined, owner.cookie);
     const restoreCreatedNewImmutableRevision = restored.title === initialTitle
       && restored.content?.nodes?.length === 2
-      && revisionsV4.status === 200
-      && revisionsV4.body.revisions?.length === 4
-      && revisionsV4.body.revisions[0]?.action === "restored"
-      && revisionsV4.body.revisions[0]?.sourceRevision === 1;
-    assert(restoreCreatedNewImmutableRevision, "Rendered Canvas restore did not create immutable revision four from version one.");
+      && revisionsV5.status === 200
+      && revisionsV5.body.revisions?.length === 5
+      && revisionsV5.body.revisions[0]?.action === "restored"
+      && revisionsV5.body.revisions[0]?.sourceRevision === 1;
+    assert(restoreCreatedNewImmutableRevision, "Rendered Canvas restore did not create immutable revision five from version one.");
     const editorAudit = await auditPage(page, '[data-testid="canvas-editor"]');
     assertCleanAudit(editorAudit, `${viewport.name} Canvas editor`);
 
@@ -451,7 +470,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     assertCleanAudit(catalogAudit, `${viewport.name} Canvas catalog`);
     await acknowledgeBoundedChunkRecovery(page, signals);
     assert(!hasUnexpectedBrowserSignals(signals), `${viewport.name} Canvas journey produced application errors: ${JSON.stringify(signals)}.`);
-    view = { viewport: viewport.name, catalogAndEditorRendered, governedTemplateReviewed, userTemplateCreatedAndApplied, nodeAndConnectionEditingReconciled, undoRedoReconciled, viewportControlsReconciled, localImportReviewedAndPersisted, immutableCreationRevisionReconciled, crossOwnerIsolationReconciled, staleSaveStoppedAsConflict, maximumDocumentRendered, renderedNodeCountAtLimit, reconciledSaveCreatedNewRevision, restoreCreatedNewImmutableRevision, catalogPersistenceRendered, editorAudit, catalogAudit, signals };
+    view = { viewport: viewport.name, catalogAndEditorRendered, governedTemplateReviewed, userTemplateCreatedAndApplied, nodeAndConnectionEditingReconciled, undoRedoReconciled, viewportControlsReconciled, localImportReviewedAndPersisted, immutableCreationRevisionReconciled, crossOwnerIsolationReconciled, multiTabConflictReconciled, staleSaveStoppedAsConflict, maximumDocumentRendered, renderedNodeCountAtLimit, reconciledSaveCreatedNewRevision, restoreCreatedNewImmutableRevision, catalogPersistenceRendered, editorAudit, catalogAudit, signals };
   } catch (error) {
     const rendered = page ? await page.evaluate(() => document.body?.innerText.slice(0, 2_000) || "page unavailable").catch(() => "page unavailable") : "page unavailable";
     if (page) await page.screenshot({ path: path.join(OUTPUT_DIR, `canvas-${viewport.name}-failure.png`), fullPage: true }).catch(() => undefined);
@@ -491,7 +510,7 @@ async function main(): Promise<void> {
     if (browser) await browser.close().catch(() => undefined);
     const passed = failure === null && views.length === VIEWPORTS.length && cleanups.length === VIEWPORTS.length && cleanups.every((cleanup) => cleanup.accountErased && cleanup.otherAccountErased);
     const report = {
-      contract: "lyfeos.production-canvas-browser.v2",
+      contract: "lyfeos.production-canvas-browser.v3",
       generatedAt: new Date().toISOString(),
       baseUrl: BASE_URL.origin,
       sourceRevision: SOURCE,
@@ -499,7 +518,7 @@ async function main(): Promise<void> {
       views,
       cleanups,
       summary: { passed, failure },
-      boundary: "Disposable production-account Chromium evidence for Canvas. It proves desktop/mobile catalog and editor rendering; explicit built-in template review; creation, owner isolation and reapplication of a private user-authored template snapshot; node and directed-connection editing; local undo/redo and viewport controls; explicit local LyfeOS Canvas JSON review before persistence; immutable create, update, conflict and restore revisions; cross-owner isolation; complete rendering at the documented 300-node limit; responsive semantics; and verified account/session/identifier erasure. It does not prove physical-device pointer or multi-touch gesture quality, browser file-picker denial recovery, simultaneous multi-tab editing, human assistive-technology comprehension, arbitrary third-party whiteboard import, collaboration, production-scale rendering latency, or longitudinal usefulness of user-authored maps.",
+      boundary: "Disposable production-account Chromium evidence for Canvas. It proves desktop/mobile catalog and editor rendering; explicit built-in template review; creation, owner isolation and reapplication of a private user-authored template snapshot; node and directed-connection editing; local undo/redo and viewport controls; explicit local LyfeOS Canvas JSON review before persistence; immutable create, update, same-account second-tab conflict and restore revisions; cross-owner isolation; complete rendering at the documented 300-node limit; responsive semantics; and verified account/session/identifier erasure. It does not prove physical-device pointer or multi-touch gesture quality, browser file-picker denial recovery, real-time merge or coauthoring, human assistive-technology comprehension, arbitrary third-party whiteboard import, collaboration, production-scale rendering latency, or longitudinal usefulness of user-authored maps.",
     };
     await fs.writeFile(OUTPUT_FILE, `${JSON.stringify(report, null, 2)}\n`, "utf8");
     if (process.env.GITHUB_STEP_SUMMARY) {

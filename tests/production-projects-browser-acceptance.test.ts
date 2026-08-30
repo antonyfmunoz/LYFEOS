@@ -19,8 +19,8 @@ describe("production Projects browser acceptance custody", () => {
   });
 
   it("proves the rendered Project lifecycle without inventing a second task authority", () => {
-    expect(script).toContain('"lyfeos.production-projects-browser.v1"');
-    expect(script).toContain('"lyfeos.isolated-projects-browser.v1"');
+    expect(script).toContain('"lyfeos.production-projects-browser.v2"');
+    expect(script).toContain('"lyfeos.isolated-projects-browser.v2"');
     for (const invariant of [
       "declaredOutcomeAndDatesPersisted",
       "canonicalMissionCreatedAtomically",
@@ -28,6 +28,7 @@ describe("production Projects browser acceptance custody", () => {
       "unlinkPreservedCanonicalMission",
       "completionAndReopenReconciled",
       "existingMissionRelinked",
+      "multiTabConflictReconciled",
       "staleSaveStoppedAsConflict",
       "recoverableRemovalAndRestoreReconciled",
       "deepLinkPersisted",
@@ -36,6 +37,8 @@ describe("production Projects browser acceptance custody", () => {
     ]) expect(script).toContain(invariant);
     expect(script).toContain("Complete or unlink every open mission");
     expect(script).toContain("ownerMissions.body.quests");
+    expect(script).toContain("competingPage = await context.newPage()");
+    expect(script).toContain("second live tab's Project revision");
     expect(script).toContain("account/session/identifier erasure");
     expect(script).toContain("does not prove human assistive-technology comprehension");
   });

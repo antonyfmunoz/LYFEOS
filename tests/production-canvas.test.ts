@@ -12,7 +12,7 @@ describe("production Canvas evidence custody", () => {
   const editor = source("client/src/pages/CanvasEditorPage.tsx");
 
   it("binds the production-only contract to immutable runtime and harness sources", () => {
-    expect(acceptance).toContain('contract: "lyfeos.production-canvas-browser.v2"');
+    expect(acceptance).toContain('contract: "lyfeos.production-canvas-browser.v3"');
     expect(acceptance).toContain('BASE_URL.origin === "https://lyfeos.net"');
     expect(acceptance).toContain("release.body?.sourceRevision === SOURCE");
     expect(acceptance).toContain("HARNESS_SOURCE");
@@ -27,6 +27,9 @@ describe("production Canvas evidence custody", () => {
     expect(acceptance).toContain("nodeAndConnectionEditingReconciled");
     expect(acceptance).toContain("localImportReviewedAndPersisted");
     expect(acceptance).toContain("staleSaveStoppedAsConflict");
+    expect(acceptance).toContain("multiTabConflictReconciled");
+    expect(acceptance).toContain("competingPage = await context.newPage()");
+    expect(acceptance).toContain("second live tab's Canvas revision");
     expect(acceptance).toContain("maximumDocumentRendered");
     expect(acceptance).toContain("restoreCreatedNewImmutableRevision");
     expect(acceptance).toContain("crossOwnerIsolationReconciled");

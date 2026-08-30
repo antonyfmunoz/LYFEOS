@@ -12,7 +12,7 @@ describe("production Sheets evidence custody", () => {
   const editor = source("client/src/pages/SpreadsheetEditorPage.tsx");
 
   it("binds the production-only contract to immutable runtime and harness sources", () => {
-    expect(acceptance).toContain('contract: "lyfeos.production-sheets-browser.v11"');
+    expect(acceptance).toContain('contract: "lyfeos.production-sheets-browser.v12"');
     expect(acceptance).toContain('BASE_URL.origin === "https://lyfeos.net"');
     expect(acceptance).toContain("release.body?.sourceRevision === SOURCE");
     expect(acceptance).toContain("HARNESS_SOURCE");
@@ -51,6 +51,9 @@ describe("production Sheets evidence custody", () => {
     expect(acceptance).toContain("Detected but omitted: hidden sheet state");
     expect(acceptance).toContain("collision-safe cross-tab formula rewriting");
     expect(acceptance).toContain("staleSaveStoppedAsConflict");
+    expect(acceptance).toContain("multiTabConflictReconciled");
+    expect(acceptance).toContain("competingPage = await context.newPage()");
+    expect(acceptance).toContain("second live tab's spreadsheet revision");
     expect(acceptance).toContain("largeGridWindowed");
     expect(acceptance).toContain("restoreCreatedNewImmutableRevision");
     expect(acceptance).toContain("crossOwnerIsolationReconciled");

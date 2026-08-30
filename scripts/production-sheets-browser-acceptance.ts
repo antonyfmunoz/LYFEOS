@@ -36,6 +36,7 @@ type ViewResult = {
   odsWorkbookExportGenerated: boolean;
   immutableCreationRevisionReconciled: boolean;
   crossOwnerIsolationReconciled: boolean;
+  multiTabConflictReconciled: boolean;
   staleSaveStoppedAsConflict: boolean;
   largeGridWindowed: boolean;
   renderedCellCountAtLimit: number;
@@ -393,6 +394,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
   const odsImportPath = path.join(OUTPUT_DIR, `sheets-import-${ordinal}.ods`);
   let context: BrowserContext | null = null;
   let page: Page | null = null;
+  let competingPage: Page | null = null;
   let view: ViewResult | null = null;
   let ownerErased = false;
   let otherErased = false;
@@ -676,21 +678,38 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     const crossOwnerIsolationReconciled = isolated.status === 403;
     assert(crossOwnerIsolationReconciled, `Cross-owner spreadsheet read returned ${isolated.status}.`);
 
-    stage = "stop stale save and prove bounded rendering at the documented limit";
+    stage = "stop a stale save after a second live tab commits";
+    competingPage = await context.newPage();
+    await competingPage.setViewport(viewport.value);
+    await competingPage.setCacheEnabled(false);
+    await competingPage.goto(new URL(`/spreadsheets/${spreadsheetId}`, BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
+    await competingPage.waitForSelector('[data-testid="sheet-editor"]', { visible: true, timeout: 60_000 });
+    await competingPage.waitForFunction(() => document.querySelector('[data-testid="sheet-revision"]')?.textContent?.includes("version 1"), { timeout: 30_000 });
+    await setValue(competingPage, 'input[aria-label="Sheet title"]', serverTitle);
+    await activate(competingPage, '[data-testid="sheet-save"]');
+    await competingPage.waitForFunction(() => document.querySelector('[data-testid="sheet-revision"]')?.textContent?.includes("version 2"), { timeout: 45_000 });
+    const secondTabState = await waitForSpreadsheet(owner, spreadsheetId, (sheet) => sheet.revision === 2, "second-tab spreadsheet save");
+    const secondTabCommitted = secondTabState.title === serverTitle;
+    assert(secondTabCommitted, "The second live tab did not commit spreadsheet revision two.");
+    await setValue(page, 'input[aria-label="Sheet title"]', `Stale browser ${ordinal}`);
+    await activate(page, '[data-testid="sheet-save"]');
+    await page.waitForFunction(() => document.querySelector('[role="alert"]')?.textContent?.includes("changed after you opened it"), { timeout: 30_000 });
+    const conflictState = await waitForSpreadsheet(owner, spreadsheetId, (sheet) => sheet.revision === 2, "multi-tab conflict state");
+    const staleSaveStoppedAsConflict = conflictState.title === serverTitle;
+    const multiTabConflictReconciled = secondTabCommitted && staleSaveStoppedAsConflict;
+    assert(multiTabConflictReconciled, "A stale first-tab save overwrote the second live tab's spreadsheet revision.");
+
+    stage = "prove bounded rendering at the documented limit";
     const largeContent = structuredClone(created.content);
     const primarySheet = largeContent.sheets.find((sheet: any) => sheet.cells?.A3?.input === "=SUM(A1:A2)");
     primarySheet.rowCount = 500;
     primarySheet.columnCount = 100;
     primarySheet.cells.CV500 = { input: "limit" };
     largeContent.activeSheetId = primarySheet.id;
-    const external = await request("PATCH", `/api/spreadsheets/${spreadsheetId}`, { title: serverTitle, content: largeContent }, owner.cookie, { "x-lyfeos-expected-revision": "1" });
-    assert(external.status === 200 && external.body.spreadsheet?.revision === 2, `Competing spreadsheet update returned ${external.status}.`);
-    await setValue(page, 'input[aria-label="Sheet title"]', `Stale browser ${ordinal}`);
-    await activate(page, '[data-testid="sheet-save"]');
-    await page.waitForFunction(() => document.querySelector('[role="alert"]')?.textContent?.includes("changed after you opened it"), { timeout: 30_000 });
-    const conflictState = await waitForSpreadsheet(owner, spreadsheetId, (sheet) => sheet.revision === 2, "conflict state");
-    const staleSaveStoppedAsConflict = conflictState.title === serverTitle;
-    assert(staleSaveStoppedAsConflict, "Stale rendered save overwrote the competing spreadsheet revision.");
+    const boundedFixture = await request("PATCH", `/api/spreadsheets/${spreadsheetId}`, { title: serverTitle, content: largeContent }, owner.cookie, { "x-lyfeos-expected-revision": "2" });
+    assert(boundedFixture.status === 200 && boundedFixture.body.spreadsheet?.revision === 3, `Bounded spreadsheet fixture update returned ${boundedFixture.status}.`);
+    await competingPage.close();
+    competingPage = null;
     acknowledgeReconciledConflict(signals);
     await page.reload({ waitUntil: "domcontentloaded", timeout: 60_000 });
     await page.waitForSelector('[data-testid="sheet-editor"]', { visible: true, timeout: 60_000 });
@@ -708,23 +727,23 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     stage = "reconcile a fresh save and restore version one as a new version";
     await setValue(page, 'input[aria-label="Sheet title"]', reconciledTitle);
     await activate(page, '[data-testid="sheet-save"]');
-    await page.waitForFunction(() => document.querySelector('[data-testid="sheet-revision"]')?.textContent?.includes("version 3"), { timeout: 45_000 });
-    const revisionThree = await waitForSpreadsheet(owner, spreadsheetId, (sheet) => sheet.revision === 3, "reconciled save");
-    const reconciledSaveCreatedNewRevision = revisionThree.title === reconciledTitle;
-    assert(reconciledSaveCreatedNewRevision, "Fresh rendered save did not create revision three.");
+    await page.waitForFunction(() => document.querySelector('[data-testid="sheet-revision"]')?.textContent?.includes("version 4"), { timeout: 45_000 });
+    const revisionFour = await waitForSpreadsheet(owner, spreadsheetId, (sheet) => sheet.revision === 4, "reconciled save");
+    const reconciledSaveCreatedNewRevision = revisionFour.title === reconciledTitle;
+    assert(reconciledSaveCreatedNewRevision, "Fresh rendered save did not create revision four.");
     await page.$eval('[data-testid="sheet-history"]', (element) => { (element as HTMLDetailsElement).open = true; });
     await page.waitForSelector('[data-testid="sheet-history-version-1"] button', { visible: true, timeout: 30_000 });
     page.once("dialog", (dialog) => void dialog.accept());
     await activate(page, '[data-testid="sheet-history-version-1"] button');
-    await page.waitForFunction(() => document.querySelector('[data-testid="sheet-revision"]')?.textContent?.includes("version 4"), { timeout: 45_000 });
-    const restored = await waitForSpreadsheet(owner, spreadsheetId, (sheet) => sheet.revision === 4, "restored revision");
-    const revisionsV4 = await request("GET", `/api/spreadsheets/${spreadsheetId}/revisions`, undefined, owner.cookie);
+    await page.waitForFunction(() => document.querySelector('[data-testid="sheet-revision"]')?.textContent?.includes("version 5"), { timeout: 45_000 });
+    const restored = await waitForSpreadsheet(owner, spreadsheetId, (sheet) => sheet.revision === 5, "restored revision");
+    const revisionsV5 = await request("GET", `/api/spreadsheets/${spreadsheetId}/revisions`, undefined, owner.cookie);
     const restoreCreatedNewImmutableRevision = restored.title === initialTitle
-      && revisionsV4.status === 200
-      && revisionsV4.body.revisions?.length === 4
-      && revisionsV4.body.revisions[0]?.action === "restored"
-      && revisionsV4.body.revisions[0]?.sourceRevision === 1;
-    assert(restoreCreatedNewImmutableRevision, "Rendered restore did not preserve history and create immutable revision four from version one.");
+      && revisionsV5.status === 200
+      && revisionsV5.body.revisions?.length === 5
+      && revisionsV5.body.revisions[0]?.action === "restored"
+      && revisionsV5.body.revisions[0]?.sourceRevision === 1;
+    assert(restoreCreatedNewImmutableRevision, "Rendered restore did not preserve history and create immutable revision five from version one.");
     await page.waitForSelector('[data-testid^="sheet-chart-chart_"]', { visible: true, timeout: 30_000 });
     const chartFamiliesReloadedAndRestored = restored.content?.charts?.length === 7
       && await page.evaluate(() => {
@@ -744,7 +763,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     assert(audit.mainCount === 1 && audit.duplicateIds.length === 0 && audit.invalidLabelReferences.length === 0 && audit.unlabeledControls.length === 0 && audit.horizontalOverflowPx <= 2, `${viewport.name} Sheets failed semantics or overflow checks.`);
     await acknowledgeBoundedChunkRecovery(page, signals);
     assert(!hasUnexpectedBrowserSignals(signals), `${viewport.name} Sheets journey produced application errors: ${JSON.stringify(signals)}.`);
-    view = { viewport: viewport.name, catalogAndEditorRendered, formulasCalculated, extendedFormulaCompatibility, absoluteReferencesReconciled, crossSheetReferencesReconciled, undoRedoReconciled: true, controlledClipboardAdapterRoundTrip, chartFamiliesRenderedFromCanonicalRanges, dualAxisCombinationReconciled, explicitSeriesRolesReconciled, chartDefinitionsPersisted, chartFamiliesReloadedAndRestored, localImportReviewedAndPersisted, xlsxWorkbookReviewedAndPersisted, xlsxWorkbookExportGenerated, odsWorkbookReviewedAndPersisted, odsWorkbookExportGenerated, immutableCreationRevisionReconciled, crossOwnerIsolationReconciled, staleSaveStoppedAsConflict, largeGridWindowed, renderedCellCountAtLimit, reconciledSaveCreatedNewRevision, restoreCreatedNewImmutableRevision, catalogPersistenceRendered, audit, signals };
+    view = { viewport: viewport.name, catalogAndEditorRendered, formulasCalculated, extendedFormulaCompatibility, absoluteReferencesReconciled, crossSheetReferencesReconciled, undoRedoReconciled: true, controlledClipboardAdapterRoundTrip, chartFamiliesRenderedFromCanonicalRanges, dualAxisCombinationReconciled, explicitSeriesRolesReconciled, chartDefinitionsPersisted, chartFamiliesReloadedAndRestored, localImportReviewedAndPersisted, xlsxWorkbookReviewedAndPersisted, xlsxWorkbookExportGenerated, odsWorkbookReviewedAndPersisted, odsWorkbookExportGenerated, immutableCreationRevisionReconciled, crossOwnerIsolationReconciled, multiTabConflictReconciled, staleSaveStoppedAsConflict, largeGridWindowed, renderedCellCountAtLimit, reconciledSaveCreatedNewRevision, restoreCreatedNewImmutableRevision, catalogPersistenceRendered, audit, signals };
   } catch (error) {
     const rendered = page ? await page.evaluate(() => document.body?.innerText.slice(0, 2_000) || "page unavailable").catch(() => "page unavailable") : "page unavailable";
     if (page) await page.screenshot({ path: path.join(OUTPUT_DIR, `sheets-${viewport.name}-failure.png`), fullPage: true }).catch(() => undefined);
@@ -785,7 +804,7 @@ async function main(): Promise<void> {
     if (browser) await browser.close().catch(() => undefined);
     const passed = failure === null && views.length === VIEWPORTS.length && cleanups.length === VIEWPORTS.length && cleanups.every((cleanup) => cleanup.accountErased && cleanup.otherAccountErased);
     const report = {
-      contract: "lyfeos.production-sheets-browser.v11",
+      contract: "lyfeos.production-sheets-browser.v12",
       generatedAt: new Date().toISOString(),
       baseUrl: BASE_URL.origin,
       sourceRevision: SOURCE,
@@ -793,7 +812,7 @@ async function main(): Promise<void> {
       views,
       cleanups,
       summary: { passed, failure },
-      boundary: "Disposable production-account Chromium evidence for Sheets. It proves desktop/mobile catalog and editor rendering; raw-value and formula persistence; calculated formula display; safe relative, $A$1-style absolute and quoted-name cross-sheet references; reference preservation across tab rename; safe arithmetic, comparisons, quoted text, booleans, SUM, AVERAGE, MIN, MAX, COUNT, COUNTA, ROUND, ABS and lazy IF behavior; local undo/redo; persisted live line, bar, stacked bar, area, combination, pie and scatter definitions over canonical cells; explicit per-series bar/line assignment for combination charts with deterministic legacy defaults and safe last-role swapping; an explicit shared-versus-dual combination-axis choice with bar values on the left, line values on the independently scaled right, a visual-risk disclosure and unchanged canonical raw-value table; formula-derived chart values; explicit missing-value and complete-pair handling with accessible source tables; chart-family reload and immutable restore; copy/paste through a controlled in-page Clipboard API adapter; explicit local CSV review; bounded two-tab XLSX review with detected hidden-state disclosure, collision-safe cross-tab formula rewriting, persistence and browser-generated OOXML export; bounded two-tab ODS review with detected presentation and hidden-state disclosure, collision-safe OpenFormula rewriting, persistence and browser-generated OpenDocument export; immutable create, update, conflict and restore revisions; cross-owner isolation; bounded rendering at the documented 500-row by 100-column limit; responsive semantics; and verified account/session/identifier erasure. It does not prove OS-native file-picker or download behavior, legacy XLS transfer, advanced ODF or OOXML presentation and formulas, real-device clipboard/file behavior, browser permission denial recovery, simultaneous multi-tab editing, full LibreOffice, Excel, or Google Sheets compatibility, human assistive-technology comprehension, statistical causality, or longitudinal calculation correctness for user-authored models.",
+      boundary: "Disposable production-account Chromium evidence for Sheets. It proves desktop/mobile catalog and editor rendering; raw-value and formula persistence; calculated formula display; safe relative, $A$1-style absolute and quoted-name cross-sheet references; reference preservation across tab rename; safe arithmetic, comparisons, quoted text, booleans, SUM, AVERAGE, MIN, MAX, COUNT, COUNTA, ROUND, ABS and lazy IF behavior; local undo/redo; persisted live line, bar, stacked bar, area, combination, pie and scatter definitions over canonical cells; explicit per-series bar/line assignment for combination charts with deterministic legacy defaults and safe last-role swapping; an explicit shared-versus-dual combination-axis choice with bar values on the left, line values on the independently scaled right, a visual-risk disclosure and unchanged canonical raw-value table; formula-derived chart values; explicit missing-value and complete-pair handling with accessible source tables; chart-family reload and immutable restore; copy/paste through a controlled in-page Clipboard API adapter; explicit local CSV review; bounded two-tab XLSX review with detected hidden-state disclosure, collision-safe cross-tab formula rewriting, persistence and browser-generated OOXML export; bounded two-tab ODS review with detected presentation and hidden-state disclosure, collision-safe OpenFormula rewriting, persistence and browser-generated OpenDocument export; immutable create, update, same-account second-tab conflict and restore revisions; cross-owner isolation; bounded rendering at the documented 500-row by 100-column limit; responsive semantics; and verified account/session/identifier erasure. It does not prove OS-native file-picker or download behavior, legacy XLS transfer, advanced ODF or OOXML presentation and formulas, real-device clipboard/file behavior, browser permission denial recovery, real-time merge or coauthoring, full LibreOffice, Excel, or Google Sheets compatibility, human assistive-technology comprehension, statistical causality, or longitudinal calculation correctness for user-authored models.",
     };
     await fs.writeFile(OUTPUT_FILE, `${JSON.stringify(report, null, 2)}\n`, "utf8");
     if (process.env.GITHUB_STEP_SUMMARY) {
