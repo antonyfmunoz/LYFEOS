@@ -247,12 +247,34 @@ type CrossProductSharing = {
   enabled: boolean;
   destinations: Array<"entrepreneuros" | "creativesos">;
   purposes: Array<"coordination" | "correlation">;
+  revision: number;
   availability: { available: boolean; reason: string | null };
+  revisions: Array<{
+    id: number;
+    revision: number;
+    state: "enabled" | "disabled";
+    allowedDestinations: Array<"entrepreneuros" | "creativesos">;
+    allowedPurposes: Array<"coordination" | "correlation">;
+    affectedDestinations: Array<"entrepreneuros" | "creativesos">;
+    affectedPurposes: Array<"coordination" | "correlation">;
+    policyVersion: string;
+    eventId: string | null;
+    deliveryState: "queued" | "not_configured";
+    transportStatus: "pending" | "processing" | "retry" | "delivered" | "failed" | null;
+    deliveredAt: string | null;
+    createdAt: string;
+  }>;
 };
 
 function CrossProductSharingSection() {
   const { toast } = useToast();
-  const { data, isLoading } = useQuery<{ sharing: CrossProductSharing }>({ queryKey: ["/api/cross-product-sharing"] });
+  const { data, isLoading } = useQuery<{ sharing: CrossProductSharing }>({
+    queryKey: ["/api/cross-product-sharing"],
+    refetchInterval: (query) => {
+      const latest = (query.state.data as { sharing?: CrossProductSharing } | undefined)?.sharing?.revisions?.[0];
+      return latest?.deliveryState === "queued" && !["delivered", "failed"].includes(latest.transportStatus || "") ? 5_000 : false;
+    },
+  });
   const [enabled, setEnabled] = useState(false);
   const [destinations, setDestinations] = useState<Array<"entrepreneuros" | "creativesos">>([]);
   const [purposes, setPurposes] = useState<Array<"coordination" | "correlation">>([]);
@@ -266,15 +288,25 @@ function CrossProductSharingSection() {
   }, [data]);
 
   const save = useMutation({
-    mutationFn: () => apiRequest<{ sharing: CrossProductSharing }>("/api/cross-product-sharing", {
+    mutationFn: () => apiRequest<{ sharing: CrossProductSharing; receipt: { revision: number; replayed: boolean; eventQueued: boolean } }>("/api/cross-product-sharing", {
       method: "PATCH",
-      body: JSON.stringify({ enabled, destinations, purposes }),
+      body: JSON.stringify({ enabled, destinations, purposes, expectedRevision: data?.sharing.revision ?? 0 }),
     }),
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["/api/cross-product-sharing"] });
-      toast({ title: enabled ? "Ecosystem sharing updated" : "Ecosystem sharing paused" });
+      toast({
+        title: enabled ? "Ecosystem sharing updated" : "Ecosystem sharing paused",
+        description: result.receipt.replayed
+          ? "Those exact settings were already current."
+          : result.receipt.eventQueued
+            ? "The complete consent state is queued for signed UMH delivery."
+            : "The local state changed, but no ecosystem receiver is configured.",
+      });
     },
-    onError: (error: Error) => toast({ title: "Could not update sharing", description: error.message, variant: "destructive" }),
+    onError: (error: Error) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/cross-product-sharing"] });
+      toast({ title: "Could not update sharing", description: error.message, variant: "destructive" });
+    },
   });
   const toggleDestination = (destination: "entrepreneuros" | "creativesos") => {
     setDestinations((current) => current.includes(destination)
@@ -322,6 +354,20 @@ function CrossProductSharingSection() {
           {save.isPending ? "Saving…" : "Save sharing"}
         </Button>
       </div>
+      {data?.sharing.revisions?.[0] ? (
+        <div className="mt-3 rounded-lg border border-primary/10 bg-card/30 p-3 text-[11px] text-muted-foreground" aria-live="polite" data-testid="ecosystem-consent-receipt">
+          <p className="font-medium text-foreground">Consent receipt · revision {data.sharing.revisions[0].revision}</p>
+          <p>
+            {data.sharing.revisions[0].state === "enabled" ? "Enabled" : "Disabled"} under {data.sharing.revisions[0].policyVersion}.{" "}
+            {data.sharing.revisions[0].transportStatus === "delivered"
+              ? "UMH accepted the signed update."
+              : data.sharing.revisions[0].deliveryState === "not_configured"
+                ? "No signed receiver was configured, so this receipt is local only."
+                : `Signed delivery is ${data.sharing.revisions[0].transportStatus || "pending"}.`}
+          </p>
+          <p>Changed products: {data.sharing.revisions[0].affectedDestinations.map((destination) => destination === "entrepreneuros" ? "EntrepreneurOS" : "CreativesOS").join(", ") || "none"}. No mission title, XP, health, journal, relationship, or reflection content is in this receipt.</p>
+        </div>
+      ) : null}
     </div>
   );
 }

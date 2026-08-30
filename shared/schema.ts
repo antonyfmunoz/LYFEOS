@@ -543,13 +543,36 @@ export const progressionBadgeEvents = pgTable("progression_badge_events", {
 export const crossProductSharingPreferences = pgTable("cross_product_sharing_preferences", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().unique().references(() => users.id, { onDelete: "cascade" }),
+  federationSubjectId: uuid("federation_subject_id").notNull().defaultRandom().unique(),
   ecosystemSharingEnabled: boolean("ecosystem_sharing_enabled").notNull().default(false),
   allowedDestinations: jsonb("allowed_destinations").notNull().default([]),
   allowedPurposes: jsonb("allowed_purposes").notNull().default([]),
   consentedAt: timestamp("consented_at"),
   revokedAt: timestamp("revoked_at"),
+  revision: integer("revision").notNull().default(1),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
+
+// Append-only consent revisions preserve what changed and whether the complete
+// new state was durably queued for UMH. They contain no shared mission, health,
+// relationship, journal, or progression payload.
+export const crossProductSharingRevisions = pgTable("cross_product_sharing_revisions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  revision: integer("revision").notNull(),
+  state: text("state").notNull(),
+  allowedDestinations: jsonb("allowed_destinations").notNull().default([]),
+  allowedPurposes: jsonb("allowed_purposes").notNull().default([]),
+  affectedDestinations: jsonb("affected_destinations").notNull().default([]),
+  affectedPurposes: jsonb("affected_purposes").notNull().default([]),
+  policyVersion: text("policy_version").notNull(),
+  eventId: uuid("event_id"),
+  deliveryState: text("delivery_state").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("cross_product_sharing_revisions_user_revision_unique").on(table.userId, table.revision),
+  index("cross_product_sharing_revisions_user_created_idx").on(table.userId, table.createdAt, table.id),
+]);
 
 // A user explicitly creates these links when one real-world work item spans
 // LyfeOS and another product. The linked products exchange state through UMH;

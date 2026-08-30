@@ -14,6 +14,7 @@ export const LYFEOS_MISSION_CREATE_CAPABILITY = "lyfeos.mission.create.v1" as co
 export const LYFEOS_MISSION_CREATED_EVENT = "lyfeos.mission.created.v1" as const;
 export const LYFEOS_COORDINATION_CONTEXT_UPDATED_EVENT = "lyfeos.coordination-context.updated.v1" as const;
 export const LYFEOS_WORK_ITEM_UPDATED_EVENT = "lyfeos.work-item.updated.v1" as const;
+export const LYFEOS_FEDERATION_CONSENT_UPDATED_EVENT = "lyfeos.federation-consent.updated.v1" as const;
 
 const isoTimestamp = z.string().datetime({ offset: true });
 
@@ -99,10 +100,25 @@ const workItemUpdatedEventSchema = umhProjectionEventBaseSchema.extend({
   }).strict(),
 }).strict();
 
+const federationConsentUpdatedEventSchema = umhProjectionEventBaseSchema.extend({
+  eventType: z.literal(LYFEOS_FEDERATION_CONSENT_UPDATED_EVENT),
+  aggregateType: z.literal("federation_consent"),
+  payload: z.object({
+    state: z.enum(["enabled", "disabled"]),
+    policyVersion: z.literal("lyfeos.cross-product-sharing.v1"),
+    revision: z.number().int().positive(),
+    allowedDestinations: z.array(z.enum(["entrepreneuros", "creativesos"])).max(2),
+    allowedPurposes: z.array(z.enum(["coordination", "correlation"])).max(2),
+    affectedDestinations: z.array(z.enum(["entrepreneuros", "creativesos"])).min(1).max(2),
+    affectedPurposes: z.array(z.enum(["coordination", "correlation"])).max(2),
+  }).strict(),
+}).strict();
+
 export const umhProjectionEventEnvelopeSchema = z.discriminatedUnion("eventType", [
   missionCreatedEventSchema,
   coordinationContextUpdatedEventSchema,
   workItemUpdatedEventSchema,
+  federationConsentUpdatedEventSchema,
 ]);
 
 export const umhEventEnvelopeSchema = umhProjectionEventEnvelopeSchema;
@@ -123,7 +139,7 @@ export interface UMHCapabilityManifest {
     approval: "automatic";
     idempotency: "required";
   }>;
-  events: Array<{ id: typeof LYFEOS_MISSION_CREATED_EVENT | typeof LYFEOS_COORDINATION_CONTEXT_UPDATED_EVENT | typeof LYFEOS_WORK_ITEM_UPDATED_EVENT; delivery: "outbox" }>;
+  events: Array<{ id: typeof LYFEOS_MISSION_CREATED_EVENT | typeof LYFEOS_COORDINATION_CONTEXT_UPDATED_EVENT | typeof LYFEOS_WORK_ITEM_UPDATED_EVENT | typeof LYFEOS_FEDERATION_CONSENT_UPDATED_EVENT; delivery: "outbox" }>;
 }
 
 export const LYFEOS_CAPABILITY_MANIFEST: Omit<UMHCapabilityManifest, "status"> = {
@@ -139,5 +155,6 @@ export const LYFEOS_CAPABILITY_MANIFEST: Omit<UMHCapabilityManifest, "status"> =
     { id: LYFEOS_MISSION_CREATED_EVENT, delivery: "outbox" },
     { id: LYFEOS_COORDINATION_CONTEXT_UPDATED_EVENT, delivery: "outbox" },
     { id: LYFEOS_WORK_ITEM_UPDATED_EVENT, delivery: "outbox" },
+    { id: LYFEOS_FEDERATION_CONSENT_UPDATED_EVENT, delivery: "outbox" },
   ],
 };

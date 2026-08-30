@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { sql } from "drizzle-orm";
 import type { UMHEventEnvelope } from "@shared/umh";
 import { db } from "../db";
+import { reconcilePendingCrossProductConsentEvents } from "../cross-product";
 import { getUMHFederationConfig } from "./config";
 import { signUMHProjectionEvent } from "./crypto";
 
@@ -117,6 +118,7 @@ export async function settleUMHOutboxEvent(input: {
 export async function deliverPendingUMHEvents(): Promise<void> {
   const config = getUMHFederationConfig();
   if (!config?.controlPlaneUrl) return;
+  await reconcilePendingCrossProductConsentEvents();
   const events = await claimUMHOutboxEvents();
   for (const entry of events) {
     const timestamp = String(Math.floor(Date.now() / 1_000));

@@ -29,7 +29,7 @@ const accountExportTables = [
   "widget_states", "user_activity_events", "smart_reminders", "mission_views", "push_subscriptions", "installation_admin_grants", "extension_audit_events", "extension_installations", "ai_orchestration_steps", "ai_orchestration_runs", "ai_voice_session_segments", "ai_voice_sessions", "ai_pending_actions", "ai_action_records", "ai_action_repairs", "ai_context_receipts", "ai_memory_policies", "ai_execution_preferences", "ai_persona_profiles",
   "product_analytics_consents", "mission_planning_context_amendments", "hypothesis_domain_consents", "cross_domain_hypotheses", "cross_domain_hypothesis_snapshots", "cross_domain_hypothesis_interpretations",
   "finance_accounts", "finance_balance_snapshots", "finance_transactions", "finance_budgets", "finance_goals",
-  "transformation_threads", "transformation_thread_evidence", "personal_capabilities", "skill_nodes", "skill_edges", "quest_skill_contributions", "skill_progression_events", "activity_progression_events", "progression_badge_awards", "progression_badge_events", "mission_contracts", "mission_consequence_preflights", "mission_evidence", "mission_evidence_provider_bindings", "mission_reviews", "mission_review_appeals", "mission_deferrals", "mission_dependencies", "mission_mutation_receipts", "cross_product_sharing_preferences", "cross_product_work_links", "health_profiles", "health_targets", "health_target_revisions", "body_measurements", "health_observation_calculation_preferences", "health_observations", "health_metric_definitions", "health_metric_panels", "hydration_entries", "supplement_entries", "supplement_schedules", "supplement_schedule_events", "fasting_windows", "recovery_activities", "recovery_routines", "recovery_tag_policies", "sleep_naps", "sleep_sessions", "nutrition_foods", "nutrition_food_portions", "nutrition_diary_entries", "nutrition_recipes", "nutrition_recipe_revisions", "nutrition_meal_plans", "nutrition_meal_plan_entries", "health_deletion_receipts", "health_data_rights_audit", "health_planning_drafts", "health_planning_draft_events", "health_ai_requests", "health_ai_drafts", "health_practice_reviews", "health_insight_interpretations", "health_progression_events", "health_badge_events", "ingredient_scans", "ingredient_scan_items", "ingredient_preference_rules", "exercise_definitions", "workout_programs", "workout_program_sessions", "workouts", "workout_revisions", "workout_templates", "workout_template_revisions", "heart_rate_zone_profiles", "workout_heart_rate_samples",
+  "transformation_threads", "transformation_thread_evidence", "personal_capabilities", "skill_nodes", "skill_edges", "quest_skill_contributions", "skill_progression_events", "activity_progression_events", "progression_badge_awards", "progression_badge_events", "mission_contracts", "mission_consequence_preflights", "mission_evidence", "mission_evidence_provider_bindings", "mission_reviews", "mission_review_appeals", "mission_deferrals", "mission_dependencies", "mission_mutation_receipts", "cross_product_sharing_preferences", "cross_product_sharing_revisions", "cross_product_work_links", "health_profiles", "health_targets", "health_target_revisions", "body_measurements", "health_observation_calculation_preferences", "health_observations", "health_metric_definitions", "health_metric_panels", "hydration_entries", "supplement_entries", "supplement_schedules", "supplement_schedule_events", "fasting_windows", "recovery_activities", "recovery_routines", "recovery_tag_policies", "sleep_naps", "sleep_sessions", "nutrition_foods", "nutrition_food_portions", "nutrition_diary_entries", "nutrition_recipes", "nutrition_recipe_revisions", "nutrition_meal_plans", "nutrition_meal_plan_entries", "health_deletion_receipts", "health_data_rights_audit", "health_planning_drafts", "health_planning_draft_events", "health_ai_requests", "health_ai_drafts", "health_practice_reviews", "health_insight_interpretations", "health_progression_events", "health_badge_events", "ingredient_scans", "ingredient_scan_items", "ingredient_preference_rules", "exercise_definitions", "workout_programs", "workout_program_sessions", "workouts", "workout_revisions", "workout_templates", "workout_template_revisions", "heart_rate_zone_profiles", "workout_heart_rate_samples",
 ] as const;
 
 const identifier = (name: string) => sql.identifier(name);
@@ -175,14 +175,11 @@ async function selectSafeWorkspaceFormAccessRows(userId: number): Promise<Record
 // than the application's conventional user_id column. Keep this export scope
 // deliberately identical to account deletion so a user can retain a portable
 // audit trail of the LyfeOS-side federation activity that belongs to them.
-async function selectFederationAuditRows(userId: number, clerkId?: string | null): Promise<Record<string, unknown[]>> {
+async function selectFederationAuditRows(userId: number): Promise<Record<string, unknown[]>> {
   const queryRows = async (query: ReturnType<typeof sql>): Promise<unknown[]> => {
     const result = await db.execute(query);
     return (result as { rows?: unknown[] }).rows || [];
   };
-  const workItemClause = clerkId
-    ? sql` OR ("aggregate_type" = 'work_item' AND "payload"->>'actorId' = ${clerkId})`
-    : sql``;
   const rows = await Promise.all([
     queryRows(sql`SELECT * FROM "umh_inbound_commands" WHERE "local_user_id" = ${userId}`),
     queryRows(sql`SELECT * FROM "umh_approval_requests" WHERE "command_id" IN (SELECT "command_id" FROM "umh_inbound_commands" WHERE "local_user_id" = ${userId})`),
@@ -194,7 +191,11 @@ async function selectFederationAuditRows(userId: number, clerkId?: string | null
       WHERE ("aggregate_type" = 'mission' AND "aggregate_id" IN (SELECT "id"::text FROM "quests" WHERE "user_id" = ${userId}))
          OR ("aggregate_type" = 'progression' AND "aggregate_id" = ${String(userId)})
          OR ("aggregate_type" = 'coordination_context' AND "aggregate_id" LIKE ${`${userId}:%`})
-         ${workItemClause}
+         OR EXISTS (
+           SELECT 1 FROM "umh_audit_records" AS audit
+           WHERE audit."local_user_id" = ${userId}
+             AND audit."details"->>'eventId' = "umh_outbox_events"."event_id"
+         )
     `),
   ]);
   return {
@@ -226,6 +227,7 @@ export async function deleteLocalAccountData(userId: number): Promise<void> {
     await tx.execute(sql`DELETE FROM "umh_outbox_events" WHERE "aggregate_type" = 'progression' AND "aggregate_id" = ${String(userId)}`);
     await tx.execute(sql`DELETE FROM "umh_outbox_events" WHERE "aggregate_type" = 'coordination_context' AND "aggregate_id" LIKE ${`${userId}:%`}`);
     await tx.execute(sql`DELETE FROM "umh_outbox_events" WHERE "aggregate_type" = 'work_item' AND "payload"->>'actorId' = (SELECT "clerk_id" FROM "users" WHERE "id" = ${userId})`);
+    await tx.execute(sql`DELETE FROM "umh_outbox_events" WHERE EXISTS (SELECT 1 FROM "umh_audit_records" AS audit WHERE audit."local_user_id" = ${userId} AND audit."details"->>'eventId' = "umh_outbox_events"."event_id")`);
     await tx.execute(sql`DELETE FROM "umh_approval_requests" WHERE "command_id" IN (SELECT "command_id" FROM "umh_inbound_commands" WHERE "local_user_id" = ${userId})`);
     await tx.execute(sql`DELETE FROM "umh_audit_records" WHERE "local_user_id" = ${userId}`);
     await tx.execute(sql`DELETE FROM "umh_inbound_commands" WHERE "local_user_id" = ${userId}`);
@@ -236,7 +238,7 @@ export async function deleteLocalAccountData(userId: number): Promise<void> {
     }
 
     for (const table of [
-      "workflow_automation_action_receipts", "workflow_automation_runs", "workflow_automations", "cross_product_work_links", "cross_product_sharing_preferences", "progression_badge_events", "progression_badge_awards", "activity_progression_events", "skill_progression_events", "quest_skill_contributions", "skill_edges", "skill_nodes", "personal_capabilities", "transformation_thread_evidence", "mission_consequence_preflights", "mission_mutation_receipts", "mission_deferrals", "mission_dependencies", "quests", "transformation_threads", "mission_pages", "calendar_events",
+      "workflow_automation_action_receipts", "workflow_automation_runs", "workflow_automations", "cross_product_work_links", "cross_product_sharing_revisions", "cross_product_sharing_preferences", "progression_badge_events", "progression_badge_awards", "activity_progression_events", "skill_progression_events", "quest_skill_contributions", "skill_edges", "skill_nodes", "personal_capabilities", "transformation_thread_evidence", "mission_consequence_preflights", "mission_mutation_receipts", "mission_deferrals", "mission_dependencies", "quests", "transformation_threads", "mission_pages", "calendar_events",
       "relationship_ai_recommendations", "relationship_governance_audit", "relationship_governance_consents", "relationship_assessments", "relationship_commitments", "relationship_interactions", "personal_relationships", "documents", "folders", "media_items", "media_albums", "conversations", "user_stats", "user_profile",
       "user_daily_logs", "user_integrations", "extension_audit_events", "extension_installations", "ai_orchestration_steps", "ai_orchestration_runs", "ai_voice_session_segments", "ai_voice_sessions", "ai_pending_actions", "ai_action_records", "ai_execution_preferences", "ai_messages", "contacts", "spreadsheet_revisions", "spreadsheets", "canvas_revisions", "canvas_templates", "canvases", "graphs", "workspace_form_submission_receipts", "workspace_form_access_grants", "workspace_forms", "workspace_table_views", "workspace_database_row_revisions", "workspace_database_revisions", "workspace_database_rows", "workspace_databases",
       "templates", "integrations", "progress_trackers", "dismissed_knowledge", "vision_goals", "user_categories",
@@ -548,7 +550,7 @@ export function registerProfileRoutes(app: Express): void {
       if (!user) return res.status(404).json({ error: "User not found" });
       const [rows, federationAudit, healthConnectionRows, workspaceFormAccessRows, nutritionNutrients, nutritionRecipeIngredients, workoutExerciseRows, workoutSetRows, messageHubRows, missionReviewInvitationRows, collaborationRows, extensionInstallationRows] = await Promise.all([
         Promise.all(accountExportTables.map(async (table) => [table, await selectAccountRows(table, userId)] as const)),
-        selectFederationAuditRows(userId, user.clerkId),
+        selectFederationAuditRows(userId),
         selectSafeHealthConnectionRows(userId),
         selectSafeWorkspaceFormAccessRows(userId),
         selectNutritionNutrientRows(userId),

@@ -2,22 +2,25 @@ import crypto from "crypto";
 import type { Express, Request, Response } from "express";
 import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
-import { crossProductSharingPreferences, crossProductWorkLinks, quests } from "@shared/schema";
+import { crossProductWorkLinks, quests } from "@shared/schema";
 import { db } from "../db";
 import {
   crossProductDestinations,
   crossProductPurposes,
+  CrossProductSharingConflictError,
+  CrossProductSharingUnavailableError,
   getCrossProductSharing,
   getCrossProductSharingAvailability,
   queueCoordinationContext,
   queueLinkedWorkItemState,
+  updateCrossProductSharing,
 } from "../cross-product";
 import { isAuthenticated } from "./middleware";
 
 const destinationsSchema = z.array(z.enum(crossProductDestinations)).max(2).transform((items) => Array.from(new Set(items)));
 const purposesSchema = z.array(z.enum(crossProductPurposes)).max(2).transform((items) => Array.from(new Set(items)));
 const workLinkDestinationsSchema = destinationsSchema.refine((items) => items.length > 0, "Choose at least one product for the linked work item.");
-const updateSchema = z.object({ enabled: z.boolean(), destinations: destinationsSchema, purposes: purposesSchema })
+const updateSchema = z.object({ enabled: z.boolean(), destinations: destinationsSchema, purposes: purposesSchema, expectedRevision: z.number().int().nonnegative() })
   .superRefine((value, ctx) => {
     if (value.enabled && value.destinations.length === 0) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Choose at least one product before enabling ecosystem sharing.", path: ["destinations"] });
     if (value.enabled && value.purposes.length === 0) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Choose at least one sharing purpose.", path: ["purposes"] });
@@ -42,17 +45,18 @@ export function registerCrossProductSharingRoutes(app: Express): void {
       return res.status(503).json({ error: availability.reason });
     }
     const userId = req.session.userId!;
-    const now = new Date();
-    await db.insert(crossProductSharingPreferences).values({
-      userId, ecosystemSharingEnabled: parsed.data.enabled, allowedDestinations: parsed.data.destinations, allowedPurposes: parsed.data.purposes,
-      consentedAt: parsed.data.enabled ? now : null, revokedAt: parsed.data.enabled ? null : now, updatedAt: now,
-    }).onConflictDoUpdate({
-      target: crossProductSharingPreferences.userId,
-      set: { ecosystemSharingEnabled: parsed.data.enabled, allowedDestinations: parsed.data.destinations, allowedPurposes: parsed.data.purposes, consentedAt: parsed.data.enabled ? now : null, revokedAt: parsed.data.enabled ? null : now, updatedAt: now },
-    });
-    const contextQueued = parsed.data.enabled && parsed.data.purposes.includes("correlation")
-      ? await queueCoordinationContext(userId, new Date().toISOString().slice(0, 10)) : false;
-    return res.json({ sharing: await getCrossProductSharing(userId), contextQueued });
+    try {
+      const receipt = await updateCrossProductSharing({ userId, ...parsed.data });
+      const contextQueued = !receipt.replayed && parsed.data.enabled && parsed.data.purposes.includes("correlation")
+        ? await queueCoordinationContext(userId, new Date().toISOString().slice(0, 10)) : false;
+      return res.json({ sharing: await getCrossProductSharing(userId), contextQueued, receipt });
+    } catch (error) {
+      if (error instanceof CrossProductSharingConflictError) {
+        return res.status(409).json({ error: error.message, currentRevision: error.currentRevision });
+      }
+      if (error instanceof CrossProductSharingUnavailableError) return res.status(503).json({ error: error.message });
+      throw error;
+    }
   });
 
   app.get("/api/cross-product/work-links", isAuthenticated, async (req: Request, res: Response) => {

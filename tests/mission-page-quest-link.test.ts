@@ -30,6 +30,6 @@ describe("canonical Mission page ownership", () => {
     const release = source("server/release-migrate.ts");
     const verify = source(".github/workflows/verify.yml");
     expect(release).toContain('id: "0140_mission_page_quest_link"');
-    expect(verify.match(/= "134"/g)).toHaveLength(2);
+    expect(verify.match(/= "135"/g)).toHaveLength(2);
   });
 });

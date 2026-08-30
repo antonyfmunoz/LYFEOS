@@ -20,7 +20,7 @@ describe("production operations workflow boundary", () => {
     expect(verify).toContain("pg_restore");
     expect(verify).toContain("schema_fingerprint");
     expect(verify).toContain("lyfeos_restore_ci");
-    expect(verify.match(/= "134"/g)).toHaveLength(2);
+    expect(verify.match(/= "135"/g)).toHaveLength(2);
   });
 
   it("keeps production browser qualification source-pinned and disposable", () => {
