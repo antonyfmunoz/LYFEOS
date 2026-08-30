@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import pg from "pg";
 import puppeteer, { type Browser, type BrowserContext, type Page, type Viewport } from "puppeteer-core";
-import { acknowledgeBoundedChunkRecovery, hasUnexpectedBrowserSignals, type BrowserSignals as CoreBrowserSignals } from "./lib/production-browser-signals";
+import { acknowledgeBoundedChunkRecovery, hasUnexpectedBrowserSignals, installFixtureUserStorageSeed, type BrowserSignals as CoreBrowserSignals } from "./lib/production-browser-signals";
 
 type ApiResult = { status: number; body: any; cookie: string };
 type FixtureAccount = { id: number; displayName: string; email: string; cookie: string };
@@ -250,7 +250,7 @@ async function createPage(browser: Browser, account: FixtureAccount): Promise<{ 
   const signals = captureBrowserSignals(page);
   const session = cookieParts(account.cookie);
   await page.setCookie({ ...session, url: BASE_URL.origin, path: "/", httpOnly: true, secure: BASE_URL.protocol === "https:", sameSite: "Lax" });
-  await page.evaluateOnNewDocument((fixtureUser) => localStorage.setItem("lyfeos_user", JSON.stringify(fixtureUser)), { id: account.id, displayName: account.displayName });
+  await installFixtureUserStorageSeed(page, { id: account.id, displayName: account.displayName });
   await page.setCacheEnabled(false);
   return { context, page, signals };
 }

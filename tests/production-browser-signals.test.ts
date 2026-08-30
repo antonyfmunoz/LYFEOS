@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import {
   CHUNK_RECOVERY_EVIDENCE_WINDOW_MS,
   hasUnexpectedBrowserSignals,
+  installFixtureUserStorageSeed,
   isExternalProviderTransportError,
   reconcileBoundedChunkRecovery,
   type BrowserSignals,
@@ -22,6 +23,30 @@ function signals(consoleErrors: string[] = []): BrowserSignals {
 const exactTimeout = "ChunkLoadError: Failed to fetch dynamically imported module: route chunk timed out after 15000ms @ https://lyfeos.net/assets/index-ByYtYs3v.js";
 
 describe("production browser signal reconciliation", () => {
+  it("does not report fixture seeding as an application error in storage-ineligible documents", async () => {
+    let seed: ((fixtureUser: { id: number; displayName: string }) => void) | null = null;
+    let fixture: { id: number; displayName: string } | null = null;
+    const page = {
+      evaluateOnNewDocument: async (callback: typeof seed, value: typeof fixture) => {
+        seed = callback;
+        fixture = value;
+      },
+    };
+
+    await installFixtureUserStorageSeed(page as never, { id: 42, displayName: "Fixture" });
+    const priorDescriptor = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
+    Object.defineProperty(globalThis, "localStorage", {
+      configurable: true,
+      get: () => { throw new DOMException("Access is denied for this document.", "SecurityError"); },
+    });
+    try {
+      expect(() => seed?.(fixture!)).not.toThrow();
+    } finally {
+      if (priorDescriptor) Object.defineProperty(globalThis, "localStorage", priorDescriptor);
+      else Reflect.deleteProperty(globalThis, "localStorage");
+    }
+  });
+
   it.each([
     ["Sentry CORS", "Access to fetch at 'https://o4511899686797312.ingest.us.sentry.io/api/4511899799977984/envelope/?sentry_version=7' has been blocked by CORS policy", "https://lyfeos.net/login"],
     ["Sentry resource", "Failed to load resource: net::ERR_FAILED", "https://o4511899686797312.ingest.us.sentry.io/api/4511899799977984/envelope/"],

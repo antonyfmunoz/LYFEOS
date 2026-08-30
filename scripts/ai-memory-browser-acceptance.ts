@@ -5,6 +5,7 @@ import { access } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import pg from "pg";
 import puppeteer, { type Browser, type Page, type Viewport } from "puppeteer-core";
+import { installFixtureUserStorageSeed } from "./lib/production-browser-signals";
 
 type ApiResult = { status: number; body: any; cookie: string };
 type ViewResult = {
@@ -265,9 +266,7 @@ async function runViewport(browser: Browser, pool: pg.Pool, viewport: { name: st
 
     const session = cookieParts(cookie);
     await page.setCookie({ ...session, url: BASE_URL.origin, path: "/", httpOnly: true, secure: false, sameSite: "Lax" });
-    await page.evaluateOnNewDocument((fixtureUser) => {
-      localStorage.setItem("lyfeos_user", JSON.stringify(fixtureUser));
-    }, { id: userId, displayName });
+    await installFixtureUserStorageSeed(page, { id: userId, displayName });
     await page.setViewport(viewport.value);
     await page.setCacheEnabled(false);
     page.on("console", (message) => {
