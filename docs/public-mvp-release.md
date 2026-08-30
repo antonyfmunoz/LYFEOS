@@ -22,6 +22,12 @@ OURA_REDIRECT_URI                       # https://lyfeos.net/api/health-connecti
 SENTRY_DSN                             # enable server and browser error reporting
 SENTRY_ENVIRONMENT=production
 SENTRY_RELEASE=<immutable release id>
+LYFEOS_MONITOR_TOKEN                  # same independent 32+ character value in Fly and GitHub Actions
+POSTHOG_PROJECT_KEY                   # optional; public LYFEOS project token
+POSTHOG_HOST                          # optional; HTTPS ingestion origin, for example https://us.i.posthog.com
+POSTHOG_PROJECT_ID                    # optional; exact LYFEOS project ID
+POSTHOG_PERSONAL_API_KEY              # optional; server-only project:read/person:read/person:write key
+POSTHOG_ADMIN_HOST                    # optional; HTTPS API origin, for example https://us.posthog.com
 UMH_FEDERATION_INSTALLATION_ID         # only if UMH is enabled
 UMH_FEDERATION_TENANT_ID               # only if UMH is enabled
 UMH_FEDERATION_KEY_ID                  # only if UMH is enabled
@@ -72,6 +78,13 @@ Run this acceptance pass on staging and production:
 10. If UMH is enabled, perform one signed `lyfeos.mission.create.v1` command and confirm exactly one mission and one outbound event are recorded.
 11. On an active Thread, create a mission with one or more unlocked skills selected. Confirm it receives a proof plan, its activity XP is awarded on completion, and its skill XP is applied only after evidence and a positive review. Confirm locked skills cannot be selected, and completed missions cannot have their skill mapping changed.
 12. Ask the AI to make a medium-risk change (for example, edit or terminate a mission). Confirm it appears as a pending approval in Profile, approving it executes exactly once, and declining or expiry makes no change.
+13. If product analytics is enabled, first verify the provider project discards client IPs, disables autocapture, replay, heatmaps, web vitals, console/performance/error capture, and enforces the approved raw-event retention. Then prove one explicit user opt-in, one allow-listed content-free event, withdrawal, the delayed deletion receipt, provider-side subject/event deletion, and fail-closed behavior when any provider setting drifts.
+
+## Current immutable qualification receipt
+
+As of 2026-08-30, Fly release 182 serves source `6c734287c70fae4ba265266b743dc007f2d0d04c` from image `deployment-01M1948JE8Q72TQF4XMGCZS4ZF` with digest `sha256:d79e885ee53df972a410e790f77559d8697e9806571fa1d993160bd0d159d24b`. Exact CI `33306961512` passed both required lanes, all 135 release migrations through `0143_cross_product_consent_lifecycle`, the authenticated and recovery journeys, and deterministic logical backup/isolated restore. Monitor `33307285273` passed readiness, anonymous-auth isolation, immutable release/migration identity and protected Health integrity.
+
+Protected production run `33307285639` passed all 88 desktop/mobile route-viewports and every domain journey: truthful Mission progression and reversal, onboarding, AI memory, Voice, Pattern Explorer, Personal Finance, Tables/Forms, Calendar, Sheets, Canvas, Search, Messages, Projects, Mission safety and two six-account collaboration lifecycles. Every step and evidence upload succeeded. This receipt qualifies the automated source/CI/database/deployment/monitor/Chromium boundary. It does not qualify disabled providers, approved legal language, physical devices, observed human assistive-technology use, managed-production scale, field performance or longitudinal outcomes.
 
 ## Launch scope
 
