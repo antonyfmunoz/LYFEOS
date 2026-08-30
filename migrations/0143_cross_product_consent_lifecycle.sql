@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS "cross_product_sharing_revisions" (
   "affected_destinations" jsonb NOT NULL DEFAULT '[]'::jsonb,
   "affected_purposes" jsonb NOT NULL DEFAULT '[]'::jsonb,
   "policy_version" text NOT NULL,
-  "event_id" uuid,
+  "event_id" text,
   "delivery_state" text NOT NULL,
   "created_at" timestamp NOT NULL DEFAULT now(),
   CONSTRAINT "cross_product_sharing_revisions_user_revision_unique" UNIQUE ("user_id", "revision"),

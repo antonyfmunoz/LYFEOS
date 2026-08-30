@@ -54,6 +54,8 @@ describe("cross-product consent lifecycle contract", () => {
     expect(release).toContain('id: "0143_cross_product_consent_lifecycle"');
     expect(schema).toContain("crossProductSharingRevisions");
     expect(schema).toContain('revision: integer("revision").notNull().default(1)');
+    expect(schema).toContain('eventId: text("event_id")');
+    expect(source(".github/workflows/verify.yml")).toContain("tests/db-cross-product-consent-lifecycle.test.ts");
   });
 
   it("binds stale-write protection, signed outbox state, pseudonymous identity, export, erasure, and a visible receipt", () => {

@@ -120,7 +120,7 @@ describeDb("database-backed cross-product consent lifecycle", () => {
     expect(revisions.rows[4]).toMatchObject({ state: "disabled", allowed_destinations: [], allowed_purposes: [], policy_version: "lyfeos.cross-product-sharing.v1", delivery_state: "queued" });
     expect(revisions.rows[4].affected_destinations).toEqual(["creativesos"]);
 
-    const events = await pool.query(`SELECT "event_id", "payload" FROM "umh_outbox_events" WHERE "event_id" = ANY($1::uuid[]) ORDER BY "created_at", "id"`, [revisions.rows.map((row) => row.event_id)]);
+    const events = await pool.query(`SELECT "event_id", "payload" FROM "umh_outbox_events" WHERE "event_id" = ANY($1::text[]) ORDER BY "created_at", "id"`, [revisions.rows.map((row) => row.event_id)]);
     expect(events.rows).toHaveLength(5);
     const serialized = JSON.stringify(events.rows);
     expect(serialized).not.toContain(`consent_${stamp}@example.com`);

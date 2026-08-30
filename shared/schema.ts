@@ -566,7 +566,7 @@ export const crossProductSharingRevisions = pgTable("cross_product_sharing_revis
   affectedDestinations: jsonb("affected_destinations").notNull().default([]),
   affectedPurposes: jsonb("affected_purposes").notNull().default([]),
   policyVersion: text("policy_version").notNull(),
-  eventId: uuid("event_id"),
+  eventId: text("event_id"),
   deliveryState: text("delivery_state").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => [
