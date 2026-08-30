@@ -158,7 +158,7 @@ async function installQuotaFailure(page: Page): Promise<void> {
     const target = window as typeof window & { __lyfeosOriginalIndexedDB?: IDBFactory };
     target.__lyfeosOriginalIndexedDB = window.indexedDB;
     const failingFactory = {
-      open: () => {
+      open() {
         const request = {
           error: new DOMException("Acceptance fixture quota", "QuotaExceededError"),
           onerror: null as ((event: Event) => void) | null,
@@ -273,9 +273,8 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     await dismissBlockingTutorial(page);
     const localContext = await page.evaluate(() => {
       const now = new Date();
-      const pad = (value: number) => String(value).padStart(2, "0");
       return {
-        date: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`,
+        date: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`,
         timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
         utcOffsetMinutes: -now.getTimezoneOffset(),
       };
