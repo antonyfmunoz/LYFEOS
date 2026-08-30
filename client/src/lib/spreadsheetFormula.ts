@@ -438,6 +438,12 @@ function parseFormula(tokens: FormulaToken[]): FormulaNode | null {
   return root && index === tokens.length ? root : null;
 }
 
+export function isSupportedSpreadsheetFormula(input: string): boolean {
+  if (!input.startsWith("=") || input.length > 10_000) return false;
+  const tokens = tokenize(input.slice(1));
+  return Boolean(tokens && tokens.length <= 500 && parseFormula(tokens));
+}
+
 function tokenize(formula: string): FormulaToken[] | null {
   const tokens: FormulaToken[] = [];
   let position = 0;

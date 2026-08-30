@@ -12,7 +12,7 @@ describe("production Sheets evidence custody", () => {
   const editor = source("client/src/pages/SpreadsheetEditorPage.tsx");
 
   it("binds the production-only contract to immutable runtime and harness sources", () => {
-    expect(acceptance).toContain('contract: "lyfeos.production-sheets-browser.v10"');
+    expect(acceptance).toContain('contract: "lyfeos.production-sheets-browser.v11"');
     expect(acceptance).toContain('BASE_URL.origin === "https://lyfeos.net"');
     expect(acceptance).toContain("release.body?.sourceRevision === SOURCE");
     expect(acceptance).toContain("HARNESS_SOURCE");
@@ -44,7 +44,10 @@ describe("production Sheets evidence custody", () => {
     expect(acceptance).toContain("localImportReviewedAndPersisted");
     expect(acceptance).toContain("xlsxWorkbookReviewedAndPersisted");
     expect(acceptance).toContain("xlsxWorkbookExportGenerated");
+    expect(acceptance).toContain("odsWorkbookReviewedAndPersisted");
+    expect(acceptance).toContain("odsWorkbookExportGenerated");
     expect(acceptance).toContain("&apos;Sheet 1 (2)&apos;!B2");
+    expect(acceptance).toContain("&apos;Sheet 1 (3)&apos;.B2");
     expect(acceptance).toContain("Detected but omitted: hidden sheet state");
     expect(acceptance).toContain("collision-safe cross-tab formula rewriting");
     expect(acceptance).toContain("staleSaveStoppedAsConflict");
@@ -69,6 +72,7 @@ describe("production Sheets evidence custody", () => {
     expect(editor).toContain('data-testid="sheet-grid"');
     expect(editor).toContain('data-testid="sheet-history"');
     expect(editor).toContain('data-testid="sheet-export-xlsx"');
+    expect(editor).toContain('data-testid="sheet-export-ods"');
     expect(packageJson).toContain('"acceptance:production-sheets"');
     expect(workflow).toContain("npm run acceptance:production-sheets");
     expect(workflow).toContain("LYFEOS_SHEETS_OUTPUT_DIR");

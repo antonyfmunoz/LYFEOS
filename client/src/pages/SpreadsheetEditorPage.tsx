@@ -42,7 +42,7 @@ type PendingSpreadsheetImport = {
   populatedCellCount: number;
   formulaCount: number;
   fileName: string;
-  format: "csv" | "tsv" | "xlsx";
+  format: "csv" | "tsv" | "xlsx" | "ods";
   omittedFeatureKinds: string[];
 };
 
@@ -329,14 +329,20 @@ export default function SpreadsheetEditorPage() {
     try {
       if (document.sheets.length >= 20) throw new Error("Remove a sheet tab before importing another one.");
       const lowerName = file.name.toLocaleLowerCase();
-      const format = lowerName.endsWith(".csv") ? "csv" : lowerName.endsWith(".tsv") ? "tsv" : lowerName.endsWith(".xlsx") ? "xlsx" : null;
-      if (!format) throw new Error("Choose a .csv, .tsv, or .xlsx file.");
+      const format = lowerName.endsWith(".csv") ? "csv" : lowerName.endsWith(".tsv") ? "tsv" : lowerName.endsWith(".xlsx") ? "xlsx" : lowerName.endsWith(".ods") ? "ods" : null;
+      if (!format) throw new Error("Choose a .csv, .tsv, .xlsx, or .ods file.");
       if (format === "xlsx") {
         if (file.size > 10_000_000) throw new Error("XLSX files can be at most 10 MB.");
         const { importSpreadsheetXlsx } = await import("@/lib/spreadsheetXlsx");
         const imported = await importSpreadsheetXlsx(new Uint8Array(await file.arrayBuffer()));
         if (document.sheets.length + imported.sourceSheetCount > 20) throw new Error(`This workbook would exceed the 20-sheet limit by ${document.sheets.length + imported.sourceSheetCount - 20}.`);
         setPendingImport({ ...imported, fileName: file.name, format: "xlsx" });
+      } else if (format === "ods") {
+        if (file.size > 10_000_000) throw new Error("ODS files can be at most 10 MB.");
+        const { importSpreadsheetOds } = await import("@/lib/spreadsheetOds");
+        const imported = await importSpreadsheetOds(new Uint8Array(await file.arrayBuffer()));
+        if (document.sheets.length + imported.sourceSheetCount > 20) throw new Error(`This workbook would exceed the 20-sheet limit by ${document.sheets.length + imported.sourceSheetCount - 20}.`);
+        setPendingImport({ ...imported, fileName: file.name, format: "ods" });
       } else {
         if (file.size > 2_000_000) throw new Error("CSV and TSV files can be at most 2 MB.");
         const id = `sheet_${Math.random().toString(36).slice(2, 12)}`;
@@ -398,6 +404,22 @@ export default function SpreadsheetEditorPage() {
       toast({ title: "Could not export workbook", description: error instanceof Error ? error.message : "The XLSX workbook could not be created.", variant: "destructive" });
     }
   };
+  const exportOds = async () => {
+    try {
+      const { exportSpreadsheetOds, spreadsheetOdsFileName } = await import("@/lib/spreadsheetOds");
+      const bytes = exportSpreadsheetOds(document);
+      const blob = new Blob([bytes], { type: "application/vnd.oasis.opendocument.spreadsheet" });
+      const url = URL.createObjectURL(blob);
+      const anchor = window.document.createElement("a");
+      anchor.href = url;
+      anchor.download = spreadsheetOdsFileName(title);
+      anchor.click();
+      URL.revokeObjectURL(url);
+      toast({ title: "OpenDocument workbook exported", description: "ODS preserves tabs, raw values, booleans, and supported formulas. LyfeOS formatting and charts are not included." });
+    } catch (error) {
+      toast({ title: "Could not export workbook", description: error instanceof Error ? error.message : "The ODS workbook could not be created.", variant: "destructive" });
+    }
+  };
 
   if (query.isLoading) return <div className="container py-8 text-sm text-muted-foreground">Loading sheet…</div>;
   if (query.isError) return <div className="container py-8 text-sm text-destructive">{query.error instanceof Error ? query.error.message : "Sheet unavailable."}</div>;
@@ -413,10 +435,11 @@ export default function SpreadsheetEditorPage() {
       <div className="flex flex-wrap gap-2">
         <Button type="button" size="icon" variant="outline" aria-label="Undo last unsaved spreadsheet change" disabled={!localHistoryState.canUndo} onClick={undoDocument}><Undo2 className="h-4 w-4" /></Button>
         <Button type="button" size="icon" variant="outline" aria-label="Redo last undone spreadsheet change" disabled={!localHistoryState.canRedo} onClick={redoDocument}><Redo2 className="h-4 w-4" /></Button>
-        <input ref={importInput} className="sr-only" type="file" accept=".csv,.tsv,.xlsx,text/csv,text/tab-separated-values,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" aria-label="Choose a CSV, TSV, or XLSX file" onChange={(event) => void readImportFile(event.target.files?.[0])} />
+        <input ref={importInput} className="sr-only" type="file" accept=".csv,.tsv,.xlsx,.ods,text/csv,text/tab-separated-values,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.oasis.opendocument.spreadsheet" aria-label="Choose a CSV, TSV, XLSX, or ODS file" onChange={(event) => void readImportFile(event.target.files?.[0])} />
         <Button variant="outline" disabled={document.sheets.length >= 20} onClick={() => importInput.current?.click()}><Upload className="mr-1 h-4 w-4" />Import</Button>
         <Button variant="outline" onClick={exportCsv}><Download className="mr-1 h-4 w-4" />CSV</Button>
         <Button data-testid="sheet-export-xlsx" variant="outline" onClick={() => void exportXlsx()}><Download className="mr-1 h-4 w-4" />XLSX</Button>
+        <Button data-testid="sheet-export-ods" variant="outline" onClick={() => void exportOds()}><Download className="mr-1 h-4 w-4" />ODS</Button>
         <Button data-testid="sheet-save" disabled={!dirty || !title.trim() || save.isPending} onClick={() => save.mutate()}><Save className="mr-1 h-4 w-4" />{save.isPending ? "Saving…" : "Save"}</Button>
       </div>
     </div>
@@ -427,8 +450,9 @@ export default function SpreadsheetEditorPage() {
     </div>
     {pendingImport && <section className="rounded-lg border border-primary/20 bg-primary/5 p-3" aria-labelledby="sheet-import-review-heading">
       <h2 id="sheet-import-review-heading" className="text-sm font-medium">Review local import: {pendingImport.fileName}</h2>
-      <p className="mt-1 text-xs text-muted-foreground">{pendingImport.format === "xlsx" ? `${pendingImport.sourceSheetCount} workbook tab${pendingImport.sourceSheetCount === 1 ? "" : "s"}` : `New tab “${pendingImport.sheets[0].name}” · ${pendingImport.sourceRows} rows × ${pendingImport.sourceColumns} columns`} · {pendingImport.populatedCellCount} populated cells · {pendingImport.formulaCount} formula inputs. The file stays on this device and nothing changes until you add {pendingImport.sourceSheetCount === 1 ? "the tab" : "these tabs"}, review {pendingImport.sourceSheetCount === 1 ? "it" : "them"}, and save.</p>
+      <p className="mt-1 text-xs text-muted-foreground">{pendingImport.format === "xlsx" || pendingImport.format === "ods" ? `${pendingImport.sourceSheetCount} workbook tab${pendingImport.sourceSheetCount === 1 ? "" : "s"}` : `New tab “${pendingImport.sheets[0].name}” · ${pendingImport.sourceRows} rows × ${pendingImport.sourceColumns} columns`} · {pendingImport.populatedCellCount} populated cells · {pendingImport.formulaCount} formula inputs. The file stays on this device and nothing changes until you add {pendingImport.sourceSheetCount === 1 ? "the tab" : "these tabs"}, review {pendingImport.sourceSheetCount === 1 ? "it" : "them"}, and save.</p>
       {pendingImport.format === "xlsx" && <p className="mt-1 text-xs text-muted-foreground">Values, ordinary formulas, booleans, and sheet relationships are imported. Dates stored as Excel serial numbers remain raw values because source number formats are not imported. Workbook presentation, charts, drawings, macros, external links, pivot tables, hidden state, validation, named ranges, comments, and unsupported formula features do not become LyfeOS records.{pendingImport.omittedFeatureKinds.length ? ` Detected but omitted: ${pendingImport.omittedFeatureKinds.join(", ")}.` : ""}</p>}
+      {pendingImport.format === "ods" && <p className="mt-1 text-xs text-muted-foreground">Raw values, booleans, supported OpenFormula expressions, and sheet relationships are imported. Merged cells and unsupported formulas fail before review; presentation, charts, drawings, filters, pivot tables, hidden state, validation, named ranges, and comments do not become LyfeOS records.{pendingImport.omittedFeatureKinds.length ? ` Detected but omitted: ${pendingImport.omittedFeatureKinds.join(", ")}.` : ""}</p>}
       <div className="mt-2 flex gap-2"><Button type="button" size="sm" onClick={confirmImport}>{pendingImport.sourceSheetCount === 1 ? "Add as new tab" : `Add ${pendingImport.sourceSheetCount} tabs`}</Button><Button type="button" size="sm" variant="ghost" onClick={() => setPendingImport(null)}>Cancel</Button></div>
     </section>}
     <div className="rounded-xl border border-primary/15 bg-card/30 overflow-hidden">
@@ -493,7 +517,7 @@ export default function SpreadsheetEditorPage() {
         </div>
       </div>
     </div>
-    <p className="text-[11px] leading-relaxed text-muted-foreground">The grid renders only the visible rows and columns plus a small safety margin, even at the 500-row × 100-column limit. Use arrow keys to move one cell at a time and Shift+Arrow to extend a selection; choose Extend and then a cell on touch devices. Undo and Redo retain up to 20 unsaved grid, tab, and chart changes on this device and reset after save, reload, or restore. Shift-click also selects a rectangular range for copy, formatting, or a chart. Number, percent, USD currency, text-color, and fill-color formats change display only; raw values and formula inputs remain authoritative. Formatting applies only to populated cells; clipboard and CSV/TSV transfer values and formulas, not presentation, while plain-text paste preserves existing destination formatting. XLSX import stays local and additive, preserves supported values, ordinary formulas, booleans, and cross-sheet references, and explicitly omits workbook presentation and unsupported features; XLSX export includes all LyfeOS tabs, raw inputs, formulas, and governed cell formatting. Paste starts at the active cell and remains unsaved until you review and save. Insertions preserve populated cells, formatting, affected same-sheet and cross-sheet formula references, chart source alignment, and explicit combination-chart series roles; address-like text inside quoted formula strings remains text. Formulas support relative or `$A$1`-style absolute references and `'Sheet 2'!$A$1` cross-sheet references, plus arithmetic, parentheses, comparisons, quoted text, TRUE/FALSE, SUM, AVERAGE, MIN, MAX, COUNT, COUNTA, ROUND, ABS, and lazy IF branches. Renaming a tab safely rewrites its formula references; removing a referenced tab yields `#REF!`. CSV export writes unformatted calculated formula results and protects text beginning with spreadsheet-executable prefixes.</p>
+    <p className="text-[11px] leading-relaxed text-muted-foreground">The grid renders only the visible rows and columns plus a small safety margin, even at the 500-row × 100-column limit. Use arrow keys to move one cell at a time and Shift+Arrow to extend a selection; choose Extend and then a cell on touch devices. Undo and Redo retain up to 20 unsaved grid, tab, and chart changes on this device and reset after save, reload, or restore. Shift-click also selects a rectangular range for copy, formatting, or a chart. Number, percent, USD currency, text-color, and fill-color formats change display only; raw values and formula inputs remain authoritative. Formatting applies only to populated cells; clipboard and CSV/TSV transfer values and formulas, not presentation, while plain-text paste preserves existing destination formatting. XLSX and ODS imports stay local and additive, preserve governed values, booleans, formulas, and cross-sheet references, and disclose omitted workbook features before anything changes. XLSX export includes governed formatting; ODS export preserves tabs, raw values, booleans, and supported formulas but deliberately omits LyfeOS formatting and charts. Paste starts at the active cell and remains unsaved until you review and save. Insertions preserve populated cells, formatting, affected same-sheet and cross-sheet formula references, chart source alignment, and explicit combination-chart series roles; address-like text inside quoted formula strings remains text. Formulas support relative or `$A$1`-style absolute references and `'Sheet 2'!$A$1` cross-sheet references, plus arithmetic, parentheses, comparisons, quoted text, TRUE/FALSE, SUM, AVERAGE, MIN, MAX, COUNT, COUNTA, ROUND, ABS, and lazy IF branches. Renaming a tab safely rewrites its formula references; removing a referenced tab yields `#REF!`. CSV export writes unformatted calculated formula results and protects text beginning with spreadsheet-executable prefixes.</p>
     {document.charts.length > 0 && <section data-testid="sheet-charts" aria-labelledby="sheet-charts-heading" className="space-y-3">
       <div><h2 id="sheet-charts-heading" className="text-lg font-semibold">Charts</h2><p className="text-xs text-muted-foreground">Charts are saved definitions over canonical sheet cells. Editing a source cell updates its chart; missing values remain missing rather than becoming zero.</p></div>
       <div className="grid gap-3 xl:grid-cols-2">{document.charts.map((chart) => <SpreadsheetChartCard key={chart.id} document={document} chart={chart} onUpdate={(patch) => reviseChart(chart.id, patch)} onRemove={() => deleteChart(chart.id, chart.title)} />)}</div>
