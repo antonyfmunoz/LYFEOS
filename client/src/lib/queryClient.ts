@@ -1,6 +1,11 @@
-import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { onlineManager, QueryClient, QueryFunction } from "@tanstack/react-query";
 import { getBrowserTimeZone } from "@/lib/utils";
 import { captureProductMutation } from "@/lib/productAnalytics";
+import { createBrowserOnlineStateListener } from "@/lib/browserOnlineState";
+
+if (typeof window !== "undefined") {
+  onlineManager.setEventListener(createBrowserOnlineStateListener(window));
+}
 
 export function timeContextHeaders(): Record<string, string> {
   return { "x-lyfeos-time-zone": getBrowserTimeZone(), "x-lyfeos-utc-offset-minutes": String(-new Date().getTimezoneOffset()) };

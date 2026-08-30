@@ -127,6 +127,8 @@ describe("canonical mission Calendar", () => {
     expect(page).toContain('queryKey: ["calendar-missions"');
     expect(page).toContain("calendarVisibleRange(calendarZoom, anchor)");
     expect(page).toContain("calendarMissionQuery.fetchNextPage()");
+    expect(page).toContain("calendarMissionQuery.fetchStatus === 'paused'");
+    expect(page).toContain("Calendar is waiting for an internet connection");
     expect(page).toContain("applySearchAndFilters(calendarQuests.filter");
     expect(context).toContain('window.location.pathname === "/calendar"');
     expect(context).toContain('queryKey: ["calendar-missions"]');

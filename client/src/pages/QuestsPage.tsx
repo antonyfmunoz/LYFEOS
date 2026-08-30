@@ -4029,8 +4029,11 @@ export default function QuestsPage() {
               Calendar is a scheduling view of your canonical Missions. Creating or editing here updates the same mission record and lifecycle.
             </p>
             {user?.id ? <OfflineCalendarQueueStatus userId={user.id} /> : null}
-            {calendarMissionQuery.isPending && (
+            {calendarMissionQuery.isPending && calendarMissionQuery.fetchStatus !== 'paused' && (
               <p role="status" className="border-b border-primary/10 px-3 py-2 text-xs text-muted-foreground">Loading this Calendar range…</p>
+            )}
+            {calendarMissionQuery.fetchStatus === 'paused' && (
+              <p role="status" className="border-b border-primary/10 px-3 py-2 text-xs text-muted-foreground">Calendar is waiting for an internet connection. It will resume automatically when this device is online.</p>
             )}
             {calendarMissionQuery.isError && (
               <div role="alert" className="flex items-center justify-between gap-3 border-b border-destructive/20 bg-destructive/5 px-3 py-2 text-xs text-destructive">
