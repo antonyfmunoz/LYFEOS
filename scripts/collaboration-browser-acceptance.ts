@@ -5,11 +5,17 @@ import os from "node:os";
 import path from "node:path";
 import pg from "pg";
 import puppeteer, { type Browser, type BrowserContext, type Page, type Viewport } from "puppeteer-core";
-import { acknowledgeBoundedChunkRecovery, hasUnexpectedBrowserSignals, type BrowserSignals } from "./lib/production-browser-signals";
+import {
+  acknowledgeBoundedChunkRecovery,
+  hasUnexpectedBrowserSignals,
+  isExternalProviderTransportError,
+  type BrowserSignals,
+} from "./lib/production-browser-signals";
 
 type ApiResult = { status: number; body: any; cookie: string; retryAfter: number };
 type Account = { id: number; email: string; displayName: string; cookie: string };
-type PageState = { context: BrowserContext; page: Page; signals: BrowserSignals };
+type CollaborationBrowserSignals = BrowserSignals & { externalProviderErrors: string[] };
+type PageState = { context: BrowserContext; page: Page; signals: CollaborationBrowserSignals };
 type Cleanup = { accountErased: boolean; sessionInvalidated: boolean; emailReleased: boolean; displayNameReleased: boolean };
 type ViewAudit = {
   label: string;
@@ -30,7 +36,7 @@ type Journey = {
   memberRevocationRetiredGrant: boolean;
   selfLeaveCompleted: boolean;
   audits: ViewAudit[];
-  signals: BrowserSignals[];
+  signals: CollaborationBrowserSignals[];
   cleanup: Cleanup[];
 };
 
@@ -120,14 +126,26 @@ function cookieParts(cookie: string): { name: string; value: string } {
   return { name: cookie.slice(0, separator), value: cookie.slice(separator + 1) };
 }
 
-function captureSignals(page: Page): BrowserSignals {
-  const signals: BrowserSignals = { consoleErrors: [], pageErrors: [], failedRequests: [], serverErrors: [], recoveredChunkLoads: [] };
+function captureSignals(page: Page): CollaborationBrowserSignals {
+  const signals: CollaborationBrowserSignals = {
+    consoleErrors: [],
+    pageErrors: [],
+    failedRequests: [],
+    serverErrors: [],
+    recoveredChunkLoads: [],
+    externalProviderErrors: [],
+  };
   page.on("console", (entry) => {
     if (entry.type() !== "error") return;
     const source = entry.location().url;
     const text = entry.text();
     if (ISOLATED && (text.includes("Failed to load Clerk") || (text.includes("ERR_NAME_NOT_RESOLVED") && source.includes("local.lyfeos.dev")))) return;
-    signals.consoleErrors.push(`${text.slice(0, 500)}${source ? ` @ ${source}` : ""}`);
+    const detail = `${text.slice(0, 500)}${source ? ` @ ${source}` : ""}`;
+    if (isExternalProviderTransportError(text, source)) {
+      signals.externalProviderErrors.push(detail);
+      return;
+    }
+    signals.consoleErrors.push(detail);
   });
   page.on("pageerror", (error) => {
     if (ISOLATED && error.message.includes("Clerk: Failed to load Clerk") && error.message.includes("local.lyfeos.dev")) return;
@@ -295,7 +313,7 @@ async function cleanupAccount(account: Account): Promise<Cleanup> {
   return cleanup;
 }
 
-async function runViewport(browser: Browser, viewport: { name: string; value: Viewport }, ordinal: number): Promise<{ journey: Journey; accountIds: number[]; missionId: number; workspaceIds: string[] }> {
+async function runViewport(browser: Browser, viewport: { name: string; value: Viewport }, ordinal: number): Promise<{ journey: Journey; accountIds: number[]; missionId: number; workspaceIds: string[]; failure: string | null }> {
   const stamp = `${Date.now()}_${ordinal}_${randomUUID().slice(0, 7)}`;
   const workspaceName = `[AUTOMATED ACCEPTANCE] Circle ${stamp.slice(-7)}`;
   const workspacePurpose = "Coordinate one bounded accountability review without opening private records.";
@@ -498,17 +516,26 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
       assert(audit.mainCount === 1, `${audit.label} rendered ${audit.mainCount} main landmarks.`);
       assert(audit.duplicateIds.length === 0 && audit.invalidLabelReferences.length === 0 && audit.unlabeledControls.length === 0 && audit.horizontalOverflowPx <= 2, `${audit.label} failed collaboration semantics or overflow checks.`);
     }
-    assert(journey.signals.every((signals) => !hasUnexpectedBrowserSignals(signals)), `${viewport.name} recorded unexpected browser signals.`);
+    const unexpectedSignals = journey.signals.filter((signals) => hasUnexpectedBrowserSignals(signals));
+    assert(unexpectedSignals.length === 0, `${viewport.name} recorded unexpected browser signals: ${JSON.stringify(unexpectedSignals)}.`);
   } catch (error) {
     failure = `${stage}: ${safeError(error)}`;
   } finally {
+    for (const pageState of pages) {
+      if (journey.signals.includes(pageState.signals)) continue;
+      await acknowledgeBoundedChunkRecovery(pageState.page, pageState.signals).catch((error) => {
+        pageState.signals.pageErrors.push(`Signal reconciliation failed: ${safeError(error)}`.slice(0, 500));
+      });
+      journey.signals.push(pageState.signals);
+    }
     for (const pageState of pages) await pageState.context.close().catch(() => undefined);
     for (const account of accounts) journey.cleanup.push(await cleanupAccount(account));
   }
 
-  if (failure) throw new Error(failure);
-  assert(journey.cleanup.length === 3 && journey.cleanup.every((cleanup) => cleanup.accountErased), `${viewport.name} did not erase every disposable account.`);
-  return { journey, accountIds: accounts.map((account) => account.id), missionId, workspaceIds };
+  if (!failure && !(journey.cleanup.length === 3 && journey.cleanup.every((cleanup) => cleanup.accountErased))) {
+    failure = `${viewport.name} did not erase every disposable account.`;
+  }
+  return { journey, accountIds: accounts.map((account) => account.id), missionId, workspaceIds, failure };
 }
 
 async function main(): Promise<void> {
@@ -540,6 +567,10 @@ async function main(): Promise<void> {
       accountIds.push(...result.accountIds);
       missionIds.push(result.missionId);
       workspaceIds.push(...result.workspaceIds);
+      if (result.failure) {
+        failure = result.failure;
+        break;
+      }
     }
   } catch (error) {
     failure = safeError(error);

@@ -49,6 +49,10 @@ describe("consent-bound collaboration contract", () => {
     expect(acceptance).toContain("privateDescriptionExcluded");
     expect(acceptance).toContain("memberRevocationRetiredGrant");
     expect(acceptance).toContain("selfLeaveCompleted");
+    expect(acceptance).toContain("isExternalProviderTransportError");
+    expect(acceptance).toContain("externalProviderErrors");
+    expect(acceptance).toContain("unexpected browser signals: ${JSON.stringify(unexpectedSignals)}");
+    expect(acceptance).toContain("journeys.push(result.journey)");
     expect(acceptance).toContain("desktop-1440x900");
     expect(acceptance).toContain("mobile-390x844");
     expect(packageJson).toContain('"acceptance:collaboration": "tsx scripts/collaboration-browser-acceptance.ts"');
