@@ -118,6 +118,14 @@ describe("production browser signal reconciliation", () => {
     }
   });
 
+  it("keeps Messages transport failure distinct from an empty inbox", () => {
+    const page = readFileSync(resolve(process.cwd(), "client", "src", "pages", "MessagesPage.tsx"), "utf8");
+    expect(page).toContain("list.isPending");
+    expect(page).toContain("list.isError");
+    expect(page).toContain("Conversations could not be loaded.");
+    expect(page).toContain("list.refetch()");
+  });
+
   it("retains one exact, recently marker-backed route recovery as evidence", () => {
     const captured = signals([exactTimeout]);
     expect(reconcileBoundedChunkRecovery(captured, "990000", 1_000_000)).toEqual([exactTimeout]);

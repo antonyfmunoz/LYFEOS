@@ -2,6 +2,7 @@ import { onlineManager, QueryClient, QueryFunction } from "@tanstack/react-query
 import { getBrowserTimeZone } from "@/lib/utils";
 import { captureProductMutation } from "@/lib/productAnalytics";
 import { createBrowserOnlineStateListener } from "@/lib/browserOnlineState";
+import { queryRetryDelay, shouldRetryQuery } from "@/lib/queryRetryPolicy";
 
 if (typeof window !== "undefined") {
   onlineManager.setEventListener(createBrowserOnlineStateListener(window));
@@ -81,7 +82,8 @@ export const queryClient = new QueryClient({
       refetchInterval: false,
       refetchOnWindowFocus: false,
       staleTime: Infinity,
-      retry: false,
+      retry: shouldRetryQuery,
+      retryDelay: queryRetryDelay,
     },
     mutations: {
       retry: false,
