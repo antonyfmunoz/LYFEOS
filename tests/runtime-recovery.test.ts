@@ -1,11 +1,20 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  attemptRouteChunkRecovery,
   canAttemptChunkRecovery,
+  CHUNK_RECOVERY_STORAGE_KEY,
   CHUNK_RECOVERY_COOLDOWN_MS,
   getRuntimeErrorMessage,
   isChunkLoadError,
   withChunkLoadTimeout,
+  withRouteChunkRecovery,
 } from "../client/src/lib/runtimeRecovery";
+
+afterEach(() => {
+  vi.useRealTimers();
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 describe("runtime recovery", () => {
   it.each([
@@ -46,5 +55,52 @@ describe("runtime recovery", () => {
       message: expect.stringContaining("route chunk timed out"),
     });
     await stalled.catch((error) => expect(isChunkLoadError(error)).toBe(true));
+  });
+
+  it("records and immediately reloads once when a route chunk times out", () => {
+    const values = new Map<string, string>();
+    const reload = vi.fn();
+    vi.stubGlobal("sessionStorage", {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => values.set(key, value),
+    });
+    vi.stubGlobal("window", { location: { reload } });
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const error = new Error("Failed to fetch dynamically imported module: route chunk timed out after 15000ms");
+    error.name = "ChunkLoadError";
+
+    expect(attemptRouteChunkRecovery(error, 1_000_000)).toBe(true);
+    expect(values.get(CHUNK_RECOVERY_STORAGE_KEY)).toBe("1000000");
+    expect(consoleError).toHaveBeenCalledWith("ChunkLoadError: Failed to fetch dynamically imported module: route chunk timed out after 15000ms");
+    expect(reload).toHaveBeenCalledOnce();
+
+    expect(attemptRouteChunkRecovery(error, 1_000_001)).toBe(false);
+    expect(reload).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the obsolete document pending after a timed-out route starts recovery", async () => {
+    const values = new Map<string, string>();
+    const reload = vi.fn();
+    const settled = vi.fn();
+    vi.useFakeTimers();
+    vi.stubGlobal("sessionStorage", {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => values.set(key, value),
+    });
+    vi.stubGlobal("window", { location: { reload } });
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    const staleDocumentLoad = withRouteChunkRecovery(
+      () => new Promise<string>(() => undefined),
+      5,
+    );
+    void staleDocumentLoad.then(settled, settled);
+
+    await vi.advanceTimersByTimeAsync(5);
+    await Promise.resolve();
+
+    expect(reload).toHaveBeenCalledOnce();
+    expect(values.has(CHUNK_RECOVERY_STORAGE_KEY)).toBe(true);
+    expect(settled).not.toHaveBeenCalled();
   });
 });

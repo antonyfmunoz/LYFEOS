@@ -11,6 +11,20 @@ export const CHUNK_RECOVERY_STORAGE_KEY = "lyfeos-chunk-recovery";
 export const CHUNK_RECOVERY_COOLDOWN_MS = 60_000;
 export const ROUTE_CHUNK_TIMEOUT_MS = 15_000;
 
+export function attemptRouteChunkRecovery(error: unknown, now = Date.now()): boolean {
+  if (!isChunkLoadError(error) || typeof window === "undefined" || typeof sessionStorage === "undefined") return false;
+  try {
+    const previousAttempt = sessionStorage.getItem(CHUNK_RECOVERY_STORAGE_KEY);
+    if (!canAttemptChunkRecovery(previousAttempt, now)) return false;
+    sessionStorage.setItem(CHUNK_RECOVERY_STORAGE_KEY, String(now));
+    console.error(getRuntimeErrorMessage(error));
+    window.location.reload();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function withChunkLoadTimeout<T>(
   loader: () => Promise<T>,
   timeoutMs = ROUTE_CHUNK_TIMEOUT_MS,
@@ -26,6 +40,16 @@ export function withChunkLoadTimeout<T>(
 
   return Promise.race([loader(), timeout]).finally(() => {
     if (timeoutId !== undefined) clearTimeout(timeoutId);
+  });
+}
+
+export function withRouteChunkRecovery<T>(
+  loader: () => Promise<T>,
+  timeoutMs = ROUTE_CHUNK_TIMEOUT_MS,
+): Promise<T> {
+  return withChunkLoadTimeout(loader, timeoutMs).catch((error) => {
+    if (attemptRouteChunkRecovery(error)) return new Promise<T>(() => undefined);
+    throw error;
   });
 }
 

@@ -16,11 +16,11 @@ import { setHapticEnabled } from "./lib/haptics";
 import { setSoundEnabled } from "./lib/sounds";
 import { ProductAnalytics } from "./components/ProductAnalytics";
 import InstallationBrandRuntime from "./components/InstallationBrandRuntime";
-import { withChunkLoadTimeout } from "./lib/runtimeRecovery";
+import { withRouteChunkRecovery } from "./lib/runtimeRecovery";
 import { AuthenticateWithRedirectCallback } from "@clerk/clerk-react";
 
 function lazyRoute<T extends React.ComponentType<any>>(loader: () => Promise<{ default: T }>) {
-  return React.lazy(() => withChunkLoadTimeout(loader));
+  return React.lazy(() => withRouteChunkRecovery(loader));
 }
 
 const DashboardPage = lazyRoute(() => import("./pages/DashboardPage"));
