@@ -1,7 +1,7 @@
 import type { SpreadsheetDocument, SpreadsheetNumberFormat, SpreadsheetSheet } from "@shared/spreadsheets";
-import { spreadsheetAddressPattern } from "@shared/spreadsheets";
+import { parseSpreadsheetSheetQualifier, spreadsheetAddressPattern } from "@shared/spreadsheets";
 
-type FormulaError = "#ERROR!" | "#VALUE!" | "#DIV/0!" | "#CYCLE!";
+type FormulaError = "#ERROR!" | "#VALUE!" | "#DIV/0!" | "#CYCLE!" | "#REF!";
 type FormulaValue = number | string | boolean | FormulaError;
 type FormulaArithmeticOperator = "+" | "-" | "*" | "/";
 type FormulaComparisonOperator = "=" | "<>" | "<" | "<=" | ">" | ">=";
@@ -11,8 +11,8 @@ type FormulaNode =
   | { kind: "number"; value: number }
   | { kind: "string"; value: string }
   | { kind: "boolean"; value: boolean }
-  | { kind: "cell"; address: string }
-  | { kind: "range"; start: string; end: string }
+  | { kind: "cell"; address: string; sheetName?: string }
+  | { kind: "range"; start: string; end: string; sheetName?: string }
   | { kind: "unary"; operator: "+" | "-"; operand: FormulaNode }
   | { kind: "binary"; operator: FormulaBinaryOperator; left: FormulaNode; right: FormulaNode }
   | { kind: "function"; name: string; arguments: FormulaNode[] };
@@ -21,7 +21,7 @@ type FormulaToken =
   | { kind: "number"; value: string }
   | { kind: "string"; value: string }
   | { kind: "identifier"; value: string }
-  | { kind: "cell"; value: string }
+  | { kind: "cell"; value: string; sheetName?: string }
   | { kind: "operator"; value: string }
   | { kind: "punctuation"; value: string };
 
@@ -46,11 +46,12 @@ export function parseCellAddress(address: string): { column: number; row: number
 
 type SpreadsheetInsertionAxis = "row" | "column";
 
-function shiftFormulaReferences(input: string, axis: SpreadsheetInsertionAxis, beforeIndex: number): string {
+function shiftFormulaReferences(input: string, axis: SpreadsheetInsertionAxis, beforeIndex: number, formulaSheetName?: string, targetSheetName?: string): string {
   if (!input.startsWith("=")) return input;
   let shiftedFormula = "";
   let position = 0;
   let insideString = false;
+  let inheritedRangeEnd: { position: number; sheetName: string } | null = null;
   while (position < input.length) {
     if (input[position] === '"') {
       shiftedFormula += '"';
@@ -63,22 +64,42 @@ function shiftFormulaReferences(input: string, axis: SpreadsheetInsertionAxis, b
       position += 1;
       continue;
     }
-    const reference = insideString ? null : /^(\$?)([A-Za-z]{1,3})(\$?)([1-9][0-9]{0,3})/.exec(input.slice(position));
+    if (inheritedRangeEnd && position > inheritedRangeEnd.position) inheritedRangeEnd = null;
+    const qualifier = insideString ? null : parseSpreadsheetSheetQualifier(input.slice(position));
+    const referenceOffset = qualifier?.length ?? 0;
+    const reference = insideString ? null : /^(\$?)([A-Za-z]{1,3})(\$?)([1-9][0-9]{0,3})/.exec(input.slice(position + referenceOffset));
     const previous = position > 0 ? input[position - 1] : "";
-    const next = reference ? input[position + reference[0].length] || "" : "";
-    if (reference && !/[A-Za-z0-9_$]/.test(previous) && !/[A-Za-z0-9_]/.test(next)) {
+    const next = reference ? input[position + referenceOffset + reference[0].length] || "" : "";
+    const inheritedSheetName = inheritedRangeEnd?.position === position ? inheritedRangeEnd.sheetName : undefined;
+    if (reference && !/[A-Za-z0-9_.$]/.test(previous) && !/[A-Za-z0-9_$]/.test(next)) {
       const parsed = parseCellAddress(reference[0]);
       if (!parsed) {
+        if (qualifier) shiftedFormula += input.slice(position, position + qualifier.length);
         shiftedFormula += reference[0];
-        position += reference[0].length;
+        position += referenceOffset + reference[0].length;
         continue;
       }
-      const column = axis === "column" && parsed.column >= beforeIndex ? parsed.column + 1 : parsed.column;
-      const row = axis === "row" && parsed.row >= beforeIndex ? parsed.row + 1 : parsed.row;
+      const effectiveSheetName = qualifier?.sheetName ?? inheritedSheetName ?? formulaSheetName;
+      const shouldShift = targetSheetName
+        ? effectiveSheetName?.toLocaleLowerCase() === targetSheetName.toLocaleLowerCase()
+        : !qualifier && !inheritedSheetName;
+      const column = shouldShift && axis === "column" && parsed.column >= beforeIndex ? parsed.column + 1 : parsed.column;
+      const row = shouldShift && axis === "row" && parsed.row >= beforeIndex ? parsed.row + 1 : parsed.row;
       const shifted = `${columnLabel(column)}${row + 1}`;
       if (!spreadsheetAddressPattern.test(shifted)) throw new Error("A formula reference would exceed the supported sheet boundary.");
+      if (qualifier) shiftedFormula += input.slice(position, position + qualifier.length);
       shiftedFormula += `${reference[1]}${columnLabel(column)}${reference[3]}${row + 1}`;
-      position += reference[0].length;
+      const referenceEnd = position + referenceOffset + reference[0].length;
+      if (qualifier) {
+        const separator = /^(\s*:\s*)/.exec(input.slice(referenceEnd));
+        if (separator) {
+          const rangeEndPosition = referenceEnd + separator[0].length;
+          const endQualifier = parseSpreadsheetSheetQualifier(input.slice(rangeEndPosition));
+          const endReference = /^\$?[A-Za-z]{1,3}\$?[1-9][0-9]{0,3}(?![A-Za-z0-9_$])/.exec(input.slice(rangeEndPosition + (endQualifier?.length ?? 0)));
+          if (endReference && !endQualifier) inheritedRangeEnd = { position: rangeEndPosition, sheetName: qualifier.sheetName };
+        }
+      }
+      position = referenceEnd;
       continue;
     }
     shiftedFormula += input[position];
@@ -87,12 +108,14 @@ function shiftFormulaReferences(input: string, axis: SpreadsheetInsertionAxis, b
   return shiftedFormula;
 }
 
-export function insertSpreadsheetAxis(sheet: SpreadsheetSheet, axis: SpreadsheetInsertionAxis, beforeIndex: number): SpreadsheetSheet {
+function validateSpreadsheetInsertion(sheet: SpreadsheetSheet, axis: SpreadsheetInsertionAxis, beforeIndex: number): void {
   const dimension = axis === "row" ? sheet.rowCount : sheet.columnCount;
   const maximum = axis === "row" ? 500 : 100;
   if (!Number.isInteger(beforeIndex) || beforeIndex < 0 || beforeIndex >= dimension) throw new Error("Choose a visible row or column before inserting.");
   if (dimension >= maximum) throw new Error(`This sheet already has the maximum supported ${axis} count.`);
+}
 
+function shiftPopulatedCells(sheet: SpreadsheetSheet, axis: SpreadsheetInsertionAxis, beforeIndex: number, rewriteInput: (input: string) => string): SpreadsheetSheet {
   const cells: SpreadsheetSheet["cells"] = {};
   for (const [address, cell] of Object.entries(sheet.cells)) {
     const parsed = parseCellAddress(address);
@@ -101,9 +124,8 @@ export function insertSpreadsheetAxis(sheet: SpreadsheetSheet, axis: Spreadsheet
     const row = axis === "row" && parsed.row >= beforeIndex ? parsed.row + 1 : parsed.row;
     const shiftedAddress = `${columnLabel(column)}${row + 1}`;
     if (!spreadsheetAddressPattern.test(shiftedAddress)) throw new Error("A populated cell would exceed the supported sheet boundary.");
-    cells[shiftedAddress] = { ...cell, input: shiftFormulaReferences(cell.input, axis, beforeIndex) };
+    cells[shiftedAddress] = { ...cell, input: rewriteInput(cell.input) };
   }
-
   return {
     ...sheet,
     rowCount: axis === "row" ? sheet.rowCount + 1 : sheet.rowCount,
@@ -112,10 +134,33 @@ export function insertSpreadsheetAxis(sheet: SpreadsheetSheet, axis: Spreadsheet
   };
 }
 
+export function insertSpreadsheetAxis(sheet: SpreadsheetSheet, axis: SpreadsheetInsertionAxis, beforeIndex: number): SpreadsheetSheet {
+  validateSpreadsheetInsertion(sheet, axis, beforeIndex);
+  return shiftPopulatedCells(sheet, axis, beforeIndex, (input) => shiftFormulaReferences(input, axis, beforeIndex));
+}
+
+export function insertSpreadsheetDocumentAxis(document: SpreadsheetDocument, sheetId: string, axis: SpreadsheetInsertionAxis, beforeIndex: number): SpreadsheetDocument {
+  const targetSheet = document.sheets.find((sheet) => sheet.id === sheetId);
+  if (!targetSheet) throw new Error("That sheet no longer exists.");
+  if (document.sheets.filter((sheet) => sheet.name.toLocaleLowerCase() === targetSheet.name.toLocaleLowerCase()).length !== 1) {
+    throw new Error("Resolve duplicate sheet names before inserting rows or columns used by cross-sheet formulas.");
+  }
+  validateSpreadsheetInsertion(targetSheet, axis, beforeIndex);
+  const sheets = document.sheets.map((sheet) => {
+    const rewriteInput = (input: string) => shiftFormulaReferences(input, axis, beforeIndex, sheet.name, targetSheet.name);
+    if (sheet.id === targetSheet.id) return shiftPopulatedCells(sheet, axis, beforeIndex, rewriteInput);
+    return {
+      ...sheet,
+      cells: Object.fromEntries(Object.entries(sheet.cells).map(([address, cell]) => [address, { ...cell, input: rewriteInput(cell.input) }])),
+    };
+  });
+  return { ...document, sheets };
+}
+
 export function evaluateSpreadsheetCell(document: SpreadsheetDocument, sheetId: string, address: string): string {
   const sheet = document.sheets.find((candidate) => candidate.id === sheetId);
   if (!sheet || !spreadsheetAddressPattern.test(address)) return "";
-  const result = evaluateAddress(sheet, address, new Set());
+  const result = evaluateAddress(document, sheet, address, new Set());
   if (typeof result === "number") return formatNumber(result);
   if (typeof result === "boolean") return result ? "TRUE" : "FALSE";
   return result;
@@ -130,23 +175,32 @@ export function formatSpreadsheetDisplayValue(value: string, numberFormat?: Spre
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(numericValue);
 }
 
-function evaluateAddress(sheet: SpreadsheetSheet, address: string, stack: Set<string>): FormulaValue | string {
-  if (stack.has(address)) return "#CYCLE!";
+function evaluateAddress(document: SpreadsheetDocument, sheet: SpreadsheetSheet, address: string, stack: Set<string>): FormulaValue | string {
+  const stackKey = `${sheet.id}!${address}`;
+  if (stack.has(stackKey)) return "#CYCLE!";
   if (stack.size >= 200) return "#ERROR!";
   const input = sheet.cells[address]?.input ?? "";
   if (!input.startsWith("=")) return input;
-  const nextStack = new Set(stack).add(address);
-  return evaluateFormula(sheet, input.slice(1), nextStack);
+  const nextStack = new Set(stack).add(stackKey);
+  return evaluateFormula(document, sheet, input.slice(1), nextStack);
 }
 
-function evaluateFormula(sheet: SpreadsheetSheet, formula: string, stack: Set<string>): FormulaValue {
+function evaluateFormula(document: SpreadsheetDocument, sheet: SpreadsheetSheet, formula: string, stack: Set<string>): FormulaValue {
   const tokens = tokenize(formula);
   if (!tokens || tokens.length > 500) return "#ERROR!";
   const root = parseFormula(tokens);
   if (!root) return "#ERROR!";
 
-  const isError = (value: FormulaValue): value is FormulaError => typeof value === "string" && ["#ERROR!", "#VALUE!", "#DIV/0!", "#CYCLE!"].includes(value);
-  const evaluateCell = (address: string): FormulaValue => evaluateAddress(sheet, address, stack);
+  const isError = (value: FormulaValue): value is FormulaError => typeof value === "string" && ["#ERROR!", "#VALUE!", "#DIV/0!", "#CYCLE!", "#REF!"].includes(value);
+  const resolveSheet = (sheetName?: string): SpreadsheetSheet | null => {
+    if (!sheetName) return sheet;
+    const matches = document.sheets.filter((candidate) => candidate.name.toLocaleLowerCase() === sheetName.toLocaleLowerCase());
+    return matches.length === 1 ? matches[0] : null;
+  };
+  const evaluateCell = (address: string, sheetName?: string): FormulaValue => {
+    const referencedSheet = resolveSheet(sheetName);
+    return referencedSheet ? evaluateAddress(document, referencedSheet, address, stack) : "#REF!";
+  };
   const toNumber = (value: FormulaValue): number | FormulaError => {
     if (isError(value)) return value;
     if (typeof value === "number") return value;
@@ -195,7 +249,7 @@ function evaluateFormula(sheet: SpreadsheetSheet, formula: string, stack: Set<st
         const addresses = expandRange(node.start, node.end);
         rangedCellReads += addresses.length;
         if (rangedCellReads > 100_000) return [{ value: "#ERROR!", fromRange: false }];
-        for (const address of addresses) values.push({ value: evaluateCell(address), fromRange: true });
+        for (const address of addresses) values.push({ value: evaluateCell(address, node.sheetName), fromRange: true });
       } else {
         values.push({ value: evaluateNode(node), fromRange: false });
       }
@@ -255,7 +309,7 @@ function evaluateFormula(sheet: SpreadsheetSheet, formula: string, stack: Set<st
   };
   const evaluateNode = (node: FormulaNode): FormulaValue => {
     if (node.kind === "number" || node.kind === "string" || node.kind === "boolean") return node.value;
-    if (node.kind === "cell") return evaluateCell(node.address);
+    if (node.kind === "cell") return evaluateCell(node.address, node.sheetName);
     if (node.kind === "range") return "#VALUE!";
     if (node.kind === "function") return evaluateFunction(node);
     if (node.kind === "unary") {
@@ -364,10 +418,12 @@ function parseFormula(tokens: FormulaToken[]): FormulaNode | null {
         consume(":");
         const end = current();
         if (end?.kind !== "cell") return null;
+        if (!token.sheetName && end.sheetName) return null;
+        if (token.sheetName && end.sheetName && token.sheetName.toLocaleLowerCase() !== end.sheetName.toLocaleLowerCase()) return null;
         consume();
-        return { kind: "range", start: token.value, end: end.value };
+        return { kind: "range", start: token.value, end: end.value, ...(token.sheetName ? { sheetName: token.sheetName } : {}) };
       }
-      return { kind: "cell", address: token.value };
+      return { kind: "cell", address: token.value, ...(token.sheetName ? { sheetName: token.sheetName } : {}) };
     }
     if (token.kind === "identifier") {
       consume();
@@ -431,14 +487,16 @@ function tokenize(formula: string): FormulaToken[] | null {
       position += 1;
       continue;
     }
-    const cell = /^\$?[A-Za-z]{1,3}\$?[1-9][0-9]{0,3}(?![A-Za-z0-9_])/.exec(rest);
+    const qualifier = parseSpreadsheetSheetQualifier(rest);
+    const cell = /^\$?[A-Za-z]{1,3}\$?[1-9][0-9]{0,3}(?![A-Za-z0-9_$])/.exec(rest.slice(qualifier?.length ?? 0));
     if (cell) {
       const value = cell[0].replaceAll("$", "").toUpperCase();
       if (!spreadsheetAddressPattern.test(value)) return null;
-      tokens.push({ kind: "cell", value });
-      position += cell[0].length;
+      tokens.push({ kind: "cell", value, ...(qualifier ? { sheetName: qualifier.sheetName } : {}) });
+      position += (qualifier?.length ?? 0) + cell[0].length;
       continue;
     }
+    if (qualifier) return null;
     const number = /^\d+(?:\.\d+)?/.exec(rest);
     if (number) {
       tokens.push({ kind: "number", value: number[0] });

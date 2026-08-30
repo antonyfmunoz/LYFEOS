@@ -12,7 +12,7 @@ describe("production Sheets evidence custody", () => {
   const editor = source("client/src/pages/SpreadsheetEditorPage.tsx");
 
   it("binds the production-only contract to immutable runtime and harness sources", () => {
-    expect(acceptance).toContain('contract: "lyfeos.production-sheets-browser.v8"');
+    expect(acceptance).toContain('contract: "lyfeos.production-sheets-browser.v9"');
     expect(acceptance).toContain('BASE_URL.origin === "https://lyfeos.net"');
     expect(acceptance).toContain("release.body?.sourceRevision === SOURCE");
     expect(acceptance).toContain("HARNESS_SOURCE");
@@ -25,6 +25,8 @@ describe("production Sheets evidence custody", () => {
     expect(acceptance).toContain("extendedFormulaCompatibility");
     expect(acceptance).toContain("absoluteReferencesReconciled");
     expect(acceptance).toContain('$A$1 stays text');
+    expect(acceptance).toContain("crossSheetReferencesReconciled");
+    expect(acceptance).toContain("='Reality'!$A$3+B2");
     expect(acceptance).toContain('=IF(A1<A2,ROUND(A2/A1,1),1/0)');
     expect(acceptance).toContain("COUNT, COUNTA, ROUND, ABS and lazy IF behavior");
     expect(acceptance).toContain("controlledClipboardAdapterRoundTrip");
@@ -50,6 +52,8 @@ describe("production Sheets evidence custody", () => {
     expect(acceptance).toContain("Object.assign(account");
     expect(acceptance).toContain("human assistive-technology comprehension");
     expect(acceptance).toContain("OS clipboard permissions");
+    expect(acceptance).toContain("quoted-name cross-sheet references");
+    expect(editor).toContain('aria-label="Rename active sheet"');
   });
 
   it("uses stable nonvisual hooks and protected evidence custody", () => {

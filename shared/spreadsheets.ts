@@ -12,6 +12,68 @@ export type SpreadsheetChartKind = typeof spreadsheetChartKinds[number];
 export type SpreadsheetChartAxisMode = typeof spreadsheetChartAxisModes[number];
 export type SpreadsheetChartSeriesRole = typeof spreadsheetChartSeriesRoles[number];
 
+export function quoteSpreadsheetSheetName(name: string): string {
+  return `'${name.replaceAll("'", "''")}'`;
+}
+
+export function parseSpreadsheetSheetQualifier(input: string): { sheetName: string; length: number } | null {
+  if (input.startsWith("'")) {
+    let sheetName = "";
+    let cursor = 1;
+    while (cursor < input.length) {
+      if (input[cursor] !== "'") {
+        sheetName += input[cursor++];
+        continue;
+      }
+      if (input[cursor + 1] === "'") {
+        sheetName += "'";
+        cursor += 2;
+        continue;
+      }
+      return input[cursor + 1] === "!" && sheetName.length > 0
+        ? { sheetName, length: cursor + 2 }
+        : null;
+    }
+    return null;
+  }
+  const unquoted = /^([A-Za-z_][A-Za-z0-9_.]{0,79})!/.exec(input);
+  return unquoted ? { sheetName: unquoted[1], length: unquoted[0].length } : null;
+}
+
+export function rewriteSpreadsheetFormulaSheetName(input: string, previousName: string, nextName: string): string {
+  if (!input.startsWith("=")) return input;
+  let rewritten = "";
+  let position = 0;
+  let insideString = false;
+  while (position < input.length) {
+    if (input[position] === '"') {
+      rewritten += '"';
+      if (insideString && input[position + 1] === '"') {
+        rewritten += '"';
+        position += 2;
+        continue;
+      }
+      insideString = !insideString;
+      position += 1;
+      continue;
+    }
+    const qualifier = insideString ? null : parseSpreadsheetSheetQualifier(input.slice(position));
+    const previous = position > 0 ? input[position - 1] : "";
+    const cell = qualifier ? /^\$?[A-Za-z]{1,3}\$?[1-9][0-9]{0,3}(?![A-Za-z0-9_$])/.exec(input.slice(position + qualifier.length)) : null;
+    if (qualifier && cell && !/[A-Za-z0-9_.]/.test(previous)) {
+      rewritten += qualifier.sheetName.toLocaleLowerCase() === previousName.toLocaleLowerCase()
+        ? quoteSpreadsheetSheetName(nextName)
+        : input.slice(position, position + qualifier.length - 1);
+      rewritten += "!";
+      position += qualifier.length;
+      continue;
+    }
+    rewritten += input[position];
+    position += 1;
+  }
+  return rewritten;
+}
+
 export const spreadsheetCellSchema = z.object({
   input: z.string().max(10_000),
   format: z.object({
@@ -165,9 +227,17 @@ export function renameSpreadsheetSheet(document: SpreadsheetDocument, sheetId: s
   if (document.sheets.some((sheet) => sheet.id !== sheetId && sheet.name.trim().toLocaleLowerCase() === name.toLocaleLowerCase())) {
     throw new Error("Each sheet tab needs a unique name.");
   }
+  const previousName = document.sheets.find((sheet) => sheet.id === sheetId)!.name;
   return spreadsheetDocumentSchema.parse({
     ...document,
-    sheets: document.sheets.map((sheet) => sheet.id === sheetId ? { ...sheet, name } : sheet),
+    sheets: document.sheets.map((sheet) => ({
+      ...sheet,
+      name: sheet.id === sheetId ? name : sheet.name,
+      cells: Object.fromEntries(Object.entries(sheet.cells).map(([address, cell]) => [address, {
+        ...cell,
+        input: rewriteSpreadsheetFormulaSheetName(cell.input, previousName, name),
+      }])),
+    })),
   });
 }
 

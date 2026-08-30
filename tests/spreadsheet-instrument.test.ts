@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createEmptySpreadsheetDocument, createSpreadsheetChart, nextSpreadsheetSheetName, removeSpreadsheetChart, removeSpreadsheetSheet, renameSpreadsheetSheet, resolveSpreadsheetChartSeriesRoles, shiftSpreadsheetChartsForAxis, spreadsheetDocumentSchema, spreadsheetRevisionSnapshotSchema, uniqueSpreadsheetSheetName, updateSpreadsheetChart } from "../shared/spreadsheets";
-import { columnLabel, evaluateSpreadsheetCell, formatSpreadsheetDisplayValue, insertSpreadsheetAxis, parseCellAddress } from "../client/src/lib/spreadsheetFormula";
+import { columnLabel, evaluateSpreadsheetCell, formatSpreadsheetDisplayValue, insertSpreadsheetAxis, insertSpreadsheetDocumentAxis, parseCellAddress } from "../client/src/lib/spreadsheetFormula";
 import { buildSpreadsheetChartData, buildSpreadsheetPieData, buildSpreadsheetScatterData, spreadsheetChartRangeLabel } from "../client/src/lib/spreadsheetChart";
 import { createSpreadsheetSheetFromDelimited, formatSpreadsheetRange, parseSpreadsheetClipboard, parseSpreadsheetCsv, pasteSpreadsheetRange, serializeSpreadsheetRange, spreadsheetRangeBounds } from "../client/src/lib/spreadsheetRange";
 import { calculateSpreadsheetViewportWindow, moveSpreadsheetAddress } from "../client/src/lib/spreadsheetViewport";
@@ -90,6 +90,31 @@ describe("Sheets instrument", () => {
     expect(evaluateSpreadsheetCell(document, sheet.id, "B1")).toBe("9");
     expect(evaluateSpreadsheetCell(document, sheet.id, "B2")).toBe("9");
     expect(evaluateSpreadsheetCell(document, sheet.id, "B3")).toBe("$A$1 is text");
+  });
+
+  it("evaluates governed cross-sheet cells and ranges and detects cross-sheet cycles", () => {
+    const document = createEmptySpreadsheetDocument();
+    const summary = document.sheets[0];
+    const data = { ...summary, id: "sheet_data", name: "Data Set", cells: {
+      A1: { input: "2" },
+      A2: { input: "3" },
+      A3: { input: "4" },
+      B1: { input: "='Sheet 1'!B1" },
+    } };
+    const unquoted = { ...summary, id: "sheet_unquoted", name: "Data_Set", cells: { A1: { input: "6" } } };
+    summary.cells = {
+      A1: { input: "='Data Set'!$A$1+SUM('Data Set'!A2:A3)" },
+      A2: { input: "=Data_Set!A1" },
+      B1: { input: "='Data Set'!B1" },
+      C1: { input: "='Missing'!A1" },
+    };
+    document.sheets.push(data, unquoted);
+    expect(evaluateSpreadsheetCell(document, summary.id, "A1")).toBe("9");
+    expect(evaluateSpreadsheetCell(document, summary.id, "A2")).toBe("6");
+    expect(evaluateSpreadsheetCell(document, summary.id, "B1")).toBe("#CYCLE!");
+    expect(evaluateSpreadsheetCell(document, summary.id, "C1")).toBe("#REF!");
+    document.sheets.push({ ...data, id: "sheet_ambiguous", name: "data set" });
+    expect(evaluateSpreadsheetCell(document, summary.id, "A1")).toBe("#REF!");
   });
 
   it("fails closed for malformed or incompatible extended formulas", () => {
@@ -295,6 +320,31 @@ describe("Sheets instrument", () => {
     expect(evaluateSpreadsheetCell({ ...document, sheets: [withColumn] }, withColumn.id, "D1")).toBe("5");
   });
 
+  it("keeps cross-sheet formulas aligned when a referenced sheet inserts rows", () => {
+    const document = createEmptySpreadsheetDocument();
+    const data = document.sheets[0];
+    data.name = "Data";
+    data.cells = { A1: { input: "1" }, A2: { input: "2" }, B1: { input: "=A2" }, C1: { input: "='Summary'!A2" } };
+    document.sheets.push({ ...data, id: "sheet_summary", name: "Summary", cells: {
+      A1: { input: "='Data'!$A$2" },
+      A2: { input: "=A1" },
+      B1: { input: "=SUM('Data'!A1:A2)" },
+      C1: { input: '=IF(TRUE,"Data!A2 stays text",0)' },
+    } });
+    const shifted = insertSpreadsheetDocumentAxis(document, data.id, "row", 1);
+    expect(shifted.sheets[0].cells).toMatchObject({ A3: { input: "2" }, B1: { input: "=A3" }, C1: { input: "='Summary'!A2" } });
+    expect(shifted.sheets[1].cells).toMatchObject({
+      A1: { input: "='Data'!$A$3" },
+      A2: { input: "=A1" },
+      B1: { input: "=SUM('Data'!A1:A3)" },
+      C1: { input: '=IF(TRUE,"Data!A2 stays text",0)' },
+    });
+    expect(evaluateSpreadsheetCell(shifted, "sheet_summary", "A1")).toBe("2");
+    expect(evaluateSpreadsheetCell(shifted, "sheet_summary", "B1")).toBe("3");
+    const ambiguous = { ...document, sheets: [...document.sheets, { ...data, id: "sheet_duplicate", name: "data" }] };
+    expect(() => insertSpreadsheetDocumentAxis(ambiguous, data.id, "row", 1)).toThrow("duplicate sheet names");
+  });
+
   it("fails closed at structural and formula address boundaries", () => {
     const document = createEmptySpreadsheetDocument();
     expect(() => insertSpreadsheetAxis({ ...document.sheets[0], rowCount: 500 }, "row", 0)).toThrow("maximum supported row count");
@@ -303,10 +353,17 @@ describe("Sheets instrument", () => {
 
   it("renames sheet tabs with trimmed unique names and keeps the source document unchanged", () => {
     const document = createEmptySpreadsheetDocument();
-    const second = { ...document.sheets[0], id: "sheet_second", name: "Research", cells: {} };
+    document.sheets[0].cells.A1 = { input: "5" };
+    const second = { ...document.sheets[0], id: "sheet_second", name: "Research", cells: {
+      A1: { input: "='Sheet 1'!A1" },
+      A2: { input: '=IF(TRUE,"\'Sheet 1\'!A1 stays text",0)' },
+    } };
     document.sheets.push(second);
-    const renamed = renameSpreadsheetSheet(document, document.sheets[0].id, "  Planning  ");
-    expect(renamed.sheets.map((sheet) => sheet.name)).toEqual(["Planning", "Research"]);
+    const renamed = renameSpreadsheetSheet(document, document.sheets[0].id, "  O'Brien  ");
+    expect(renamed.sheets.map((sheet) => sheet.name)).toEqual(["O'Brien", "Research"]);
+    expect(renamed.sheets[1].cells.A1?.input).toBe("='O''Brien'!A1");
+    expect(renamed.sheets[1].cells.A2?.input).toBe('=IF(TRUE,"\'Sheet 1\'!A1 stays text",0)');
+    expect(evaluateSpreadsheetCell(renamed, "sheet_second", "A1")).toBe("5");
     expect(document.sheets[0].name).toBe("Sheet 1");
     expect(() => renameSpreadsheetSheet(document, document.sheets[0].id, " research ")).toThrow("unique name");
     expect(() => renameSpreadsheetSheet(document, "missing", "Valid")).toThrow("no longer exists");
@@ -317,7 +374,7 @@ describe("Sheets instrument", () => {
     const firstId = document.sheets[0].id;
     document.sheets.push(
       { ...document.sheets[0], id: "sheet_second", name: "Sheet 2", cells: { A1: { input: "kept" } } },
-      { ...document.sheets[0], id: "sheet_third", name: "Sheet 3", cells: {} },
+      { ...document.sheets[0], id: "sheet_third", name: "Sheet 3", cells: { A1: { input: "='Sheet 2'!A1" } } },
     );
     document.activeSheetId = "sheet_second";
     const removed = removeSpreadsheetSheet(document, "sheet_second");
@@ -325,6 +382,7 @@ describe("Sheets instrument", () => {
     expect(removed.sheets.map((sheet) => sheet.id)).toEqual([firstId, "sheet_third"]);
     expect(document.sheets[1].cells.A1).toEqual({ input: "kept" });
     expect(nextSpreadsheetSheetName(removed)).toBe("Sheet 2");
+    expect(evaluateSpreadsheetCell(removed, "sheet_third", "A1")).toBe("#REF!");
     expect(() => removeSpreadsheetSheet(createEmptySpreadsheetDocument(), firstId)).toThrow("at least one sheet tab");
   });
 
@@ -517,7 +575,7 @@ describe("Sheets instrument", () => {
 
   it("exposes accessible row and column insertion controls in the existing editor", () => {
     const editor = source("client/src/pages/SpreadsheetEditorPage.tsx");
-    expect(editor).toContain("insertSpreadsheetAxis");
+    expect(editor).toContain("insertSpreadsheetDocumentAxis");
     expect(editor).toContain("Insert row before row");
     expect(editor).toContain("Insert column before column");
   });
