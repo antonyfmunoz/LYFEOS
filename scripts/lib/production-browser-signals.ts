@@ -78,6 +78,25 @@ export async function acknowledgeBoundedChunkRecovery(
   return reconcileBoundedChunkRecovery(signals, storedAt);
 }
 
+/**
+ * Retry an idempotent browser operation only when the first failure coincides
+ * with the one exact, marker-backed route recovery allowed by the production
+ * contract. Ordinary errors, stale markers and any second recovery still fail.
+ */
+export async function retryOnceAfterBoundedChunkRecovery<T>(
+  page: Page,
+  signals: BrowserSignals,
+  operation: (attempt: 0 | 1) => Promise<T>,
+): Promise<T> {
+  try {
+    return await operation(0);
+  } catch (error) {
+    const recovered = await acknowledgeBoundedChunkRecovery(page, signals).catch(() => []);
+    if (recovered.length !== 1) throw error;
+    return operation(1);
+  }
+}
+
 export function hasUnexpectedBrowserSignals(signals: BrowserSignals): boolean {
   return signals.recoveredChunkLoads.length > 1 || [
     signals.consoleErrors,
