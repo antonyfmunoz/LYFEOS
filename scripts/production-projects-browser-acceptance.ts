@@ -235,7 +235,7 @@ async function eraseAccount(account: Account): Promise<boolean> {
   return session?.status === 401 && email?.status === 200 && email.body?.available === true && displayName?.status === 200 && displayName.body?.available === true;
 }
 
-async function runViewport(browser: Browser, viewport: { name: string; value: Viewport }, ordinal: number): Promise<{ view: ViewResult; cleanup: Cleanup }> {
+async function runViewport(browser: Browser, viewport: { name: string; value: Viewport }, ordinal: number): Promise<{ view: ViewResult | null; cleanup: Cleanup; failure: string | null }> {
   const stamp = `${Date.now()}_${ordinal}_${randomUUID().slice(0, 8)}`;
   const owner: Account = { id: 0, email: `projects_owner_${stamp}@example.com`, displayName: `projects_owner_${ordinal}_${stamp.slice(-8)}`, cookie: "" };
   const other: Account = { id: 0, email: `projects_other_${stamp}@example.com`, displayName: `projects_other_${ordinal}_${stamp.slice(-8)}`, cookie: "" };
@@ -407,9 +407,11 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     otherErased = await eraseAccount(other);
   }
   const cleanup: Cleanup = { viewport: viewport.name, ownerErased, otherErased };
-  if (failure) throw new Error(`stage=${stage}; ${safeError(failure)}; ownerErased=${ownerErased}; otherErased=${otherErased}`);
-  assert(view && ownerErased && otherErased, `${viewport.name} did not complete the rendered Projects journey and verified account erasure.`);
-  return { view, cleanup };
+  const failureMessage = failure ? `stage=${stage}; ${safeError(failure)}; ownerErased=${ownerErased}; otherErased=${otherErased}` : null;
+  if (!failureMessage && !(view && ownerErased && otherErased)) {
+    return { view, cleanup, failure: `${viewport.name} did not complete the rendered Projects journey and verified account erasure.` };
+  }
+  return { view, cleanup, failure: failureMessage };
 }
 
 async function main(): Promise<void> {
@@ -433,8 +435,12 @@ async function main(): Promise<void> {
     browser = await puppeteer.launch({ executablePath: await findChromium(), headless: true, args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--no-proxy-server"] });
     for (const [index, viewport] of VIEWPORTS.entries()) {
       const result = await runViewport(browser, viewport, index + 1);
-      views.push(result.view);
+      if (result.view) views.push(result.view);
       cleanups.push(result.cleanup);
+      if (result.failure) {
+        failure = result.failure;
+        break;
+      }
     }
   } catch (error) {
     failure = safeError(error);
