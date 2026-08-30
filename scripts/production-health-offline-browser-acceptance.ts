@@ -210,11 +210,17 @@ async function readHydration(account: Account, date: string, timeZone: string, u
   return result.body.entries;
 }
 
+function isAcceptanceHydration(entry: any): boolean {
+  return entry?.inputUnit === "ml"
+    && Math.abs(Number(entry.inputQuantity) - HYDRATION_ML) < 0.001
+    && Number(entry.volumeMl) === Math.round(HYDRATION_ML);
+}
+
 async function waitForHydrationCount(account: Account, date: string, timeZone: string, utcOffsetMinutes: number, expected: number): Promise<void> {
   const deadline = Date.now() + 45_000;
   let latest = -1;
   while (Date.now() < deadline) {
-    latest = (await readHydration(account, date, timeZone, utcOffsetMinutes)).filter((entry) => Math.abs(Number(entry.volumeMl) - HYDRATION_ML) < 0.001).length;
+    latest = (await readHydration(account, date, timeZone, utcOffsetMinutes)).filter(isAcceptanceHydration).length;
     if (latest === expected) return;
     await new Promise((resolve) => setTimeout(resolve, 400));
   }
