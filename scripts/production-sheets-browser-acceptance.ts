@@ -370,16 +370,16 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     await selectCellAndEnter(page, "A3", "=SUM(A1:A2)");
     await page.waitForFunction(() => document.querySelector('[data-sheet-address="A3"]')?.getAttribute("aria-label") === "A3: 5", { timeout: 30_000 });
     const formulasCalculated = true;
-    await selectCellAndEnter(page, "F1", "=IF(A1<A2,ROUND(A2/A1,1),1/0)");
-    await page.waitForFunction(() => document.querySelector('[data-sheet-address="F1"]')?.getAttribute("aria-label") === "F1: 1.5", { timeout: 30_000 });
-    await selectCellAndEnter(page, "F2", "=COUNT(A1:A3)");
-    await page.waitForFunction(() => document.querySelector('[data-sheet-address="F2"]')?.getAttribute("aria-label") === "F2: 3", { timeout: 30_000 });
-    await selectCellAndEnter(page, "F3", "=COUNTA(A1:A3)");
-    await page.waitForFunction(() => document.querySelector('[data-sheet-address="F3"]')?.getAttribute("aria-label") === "F3: 3", { timeout: 30_000 });
-    await selectCellAndEnter(page, "F4", "=ABS(-2.345)");
-    await page.waitForFunction(() => document.querySelector('[data-sheet-address="F4"]')?.getAttribute("aria-label") === "F4: 2.345", { timeout: 30_000 });
-    await selectCellAndEnter(page, "F5", "=A1<A2");
-    await page.waitForFunction(() => document.querySelector('[data-sheet-address="F5"]')?.getAttribute("aria-label") === "F5: TRUE", { timeout: 30_000 });
+    await selectCellAndEnter(page, "B4", "=IF(A1<A2,ROUND(A2/A1,1),1/0)");
+    await page.waitForFunction(() => document.querySelector('[data-sheet-address="B4"]')?.getAttribute("aria-label") === "B4: 1.5", { timeout: 30_000 });
+    await selectCellAndEnter(page, "B5", "=COUNT(A1:A3)");
+    await page.waitForFunction(() => document.querySelector('[data-sheet-address="B5"]')?.getAttribute("aria-label") === "B5: 3", { timeout: 30_000 });
+    await selectCellAndEnter(page, "B6", "=COUNTA(A1:A3)");
+    await page.waitForFunction(() => document.querySelector('[data-sheet-address="B6"]')?.getAttribute("aria-label") === "B6: 3", { timeout: 30_000 });
+    await selectCellAndEnter(page, "B7", "=ABS(-2.345)");
+    await page.waitForFunction(() => document.querySelector('[data-sheet-address="B7"]')?.getAttribute("aria-label") === "B7: 2.345", { timeout: 30_000 });
+    await selectCellAndEnter(page, "B8", "=A1<A2");
+    await page.waitForFunction(() => document.querySelector('[data-sheet-address="B8"]')?.getAttribute("aria-label") === "B8: TRUE", { timeout: 30_000 });
     const extendedFormulaCompatibility = true;
     await selectCellAndEnter(page, "A1", "9");
     await activate(page, 'button[aria-label="Undo last unsaved spreadsheet change"]');
@@ -497,8 +497,8 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     const immutableCreationRevisionReconciled = Boolean(creationSheet
       && importSheet?.cells?.A2?.input === "sleep"
       && creationSheet.cells?.B1?.input === "2"
-      && creationSheet.cells?.F1?.input === "=IF(A1<A2,ROUND(A2/A1,1),1/0)"
-      && creationSheet.cells?.F5?.input === "=A1<A2");
+      && creationSheet.cells?.B4?.input === "=IF(A1<A2,ROUND(A2/A1,1),1/0)"
+      && creationSheet.cells?.B8?.input === "=A1<A2");
     assert(immutableCreationRevisionReconciled, "Creation revision did not persist formula, clipboard and reviewed import state.");
     const revisionsV1 = await request("GET", `/api/spreadsheets/${spreadsheetId}/revisions`, undefined, owner.cookie);
     assert(revisionsV1.status === 200 && revisionsV1.body.revisions?.length === 1 && revisionsV1.body.revisions[0]?.action === "created", "Creation history is not an immutable version one.");
