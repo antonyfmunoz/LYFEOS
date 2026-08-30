@@ -13,6 +13,7 @@
     "acceptance:browser": "tsx scripts/production-browser-acceptance.ts",
     "acceptance:core-loop": "tsx scripts/production-core-loop-acceptance.ts",
     "acceptance:onboarding": "tsx scripts/production-onboarding-browser-acceptance.ts",
+    "acceptance:production-mission-sources": "tsx scripts/production-mission-source-acceptance.ts",
     "acceptance:automation-recovery": "tsx scripts/automation-recovery-browser-acceptance.ts",
     "acceptance:ai-memory": "tsx scripts/ai-memory-browser-acceptance.ts",
     "acceptance:production-ai-memory": "tsx scripts/production-ai-memory-browser-acceptance.ts",

@@ -4,6 +4,7 @@ import fs from "node:fs";
 const script = fs.readFileSync("scripts/production-browser-acceptance.ts", "utf8");
 const coreLoopScript = fs.readFileSync("scripts/production-core-loop-acceptance.ts", "utf8");
 const onboardingScript = fs.readFileSync("scripts/production-onboarding-browser-acceptance.ts", "utf8");
+const missionSourceScript = fs.readFileSync("scripts/production-mission-source-acceptance.ts", "utf8");
 const workflow = fs.readFileSync(".github/workflows/production-browser-acceptance.yml", "utf8");
 const packageJson = fs.readFileSync("package.json", "utf8");
 const rootLayout = fs.readFileSync("client/src/components/layout/RootLayout.tsx", "utf8");
@@ -191,6 +192,27 @@ describe("production browser acceptance custody", () => {
     expect(onboardingScript).not.toMatch(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
     expect(workflow).toContain("Run disposable production onboarding acceptance");
     expect(workflow).toContain("run: npm run acceptance:onboarding");
+  });
+
+  it("qualifies every provider-independent Mission source against deployed account-owned authority", () => {
+    expect(packageJson).toContain('"acceptance:production-mission-sources": "tsx scripts/production-mission-source-acceptance.ts"');
+    expect(missionSourceScript).toContain('contract: "lyfeos.production-mission-source-acceptance.v1"');
+    expect(missionSourceScript).toContain('"x-lyfeos-mutation-id": uiMutationId');
+    expect(missionSourceScript).toContain('"/api/inbox/captures"');
+    expect(missionSourceScript).toContain("todoIdeas: todoTitle");
+    expect(missionSourceScript).toContain('type: "schedule_follow_up"');
+    expect(missionSourceScript).toContain('"/api/transformation-thread/initialize"');
+    expect(missionSourceScript).toContain('"/api/account/export"');
+    expect(missionSourceScript).toContain('event.event_type === "mission_created"');
+    expect(missionSourceScript).toContain('source: "ai", status: "provider-dependent", qualified: false');
+    expect(missionSourceScript).toContain('source: "google", status: "external-provider", qualified: false');
+    expect(missionSourceScript).toContain('source: "umh", status: "external-signed-ingress", qualified: false');
+    expect(missionSourceScript).toContain('confirmation: "DELETE MY ACCOUNT"');
+    expect(missionSourceScript).toContain("sessionInvalidatedAndIdentifiersReleased: cleanup");
+    expect(missionSourceScript).not.toMatch(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+    expect(workflow).toContain("Run disposable production Mission-source acceptance");
+    expect(workflow).toContain("run: npm run acceptance:production-mission-sources");
+    expect(workflow).toContain("LYFEOS_MISSION_SOURCE_OUTPUT_DIR: ${{ runner.temp }}/lyfeos-browser-acceptance");
   });
 
   it("qualifies the rendered truthful Mission loop separately and always archives its synthetic record", () => {
