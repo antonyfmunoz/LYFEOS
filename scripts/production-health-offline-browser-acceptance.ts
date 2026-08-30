@@ -108,7 +108,12 @@ function cookieParts(cookie: string): { name: string; value: string } {
 
 function captureSignals(page: Page, state: { intentionalOffline: boolean }): Signals {
   const signals: Signals = { consoleErrors: [], pageErrors: [], failedRequests: [], serverErrors: [], recoveredChunkLoads: [], expectedOfflineFailures: [] };
-  page.on("console", (entry) => { if (entry.type() === "error") signals.consoleErrors.push(`${entry.text()}${entry.location().url ? ` @ ${entry.location().url}` : ""}`.slice(0, 500)); });
+  page.on("console", (entry) => {
+    if (entry.type() !== "error") return;
+    const detail = `${entry.text()}${entry.location().url ? ` @ ${entry.location().url}` : ""}`.slice(0, 500);
+    if (state.intentionalOffline && detail.includes("ERR_INTERNET_DISCONNECTED")) return;
+    signals.consoleErrors.push(detail);
+  });
   page.on("pageerror", (error) => signals.pageErrors.push(error.message.slice(0, 500)));
   page.on("requestfailed", (failed) => {
     const method = failed.method();
