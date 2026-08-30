@@ -4,7 +4,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import puppeteer, { type Browser, type BrowserContext, type Page, type Viewport } from "puppeteer-core";
-import { acknowledgeBoundedChunkRecovery, hasUnexpectedBrowserSignals, type BrowserSignals } from "./lib/production-browser-signals";
+import { acknowledgeBoundedChunkRecovery, hasUnexpectedBrowserSignals, isIsolatedClerkBootstrapError, type BrowserSignals } from "./lib/production-browser-signals";
 
 type ApiResult = { status: number; body: any; cookie: string; retryAfterSeconds: number | null };
 type Account = { id: number; email: string; displayName: string; cookie: string };
@@ -114,12 +114,12 @@ function captureSignals(page: Page): Signals {
     if (entry.type() !== "error") return;
     const source = entry.location().url || "";
     const detail = `${entry.text()}${source ? ` @ ${source}` : ""}`.slice(0, 500);
-    if (MODE === "isolated" && (entry.text().includes("Failed to load Clerk") || (entry.text().includes("ERR_NAME_NOT_RESOLVED") && source.startsWith("https://local.lyfeos.dev/npm/@clerk/clerk-js@5/")))) signals.isolatedProviderErrors.push(detail);
+    if (MODE === "isolated" && isIsolatedClerkBootstrapError(entry.text(), source)) signals.isolatedProviderErrors.push(detail);
     else signals.consoleErrors.push(detail);
   });
   page.on("pageerror", (error) => {
     const detail = error.message.slice(0, 500);
-    if (MODE === "isolated" && detail.includes("Clerk: Failed to load Clerk") && detail.includes("https://local.lyfeos.dev/")) signals.isolatedProviderErrors.push(detail);
+    if (MODE === "isolated" && isIsolatedClerkBootstrapError(detail)) signals.isolatedProviderErrors.push(detail);
     else signals.pageErrors.push(detail);
   });
   page.on("requestfailed", (failed) => {

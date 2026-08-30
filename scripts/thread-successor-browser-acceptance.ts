@@ -5,7 +5,7 @@ import { access } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import pg from "pg";
 import puppeteer, { type Browser, type Page, type Viewport } from "puppeteer-core";
-import { installFixtureUserStorageSeed } from "./lib/production-browser-signals";
+import { installFixtureUserStorageSeed, isIsolatedClerkBootstrapError } from "./lib/production-browser-signals";
 
 type ApiResult = { status: number; body: any; cookie: string };
 type ViewResult = {
@@ -269,10 +269,14 @@ async function runViewport(browser: Browser, pool: pg.Pool, viewport: { name: st
       if (message.type() !== "error") return;
       const source = message.location().url;
       const detail = `${message.text().slice(0, 240)}${source ? ` @ ${source}` : ""}`;
-      if (message.text().includes("net::ERR_NAME_NOT_RESOLVED") && source.startsWith("https://local.lyfeos.dev/npm/@clerk/clerk-js@5/")) isolatedProviderResourceErrors.push(detail);
+      if (isIsolatedClerkBootstrapError(message.text(), source)) isolatedProviderResourceErrors.push(detail);
       else consoleErrors.push(detail);
     });
-    page.on("pageerror", (error) => consoleErrors.push(error.message.slice(0, 300)));
+    page.on("pageerror", (error) => {
+      const detail = error.message.slice(0, 300);
+      if (isIsolatedClerkBootstrapError(detail)) isolatedProviderResourceErrors.push(detail);
+      else consoleErrors.push(detail);
+    });
     page.on("response", (response) => {
       if (response.status() >= 500 && new URL(response.url()).origin === BASE_URL.origin) failedRequests.push(`${response.status()} ${new URL(response.url()).pathname}`);
     });

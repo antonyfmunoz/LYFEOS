@@ -6,6 +6,7 @@ import {
   hasUnexpectedBrowserSignals,
   installFixtureUserStorageSeed,
   isExternalProviderTransportError,
+  isIsolatedClerkBootstrapError,
   reconcileBoundedChunkRecovery,
   retryOnceAfterBoundedChunkRecovery,
   type BrowserSignals,
@@ -92,6 +93,23 @@ describe("production browser signal reconciliation", () => {
     ["lookalike host", "Failed", "https://sentry.io.example.com/api/1/envelope/"],
   ])("does not hide %s", (_label, message, location) => {
     expect(isExternalProviderTransportError(message, location)).toBe(false);
+  });
+
+  it.each([
+    ["major default", "Failed to load resource: net::ERR_NAME_NOT_RESOLVED", "https://local.lyfeos.dev/npm/@clerk/clerk-js@5/dist/clerk.browser.js"],
+    ["pinned headless", "Failed to load resource: net::ERR_NAME_NOT_RESOLVED", "https://local.lyfeos.dev/npm/@clerk/clerk-js@5.127.2/dist/clerk.headless.browser.js"],
+    ["page error", "Clerk: Failed to load Clerk at https://local.lyfeos.dev/npm/@clerk/clerk-js@5.127.2/dist/clerk.headless.browser.js", ""],
+  ])("classifies the exact isolated Clerk %s bootstrap failure", (_label, message, location) => {
+    expect(isIsolatedClerkBootstrapError(message, location)).toBe(true);
+  });
+
+  it.each([
+    ["production custom domain", "Clerk: Failed to load Clerk", "https://clerk.lyfeos.net/npm/@clerk/clerk-js@5.127.2/dist/clerk.headless.browser.js"],
+    ["local application asset", "Failed to load resource: net::ERR_NAME_NOT_RESOLVED", "https://local.lyfeos.dev/assets/index.js"],
+    ["local Clerk runtime error", "TypeError: Clerk runtime failed", "https://local.lyfeos.dev/npm/@clerk/clerk-js@5.127.2/dist/clerk.headless.browser.js"],
+    ["lookalike host", "Failed to load resource: net::ERR_NAME_NOT_RESOLVED", "https://local.lyfeos.dev.example.com/npm/@clerk/clerk-js@5.127.2/dist/clerk.headless.browser.js"],
+  ])("does not excuse %s", (_label, message, location) => {
+    expect(isIsolatedClerkBootstrapError(message, location)).toBe(false);
   });
 
   it("keeps every protected long-running journey on the bounded recovery contract", () => {

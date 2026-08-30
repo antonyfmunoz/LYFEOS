@@ -19,6 +19,7 @@ export type FixtureBrowserUser = {
 const BOUNDED_ROUTE_CHUNK_TIMEOUT = /^ChunkLoadError: Failed to fetch dynamically imported module: route chunk timed out after 15000ms(?: @ https?:\/\/[^\s]+\/assets\/[^\s]+\.js)?$/;
 const SENTRY_BROWSER_INGEST = /https:\/\/o\d+\.ingest(?:\.[a-z0-9-]+)?\.sentry\.io\/api\/\d+\/envelope\//i;
 const POSTHOG_BROWSER_INGEST = /https:\/\/(?:[a-z0-9-]+\.)?i\.posthog\.com\/(?:e|batch)\//i;
+const ISOLATED_CLERK_BOOTSTRAP = /https:\/\/local\.lyfeos\.dev\/npm\/@clerk\/clerk-js@\d+(?:\.\d+){0,2}\/dist\/clerk(?:\.[a-z0-9-]+)*\.browser\.js(?:\?[^\s]*)?/i;
 
 /**
  * Preserve the authenticated fixture hint across target-origin navigations.
@@ -44,6 +45,17 @@ export async function installFixtureUserStorageSeed(
 export function isExternalProviderTransportError(message: string, locationUrl = ""): boolean {
   const evidence = `${message} ${locationUrl}`;
   return SENTRY_BROWSER_INGEST.test(evidence) || POSTHOG_BROWSER_INGEST.test(evidence);
+}
+
+/**
+ * The isolated browser suite deliberately gives Clerk a non-routable local
+ * frontend host so its provider bootstrap cannot become a hidden dependency.
+ * Match only that exact asset family, including pinned and headless variants.
+ * Callers must still gate this helper on their explicit isolated mode.
+ */
+export function isIsolatedClerkBootstrapError(message: string, locationUrl = ""): boolean {
+  if (!/(?:Failed to load Clerk|ERR_NAME_NOT_RESOLVED)/i.test(message)) return false;
+  return ISOLATED_CLERK_BOOTSTRAP.test(`${message} ${locationUrl}`);
 }
 
 export function reconcileBoundedChunkRecovery(

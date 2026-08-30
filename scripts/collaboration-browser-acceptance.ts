@@ -9,6 +9,7 @@ import {
   acknowledgeBoundedChunkRecovery,
   hasUnexpectedBrowserSignals,
   isExternalProviderTransportError,
+  isIsolatedClerkBootstrapError,
   type BrowserSignals,
 } from "./lib/production-browser-signals";
 
@@ -139,7 +140,7 @@ function captureSignals(page: Page): CollaborationBrowserSignals {
     if (entry.type() !== "error") return;
     const source = entry.location().url;
     const text = entry.text();
-    if (ISOLATED && (text.includes("Failed to load Clerk") || (text.includes("ERR_NAME_NOT_RESOLVED") && source.includes("local.lyfeos.dev")))) return;
+    if (ISOLATED && isIsolatedClerkBootstrapError(text, source)) return;
     const detail = `${text.slice(0, 500)}${source ? ` @ ${source}` : ""}`;
     if (isExternalProviderTransportError(text, source)) {
       signals.externalProviderErrors.push(detail);
@@ -148,7 +149,7 @@ function captureSignals(page: Page): CollaborationBrowserSignals {
     signals.consoleErrors.push(detail);
   });
   page.on("pageerror", (error) => {
-    if (ISOLATED && error.message.includes("Clerk: Failed to load Clerk") && error.message.includes("local.lyfeos.dev")) return;
+    if (ISOLATED && isIsolatedClerkBootstrapError(error.message)) return;
     signals.pageErrors.push(error.message.slice(0, 500));
   });
   page.on("requestfailed", (failed) => {
