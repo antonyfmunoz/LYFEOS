@@ -57,6 +57,22 @@ describe("production Calendar evidence custody", () => {
     expect(acceptance).not.toContain("service-worker cold-start offline navigation, storage eviction recovery");
   });
 
+  it("keeps expected offline transport signals suppressed through both reconnection transitions", () => {
+    const firstReconnectStage = acceptance.indexOf('stage = "restart the service worker and recover the queued Calendar change offline"');
+    const firstRestore = acceptance.indexOf("await restoreOnline(page);", firstReconnectStage);
+    const firstStrictSignals = acceptance.indexOf("intentionallyOffline = false;", firstRestore);
+    const conflictStage = acceptance.indexOf('stage = "commit the competing canonical edit from the already-open second tab"');
+    const secondRestore = acceptance.indexOf("await restoreOnline(page);", conflictStage);
+    const secondStrictSignals = acceptance.indexOf("intentionallyOffline = false;", secondRestore);
+
+    expect(firstReconnectStage).toBeGreaterThan(-1);
+    expect(firstRestore).toBeGreaterThan(firstReconnectStage);
+    expect(firstStrictSignals).toBeGreaterThan(firstRestore);
+    expect(conflictStage).toBeGreaterThan(firstStrictSignals);
+    expect(secondRestore).toBeGreaterThan(conflictStage);
+    expect(secondStrictSignals).toBeGreaterThan(secondRestore);
+  });
+
   it("uses stable nonvisual hooks and protected evidence custody", () => {
     expect(calendar).toContain('data-testid="calendar-page"');
     expect(calendar).toContain('data-testid="calendar-title"');

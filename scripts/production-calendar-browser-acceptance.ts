@@ -440,8 +440,13 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     const serviceWorkerColdStartRecovered = await page.evaluate(() => Boolean(navigator.serviceWorker?.controller));
     assert(serviceWorkerColdStartRecovered, "Calendar did not recover through a restarted service worker while offline.");
 
-    intentionallyOffline = false;
     await restoreOnline(page);
+    // Chromium may deliver the final expected ERR_INTERNET_DISCONNECTED
+    // console event while CDP is restoring network access. Keep the harness in
+    // its intentional-offline window until navigator.onLine is true and the
+    // application has received the online event, then resume strict signal
+    // attribution for every subsequent operation.
+    intentionallyOffline = false;
     const created = await waitForMission(account, date, (mission) => mission.title === offlineTitle, "offline create reconnect");
     const reconnectCreateConverged = created.revision === 1;
     assert(reconnectCreateConverged, "Offline Calendar create did not converge as revision one.");
@@ -498,8 +503,8 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     const secondTabCommitted = secondTabState.title === serverTitle;
     assert(secondTabCommitted, "The second live tab did not commit Calendar mission revision two.");
     await page.bringToFront();
-    intentionallyOffline = false;
     await restoreOnline(page);
+    intentionallyOffline = false;
     await page.waitForFunction((title) => {
       const text = document.querySelector('[data-testid="calendar-offline-queue"]')?.textContent || "";
       return text.includes(String(title)) && text.includes("Current server version") && text.includes("v2");
