@@ -12,6 +12,7 @@ export default function OfflineHealthQueueStatus() {
   const { user } = useAuth();
   const userId = user?.id;
   const queue = useQuery({
+    networkMode: "always",
     queryKey: ["health-offline-queue", userId],
     queryFn: () => listHealthMutationQueue(userId!),
     enabled: Boolean(userId),
@@ -19,6 +20,7 @@ export default function OfflineHealthQueueStatus() {
   });
   const refreshHealthRecords = () => queryClient.invalidateQueries({ predicate: (query) => typeof query.queryKey[0] === "string" && (query.queryKey[0].startsWith("/api/nutrition/") || query.queryKey[0].startsWith("/api/workouts") || query.queryKey[0].startsWith("/api/health-fitness/") || query.queryKey[0].startsWith("/api/recovery-")) });
   const retry = useMutation({
+    networkMode: "always",
     mutationFn: (id: string) => retryHealthMutationQueueItem(userId!, id),
     onSuccess: (result) => {
       void queryClient.invalidateQueries({ queryKey: ["health-offline-queue", userId] });
@@ -28,6 +30,7 @@ export default function OfflineHealthQueueStatus() {
     onError: (error: Error) => toast({ title: "Could not retry that record", description: error.message, variant: "destructive" }),
   });
   const discard = useMutation({
+    networkMode: "always",
     mutationFn: async (id: string) => {
       if (!window.confirm("Permanently discard this unsynced record from this device? It was not added to your LyfeOS account and cannot be recovered.")) return false;
       return discardHealthMutationQueueItem(userId!, id);

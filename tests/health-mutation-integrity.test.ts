@@ -75,6 +75,7 @@ describe("health mutation integrity", () => {
     expect(queueStatus).toContain("Records stored only on this device");
     expect(queueStatus).toContain("Permanently discard this unsynced record from this device?");
     expect(queueStatus).not.toContain("item.body");
+    expect(queueStatus.match(/networkMode: "always"/g)).toHaveLength(3);
     expect(nutrition).toContain("submitHealthMutation({ userId: user.id");
     expect(workouts).toContain("submitHealthMutation({ userId: user.id");
     expect(sleep).toContain('url: "/api/health-fitness/sleep/sessions"');
