@@ -2244,6 +2244,16 @@ export default function ProfilePage() {
                   Turning this off stops capture immediately, retires the random analytics identifier, and queues its provider-side events for deletion. Re-enabling creates a new identifier.
                 </p>
               </details>
+              {productAnalytics?.deletion.receipt ? <div data-testid="product-analytics-deletion-receipt" role="status" className="mt-3 rounded-md border border-primary/15 bg-card/30 px-3 py-2">
+                <p className="text-xs font-medium text-foreground">Provider deletion receipt</p>
+                <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                  {productAnalytics.deletion.receipt.state === "provider_reconciled"
+                    ? `LyfeOS reconciled the provider deletion on ${new Date(productAnalytics.deletion.receipt.reconciledAt!).toLocaleString()}. PostHog may finish its asynchronous processing later.`
+                    : productAnalytics.deletion.receipt.state === "retrying"
+                      ? `Capture is off. LyfeOS has attempted provider deletion ${productAnalytics.deletion.receipt.attempts} ${productAnalytics.deletion.receipt.attempts === 1 ? "time" : "times"} and will retry without reusing the retired analytics identifier.`
+                      : `Capture is off. Provider deletion is queued; the first reconciliation starts after ${new Date(productAnalytics.deletion.receipt.firstAttemptNotBefore).toLocaleString()} so in-flight events are included.`}
+                </p>
+              </div> : null}
             </div>
 
             {/* Connected Apps / Integrations */}

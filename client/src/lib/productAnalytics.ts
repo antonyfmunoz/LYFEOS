@@ -1,3 +1,5 @@
+import type { ProductAnalyticsDeletionReceipt } from "@shared/product-analytics";
+
 export const PRODUCT_ANALYTICS_POLICY_VERSION = "lyfeos.product-analytics.v1" as const;
 
 export type ProductAnalyticsStatus = {
@@ -8,7 +10,13 @@ export type ProductAnalyticsStatus = {
   capture: { projectKey: string; host: string; distinctId: string } | null;
   events: string[];
   collection: Record<string, boolean>;
-  deletion: Record<string, string | boolean>;
+  deletion: {
+    onWithdrawal: string;
+    onAccountDeletion: string;
+    providerProcessing: string;
+    identifiersAreReused: boolean;
+    receipt: ProductAnalyticsDeletionReceipt | null;
+  };
 };
 
 type ProductEventName =

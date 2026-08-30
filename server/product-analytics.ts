@@ -1,5 +1,10 @@
 import { db } from "./db";
 import { sql } from "drizzle-orm";
+import {
+  productAnalyticsDeletionReceiptFromRow,
+  type ProductAnalyticsDeletionQueueRow,
+  type ProductAnalyticsDeletionReceipt,
+} from "../shared/product-analytics";
 import { logger } from "./utils";
 import {
   inspectProductAnalyticsProvider,
@@ -100,7 +105,20 @@ export async function latestProductAnalyticsConsent(userId: number): Promise<Con
   return ((result as unknown as { rows?: ConsentRow[] }).rows || [])[0] || null;
 }
 
-export function productAnalyticsStatus(row: ConsentRow | null, providerReady = false) {
+export async function latestProductAnalyticsDeletionReceipt(userId: number): Promise<ProductAnalyticsDeletionReceipt | null> {
+  const result = await db.execute(sql`
+    SELECT q."requested_at", q."attempts", q."last_attempt_at", q."completed_at"
+    FROM "product_analytics_deletion_queue" q
+    INNER JOIN "product_analytics_consents" c ON c."subject_id" = q."subject_id"
+    WHERE c."user_id" = ${userId}
+    ORDER BY q."id" DESC
+    LIMIT 1
+  `);
+  const row = ((result as unknown as { rows?: ProductAnalyticsDeletionQueueRow[] }).rows || [])[0] || null;
+  return productAnalyticsDeletionReceiptFromRow(row);
+}
+
+export function productAnalyticsStatus(row: ConsentRow | null, providerReady = false, deletionReceipt: ProductAnalyticsDeletionReceipt | null = null) {
   const config = providerReady ? productAnalyticsConfig() : null;
   const enabled = row?.state === "enabled";
   return {
@@ -129,6 +147,7 @@ export function productAnalyticsStatus(row: ConsentRow | null, providerReady = f
       onAccountDeletion: "queued_with_provider",
       providerProcessing: "asynchronous",
       identifiersAreReused: false,
+      receipt: deletionReceipt,
     },
   };
 }

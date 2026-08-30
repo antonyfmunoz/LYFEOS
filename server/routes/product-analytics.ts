@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../db";
 import {
+  latestProductAnalyticsDeletionReceipt,
   latestProductAnalyticsConsent,
   processProductAnalyticsDeletionQueue,
   productAnalyticsConfig,
@@ -23,9 +24,13 @@ export function registerProductAnalyticsRoutes(app: Express): void {
   app.get("/api/product-analytics", isAuthenticated, async (req: Request, res: Response) => {
     res.setHeader("Cache-Control", "private, no-store");
     try {
-      const row = await latestProductAnalyticsConsent(req.session.userId!);
-      const readiness = await productAnalyticsProviderReadiness();
-      return res.json(productAnalyticsStatus(row, readiness.ready));
+      const userId = req.session.userId!;
+      const [row, deletionReceipt, readiness] = await Promise.all([
+        latestProductAnalyticsConsent(userId),
+        latestProductAnalyticsDeletionReceipt(userId),
+        productAnalyticsProviderReadiness(),
+      ]);
+      return res.json(productAnalyticsStatus(row, readiness.ready, deletionReceipt));
     } catch (error) {
       logger.error("Could not read product analytics consent", error);
       return res.status(500).json({ error: "Could not read product analytics settings." });
@@ -75,9 +80,12 @@ export function registerProductAnalyticsRoutes(app: Express): void {
       });
 
       if (!parsed.data.enabled) void processProductAnalyticsDeletionQueue();
-      const row = await latestProductAnalyticsConsent(userId);
-      const readiness = await productAnalyticsProviderReadiness();
-      return res.json(productAnalyticsStatus(row, readiness.ready));
+      const [row, deletionReceipt, readiness] = await Promise.all([
+        latestProductAnalyticsConsent(userId),
+        latestProductAnalyticsDeletionReceipt(userId),
+        productAnalyticsProviderReadiness(),
+      ]);
+      return res.json(productAnalyticsStatus(row, readiness.ready, deletionReceipt));
     } catch (error) {
       logger.error("Could not update product analytics consent", error);
       return res.status(500).json({ error: "Could not update product analytics settings." });

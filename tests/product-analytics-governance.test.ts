@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { analyticsAreaForPath, PRODUCT_ANALYTICS_POLICY_VERSION } from "../client/src/lib/productAnalytics";
+import { productAnalyticsDeletionReceiptFromRow } from "../shared/product-analytics";
 
 const source = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8");
 
@@ -75,6 +76,21 @@ describe("privacy-safe product analytics", () => {
     expect(rights).toContain("capture_stops_and_provider_deletion_is_queued_before_local_erasure");
   });
 
+  it("projects a content-free deletion lifecycle without exposing its subject or provider error", () => {
+    const requestedAt = "2026-08-29T12:00:00.000Z";
+    expect(productAnalyticsDeletionReceiptFromRow({ requested_at: requestedAt, attempts: 0, last_attempt_at: null, completed_at: null })).toEqual({
+      state: "queued",
+      requestedAt,
+      firstAttemptNotBefore: "2026-08-29T12:15:00.000Z",
+      attempts: 0,
+      lastAttemptAt: null,
+      reconciledAt: null,
+    });
+    expect(productAnalyticsDeletionReceiptFromRow({ requested_at: requestedAt, attempts: 2, last_attempt_at: "2026-08-29T12:17:00.000Z", completed_at: null })?.state).toBe("retrying");
+    expect(productAnalyticsDeletionReceiptFromRow({ requested_at: requestedAt, attempts: 3, last_attempt_at: "2026-08-29T12:18:00.000Z", completed_at: "2026-08-29T12:18:01.000Z" })?.state).toBe("provider_reconciled");
+    expect(source("server/product-analytics.ts")).toContain('INNER JOIN "product_analytics_consents" c ON c."subject_id" = q."subject_id"');
+  });
+
   it("provides a plain-language, default-off control without changing navigation", () => {
     const profile = source("client/src/pages/ProfilePage.tsx");
     const app = source("client/src/App.tsx");
@@ -82,6 +98,8 @@ describe("privacy-safe product analytics", () => {
     expect(profile).toContain("This is off by default");
     expect(profile).toContain("No PostHog events are sent");
     expect(profile).toContain("Turn this off to revoke consent and queue deletion");
+    expect(profile).toContain("Provider deletion receipt");
+    expect(profile).toContain('data-testid="product-analytics-deletion-receipt"');
     expect(profile).toContain("(!productAnalytics?.configured && !productAnalytics?.enabled)");
     expect(app).toContain("<ProductAnalytics />");
     expect(app).not.toContain('path="/product-analytics"');
