@@ -24,6 +24,7 @@
     "acceptance:production-calendar": "tsx scripts/production-calendar-browser-acceptance.ts",
     "acceptance:production-sheets": "tsx scripts/production-sheets-browser-acceptance.ts",
     "acceptance:production-canvas": "tsx scripts/production-canvas-browser-acceptance.ts",
+    "acceptance:production-health-offline": "tsx scripts/production-health-offline-browser-acceptance.ts",
     "acceptance:production-search": "tsx scripts/production-search-browser-acceptance.ts",
     "acceptance:production-projects": "tsx scripts/production-projects-browser-acceptance.ts",
     "acceptance:production-messages": "tsx scripts/messages-browser-acceptance.ts",

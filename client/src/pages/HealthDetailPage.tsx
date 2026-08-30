@@ -134,7 +134,7 @@ export default function HealthDetailPage() {
   const dayOptions = [7, 14, 30, 90];
 
   return (
-    <div className="mx-auto max-w-5xl py-8 px-4">
+    <div className="mx-auto max-w-5xl py-8 px-4" data-testid="health-page">
       <div className="mb-6">
         <Link href="/profile" className="inline-flex items-center gap-2 bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30 font-mono text-xs rounded-md px-3 py-2 transition-colors">
           <ArrowLeft className="h-4 w-4" />
