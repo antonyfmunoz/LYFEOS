@@ -497,6 +497,11 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     stage = "re-share and remove the member through Profile";
     await openProfile(ownerPage.page);
     await ensureDetailsOpen(ownerPage.page, '[data-testid="collaboration-share-details"]');
+    await ownerPage.page.waitForFunction((coachId, selectedMissionId) => {
+      const recipients = document.querySelector<HTMLSelectElement>('[aria-label="Shared view recipient"]');
+      const subjects = document.querySelector<HTMLSelectElement>('[aria-label="Mission or Thread to share"]');
+      return [...(recipients?.options || [])].some((option) => option.value === String(coachId)) && [...(subjects?.options || [])].some((option) => option.value === String(selectedMissionId));
+    }, { timeout: 30_000 }, coach.id, missionId);
     await ownerPage.page.select('[aria-label="Shared view recipient"]', String(coach.id));
     await ownerPage.page.select('[aria-label="Mission or Thread to share"]', String(missionId));
     await setValue(ownerPage.page, '[aria-label="Shared view purpose"]', `${grantPurpose} Member-revocation proof.`);
