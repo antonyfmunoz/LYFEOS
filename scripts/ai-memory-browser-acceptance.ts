@@ -273,13 +273,13 @@ async function runViewport(browser: Browser, pool: pg.Pool, viewport: { name: st
       if (message.type() === "error") {
         const source = message.location().url;
         const detail = `${message.text().slice(0, 240)}${source ? ` @ ${source}` : ""}`;
-        if (isIsolatedClerkBootstrapError(message.text(), source)) isolatedProviderResourceErrors.push(detail);
+        if (isIsolatedClerkBootstrapError(message.text(), source, isolatedProviderResourceErrors.length > 0)) isolatedProviderResourceErrors.push(detail);
         else consoleErrors.push(detail);
       }
     });
     page.on("pageerror", (error) => {
       const detail = error.message.slice(0, 300);
-      if (isIsolatedClerkBootstrapError(detail)) isolatedProviderResourceErrors.push(detail);
+      if (isIsolatedClerkBootstrapError(detail, "", isolatedProviderResourceErrors.length > 0)) isolatedProviderResourceErrors.push(detail);
       else consoleErrors.push(detail);
     });
     page.on("response", (response) => {

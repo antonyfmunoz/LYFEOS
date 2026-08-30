@@ -136,11 +136,15 @@ function captureSignals(page: Page): CollaborationBrowserSignals {
     recoveredChunkLoads: [],
     externalProviderErrors: [],
   };
+  let exactIsolatedClerkResourceFailureObserved = false;
   page.on("console", (entry) => {
     if (entry.type() !== "error") return;
     const source = entry.location().url;
     const text = entry.text();
-    if (ISOLATED && isIsolatedClerkBootstrapError(text, source)) return;
+    if (ISOLATED && isIsolatedClerkBootstrapError(text, source, exactIsolatedClerkResourceFailureObserved)) {
+      exactIsolatedClerkResourceFailureObserved = true;
+      return;
+    }
     const detail = `${text.slice(0, 500)}${source ? ` @ ${source}` : ""}`;
     if (isExternalProviderTransportError(text, source)) {
       signals.externalProviderErrors.push(detail);
@@ -149,7 +153,10 @@ function captureSignals(page: Page): CollaborationBrowserSignals {
     signals.consoleErrors.push(detail);
   });
   page.on("pageerror", (error) => {
-    if (ISOLATED && isIsolatedClerkBootstrapError(error.message)) return;
+    if (ISOLATED && isIsolatedClerkBootstrapError(error.message, "", exactIsolatedClerkResourceFailureObserved)) {
+      exactIsolatedClerkResourceFailureObserved = true;
+      return;
+    }
     signals.pageErrors.push(error.message.slice(0, 500));
   });
   page.on("requestfailed", (failed) => {

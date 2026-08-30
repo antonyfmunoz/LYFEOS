@@ -20,6 +20,7 @@ const BOUNDED_ROUTE_CHUNK_TIMEOUT = /^ChunkLoadError: Failed to fetch dynamicall
 const SENTRY_BROWSER_INGEST = /https:\/\/o\d+\.ingest(?:\.[a-z0-9-]+)?\.sentry\.io\/api\/\d+\/envelope\//i;
 const POSTHOG_BROWSER_INGEST = /https:\/\/(?:[a-z0-9-]+\.)?i\.posthog\.com\/(?:e|batch)\//i;
 const ISOLATED_CLERK_BOOTSTRAP = /https:\/\/local\.lyfeos\.dev\/npm\/@clerk\/clerk-js@\d+(?:\.\d+){0,2}\/dist\/clerk(?:\.[a-z0-9-]+)*\.browser\.js(?:\?[^\s]*)?/i;
+const CLERK_BOOTSTRAP_TIMEOUT = /Clerk: Failed to load Clerk[\s\S]*code=["']failed_to_load_clerk_js_timeout["']/i;
 
 /**
  * Preserve the authenticated fixture hint across target-origin navigations.
@@ -53,9 +54,14 @@ export function isExternalProviderTransportError(message: string, locationUrl = 
  * Match only that exact asset family, including pinned and headless variants.
  * Callers must still gate this helper on their explicit isolated mode.
  */
-export function isIsolatedClerkBootstrapError(message: string, locationUrl = ""): boolean {
+export function isIsolatedClerkBootstrapError(
+  message: string,
+  locationUrl = "",
+  exactIsolatedResourceFailureObserved = false,
+): boolean {
   if (!/(?:Failed to load Clerk|ERR_NAME_NOT_RESOLVED)/i.test(message)) return false;
-  return ISOLATED_CLERK_BOOTSTRAP.test(`${message} ${locationUrl}`);
+  return ISOLATED_CLERK_BOOTSTRAP.test(`${message} ${locationUrl}`)
+    || (exactIsolatedResourceFailureObserved && CLERK_BOOTSTRAP_TIMEOUT.test(message));
 }
 
 export function reconcileBoundedChunkRecovery(

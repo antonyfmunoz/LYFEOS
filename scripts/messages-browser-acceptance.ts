@@ -147,12 +147,12 @@ function captureBrowserSignals(page: Page): BrowserSignals {
     if (entry.type() !== "error") return;
     const source = entry.location().url;
     const detail = `${entry.text().slice(0, 500)}${source ? ` @ ${source}` : ""}`;
-    if (MODE === "isolated" && isIsolatedClerkBootstrapError(entry.text(), source)) signals.isolatedProviderErrors.push(detail);
+    if (MODE === "isolated" && isIsolatedClerkBootstrapError(entry.text(), source, signals.isolatedProviderErrors.length > 0)) signals.isolatedProviderErrors.push(detail);
     else signals.consoleErrors.push(detail);
   });
   page.on("pageerror", (error) => {
     const detail = error.message.slice(0, 500);
-    if (MODE === "isolated" && isIsolatedClerkBootstrapError(detail)) signals.isolatedProviderErrors.push(detail);
+    if (MODE === "isolated" && isIsolatedClerkBootstrapError(detail, "", signals.isolatedProviderErrors.length > 0)) signals.isolatedProviderErrors.push(detail);
     else signals.pageErrors.push(detail);
   });
   page.on("requestfailed", (failed) => {

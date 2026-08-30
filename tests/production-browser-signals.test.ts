@@ -112,6 +112,12 @@ describe("production browser signal reconciliation", () => {
     expect(isIsolatedClerkBootstrapError(message, location)).toBe(false);
   });
 
+  it("classifies a URL-less Clerk timeout only after exact isolated resource evidence", () => {
+    const timeout = 'e: Clerk: Failed to load Clerk\n\n(code="failed_to_load_clerk_js_timeout")';
+    expect(isIsolatedClerkBootstrapError(timeout, "http://127.0.0.1:5099/assets/index.js")).toBe(false);
+    expect(isIsolatedClerkBootstrapError(timeout, "http://127.0.0.1:5099/assets/index.js", true)).toBe(true);
+  });
+
   it("keeps every protected long-running journey on the bounded recovery contract", () => {
     const journeys = [
       "production-ai-memory-browser-acceptance.ts",
