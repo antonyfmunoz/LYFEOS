@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { deletionReceiptExpiry, healthMutationId, healthMutationPayloadHash } from "../server/health-mutation-integrity";
-import { countHealthMutationQueue, offlineHealthStorageError } from "../client/src/lib/healthOfflineQueue";
+import { countHealthMutationQueue, healthMutationRecordType, offlineHealthStorageError } from "../client/src/lib/healthOfflineQueue";
 
 const source = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8");
 
@@ -117,5 +117,17 @@ describe("health mutation integrity", () => {
       if (descriptor) Object.defineProperty(globalThis, "indexedDB", descriptor);
       else delete (globalThis as { indexedDB?: IDBFactory }).indexedDB;
     }
+  });
+
+  it("shows the factual queued Health record type without exposing its payload", () => {
+    expect(healthMutationRecordType("/api/health-fitness/hydration")).toBe("hydration");
+    expect(healthMutationRecordType("/api/health-fitness/measurements")).toBe("measurement");
+    expect(healthMutationRecordType("/api/health-fitness/supplements")).toBe("supplement");
+    expect(healthMutationRecordType("/api/health-observations")).toBe("health observation");
+    expect(healthMutationRecordType("/api/nutrition/diary")).toBe("nutrition");
+    expect(healthMutationRecordType("/api/workouts")).toBe("workout");
+    expect(healthMutationRecordType("/api/health-fitness/sleep/sessions")).toBe("sleep");
+    expect(healthMutationRecordType("/api/recovery-activities")).toBe("recovery");
+    expect(healthMutationRecordType("/api/health-fitness/future-record")).toBe("health");
   });
 });

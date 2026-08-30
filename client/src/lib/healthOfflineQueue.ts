@@ -18,11 +18,23 @@ type HealthMutationRecord = {
 
 export type HealthMutationQueueItem = {
   id: string;
-  recordType: "nutrition" | "workout" | "sleep" | "recovery" | "health";
+  recordType: "nutrition" | "workout" | "sleep" | "recovery" | "hydration" | "measurement" | "supplement" | "health observation" | "health";
   createdAt: string;
   status: QueueStatus;
   lastError: string | null;
 };
+
+export function healthMutationRecordType(url: string): HealthMutationQueueItem["recordType"] {
+  if (url.startsWith("/api/nutrition/")) return "nutrition";
+  if (url.startsWith("/api/workouts")) return "workout";
+  if (url.startsWith("/api/health-fitness/sleep/")) return "sleep";
+  if (url.startsWith("/api/recovery-")) return "recovery";
+  if (url.startsWith("/api/health-fitness/hydration")) return "hydration";
+  if (url.startsWith("/api/health-fitness/measurements")) return "measurement";
+  if (url.startsWith("/api/health-fitness/supplements")) return "supplement";
+  if (url.startsWith("/api/health-observations")) return "health observation";
+  return "health";
+}
 
 export type HealthMutationResult<T> =
   | { queued: true; mutationId: string }
@@ -169,7 +181,7 @@ export async function countHealthMutationQueue(userId: number): Promise<{ pendin
 export async function listHealthMutationQueue(userId: number): Promise<HealthMutationQueueItem[]> {
   return (await recordsForUser(userId)).map((record) => ({
     id: record.id,
-    recordType: record.url.startsWith("/api/nutrition/") ? "nutrition" : record.url.startsWith("/api/workouts") ? "workout" : record.url.startsWith("/api/health-fitness/sleep/") ? "sleep" : record.url.startsWith("/api/recovery-") ? "recovery" : "health",
+    recordType: healthMutationRecordType(record.url),
     createdAt: record.createdAt,
     status: record.status,
     lastError: record.status === "failed" ? "The server rejected this queued record." : null,
