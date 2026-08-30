@@ -53,6 +53,9 @@ describe("consent-bound collaboration contract", () => {
     expect(acceptance).toContain("externalProviderErrors");
     expect(acceptance).toContain("unexpected browser signals: ${JSON.stringify(unexpectedSignals)}");
     expect(acceptance).toContain("journeys.push(result.journey)");
+    expect(acceptance).toContain("async function performAndWaitForResponse");
+    expect(acceptance.match(/\.waitForResponse\(/g)).toHaveLength(1);
+    expect(acceptance).toContain("void pending");
     expect(acceptance).toContain("desktop-1440x900");
     expect(acceptance).toContain("mobile-390x844");
     expect(packageJson).toContain('"acceptance:collaboration": "tsx scripts/collaboration-browser-acceptance.ts"');

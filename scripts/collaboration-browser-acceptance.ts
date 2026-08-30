@@ -4,7 +4,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import pg from "pg";
-import puppeteer, { type Browser, type BrowserContext, type Page, type Viewport } from "puppeteer-core";
+import puppeteer, { type Browser, type BrowserContext, type HTTPResponse, type Page, type Viewport } from "puppeteer-core";
 import {
   acknowledgeBoundedChunkRecovery,
   hasUnexpectedBrowserSignals,
@@ -258,6 +258,27 @@ async function clickExactButton(page: Page, text: string): Promise<void> {
   }, text);
 }
 
+async function performAndWaitForResponse(
+  page: Page,
+  predicate: (response: HTTPResponse) => boolean,
+  action: () => Promise<void>,
+): Promise<HTTPResponse> {
+  const pending = page.waitForResponse(predicate, { timeout: 30_000 }).then(
+    (response) => ({ response, error: null as unknown }),
+    (error) => ({ response: null, error }),
+  );
+  try {
+    await action();
+  } catch (error) {
+    void pending;
+    throw error;
+  }
+  const settled = await pending;
+  if (settled.error) throw settled.error;
+  assert(settled.response, "Expected browser response was not captured.");
+  return settled.response;
+}
+
 async function auditPage(page: Page, label: string): Promise<ViewAudit> {
   return page.evaluate((auditLabel) => {
     const scope = document.querySelector<HTMLElement>('[data-testid="collaboration-settings"]');
@@ -369,9 +390,11 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     await ensureDetailsOpen(ownerPage.page, '[data-testid="collaboration-create-workspace-details"]');
     await setValue(ownerPage.page, '[aria-label="Workspace name"]', workspaceName);
     await setValue(ownerPage.page, '[aria-label="Purpose of working together"]', workspacePurpose);
-    const workspaceResponsePromise = ownerPage.page.waitForResponse((response) => response.request().method() === "POST" && new URL(response.url()).pathname === "/api/collaboration/workspaces", { timeout: 30_000 });
-    await activate(ownerPage.page, '[data-testid="collaboration-create-workspace"]');
-    const workspaceResponse = await workspaceResponsePromise;
+    const workspaceResponse = await performAndWaitForResponse(
+      ownerPage.page,
+      (response) => response.request().method() === "POST" && new URL(response.url()).pathname === "/api/collaboration/workspaces",
+      () => activate(ownerPage.page, '[data-testid="collaboration-create-workspace"]'),
+    );
     assert(workspaceResponse.status() === 201, `Workspace creation returned ${workspaceResponse.status()}.`);
     const workspaceBody = await workspaceResponse.json();
     const workspaceId = String(workspaceBody.workspace?.id || "");
@@ -384,9 +407,11 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     await setValue(ownerPage.page, '[aria-label="Search LyfeOS username to invite"]', coach.displayName);
     await clickExactButton(ownerPage.page, coach.displayName);
     await setValue(ownerPage.page, '[aria-label="Collaboration invitation purpose"]', invitationPurpose);
-    const invitationResponsePromise = ownerPage.page.waitForResponse((response) => response.request().method() === "POST" && new URL(response.url()).pathname === `/api/collaboration/workspaces/${workspaceId}/invitations`, { timeout: 30_000 });
-    await activate(ownerPage.page, '[data-testid="collaboration-send-invitation"]');
-    const invitationResponse = await invitationResponsePromise;
+    const invitationResponse = await performAndWaitForResponse(
+      ownerPage.page,
+      (response) => response.request().method() === "POST" && new URL(response.url()).pathname === `/api/collaboration/workspaces/${workspaceId}/invitations`,
+      () => activate(ownerPage.page, '[data-testid="collaboration-send-invitation"]'),
+    );
     assert(invitationResponse.status() === 201, `Invitation returned ${invitationResponse.status()}.`);
     const invitationBody = await invitationResponse.json();
     const membershipId = Number(invitationBody.membership?.id);
@@ -399,9 +424,11 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     const coachTextBefore = await coachPage.page.$eval('[data-testid="collaboration-settings"]', (element) => element.textContent || "");
     journey.noRecordAccessBeforeGrant = beforeGrant.status === 200 && beforeGrant.body.items?.length === 0 && !coachTextBefore.includes(missionTitle) && !coachTextBefore.includes(privateDescription);
     assert(journey.noRecordAccessBeforeGrant, "Membership invitation exposed a personal record before consented sharing.");
-    const acceptResponsePromise = coachPage.page.waitForResponse((response) => response.request().method() === "POST" && new URL(response.url()).pathname === `/api/collaboration/memberships/${membershipId}/decision`, { timeout: 30_000 });
-    await activate(coachPage.page, '[data-testid="collaboration-invitation-accept"]');
-    const acceptResponse = await acceptResponsePromise;
+    const acceptResponse = await performAndWaitForResponse(
+      coachPage.page,
+      (response) => response.request().method() === "POST" && new URL(response.url()).pathname === `/api/collaboration/memberships/${membershipId}/decision`,
+      () => activate(coachPage.page, '[data-testid="collaboration-invitation-accept"]'),
+    );
     assert(acceptResponse.status() === 200, `Invitation acceptance returned ${acceptResponse.status()}.`);
     const activeMembership = await poll(
       () => request("GET", "/api/collaboration", undefined, coach.cookie),
@@ -425,9 +452,11 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     await setValue(ownerPage.page, '[aria-label="Shared view purpose"]', grantPurpose);
     const expiry = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
     await setValue(ownerPage.page, '[aria-label="Shared view expiry"]', expiry);
-    const grantResponsePromise = ownerPage.page.waitForResponse((response) => response.request().method() === "POST" && new URL(response.url()).pathname === `/api/collaboration/workspaces/${workspaceId}/grants`, { timeout: 30_000 });
-    await activate(ownerPage.page, '[data-testid="collaboration-share-view"]');
-    const grantResponse = await grantResponsePromise;
+    const grantResponse = await performAndWaitForResponse(
+      ownerPage.page,
+      (response) => response.request().method() === "POST" && new URL(response.url()).pathname === `/api/collaboration/workspaces/${workspaceId}/grants`,
+      () => activate(ownerPage.page, '[data-testid="collaboration-share-view"]'),
+    );
     assert(grantResponse.status() === 201, `Bounded share returned ${grantResponse.status()}.`);
     const grantBody = await grantResponse.json();
     const grantId = String(grantBody.grant?.id || "");
@@ -456,9 +485,11 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     stage = "revoke the bounded view through Profile";
     await openProfile(ownerPage.page);
     await ownerPage.page.waitForSelector('[aria-label="Revoke shared view"]', { visible: true, timeout: 30_000 });
-    const revokeResponsePromise = ownerPage.page.waitForResponse((response) => response.request().method() === "DELETE" && new URL(response.url()).pathname === `/api/collaboration/grants/${grantId}`, { timeout: 30_000 });
-    await activate(ownerPage.page, '[aria-label="Revoke shared view"]');
-    const revokeResponse = await revokeResponsePromise;
+    const revokeResponse = await performAndWaitForResponse(
+      ownerPage.page,
+      (response) => response.request().method() === "DELETE" && new URL(response.url()).pathname === `/api/collaboration/grants/${grantId}`,
+      () => activate(ownerPage.page, '[aria-label="Revoke shared view"]'),
+    );
     assert(revokeResponse.status() === 200, `Shared-view revocation returned ${revokeResponse.status()}.`);
     const revoked = await poll(() => request("GET", "/api/collaboration/shared-with-me", undefined, coach.cookie), (result) => result.status === 200 && result.body.items?.length === 0, "Revoked view remained available.");
     journey.grantRevocationImmediate = revoked.body.items.length === 0;
@@ -469,13 +500,19 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     await ownerPage.page.select('[aria-label="Shared view recipient"]', String(coach.id));
     await ownerPage.page.select('[aria-label="Mission or Thread to share"]', String(missionId));
     await setValue(ownerPage.page, '[aria-label="Shared view purpose"]', `${grantPurpose} Member-revocation proof.`);
-    const regrantPromise = ownerPage.page.waitForResponse((response) => response.request().method() === "POST" && new URL(response.url()).pathname === `/api/collaboration/workspaces/${workspaceId}/grants`, { timeout: 30_000 });
-    await activate(ownerPage.page, '[data-testid="collaboration-share-view"]');
-    assert((await regrantPromise).status() === 201, "Re-share before member revocation failed.");
+    const regrantResponse = await performAndWaitForResponse(
+      ownerPage.page,
+      (response) => response.request().method() === "POST" && new URL(response.url()).pathname === `/api/collaboration/workspaces/${workspaceId}/grants`,
+      () => activate(ownerPage.page, '[data-testid="collaboration-share-view"]'),
+    );
+    assert(regrantResponse.status() === 201, "Re-share before member revocation failed.");
     const removeSelector = `[aria-label="Remove ${coach.displayName} from workspace"]`;
-    const removePromise = ownerPage.page.waitForResponse((response) => response.request().method() === "DELETE" && new URL(response.url()).pathname === `/api/collaboration/memberships/${membershipId}`, { timeout: 30_000 });
-    await activate(ownerPage.page, removeSelector);
-    assert((await removePromise).status() === 200, "Member revocation failed.");
+    const removeResponse = await performAndWaitForResponse(
+      ownerPage.page,
+      (response) => response.request().method() === "DELETE" && new URL(response.url()).pathname === `/api/collaboration/memberships/${membershipId}`,
+      () => activate(ownerPage.page, removeSelector),
+    );
+    assert(removeResponse.status() === 200, "Member revocation failed.");
     const afterMemberRemoval = await poll(() => request("GET", "/api/collaboration/shared-with-me", undefined, coach.cookie), (result) => result.status === 200 && result.body.items?.length === 0, "Member revocation did not retire the active grant.");
     const coachAfterRemoval = await request("GET", "/api/collaboration", undefined, coach.cookie);
     journey.memberRevocationRetiredGrant = afterMemberRemoval.body.items.length === 0 && !coachAfterRemoval.body.workspaces?.some((workspace: any) => workspace.id === workspaceId);
@@ -487,21 +524,29 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     await setValue(ownerPage.page, '[aria-label="Search LyfeOS username to invite"]', coach.displayName);
     await clickExactButton(ownerPage.page, coach.displayName);
     await setValue(ownerPage.page, '[aria-label="Collaboration invitation purpose"]', `${invitationPurpose} Self-leave proof.`);
-    const reinvitePromise = ownerPage.page.waitForResponse((response) => response.request().method() === "POST" && new URL(response.url()).pathname === `/api/collaboration/workspaces/${workspaceId}/invitations`, { timeout: 30_000 });
-    await activate(ownerPage.page, '[data-testid="collaboration-send-invitation"]');
-    const reinviteResponse = await reinvitePromise;
+    const reinviteResponse = await performAndWaitForResponse(
+      ownerPage.page,
+      (response) => response.request().method() === "POST" && new URL(response.url()).pathname === `/api/collaboration/workspaces/${workspaceId}/invitations`,
+      () => activate(ownerPage.page, '[data-testid="collaboration-send-invitation"]'),
+    );
     assert(reinviteResponse.status() === 201, `Reinvitation returned ${reinviteResponse.status()}.`);
     const reinviteBody = await reinviteResponse.json();
     const renewedMembershipId = Number(reinviteBody.membership?.id);
     assert(renewedMembershipId === membershipId, "Reinvitation did not converge on the existing membership identity.");
     await openProfile(coachPage.page);
-    const reacceptPromise = coachPage.page.waitForResponse((response) => response.request().method() === "POST" && new URL(response.url()).pathname === `/api/collaboration/memberships/${membershipId}/decision`, { timeout: 30_000 });
-    await activate(coachPage.page, '[data-testid="collaboration-invitation-accept"]');
-    assert((await reacceptPromise).status() === 200, "Reinvitation acceptance failed.");
+    const reacceptResponse = await performAndWaitForResponse(
+      coachPage.page,
+      (response) => response.request().method() === "POST" && new URL(response.url()).pathname === `/api/collaboration/memberships/${membershipId}/decision`,
+      () => activate(coachPage.page, '[data-testid="collaboration-invitation-accept"]'),
+    );
+    assert(reacceptResponse.status() === 200, "Reinvitation acceptance failed.");
     await coachPage.page.waitForSelector('[data-testid="collaboration-leave-workspace"]', { visible: true, timeout: 30_000 });
-    const leavePromise = coachPage.page.waitForResponse((response) => response.request().method() === "DELETE" && new URL(response.url()).pathname === `/api/collaboration/memberships/${membershipId}`, { timeout: 30_000 });
-    await activate(coachPage.page, '[data-testid="collaboration-leave-workspace"]');
-    assert((await leavePromise).status() === 200, "Member self-leave failed.");
+    const leaveResponse = await performAndWaitForResponse(
+      coachPage.page,
+      (response) => response.request().method() === "DELETE" && new URL(response.url()).pathname === `/api/collaboration/memberships/${membershipId}`,
+      () => activate(coachPage.page, '[data-testid="collaboration-leave-workspace"]'),
+    );
+    assert(leaveResponse.status() === 200, "Member self-leave failed.");
     const afterLeave = await poll(() => request("GET", "/api/collaboration", undefined, coach.cookie), (result) => result.status === 200 && !result.body.workspaces?.some((workspace: any) => workspace.id === workspaceId), "Self-leave did not remove active workspace access.");
     journey.selfLeaveCompleted = !afterLeave.body.workspaces.some((workspace: any) => workspace.id === workspaceId);
     assert(journey.selfLeaveCompleted, "Self-leave did not converge.");
