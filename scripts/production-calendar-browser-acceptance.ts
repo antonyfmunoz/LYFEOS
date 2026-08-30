@@ -16,6 +16,7 @@ type ViewResult = {
   canonicalProjectionRendered: boolean;
   rangeNavigationRendered: boolean;
   offlineCreateQueued: boolean;
+  serviceWorkerColdStartRecovered: boolean;
   reconnectCreateConverged: boolean;
   multiTabConflictReconciled: boolean;
   staleEditStoppedAsConflict: boolean;
@@ -102,6 +103,35 @@ async function restoreOnline(page: Page): Promise<void> {
   // that the application uses to start its queue flush. Dispatching after
   // navigator.onLine is true exercises the same browser contract deterministically.
   await page.evaluate(() => window.dispatchEvent(new Event("online")));
+}
+
+async function primeCurrentAppShell(page: Page): Promise<void> {
+  const result = await page.evaluate(async () => {
+    if (!("serviceWorker" in navigator)) throw new Error("Service workers are unavailable.");
+    const registration = await navigator.serviceWorker.ready;
+    if (!registration.active) throw new Error("The LyfeOS service worker is not active.");
+    const urls = [location.href, new URL("/", location.origin).href, ...performance.getEntriesByType("resource").map((entry) => entry.name)];
+    return await new Promise<{ type: string; cached: number }>((resolve, reject) => {
+      const channel = new MessageChannel();
+      const timeout = window.setTimeout(() => reject(new Error("The service worker did not confirm app-shell caching.")), 15_000);
+      channel.port1.onmessage = (event) => {
+        if (event.data?.type !== "CURRENT_APP_SHELL_CACHED") return;
+        window.clearTimeout(timeout);
+        resolve(event.data);
+      };
+      registration.active!.postMessage({ type: "CACHE_CURRENT_APP_SHELL", urls }, [channel.port2]);
+    });
+  });
+  assert(result.cached > 0, "The service worker did not cache any current app-shell resources.");
+}
+
+async function stopServiceWorkers(page: Page): Promise<void> {
+  const session = await page.createCDPSession();
+  try {
+    await session.send("ServiceWorker.stopAllWorkers");
+  } finally {
+    await session.detach();
+  }
 }
 
 async function findChromium(): Promise<string> {
@@ -330,6 +360,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     await page.waitForSelector('[data-testid="calendar-page"]', { visible: true, timeout: 60_000 });
     await dismissBlockingTutorial(page);
     await page.waitForSelector(`[aria-label="Edit mission ${conflictTitle} at 10:00"]`, { visible: true, timeout: 45_000 });
+    await primeCurrentAppShell(page);
     const canonicalProjectionRendered = await page.$eval('[data-testid="calendar-page"]', (element) => element.textContent?.includes("canonical Missions") === true);
     await activate(page, '[aria-label="Show year calendar"]');
     await activate(page, '[aria-label="Show month calendar"]');
@@ -349,6 +380,25 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
       return text.includes(String(title)) && text.includes("Waiting for a connection");
     }, { timeout: 45_000 }, offlineTitle);
     const offlineCreateQueued = true;
+
+    stage = "restart the service worker and recover the queued Calendar change offline";
+    await stopServiceWorkers(page);
+    await page.close();
+    page = await context.newPage();
+    captureSignals(page, () => intentionallyOffline, signals);
+    await page.setViewport(viewport.value);
+    await page.emulateTimezone(CALENDAR_TIME_ZONE);
+    await page.setCacheEnabled(false);
+    await page.setOfflineMode(true);
+    await page.goto(new URL("/calendar", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
+    await page.waitForSelector('[data-testid="calendar-page"]', { visible: true, timeout: 60_000 });
+    await page.waitForFunction((title) => {
+      const text = document.querySelector('[data-testid="calendar-offline-queue"]')?.textContent || "";
+      return text.includes(String(title)) && text.includes("Waiting for a connection");
+    }, { timeout: 45_000 }, offlineTitle);
+    const serviceWorkerColdStartRecovered = await page.evaluate(() => Boolean(navigator.serviceWorker?.controller));
+    assert(serviceWorkerColdStartRecovered, "Calendar did not recover through a restarted service worker while offline.");
+
     intentionallyOffline = false;
     await restoreOnline(page);
     const created = await waitForMission(account, date, (mission) => mission.title === offlineTitle, "offline create reconnect");
@@ -424,7 +474,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     assert(audit.mainCount === 1 && audit.duplicateIds.length === 0 && audit.invalidLabelReferences.length === 0 && audit.unlabeledControls.length === 0 && audit.horizontalOverflowPx <= 2, `${viewport.name} Calendar failed semantics or overflow checks.`);
     await acknowledgeBoundedChunkRecovery(page, signals);
     assert(!hasUnexpectedBrowserSignals(signals), `${viewport.name} Calendar journey produced application errors: ${JSON.stringify(signals)}.`);
-    view = { viewport: viewport.name, canonicalProjectionRendered, rangeNavigationRendered, offlineCreateQueued, reconnectCreateConverged, multiTabConflictReconciled, staleEditStoppedAsConflict, explicitConflictApplyConverged, queueDrained, audit, signals };
+    view = { viewport: viewport.name, canonicalProjectionRendered, rangeNavigationRendered, offlineCreateQueued, serviceWorkerColdStartRecovered, reconnectCreateConverged, multiTabConflictReconciled, staleEditStoppedAsConflict, explicitConflictApplyConverged, queueDrained, audit, signals };
   } catch (error) {
     const rendered = page ? await page.evaluate(() => document.body?.innerText.slice(0, 2_000) || "page unavailable").catch(() => "page unavailable") : "page unavailable";
     if (page) await page.screenshot({ path: path.join(OUTPUT_DIR, `calendar-${viewport.name}-failure.png`), fullPage: true }).catch(() => undefined);
@@ -464,7 +514,7 @@ async function main(): Promise<void> {
     if (browser) await browser.close().catch(() => undefined);
     const passed = failure === null && views.length === VIEWPORTS.length && cleanups.length === VIEWPORTS.length && cleanups.every((cleanup) => cleanup.accountErased);
     const report = {
-      contract: "lyfeos.production-calendar-browser.v2",
+      contract: "lyfeos.production-calendar-browser.v3",
       generatedAt: new Date().toISOString(),
       baseUrl: BASE_URL.origin,
       sourceRevision: SOURCE,
@@ -472,7 +522,7 @@ async function main(): Promise<void> {
       views,
       cleanups,
       summary: { passed, failure },
-      boundary: "Disposable production-account Chromium evidence for Calendar as a projection over canonical Missions. It proves desktop/mobile Calendar rendering; year/month/week/day navigation; an IndexedDB-backed offline create; reconnect convergence; a real same-account second tab committing a canonical edit; the stale first-tab queued write stopping as a visible conflict; explicit apply-over-current conflict resolution; responsive semantics; queue drainage; and verified account/session/identifier erasure. It does not prove simultaneous active field editing, real-time merge/coauthoring, service-worker cold-start offline navigation, storage eviction recovery, real-device or human assistive-technology behavior, live Google OAuth/scope/token/revoke/reconnect behavior, provider rate limits, or longitudinal scheduling outcomes.",
+      boundary: "Disposable production-account Chromium evidence for Calendar as a projection over canonical Missions. It proves desktop/mobile Calendar rendering; year/month/week/day navigation; an IndexedDB-backed offline create; stopped-service-worker cold-start offline navigation with the queued item still visible; reconnect convergence; a real same-account second tab committing a canonical edit; the stale first-tab queued write stopping as a visible conflict; explicit apply-over-current conflict resolution; responsive semantics; queue drainage; and verified account/session/identifier erasure. It does not prove storage eviction recovery, simultaneous active field editing, real-time merge/coauthoring, real-device or human assistive-technology behavior, live Google OAuth/scope/token/revoke/reconnect behavior, provider rate limits, or longitudinal scheduling outcomes.",
     };
     await fs.writeFile(OUTPUT_FILE, `${JSON.stringify(report, null, 2)}\n`, "utf8");
     if (process.env.GITHUB_STEP_SUMMARY) {

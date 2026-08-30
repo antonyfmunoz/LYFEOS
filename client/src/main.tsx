@@ -25,6 +25,26 @@ if (!PUBLISHABLE_KEY) {
 // Add title
 document.title = "LYFEOS - Dashboard";
 
+async function primeCurrentAppShell(): Promise<void> {
+  const registration = await navigator.serviceWorker.ready;
+  if (!registration.active) return;
+  const urls = [
+    window.location.href,
+    new URL('/', window.location.origin).href,
+    ...performance.getEntriesByType('resource').map((entry) => entry.name),
+  ];
+  await new Promise<void>((resolve) => {
+    const channel = new MessageChannel();
+    const timeout = window.setTimeout(resolve, 10_000);
+    channel.port1.onmessage = (event) => {
+      if (event.data?.type !== 'CURRENT_APP_SHELL_CACHED') return;
+      window.clearTimeout(timeout);
+      resolve();
+    };
+    registration.active!.postMessage({ type: 'CACHE_CURRENT_APP_SHELL', urls }, [channel.port2]);
+  });
+}
+
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', async () => {
     try {
@@ -32,18 +52,15 @@ if ('serviceWorker' in navigator) {
       for (const reg of registrations) {
         await reg.update();
       }
-      const cacheNames = await caches.keys();
-      for (const name of cacheNames) {
-        if (name !== 'lyfeos-v26') {
-          await caches.delete(name);
-        }
-      }
     } catch (e) {
       console.warn('SW cleanup error:', e);
     }
-    navigator.serviceWorker.register('/sw.js').catch((err) => {
-      console.warn('Service worker registration failed:', err);
-    });
+    try {
+      await navigator.serviceWorker.register('/sw.js');
+      await primeCurrentAppShell();
+    } catch (err) {
+      console.warn('Service worker setup failed:', err);
+    }
   });
 }
 

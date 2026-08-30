@@ -3,12 +3,28 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 describe("PWA cache contract", () => {
-  it("preserves the service worker's active cache during startup cleanup", () => {
+  it("lets the newly activated service worker retire old caches atomically", () => {
     const worker = readFileSync(resolve(process.cwd(), "client/public/sw.js"), "utf8");
     const main = readFileSync(resolve(process.cwd(), "client/src/main.tsx"), "utf8");
     const cacheName = worker.match(/const CACHE_NAME = '([^']+)'/)?.[1];
 
     expect(cacheName).toBeTruthy();
-    expect(main).toContain(`name !== '${cacheName}'`);
+    expect(worker).toContain(".filter((name) => name !== CACHE_NAME)");
+    expect(main).not.toContain("caches.keys()");
+    expect(main).not.toContain("caches.delete(");
+  });
+
+  it("primes only a bounded same-origin app shell and never caches API responses", () => {
+    const worker = readFileSync(resolve(process.cwd(), "client/public/sw.js"), "utf8");
+    const main = readFileSync(resolve(process.cwd(), "client/src/main.tsx"), "utf8");
+
+    expect(worker).toContain("const MAX_APP_SHELL_URLS = 200");
+    expect(worker).toContain("url.origin !== self.location.origin");
+    expect(worker).toContain("url.pathname.startsWith('/api/')");
+    expect(worker).toContain("private|no-store");
+    expect(worker).toContain("event.data?.type !== 'CACHE_CURRENT_APP_SHELL'");
+    expect(main).toContain("performance.getEntriesByType('resource')");
+    expect(main).toContain("CACHE_CURRENT_APP_SHELL");
+    expect(main).toContain("CURRENT_APP_SHELL_CACHED");
   });
 });

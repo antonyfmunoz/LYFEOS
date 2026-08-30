@@ -1,4 +1,5 @@
-const CACHE_NAME = 'lyfeos-v26';
+const CACHE_NAME = 'lyfeos-v27';
+const MAX_APP_SHELL_URLS = 200;
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
@@ -41,7 +42,8 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        if (response.ok && url.origin === self.location.origin) {
+        const cacheControl = response.headers.get('cache-control') || '';
+        if (response.ok && !/(?:^|,)\s*(?:private|no-store)\b/i.test(cacheControl) && url.origin === self.location.origin) {
           const responseClone = response.clone();
           caches.open(CACHE_NAME).then((cache) => {
             cache.put(event.request, responseClone);
@@ -55,6 +57,42 @@ self.addEventListener('fetch', (event) => {
         });
       })
   );
+});
+
+function safeAppShellUrl(value) {
+  try {
+    const url = new URL(String(value), self.location.origin);
+    if (url.origin !== self.location.origin) return null;
+    if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/__/')) return null;
+    return url.href;
+  } catch {
+    return null;
+  }
+}
+
+async function cacheCurrentAppShell(values) {
+  const urls = [...new Set((Array.isArray(values) ? values : [])
+    .slice(0, MAX_APP_SHELL_URLS)
+    .map(safeAppShellUrl)
+    .filter(Boolean))];
+  const cache = await caches.open(CACHE_NAME);
+  const results = await Promise.allSettled(urls.map(async (url) => {
+    const request = new Request(url, { method: 'GET', credentials: 'same-origin', cache: 'reload' });
+    const response = await fetch(request);
+    const cacheControl = response.headers.get('cache-control') || '';
+    if (!response.ok || /(?:^|,)\s*(?:private|no-store)\b/i.test(cacheControl)) return false;
+    await cache.put(request, response.clone());
+    return true;
+  }));
+  return results.filter((result) => result.status === 'fulfilled' && result.value === true).length;
+}
+
+self.addEventListener('message', (event) => {
+  if (event.data?.type !== 'CACHE_CURRENT_APP_SHELL') return;
+  const operation = cacheCurrentAppShell(event.data.urls)
+    .then((cached) => event.ports?.[0]?.postMessage({ type: 'CURRENT_APP_SHELL_CACHED', cached }))
+    .catch(() => event.ports?.[0]?.postMessage({ type: 'CURRENT_APP_SHELL_CACHED', cached: 0 }));
+  event.waitUntil(operation);
 });
 
 self.addEventListener('push', (event) => {

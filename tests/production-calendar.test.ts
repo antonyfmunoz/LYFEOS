@@ -13,16 +13,17 @@ describe("production Calendar evidence custody", () => {
   const context = source("client/src/lib/context.tsx");
 
   it("binds the production-only contract to immutable runtime and harness sources", () => {
-    expect(acceptance).toContain('contract: "lyfeos.production-calendar-browser.v2"');
+    expect(acceptance).toContain('contract: "lyfeos.production-calendar-browser.v3"');
     expect(acceptance).toContain('BASE_URL.origin === "https://lyfeos.net"');
     expect(acceptance).toContain("release.body?.sourceRevision === SOURCE");
     expect(acceptance).toContain("HARNESS_SOURCE");
   });
 
-  it("qualifies desktop/mobile canonical scheduling and a real second-tab offline conflict", () => {
+  it("qualifies desktop/mobile canonical scheduling, service-worker cold start, and a real second-tab offline conflict", () => {
     expect(acceptance).toContain('name: "desktop-1440x900"');
     expect(acceptance).toContain('name: "mobile-390x844"');
     expect(acceptance).toContain("offlineCreateQueued");
+    expect(acceptance).toContain("serviceWorkerColdStartRecovered");
     expect(acceptance).toContain("reconnectCreateConverged");
     expect(acceptance).toContain("multiTabConflictReconciled");
     expect(acceptance).toContain("staleEditStoppedAsConflict");
@@ -41,7 +42,9 @@ describe("production Calendar evidence custody", () => {
     expect(acceptance).toContain("page.emulateTimezone(CALENDAR_TIME_ZONE)");
     expect(acceptance).toContain("lyfeos-tutorial-done-missions-");
     expect(acceptance).toContain('text === "Skip tour"');
-    expect(acceptance).toContain("service-worker cold-start offline navigation");
+    expect(acceptance).toContain('session.send("ServiceWorker.stopAllWorkers")');
+    expect(acceptance).toContain('contract: "lyfeos.production-calendar-browser.v3"');
+    expect(acceptance).not.toContain("service-worker cold-start offline navigation, storage eviction recovery");
   });
 
   it("uses stable nonvisual hooks and protected evidence custody", () => {
