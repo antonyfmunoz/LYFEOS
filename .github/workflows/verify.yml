@@ -117,6 +117,7 @@ jobs:
           LYFEOS_AI_MEMORY_OUTPUT_DIR: ${{ runner.temp }}/lyfeos-ai-memory-browser
           LYFEOS_MESSAGES_OUTPUT_DIR: ${{ runner.temp }}/lyfeos-messages-browser
           LYFEOS_MISSION_SAFETY_OUTPUT_DIR: ${{ runner.temp }}/lyfeos-mission-safety-browser
+          LYFEOS_COLLABORATION_OUTPUT_DIR: ${{ runner.temp }}/lyfeos-collaboration-browser
           LYFEOS_THREAD_SUCCESSOR_OUTPUT_DIR: ${{ runner.temp }}/lyfeos-thread-successor-browser
           LYFEOS_PROJECTS_OUTPUT_DIR: ${{ runner.temp }}/lyfeos-projects-browser
           LYFEOS_SEARCH_OUTPUT_DIR: ${{ runner.temp }}/lyfeos-search-browser
@@ -167,6 +168,9 @@ jobs:
             npm run acceptance:mission-safety || test_status=$?
           fi
           if [ "$test_status" -eq 0 ]; then
+            npm run acceptance:collaboration || test_status=$?
+          fi
+          if [ "$test_status" -eq 0 ]; then
             LYFEOS_PROJECTS_ACCEPTANCE_MODE=isolated npm run acceptance:projects || test_status=$?
           fi
           if [ "$test_status" -eq 0 ]; then
@@ -215,6 +219,14 @@ jobs:
         with:
           name: lyfeos-isolated-mission-safety-${{ github.sha }}
           path: ${{ runner.temp }}/lyfeos-mission-safety-browser
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Upload isolated collaboration evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: lyfeos-isolated-collaboration-${{ github.sha }}
+          path: ${{ runner.temp }}/lyfeos-collaboration-browser
           if-no-files-found: warn
           retention-days: 30
       - name: Upload isolated Projects evidence
