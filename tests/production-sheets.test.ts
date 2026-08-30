@@ -44,6 +44,7 @@ describe("production Sheets evidence custody", () => {
     expect(acceptance).toContain("localImportReviewedAndPersisted");
     expect(acceptance).toContain("xlsxWorkbookReviewedAndPersisted");
     expect(acceptance).toContain("xlsxWorkbookExportGenerated");
+    expect(acceptance).toContain("&apos;Sheet 1 (2)&apos;!B2");
     expect(acceptance).toContain("Detected but omitted: hidden sheet state");
     expect(acceptance).toContain("collision-safe cross-tab formula rewriting");
     expect(acceptance).toContain("staleSaveStoppedAsConflict");

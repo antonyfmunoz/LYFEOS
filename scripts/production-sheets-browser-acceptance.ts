@@ -12,6 +12,9 @@ type Account = { id: number; email: string; displayName: string; cookie: string 
 type Signals = BrowserSignals;
 type PageAudit = { mainCount: number; duplicateIds: string[]; invalidLabelReferences: string[]; unlabeledControls: string[]; horizontalOverflowPx: number };
 type Cleanup = { viewport: string; accountErased: boolean; sessionInvalidated: boolean; emailReleased: boolean; displayNameReleased: boolean; otherAccountErased: boolean };
+class ViewportAcceptanceFailure extends Error {
+  constructor(message: string, readonly cleanup: Cleanup) { super(message); }
+}
 type ViewResult = {
   viewport: string;
   catalogAndEditorRendered: boolean;
@@ -527,15 +530,20 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     await page.waitForFunction(() => document.querySelector('[data-sheet-address="A1"]')?.getAttribute("aria-label") === "A1: 16", { timeout: 30_000 });
     const xlsxWorkbookReviewedAndPersisted = true;
     const exportedBytes = await captureXlsxExport(page);
+    await fs.writeFile(path.join(OUTPUT_DIR, `sheets-export-${ordinal}.xlsx`), exportedBytes);
     const exportedFiles = unzipSync(exportedBytes);
     const exportedWorkbook = strFromU8(exportedFiles["xl/workbook.xml"] || new Uint8Array());
     const exportedImportedSummary = strFromU8(exportedFiles["xl/worksheets/sheet4.xml"] || new Uint8Array());
-    const xlsxWorkbookExportGenerated = exportedBytes.length > 0
-      && exportedWorkbook.includes('name="Sheet 1 (2)"')
-      && exportedWorkbook.includes('name="Imported Summary"')
-      && !exportedWorkbook.includes('state="hidden"')
-      && exportedImportedSummary.includes("<f>'Sheet 1 (2)'!B2</f>");
-    assert(xlsxWorkbookExportGenerated, "Rendered XLSX export did not preserve the reviewed workbook tabs and rewritten cross-tab formula.");
+    const exportChecks = {
+      bytesPresent: exportedBytes.length > 0,
+      dataTabNamed: exportedWorkbook.includes('name="Sheet 1 (2)"'),
+      summaryTabNamed: exportedWorkbook.includes('name="Imported Summary"'),
+      hiddenStateOmitted: !exportedWorkbook.includes('state="hidden"'),
+      rewrittenFormulaPresent: exportedImportedSummary.includes("<f>&apos;Sheet 1 (2)&apos;!B2</f>"),
+      worksheetParts: Object.keys(exportedFiles).filter((name) => /^xl\/worksheets\/sheet\d+\.xml$/.test(name)).sort(),
+    };
+    const xlsxWorkbookExportGenerated = Object.entries(exportChecks).every(([key, value]) => key === "worksheetParts" || value === true);
+    assert(xlsxWorkbookExportGenerated, `Rendered XLSX export did not preserve the reviewed workbook tabs and rewritten cross-tab formula: ${JSON.stringify(exportChecks)}.`);
 
     await activate(page, `button[aria-label="Open sheet tab ${importedSheetName}"]`);
     await activate(page, 'button[aria-label="Open sheet tab Sheet 1"]');
@@ -674,7 +682,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     otherErased = await eraseAccount(other);
   }
   const cleanup: Cleanup = { viewport: viewport.name, accountErased: ownerErased, sessionInvalidated: ownerErased, emailReleased: ownerErased, displayNameReleased: ownerErased, otherAccountErased: otherErased };
-  if (failure) throw new Error(`stage=${stage}; ${safeError(failure)}; ownerErased=${ownerErased}; otherErased=${otherErased}`);
+  if (failure) throw new ViewportAcceptanceFailure(`stage=${stage}; ownerErased=${ownerErased}; otherErased=${otherErased}; ${safeError(failure)}`, cleanup);
   assert(view && ownerErased && otherErased, `${viewport.name} did not complete the rendered Sheets journey and verified account erasure.`);
   return { view, cleanup };
 }
@@ -698,6 +706,7 @@ async function main(): Promise<void> {
       cleanups.push(result.cleanup);
     }
   } catch (error) {
+    if (error instanceof ViewportAcceptanceFailure) cleanups.push(error.cleanup);
     failure = safeError(error);
   } finally {
     if (browser) await browser.close().catch(() => undefined);
