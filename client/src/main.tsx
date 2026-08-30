@@ -17,6 +17,7 @@ const runtimeConfig = (window as Window & {
 }).__LYFEOS_RUNTIME_CONFIG__;
 
 const PUBLISHABLE_KEY = runtimeConfig?.clerkPublishableKey || import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+const CLERK_JS_VERSION = "5.127.2";
 
 if (!PUBLISHABLE_KEY) {
   throw new Error("Missing Publishable Key");
@@ -65,7 +66,11 @@ if ('serviceWorker' in navigator) {
 }
 
 const application = (
-  <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
+  <ClerkProvider
+    publishableKey={PUBLISHABLE_KEY}
+    clerkJSVariant="headless"
+    clerkJSVersion={CLERK_JS_VERSION}
+  >
     <QueryClientProvider client={queryClient}>
       <App />
     </QueryClientProvider>
