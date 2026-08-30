@@ -13,22 +13,26 @@ describe("production Calendar evidence custody", () => {
   const context = source("client/src/lib/context.tsx");
 
   it("binds the production-only contract to immutable runtime and harness sources", () => {
-    expect(acceptance).toContain('contract: "lyfeos.production-calendar-browser.v1"');
+    expect(acceptance).toContain('contract: "lyfeos.production-calendar-browser.v2"');
     expect(acceptance).toContain('BASE_URL.origin === "https://lyfeos.net"');
     expect(acceptance).toContain("release.body?.sourceRevision === SOURCE");
     expect(acceptance).toContain("HARNESS_SOURCE");
   });
 
-  it("qualifies desktop/mobile canonical scheduling and explicit offline conflict behavior", () => {
+  it("qualifies desktop/mobile canonical scheduling and a real second-tab offline conflict", () => {
     expect(acceptance).toContain('name: "desktop-1440x900"');
     expect(acceptance).toContain('name: "mobile-390x844"');
     expect(acceptance).toContain("offlineCreateQueued");
     expect(acceptance).toContain("reconnectCreateConverged");
+    expect(acceptance).toContain("multiTabConflictReconciled");
     expect(acceptance).toContain("staleEditStoppedAsConflict");
     expect(acceptance).toContain("acknowledgeReconciledConflict(signals)");
     expect(acceptance).toContain("explicitConflictApplyConverged");
     expect(acceptance).toContain("queueDrained");
     expect(acceptance).toContain("enterOffline(page)");
+    expect(acceptance).toContain("competingPage = await context.newPage()");
+    expect(acceptance).toContain("await page.bringToFront()");
+    expect(acceptance).toContain("The second live tab did not commit Calendar mission revision two");
     expect(acceptance).toContain('window.dispatchEvent(new Event("offline"))');
     expect(acceptance).toContain('window.dispatchEvent(new Event("online"))');
     expect(acceptance).toContain("registerDisposableAccount");

@@ -17,6 +17,7 @@ type ViewResult = {
   rangeNavigationRendered: boolean;
   offlineCreateQueued: boolean;
   reconnectCreateConverged: boolean;
+  multiTabConflictReconciled: boolean;
   staleEditStoppedAsConflict: boolean;
   explicitConflictApplyConverged: boolean;
   queueDrained: boolean;
@@ -127,8 +128,7 @@ function cookieParts(cookie: string): { name: string; value: string } {
   return { name: cookie.slice(0, separator), value: cookie.slice(separator + 1) };
 }
 
-function captureSignals(page: Page, intentionallyOffline: () => boolean): Signals {
-  const signals: Signals = { consoleErrors: [], pageErrors: [], failedRequests: [], serverErrors: [], recoveredChunkLoads: [] };
+function captureSignals(page: Page, intentionallyOffline: () => boolean, signals: Signals = { consoleErrors: [], pageErrors: [], failedRequests: [], serverErrors: [], recoveredChunkLoads: [] }): Signals {
   page.on("console", (entry) => {
     if (entry.type() !== "error" || intentionallyOffline()) return;
     signals.consoleErrors.push(entry.text().slice(0, 500));
@@ -295,6 +295,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
   const serverTitle = `Server edit ${ordinal}`;
   let context: BrowserContext | null = null;
   let page: Page | null = null;
+  let competingPage: Page | null = null;
   let intentionallyOffline = false;
   let view: ViewResult | null = null;
   let erased = false;
@@ -366,8 +367,31 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     await enterOffline(page);
     await activate(page, '[data-testid="mission-update-submit"]');
     await page.waitForFunction((title) => document.querySelector('[data-testid="calendar-offline-queue"]')?.textContent?.includes(String(title)), { timeout: 30_000 }, queuedTitle);
-    const serverChange = await request("PATCH", `/api/quests/${missionId}`, { title: serverTitle }, account.cookie, { "x-lyfeos-mutation-id": `calendar-server-${stamp}`, "x-lyfeos-expected-revision": "1" });
-    assert(serverChange.status === 200 && serverChange.body.quest?.revision === 2, `Competing server edit returned ${serverChange.status}.`);
+    stage = "commit the competing canonical edit from a second live tab";
+    competingPage = await context.newPage();
+    captureSignals(competingPage, () => false, signals);
+    await competingPage.evaluateOnNewDocument((fixtureUser) => {
+      try {
+        localStorage.setItem("lyfeos_user", JSON.stringify(fixtureUser));
+        localStorage.setItem(`lyfeos-tutorial-done-missions-${fixtureUser.id}`, "true");
+      } catch { /* Origin is not ready. */ }
+    }, { id: account.id, displayName: account.displayName });
+    await competingPage.setViewport(viewport.value);
+    await competingPage.emulateTimezone(CALENDAR_TIME_ZONE);
+    await competingPage.setCacheEnabled(false);
+    await competingPage.setOfflineMode(false);
+    await competingPage.goto(new URL("/calendar", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
+    await competingPage.waitForSelector('[data-testid="calendar-page"]', { visible: true, timeout: 60_000 });
+    await dismissBlockingTutorial(competingPage);
+    await activate(competingPage, '[aria-label="Show day calendar"]');
+    await competingPage.waitForSelector(`[aria-label="Edit mission ${conflictTitle} at 10:00"]`, { visible: true, timeout: 45_000 });
+    await activate(competingPage, `[aria-label="Edit mission ${conflictTitle} at 10:00"]`);
+    await setValue(competingPage, "#edit-title", serverTitle);
+    await activate(competingPage, '[data-testid="mission-update-submit"]');
+    const secondTabState = await waitForMission(account, date, (mission) => Number(mission.id) === missionId && mission.revision === 2, "second-tab Calendar edit");
+    const secondTabCommitted = secondTabState.title === serverTitle;
+    assert(secondTabCommitted, "The second live tab did not commit Calendar mission revision two.");
+    await page.bringToFront();
     intentionallyOffline = false;
     await restoreOnline(page);
     await page.waitForFunction((title) => {
@@ -377,6 +401,10 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     const conflicted = await waitForMission(account, date, (mission) => Number(mission.id) === missionId, "server-side conflict state");
     const staleEditStoppedAsConflict = conflicted.title === serverTitle && conflicted.revision === 2;
     assert(staleEditStoppedAsConflict, "Stale Calendar edit overwrote the newer server mission.");
+    const multiTabConflictReconciled = secondTabCommitted && staleEditStoppedAsConflict;
+    assert(multiTabConflictReconciled, "A stale first-tab Calendar edit overwrote the second live tab's canonical revision.");
+    await competingPage.close();
+    competingPage = null;
     page.once("dialog", (dialog) => void dialog.accept());
     await activate(page, '[data-testid="calendar-offline-queue"] button');
     const applied = await waitForMission(account, date, (mission) => Number(mission.id) === missionId && mission.title === queuedTitle, "explicit conflict apply");
@@ -390,7 +418,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     assert(audit.mainCount === 1 && audit.duplicateIds.length === 0 && audit.invalidLabelReferences.length === 0 && audit.unlabeledControls.length === 0 && audit.horizontalOverflowPx <= 2, `${viewport.name} Calendar failed semantics or overflow checks.`);
     await acknowledgeBoundedChunkRecovery(page, signals);
     assert(!hasUnexpectedBrowserSignals(signals), `${viewport.name} Calendar journey produced application errors: ${JSON.stringify(signals)}.`);
-    view = { viewport: viewport.name, canonicalProjectionRendered, rangeNavigationRendered, offlineCreateQueued, reconnectCreateConverged, staleEditStoppedAsConflict, explicitConflictApplyConverged, queueDrained, audit, signals };
+    view = { viewport: viewport.name, canonicalProjectionRendered, rangeNavigationRendered, offlineCreateQueued, reconnectCreateConverged, multiTabConflictReconciled, staleEditStoppedAsConflict, explicitConflictApplyConverged, queueDrained, audit, signals };
   } catch (error) {
     const rendered = page ? await page.evaluate(() => document.body?.innerText.slice(0, 2_000) || "page unavailable").catch(() => "page unavailable") : "page unavailable";
     if (page) await page.screenshot({ path: path.join(OUTPUT_DIR, `calendar-${viewport.name}-failure.png`), fullPage: true }).catch(() => undefined);
@@ -430,7 +458,7 @@ async function main(): Promise<void> {
     if (browser) await browser.close().catch(() => undefined);
     const passed = failure === null && views.length === VIEWPORTS.length && cleanups.length === VIEWPORTS.length && cleanups.every((cleanup) => cleanup.accountErased);
     const report = {
-      contract: "lyfeos.production-calendar-browser.v1",
+      contract: "lyfeos.production-calendar-browser.v2",
       generatedAt: new Date().toISOString(),
       baseUrl: BASE_URL.origin,
       sourceRevision: SOURCE,
@@ -438,7 +466,7 @@ async function main(): Promise<void> {
       views,
       cleanups,
       summary: { passed, failure },
-      boundary: "Disposable production-account Chromium evidence for Calendar as a projection over canonical Missions. It proves desktop/mobile Calendar rendering; year/month/week/day navigation; an IndexedDB-backed offline create; reconnect convergence; a competing canonical edit stopping a stale queued write; explicit apply-over-current conflict resolution; responsive semantics; queue drainage; and verified account/session/identifier erasure. It does not prove service-worker cold-start offline navigation, storage eviction recovery, real-device or human assistive-technology behavior, simultaneous multi-tab editing, live Google OAuth/scope/token/revoke/reconnect behavior, provider rate limits, or longitudinal scheduling outcomes.",
+      boundary: "Disposable production-account Chromium evidence for Calendar as a projection over canonical Missions. It proves desktop/mobile Calendar rendering; year/month/week/day navigation; an IndexedDB-backed offline create; reconnect convergence; a real same-account second tab committing a canonical edit; the stale first-tab queued write stopping as a visible conflict; explicit apply-over-current conflict resolution; responsive semantics; queue drainage; and verified account/session/identifier erasure. It does not prove simultaneous active field editing, real-time merge/coauthoring, service-worker cold-start offline navigation, storage eviction recovery, real-device or human assistive-technology behavior, live Google OAuth/scope/token/revoke/reconnect behavior, provider rate limits, or longitudinal scheduling outcomes.",
     };
     await fs.writeFile(OUTPUT_FILE, `${JSON.stringify(report, null, 2)}\n`, "utf8");
     if (process.env.GITHUB_STEP_SUMMARY) {
