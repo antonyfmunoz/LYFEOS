@@ -43,6 +43,8 @@ export type CalendarMutationResult<T> =
   | { queued: true; mutationId: string; status: QueueStatus }
   | { queued: false; mutationId: string; data: T };
 
+export type CalendarOfflinePersistenceState = "persistent" | "best-effort" | "unavailable";
+
 export class CalendarOfflineStorageError extends Error {
   constructor(message: string) {
     super(message);
@@ -69,6 +71,17 @@ function storageError(error: unknown): CalendarOfflineStorageError {
 function mutationId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
   return `calendar_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+}
+
+export async function calendarOfflinePersistenceState(requestPersistence = false): Promise<CalendarOfflinePersistenceState> {
+  if (typeof navigator === "undefined" || !navigator.storage) return "unavailable";
+  try {
+    if (typeof navigator.storage.persisted === "function" && await navigator.storage.persisted()) return "persistent";
+    if (requestPersistence && typeof navigator.storage.persist === "function" && await navigator.storage.persist()) return "persistent";
+    return "best-effort";
+  } catch {
+    return "unavailable";
+  }
 }
 
 function openDatabase(): Promise<IDBDatabase> {
@@ -145,6 +158,10 @@ async function send<T>(record: CalendarMutationRecord): Promise<T> {
 }
 
 async function storeNew(record: CalendarMutationRecord): Promise<void> {
+  // This does not make an unsynced mutation recoverable after site data is
+  // cleared. It asks the browser to reduce automatic eviction risk and the UI
+  // truthfully discloses whether that protection was granted.
+  await calendarOfflinePersistenceState(true);
   const existing = await recordsForUser(record.userId);
   if (existing.length >= MAX_QUEUED_MUTATIONS) throw new CalendarOfflineStorageError("This device already holds 100 unsynced Calendar changes. Reconnect and review them before adding another.");
   await put(record);
@@ -171,6 +188,7 @@ export async function submitCalendarMissionMutation<T>(input: {
     if (record.kind === "update") {
       const existing = (await recordsForUser(record.userId)).find((item) => item.kind === "update" && item.questId === record.questId && item.status === "pending" && !item.attemptedAt);
       if (existing) {
+        await calendarOfflinePersistenceState(true);
         await put({ ...existing, body: { ...existing.body, ...record.body }, title: record.title });
         return { queued: true, mutationId: existing.id, status: "pending" };
       }

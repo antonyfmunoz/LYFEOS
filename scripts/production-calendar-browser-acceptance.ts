@@ -16,6 +16,7 @@ type ViewResult = {
   canonicalProjectionRendered: boolean;
   rangeNavigationRendered: boolean;
   offlineCreateQueued: boolean;
+  storageEvictionRiskDisclosed: boolean;
   serviceWorkerColdStartRecovered: boolean;
   reconnectCreateConverged: boolean;
   multiTabConflictReconciled: boolean;
@@ -384,6 +385,14 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
       return text.includes(String(title)) && text.includes("Waiting for a connection");
     }, { timeout: 45_000 }, offlineTitle);
     const offlineCreateQueued = true;
+    const storageEvictionRiskDisclosed = await page.evaluate(async () => {
+      const text = document.querySelector('[data-testid="calendar-storage-protection"]')?.textContent || "";
+      const persisted = typeof navigator.storage?.persisted === "function" && await navigator.storage.persisted().catch(() => false);
+      return persisted
+        ? text.includes("granted persistent storage") && text.includes("Reconnect")
+        : (text.includes("may remove queued changes") || text.includes("could not be confirmed")) && text.includes("Reconnect");
+    });
+    assert(storageEvictionRiskDisclosed, "Calendar did not truthfully disclose the current browser-storage protection boundary.");
 
     stage = "restart the service worker and recover the queued Calendar change offline";
     await stopServiceWorkers(page);
@@ -479,7 +488,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     assert(audit.mainCount === 1 && audit.duplicateIds.length === 0 && audit.invalidLabelReferences.length === 0 && audit.unlabeledControls.length === 0 && audit.horizontalOverflowPx <= 2, `${viewport.name} Calendar failed semantics or overflow checks.`);
     await acknowledgeBoundedChunkRecovery(page, signals);
     assert(!hasUnexpectedBrowserSignals(signals), `${viewport.name} Calendar journey produced application errors: ${JSON.stringify(signals)}.`);
-    view = { viewport: viewport.name, canonicalProjectionRendered, rangeNavigationRendered, offlineCreateQueued, serviceWorkerColdStartRecovered, reconnectCreateConverged, multiTabConflictReconciled, staleEditStoppedAsConflict, explicitConflictApplyConverged, queueDrained, audit, signals };
+    view = { viewport: viewport.name, canonicalProjectionRendered, rangeNavigationRendered, offlineCreateQueued, storageEvictionRiskDisclosed, serviceWorkerColdStartRecovered, reconnectCreateConverged, multiTabConflictReconciled, staleEditStoppedAsConflict, explicitConflictApplyConverged, queueDrained, audit, signals };
   } catch (error) {
     const rendered = page ? await page.evaluate(() => document.body?.innerText.slice(0, 2_000) || "page unavailable").catch(() => "page unavailable") : "page unavailable";
     if (page) await page.screenshot({ path: path.join(OUTPUT_DIR, `calendar-${viewport.name}-failure.png`), fullPage: true }).catch(() => undefined);
@@ -519,7 +528,7 @@ async function main(): Promise<void> {
     if (browser) await browser.close().catch(() => undefined);
     const passed = failure === null && views.length === VIEWPORTS.length && cleanups.length === VIEWPORTS.length && cleanups.every((cleanup) => cleanup.accountErased);
     const report = {
-      contract: "lyfeos.production-calendar-browser.v3",
+      contract: "lyfeos.production-calendar-browser.v4",
       generatedAt: new Date().toISOString(),
       baseUrl: BASE_URL.origin,
       sourceRevision: SOURCE,
@@ -527,7 +536,7 @@ async function main(): Promise<void> {
       views,
       cleanups,
       summary: { passed, failure },
-      boundary: "Disposable production-account Chromium evidence for Calendar as a projection over canonical Missions. It proves desktop/mobile Calendar rendering; year/month/week/day navigation; an IndexedDB-backed offline create; stopped-service-worker cold-start offline navigation with the queued item still visible; reconnect convergence; a real same-account second tab committing a canonical edit; the stale first-tab queued write stopping as a visible conflict; explicit apply-over-current conflict resolution; responsive semantics; queue drainage; and verified account/session/identifier erasure. It does not prove storage eviction recovery, simultaneous active field editing, real-time merge/coauthoring, real-device or human assistive-technology behavior, live Google OAuth/scope/token/revoke/reconnect behavior, provider rate limits, or longitudinal scheduling outcomes.",
+      boundary: "Disposable production-account Chromium evidence for Calendar as a projection over canonical Missions. It proves desktop/mobile Calendar rendering; year/month/week/day navigation; an IndexedDB-backed offline create; a persistent-storage request with truthful granted/best-effort risk disclosure; stopped-service-worker cold-start offline navigation with the queued item still visible; reconnect convergence; a real same-account second tab committing a canonical edit; the stale first-tab queued write stopping as a visible conflict; explicit apply-over-current conflict resolution; responsive semantics; queue drainage; and verified account/session/identifier erasure. It does not prove recovery after browser/site-data eviction, first-ever offline use, simultaneous active field editing, real-time merge/coauthoring, real-device or human assistive-technology behavior, live Google OAuth/scope/token/revoke/reconnect behavior, provider rate limits, or longitudinal scheduling outcomes.",
     };
     await fs.writeFile(OUTPUT_FILE, `${JSON.stringify(report, null, 2)}\n`, "utf8");
     if (process.env.GITHUB_STEP_SUMMARY) {

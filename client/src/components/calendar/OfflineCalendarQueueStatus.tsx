@@ -4,6 +4,7 @@ import { AlertTriangle, CloudUpload, RotateCcw, Trash2, WifiOff } from "lucide-r
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import {
+  calendarOfflinePersistenceState,
   discardCalendarMutationQueueItem,
   flushCalendarMutationQueue,
   listCalendarMutationQueue,
@@ -17,6 +18,11 @@ export default function OfflineCalendarQueueStatus({ userId }: { userId: number 
     queryKey: ["calendar-offline-queue", userId],
     queryFn: () => listCalendarMutationQueue(userId),
     refetchOnWindowFocus: true,
+  });
+  const persistence = useQuery({
+    queryKey: ["calendar-offline-persistence"],
+    queryFn: () => calendarOfflinePersistenceState(),
+    enabled: Boolean(queue.data?.length),
   });
 
   const refreshCanonicalMissions = () => {
@@ -95,6 +101,13 @@ export default function OfflineCalendarQueueStatus({ userId }: { userId: number 
           {queue.data?.length ? `${queue.data.length} Calendar ${queue.data.length === 1 ? "change" : "changes"} on this device` : "Calendar is offline"}
         </h2>
         <p className="mt-1 text-xs text-muted-foreground">Queued changes are not part of your account until the server accepts them. Conflicts never overwrite a newer mission automatically.</p>
+        {queue.data?.length ? <p data-testid="calendar-storage-protection" className="mt-1 text-xs text-muted-foreground">
+          {persistence.data === "persistent"
+            ? "This browser granted persistent storage, reducing automatic eviction risk. Reconnect before clearing LyfeOS site data."
+            : persistence.data === "best-effort"
+              ? "This browser may remove queued changes under storage pressure or when site data is cleared. Reconnect soon."
+              : "Browser storage protection could not be confirmed. Reconnect soon and do not clear LyfeOS site data."}
+        </p> : null}
       </div>
       {!online ? <span className="rounded-full border border-amber-300/30 px-2 py-1 text-[11px] text-amber-200">Offline</span> : null}
     </div>

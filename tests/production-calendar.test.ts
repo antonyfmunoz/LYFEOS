@@ -13,7 +13,7 @@ describe("production Calendar evidence custody", () => {
   const context = source("client/src/lib/context.tsx");
 
   it("binds the production-only contract to immutable runtime and harness sources", () => {
-    expect(acceptance).toContain('contract: "lyfeos.production-calendar-browser.v3"');
+    expect(acceptance).toContain('contract: "lyfeos.production-calendar-browser.v4"');
     expect(acceptance).toContain('BASE_URL.origin === "https://lyfeos.net"');
     expect(acceptance).toContain("release.body?.sourceRevision === SOURCE");
     expect(acceptance).toContain("HARNESS_SOURCE");
@@ -23,6 +23,7 @@ describe("production Calendar evidence custody", () => {
     expect(acceptance).toContain('name: "desktop-1440x900"');
     expect(acceptance).toContain('name: "mobile-390x844"');
     expect(acceptance).toContain("offlineCreateQueued");
+    expect(acceptance).toContain("storageEvictionRiskDisclosed");
     expect(acceptance).toContain("serviceWorkerColdStartRecovered");
     expect(acceptance).toContain("reconnectCreateConverged");
     expect(acceptance).toContain("multiTabConflictReconciled");
@@ -47,7 +48,9 @@ describe("production Calendar evidence custody", () => {
     expect(enableServiceWorker).toBeGreaterThan(-1);
     expect(stopServiceWorkers).toBeGreaterThan(enableServiceWorker);
     expect(acceptance).toContain('text.includes("Waiting for the next safe sync attempt")');
-    expect(acceptance).toContain('contract: "lyfeos.production-calendar-browser.v3"');
+    expect(acceptance).toContain('contract: "lyfeos.production-calendar-browser.v4"');
+    expect(acceptance).toContain("persistent-storage request with truthful granted/best-effort risk disclosure");
+    expect(acceptance).toContain("does not prove recovery after browser/site-data eviction");
     expect(acceptance).not.toContain("service-worker cold-start offline navigation, storage eviction recovery");
   });
 

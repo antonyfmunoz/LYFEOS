@@ -43,7 +43,12 @@ describe("Calendar offline and conflict contract", () => {
     expect(queue).toContain('const MAX_QUEUED_MUTATIONS = 100');
     expect(queue).toContain('status: "conflict"');
     expect(queue).toContain('"x-lyfeos-expected-revision"');
+    expect(queue).toContain('navigator.storage.persisted');
+    expect(queue).toContain('navigator.storage.persist()');
+    expect(queue).toContain('calendarOfflinePersistenceState(true)');
     expect(status).toContain("Conflicts never overwrite a newer mission automatically");
+    expect(status).toContain("may remove queued changes under storage pressure");
+    expect(status).toContain("Reconnect before clearing LyfeOS site data");
     expect(status).toContain("Apply my change");
     expect(status).toContain("Keep server");
     expect(context).toContain("Completion needs a connection");
