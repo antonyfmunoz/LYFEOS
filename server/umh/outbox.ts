@@ -5,6 +5,7 @@ import { db } from "../db";
 import { reconcilePendingCrossProductConsentEvents } from "../cross-product";
 import { getUMHFederationConfig } from "./config";
 import { signUMHProjectionEvent } from "./crypto";
+import { UMH_MAX_RECEIPT_BYTES, validateSignedUMHEventReceipt } from "./receipt";
 
 const DEFAULT_BATCH_SIZE = 25;
 // A batch is delivered sequentially and each request can consume ten seconds.
@@ -129,6 +130,7 @@ export async function deliverPendingUMHEvents(): Promise<void> {
         method: "POST",
         headers: {
           "content-type": "application/json",
+          "x-umh-key-id": config.keyId,
           "x-umh-timestamp": timestamp,
           "x-umh-nonce": nonce,
           "x-umh-signature": signUMHProjectionEvent(config.sharedSecret, timestamp, nonce, body),
@@ -138,7 +140,25 @@ export async function deliverPendingUMHEvents(): Promise<void> {
       });
 
       if (response.ok) {
-        await settleUMHOutboxEvent({ ...entry, outcome: "delivered" });
+        const declaredLength = Number(response.headers.get("content-length"));
+        if (Number.isFinite(declaredLength) && declaredLength > UMH_MAX_RECEIPT_BYTES) {
+          await response.body?.cancel();
+          await settleUMHOutboxEvent({ ...entry, outcome: "retry", errorCode: "RECEIPT_TOO_LARGE" });
+          continue;
+        }
+        const serializedReceipt = await response.text();
+        const receipt = validateSignedUMHEventReceipt({
+          serializedBody: serializedReceipt,
+          keyId: response.headers.get("x-umh-key-id"),
+          timestamp: response.headers.get("x-umh-timestamp"),
+          nonce: response.headers.get("x-umh-nonce"),
+          signature: response.headers.get("x-umh-signature"),
+          event: entry.payload,
+          config,
+        });
+        await settleUMHOutboxEvent(receipt.accepted
+          ? { ...entry, outcome: "delivered" }
+          : { ...entry, outcome: "retry", errorCode: receipt.errorCode });
       } else if (response.status >= 400 && response.status < 500 && response.status !== 429) {
         await settleUMHOutboxEvent({ ...entry, outcome: "failed", errorCode: `HTTP_${response.status}` });
       } else {

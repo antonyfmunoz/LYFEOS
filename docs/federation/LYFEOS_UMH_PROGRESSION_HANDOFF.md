@@ -58,7 +58,16 @@ Headers:
 
 - `x-umh-timestamp`: Unix seconds
 - `x-umh-nonce`: unique transport nonce
+- `x-umh-key-id`: configured rotation-safe key ID
 - `x-umh-signature`: HMAC-SHA256 of `timestamp + "." + nonce + "." + exact JSON body`
+
+HTTP success is not treated as durable acceptance. UMH must return a signed,
+strict `umh.event-receipt.v1` body naming the exact event, projection,
+installation and tenant, with status `accepted` or `duplicate`. LyfeOS verifies
+the response key ID, timestamp, nonce, exact-body signature and scope before it
+settles the outbox event. Missing or mismatched receipts remain retryable. This
+is LyfeOS-side enforcement; it does not claim the currently unconfigured UMH
+receiver implements the receipt yet.
 
 Required LyfeOS deployment configuration:
 
@@ -82,7 +91,7 @@ receivers must not guess identity from names or contact details.
 ## UMH / consumer activation checklist
 
 1. Register the LyfeOS installation ID and shared secret at UMH ingress.
-2. Validate signature, nonce, timestamp, schema, tenant, and idempotency.
+2. Validate signature, key ID, nonce, timestamp, schema, tenant, and event-ID idempotency; return the matching signed receipt.
 3. Enforce the event's purpose and allowed destinations alongside the user's
    ecosystem authorization.
 4. Create consumer read models only; never issue direct LyfeOS database writes.

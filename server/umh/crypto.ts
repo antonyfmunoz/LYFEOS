@@ -31,6 +31,20 @@ export function signUMHProjectionEvent(secret: string, timestamp: string, nonce:
   return crypto.createHmac("sha256", secret).update(`${timestamp}.${nonce}.${serializedBody}`).digest("hex");
 }
 
+/** Verify the exact response bytes returned by the UMH projection ingress. */
+export function verifyUMHProjectionReceipt(
+  secret: string,
+  timestamp: string,
+  nonce: string,
+  signature: string,
+  serializedBody: string,
+): boolean {
+  if (!/^\d{10}$/.test(timestamp) || !/^[a-zA-Z0-9_-]{16,256}$/.test(nonce) || !/^[a-f0-9]{64}$/.test(signature)) return false;
+  if (Math.abs(Date.now() - Number(timestamp) * 1_000) > UMH_MAX_CLOCK_SKEW_MS) return false;
+  const expected = signUMHProjectionEvent(secret, timestamp, nonce, serializedBody);
+  return crypto.timingSafeEqual(Buffer.from(expected, "hex"), Buffer.from(signature, "hex"));
+}
+
 export function verifyUMHSignature(secret: string, timestamp: string, nonce: string, signature: string, body: unknown): boolean {
   if (!/^\d{13}$/.test(timestamp) || !/^[a-zA-Z0-9_-]{16,256}$/.test(nonce) || !/^[a-f0-9]{64}$/.test(signature)) return false;
   if (Math.abs(Date.now() - Number(timestamp)) > UMH_MAX_CLOCK_SKEW_MS) return false;

@@ -15,6 +15,7 @@ export const LYFEOS_MISSION_CREATED_EVENT = "lyfeos.mission.created.v1" as const
 export const LYFEOS_COORDINATION_CONTEXT_UPDATED_EVENT = "lyfeos.coordination-context.updated.v1" as const;
 export const LYFEOS_WORK_ITEM_UPDATED_EVENT = "lyfeos.work-item.updated.v1" as const;
 export const LYFEOS_FEDERATION_CONSENT_UPDATED_EVENT = "lyfeos.federation-consent.updated.v1" as const;
+export const UMH_EVENT_RECEIPT_SCHEMA = "umh.event-receipt.v1" as const;
 
 const isoTimestamp = z.string().datetime({ offset: true });
 
@@ -129,32 +130,84 @@ export function validateUMHProjectionEvent(input: unknown): UMHProjectionEventEn
   return umhProjectionEventEnvelopeSchema.parse(input);
 }
 
+/**
+ * A successful HTTP status is transport evidence, not persistence evidence.
+ * UMH must return this signed receipt before LyfeOS settles an outbox event as
+ * delivered. `duplicate` is successful because delivery is at-least-once and
+ * the event ID is the consumer idempotency boundary.
+ */
+export const umhEventReceiptSchema = z.object({
+  schemaVersion: z.literal(UMH_EVENT_RECEIPT_SCHEMA),
+  kind: z.literal("event_receipt"),
+  eventId: z.string().uuid(),
+  projectionId: z.literal(LYFEOS_PROJECTION_ID),
+  installationId: z.string().min(1).max(128),
+  tenantId: z.string().min(1).max(128),
+  status: z.enum(["accepted", "duplicate"]),
+  receivedAt: isoTimestamp,
+}).strict();
+
+export type UMHEventReceipt = z.infer<typeof umhEventReceiptSchema>;
+
 export interface UMHCapabilityManifest {
   protocolVersion: typeof UMH_FEDERATION_PROTOCOL;
+  manifestVersion: "lyfeos.umh-capability-manifest.v2";
   projection: { id: "lyfeos"; name: "LyfeOS"; version: string };
   status: "enabled" | "disabled";
   capabilities: Array<{
     id: typeof LYFEOS_MISSION_CREATE_CAPABILITY;
+    direction: "inbound";
+    authority: "lyfeos";
+    effect: "canonical_local_mutation";
     risk: "low";
     approval: "automatic";
     idempotency: "required";
+    outcome: typeof LYFEOS_MISSION_CREATED_EVENT;
   }>;
-  events: Array<{ id: typeof LYFEOS_MISSION_CREATED_EVENT | typeof LYFEOS_COORDINATION_CONTEXT_UPDATED_EVENT | typeof LYFEOS_WORK_ITEM_UPDATED_EVENT | typeof LYFEOS_FEDERATION_CONSENT_UPDATED_EVENT; delivery: "outbox" }>;
+  events: Array<{
+    id: typeof LYFEOS_MISSION_CREATED_EVENT | typeof LYFEOS_COORDINATION_CONTEXT_UPDATED_EVENT | typeof LYFEOS_WORK_ITEM_UPDATED_EVENT | typeof LYFEOS_FEDERATION_CONSENT_UPDATED_EVENT;
+    direction: "outbound";
+    authority: "lyfeos";
+    delivery: "transactional_outbox";
+    semantics: "at_least_once";
+    idempotency: "event_id";
+    consent: "command_scope" | "cross_product_policy";
+    dataClass: "mission_command_outcome" | "coarse_coordination" | "explicit_work_link" | "consent_state";
+  }>;
+  deliveryReceipt: {
+    schemaVersion: typeof UMH_EVENT_RECEIPT_SCHEMA;
+    required: true;
+    statuses: ["accepted", "duplicate"];
+    correlation: "event_id";
+    signature: "hmac_sha256_exact_body";
+  };
 }
 
 export const LYFEOS_CAPABILITY_MANIFEST: Omit<UMHCapabilityManifest, "status"> = {
   protocolVersion: UMH_FEDERATION_PROTOCOL,
+  manifestVersion: "lyfeos.umh-capability-manifest.v2",
   projection: { id: "lyfeos", name: "LyfeOS", version: "1.0.0" },
   capabilities: [{
     id: LYFEOS_MISSION_CREATE_CAPABILITY,
+    direction: "inbound",
+    authority: "lyfeos",
+    effect: "canonical_local_mutation",
     risk: "low",
     approval: "automatic",
     idempotency: "required",
+    outcome: LYFEOS_MISSION_CREATED_EVENT,
   }],
   events: [
-    { id: LYFEOS_MISSION_CREATED_EVENT, delivery: "outbox" },
-    { id: LYFEOS_COORDINATION_CONTEXT_UPDATED_EVENT, delivery: "outbox" },
-    { id: LYFEOS_WORK_ITEM_UPDATED_EVENT, delivery: "outbox" },
-    { id: LYFEOS_FEDERATION_CONSENT_UPDATED_EVENT, delivery: "outbox" },
+    { id: LYFEOS_MISSION_CREATED_EVENT, direction: "outbound", authority: "lyfeos", delivery: "transactional_outbox", semantics: "at_least_once", idempotency: "event_id", consent: "command_scope", dataClass: "mission_command_outcome" },
+    { id: LYFEOS_COORDINATION_CONTEXT_UPDATED_EVENT, direction: "outbound", authority: "lyfeos", delivery: "transactional_outbox", semantics: "at_least_once", idempotency: "event_id", consent: "cross_product_policy", dataClass: "coarse_coordination" },
+    { id: LYFEOS_WORK_ITEM_UPDATED_EVENT, direction: "outbound", authority: "lyfeos", delivery: "transactional_outbox", semantics: "at_least_once", idempotency: "event_id", consent: "cross_product_policy", dataClass: "explicit_work_link" },
+    { id: LYFEOS_FEDERATION_CONSENT_UPDATED_EVENT, direction: "outbound", authority: "lyfeos", delivery: "transactional_outbox", semantics: "at_least_once", idempotency: "event_id", consent: "cross_product_policy", dataClass: "consent_state" },
   ],
+  deliveryReceipt: {
+    schemaVersion: UMH_EVENT_RECEIPT_SCHEMA,
+    required: true,
+    statuses: ["accepted", "duplicate"],
+    correlation: "event_id",
+    signature: "hmac_sha256_exact_body",
+  },
 };
