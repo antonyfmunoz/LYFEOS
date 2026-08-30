@@ -4,9 +4,11 @@ export const spreadsheetAddressPattern = /^[A-Z]{1,3}[1-9][0-9]{0,3}$/;
 export const spreadsheetNumberFormats = ["decimal", "percent", "currency_usd"] as const;
 export const spreadsheetColorTokens = ["red", "amber", "green", "blue", "purple"] as const;
 export const spreadsheetChartKinds = ["line", "bar", "stacked_bar", "area", "combo", "pie", "scatter"] as const;
+export const spreadsheetChartAxisModes = ["shared", "dual"] as const;
 export type SpreadsheetNumberFormat = typeof spreadsheetNumberFormats[number];
 export type SpreadsheetColorToken = typeof spreadsheetColorTokens[number];
 export type SpreadsheetChartKind = typeof spreadsheetChartKinds[number];
+export type SpreadsheetChartAxisMode = typeof spreadsheetChartAxisModes[number];
 
 export const spreadsheetCellSchema = z.object({
   input: z.string().max(10_000),
@@ -35,6 +37,7 @@ export const spreadsheetChartSchema = z.object({
   id: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/),
   title: z.string().trim().min(1).max(120),
   kind: z.enum(spreadsheetChartKinds),
+  axisMode: z.enum(spreadsheetChartAxisModes).default("shared"),
   sheetId: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/),
   range: z.object({
     startRow: z.number().int().min(0).max(499),
@@ -56,6 +59,9 @@ export const spreadsheetChartSchema = z.object({
   }
   if ((chart.kind === "stacked_bar" || chart.kind === "combo") && dataColumnCount < 2) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: `${chart.kind === "stacked_bar" ? "Stacked bar" : "Combination"} charts require one label column and at least two numeric series columns.`, path: ["range"] });
+  }
+  if (chart.kind !== "combo" && chart.axisMode !== "shared") {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Dual axes are available only for combination charts.", path: ["axisMode"] });
   }
 });
 
@@ -168,6 +174,7 @@ export function createSpreadsheetChart(document: SpreadsheetDocument, input: {
   id: string;
   title: string;
   kind: SpreadsheetChartKind;
+  axisMode?: SpreadsheetChartAxisMode;
   sheetId: string;
   range: SpreadsheetChart["range"];
 }): SpreadsheetDocument {
@@ -175,11 +182,15 @@ export function createSpreadsheetChart(document: SpreadsheetDocument, input: {
   return spreadsheetDocumentSchema.parse({ ...document, charts: [...document.charts, spreadsheetChartSchema.parse(input)] });
 }
 
-export function updateSpreadsheetChart(document: SpreadsheetDocument, chartId: string, patch: { title?: string; kind?: SpreadsheetChartKind }): SpreadsheetDocument {
+export function updateSpreadsheetChart(document: SpreadsheetDocument, chartId: string, patch: { title?: string; kind?: SpreadsheetChartKind; axisMode?: SpreadsheetChartAxisMode }): SpreadsheetDocument {
   if (!document.charts.some((chart) => chart.id === chartId)) throw new Error("That chart no longer exists.");
   return spreadsheetDocumentSchema.parse({
     ...document,
-    charts: document.charts.map((chart) => chart.id === chartId ? { ...chart, ...patch } : chart),
+    charts: document.charts.map((chart) => {
+      if (chart.id !== chartId) return chart;
+      const updated = { ...chart, ...patch };
+      return updated.kind === "combo" ? updated : { ...updated, axisMode: "shared" as const };
+    }),
   });
 }
 

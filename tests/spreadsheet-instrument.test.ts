@@ -98,7 +98,7 @@ describe("Sheets instrument", () => {
   it("persists bounded chart definitions only over an existing in-sheet range", () => {
     const document = createEmptySpreadsheetDocument();
     const charted = createSpreadsheetChart(document, { id: "chart_one", title: "  Weekly output  ", kind: "line", sheetId: document.activeSheetId, range: { startRow: 0, endRow: 3, startColumn: 0, endColumn: 2 } });
-    expect(charted.charts[0]).toMatchObject({ title: "Weekly output", kind: "line", range: { startRow: 0, endRow: 3, startColumn: 0, endColumn: 2 } });
+    expect(charted.charts[0]).toMatchObject({ title: "Weekly output", kind: "line", axisMode: "shared", range: { startRow: 0, endRow: 3, startColumn: 0, endColumn: 2 } });
     expect(document.charts).toEqual([]);
     expect(spreadsheetDocumentSchema.safeParse({ ...charted, charts: [{ ...charted.charts[0], sheetId: "missing" }] }).success).toBe(false);
     expect(spreadsheetDocumentSchema.safeParse({ ...charted, charts: [{ ...charted.charts[0], range: { startRow: 0, endRow: 40, startColumn: 0, endColumn: 2 } }] }).success).toBe(false);
@@ -118,6 +118,9 @@ describe("Sheets instrument", () => {
     expect(() => createSpreadsheetChart(document, { id: "ambiguous-scatter", title: "Relationship", kind: "scatter", sheetId: document.activeSheetId, range: oneSeriesRange })).toThrow("exactly two numeric series columns");
     expect(() => createSpreadsheetChart(document, { id: "ambiguous-stacked", title: "Total", kind: "stacked_bar", sheetId: document.activeSheetId, range: oneSeriesRange })).toThrow("at least two numeric series columns");
     expect(() => createSpreadsheetChart(document, { id: "ambiguous-combo", title: "Trend", kind: "combo", sheetId: document.activeSheetId, range: oneSeriesRange })).toThrow("at least two numeric series columns");
+    const dual = createSpreadsheetChart(document, { id: "dual-combo", title: "Volume and conversion", kind: "combo", axisMode: "dual", sheetId: document.activeSheetId, range: twoSeriesRange });
+    expect(dual.charts[0].axisMode).toBe("dual");
+    expect(() => createSpreadsheetChart(document, { id: "misleading-axis", title: "Trend", kind: "line", axisMode: "dual", sheetId: document.activeSheetId, range: oneSeriesRange })).toThrow("only for combination charts");
   });
 
   it("derives chart values from canonical cells and never converts missing or invalid values to zero", () => {
@@ -151,11 +154,13 @@ describe("Sheets instrument", () => {
 
   it("updates and removes chart definitions without mutating source cells", () => {
     const document = createEmptySpreadsheetDocument();
-    document.sheets[0].cells = { A1: { input: "Day" }, B1: { input: "Value" }, A2: { input: "Mon" }, B2: { input: "1" } };
-    const charted = createSpreadsheetChart(document, { id: "chart_edit", title: "Original", kind: "line", sheetId: document.activeSheetId, range: { startRow: 0, endRow: 1, startColumn: 0, endColumn: 1 } });
-    const updated = updateSpreadsheetChart(charted, "chart_edit", { title: "Revised", kind: "bar" });
+    document.sheets[0].cells = { A1: { input: "Day" }, B1: { input: "Volume" }, C1: { input: "Rate" }, A2: { input: "Mon" }, B2: { input: "100" }, C2: { input: "0.2" } };
+    const charted = createSpreadsheetChart(document, { id: "chart_edit", title: "Original", kind: "line", sheetId: document.activeSheetId, range: { startRow: 0, endRow: 1, startColumn: 0, endColumn: 2 } });
+    const combo = updateSpreadsheetChart(charted, "chart_edit", { title: "Revised", kind: "combo", axisMode: "dual" });
+    const updated = updateSpreadsheetChart(combo, "chart_edit", { kind: "bar" });
     const removed = removeSpreadsheetChart(updated, "chart_edit");
-    expect(updated.charts[0]).toMatchObject({ title: "Revised", kind: "bar" });
+    expect(combo.charts[0]).toMatchObject({ title: "Revised", kind: "combo", axisMode: "dual" });
+    expect(updated.charts[0]).toMatchObject({ title: "Revised", kind: "bar", axisMode: "shared" });
     expect(removed.charts).toEqual([]);
     expect(removed.sheets[0].cells).toEqual(document.sheets[0].cells);
     expect(charted.charts[0]).toMatchObject({ title: "Original", kind: "line" });
@@ -365,6 +370,11 @@ describe("Sheets instrument", () => {
     expect(chart).toContain('stackId="source-series"');
     expect(chart).toContain("const comboBarSeries = data.series[0]");
     expect(chart).toContain("const comboLineSeries = data.series.slice(1)");
+    expect(chart).toContain('aria-label="Combination chart axes"');
+    expect(chart).toContain('<SelectItem value="dual">Dual axes</SelectItem>');
+    expect(chart).toContain('data-axis-mode={chart.axisMode}');
+    expect(chart).toContain('yAxisId={usesDualAxes ? "secondary" : "primary"}');
+    expect(chart).toContain("Dual axes can exaggerate visual relationships");
     expect(chart).toContain('<SelectItem value="pie">Pie</SelectItem>');
     expect(chart).toContain('<SelectItem value="scatter">Scatter</SelectItem>');
     expect(chart).toContain("only complete pairs become points");
