@@ -30,6 +30,12 @@ describe("production Messages browser acceptance custody", () => {
     expect(script).toContain("authorization for autonomous sending");
   });
 
+  it("uses the explicit production navigation budget for every Messages reload", () => {
+    expect(script).toContain("async function reloadMessages(page: Page)");
+    expect(script).toContain('page.reload({ waitUntil: "domcontentloaded", timeout: 60_000 })');
+    expect(script).not.toContain('page.reload({ waitUntil: "domcontentloaded" })');
+  });
+
   it("retains exact database residue checks only for isolated mode and provider-independent production cleanup", () => {
     expect(script).toContain('MODE === "isolated" ? new pg.Pool');
     expect(script).toContain("identifierErasure");
