@@ -703,7 +703,7 @@ export default function MissionDetailPage() {
                 </div>
                 {contractQuery.data?.contract ? <span className="rounded-full border border-primary/30 px-2 py-1 text-xs text-primary">{contractQuery.data.contract.state.replaceAll("_", " ")}</span> : null}
               </div>
-              {contractQuery.data?.planningDecision && <div className="rounded-md border border-primary/10 bg-background/30 p-3 text-xs text-muted-foreground">
+              {contractQuery.data?.planningDecision && <div data-testid="mission-planning-context" className="rounded-md border border-primary/10 bg-background/30 p-3 text-xs text-muted-foreground">
                 <div className="flex flex-wrap gap-2">
                   <span className="font-mono uppercase tracking-[0.1em] text-primary/80">Creation context</span>
                   <span>Capacity: {contractQuery.data.planningDecision.context.capacity.availability}</span>
@@ -713,7 +713,7 @@ export default function MissionDetailPage() {
                 </div>
                 {contractQuery.data.planningDecision.calibration.rationale?.slice(0, 2).map((reason) => <p key={reason} className="mt-1 text-[10px] leading-relaxed">• {reason}</p>)}
                 <p className="mt-1 text-[10px]">Captured when this mission was created from {contractQuery.data.planningDecision.source}. This explains the initial scope; it is not a competence verdict.</p>
-                <details className="mt-3 rounded border border-primary/10 bg-background/20 p-2">
+                <details data-testid="mission-planning-context-details" className="mt-3 rounded border border-primary/10 bg-background/20 p-2">
                   <summary className="cursor-pointer text-xs text-primary">Review sources or correct current context</summary>
                   <div className="mt-3 space-y-3">
                     <div className="grid gap-1 sm:grid-cols-2">
@@ -729,10 +729,10 @@ export default function MissionDetailPage() {
                     </div>
                     <Textarea aria-label="Current planning constraints" value={contextConstraints} onChange={(event) => setContextConstraints(event.target.value)} placeholder={"Up to three current constraints, one per line"} className="min-h-20" maxLength={840} />
                     <Textarea aria-label="Reason for context correction" value={contextReason} onChange={(event) => setContextReason(event.target.value)} placeholder="What changed or needed correction?" className="min-h-16" maxLength={500} />
-                    <Button size="sm" variant="outline" className="border-primary/30 text-primary" disabled={contextReason.trim().length < 3 || amendPlanningContext.isPending || (contextWeeklyHours.trim() !== "" && (!Number.isFinite(Number(contextWeeklyHours)) || Number(contextWeeklyHours) < 0 || Number(contextWeeklyHours) > 168))} onClick={() => amendPlanningContext.mutate()}>
+                    <Button data-testid="mission-planning-context-record" size="sm" variant="outline" className="border-primary/30 text-primary" disabled={contextReason.trim().length < 3 || amendPlanningContext.isPending || (contextWeeklyHours.trim() !== "" && (!Number.isFinite(Number(contextWeeklyHours)) || Number(contextWeeklyHours) < 0 || Number(contextWeeklyHours) > 168))} onClick={() => amendPlanningContext.mutate()}>
                       {amendPlanningContext.isPending ? "Recording…" : "Record context revision"}
                     </Button>
-                    {contractQuery.data.planningDecision.amendments.length > 0 && <div className="border-t border-primary/10 pt-2">
+                    {contractQuery.data.planningDecision.amendments.length > 0 && <div data-testid="mission-planning-context-history" className="border-t border-primary/10 pt-2">
                       <p className="text-[10px] font-mono uppercase tracking-[0.1em] text-primary/80">Revision history</p>
                       {contractQuery.data.planningDecision.amendments.slice(0, 5).map((amendment) => <p key={amendment.id} className="mt-1 text-[10px]">v{amendment.revision} · {new Date(amendment.createdAt).toLocaleString()} · {amendment.reason}</p>)}
                     </div>}

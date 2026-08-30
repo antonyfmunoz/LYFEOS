@@ -37,23 +37,28 @@ describe("Mission consequence preflight", () => {
     expect(profile).toContain('"mission_consequence_preflights"');
   });
 
-  it("archives isolated rendered evidence for the exact-revision safety journey", () => {
+  it("archives isolated rendered evidence for planning-context and exact-revision safety", () => {
     const acceptance = source("scripts/mission-safety-browser-acceptance.ts");
     const workflow = source(".github/workflows/verify.yml");
     const packageJson = source("package.json");
     const detail = source("client/src/pages/MissionDetailPage.tsx");
-    expect(acceptance).toContain('ISOLATED ? "lyfeos.isolated-mission-safety-browser.v1"');
+    expect(acceptance).toContain('ISOLATED ? "lyfeos.isolated-mission-safety-browser.v2"');
     expect(acceptance).toContain('process.env.GITHUB_SHA');
     expect(acceptance).toContain('recordPreflight(page, missionId, "revise", 1');
     expect(acceptance).toContain('recordPreflight(page, missionId, "proceed", 2');
     expect(acceptance).toContain('materialRevisionInvalidatedDecision');
     expect(acceptance).toContain('prerequisiteBlockedCompletion');
+    expect(acceptance).toContain('contextRevisionRecorded');
+    expect(acceptance).toContain('immutableCreationContextPreserved');
+    expect(acceptance).toContain('staleContextWriteRejected');
     expect(acceptance).toContain('DELETE", "/api/account"');
     expect(acceptance).toContain('desktop-1440x900');
     expect(acceptance).toContain('mobile-390x844');
     expect(detail).toContain('data-testid="mission-preflight-acknowledgement"');
     expect(detail).toContain('data-testid="mission-preflight-record"');
     expect(detail).toContain('data-testid="mission-preflight-accept"');
+    expect(detail).toContain('data-testid="mission-planning-context-record"');
+    expect(detail).toContain('data-testid="mission-planning-context-history"');
     expect(packageJson).toContain('"acceptance:mission-safety": "tsx scripts/mission-safety-browser-acceptance.ts"');
     expect(workflow).toContain('npm run acceptance:mission-safety');
     expect(workflow).toContain('name: lyfeos-isolated-mission-safety-${{ github.sha }}');
@@ -66,7 +71,7 @@ describe("Mission consequence preflight", () => {
     expect(acceptance).toContain('MODE === "production"');
     expect(acceptance).toContain('BASE_URL.origin === "https://lyfeos.net"');
     expect(acceptance).toContain('release.body?.sourceRevision === SOURCE');
-    expect(acceptance).toContain('"lyfeos.production-mission-safety-browser.v1"');
+    expect(acceptance).toContain('"lyfeos.production-mission-safety-browser.v2"');
     expect(acceptance).toContain("for (let attempt = 0; attempt < 2; attempt += 1)");
     expect(acceptance).toContain('await page.goto("about:blank"');
     expect(acceptance).not.toContain('await page.reload({ waitUntil: "domcontentloaded" })');

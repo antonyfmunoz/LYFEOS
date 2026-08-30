@@ -20,6 +20,8 @@ type ViewResult = {
   acceptedStateRendered: boolean;
   prerequisiteCompleteRendered: boolean;
   noAuthorityBoundaryRendered: boolean;
+  planningContextRevisionRendered: boolean;
+  immutableCreationBoundaryRendered: boolean;
 };
 
 const BASE_URL = new URL(process.env.LYFEOS_TEST_API_URL || "http://127.0.0.1:5099");
@@ -41,6 +43,9 @@ const PURPOSE = "Make one consequential commitment only after an explicit downsi
 const INITIAL_OUTPUT = "A reviewed commitment with a bounded scope and written decision receipt.";
 const REVISED_OUTPUT = "A narrower commitment with a separate limit and fresh decision receipt.";
 const REQUIRED_EVIDENCE = "A written decision receipt that matches the accepted revision.";
+const CONTEXT_FOCUS = "Qualify one bounded consequential commitment";
+const CONTEXT_REASON = "Available time and the immediate objective changed.";
+const CONTEXT_CONSTRAINTS = ["Preserve recovery time", "Keep the commitment bounded"];
 const VIEWPORTS: Array<{ name: string; value: Viewport }> = [
   { name: "desktop-1440x900", value: { width: 1440, height: 900, deviceScaleFactor: 1 } },
   { name: "mobile-390x844", value: { width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true } },
@@ -52,7 +57,7 @@ function assert(condition: unknown, message: string): asserts condition {
 
 function safeError(error: unknown): string {
   let message = error instanceof Error ? error.message : String(error);
-  for (const value of [FIXTURE_ID, LABEL, DISPLAY_NAME, EMAIL, MISSION_TITLE, PREREQUISITE_TITLE, PURPOSE, INITIAL_OUTPUT, REVISED_OUTPUT, REQUIRED_EVIDENCE]) {
+  for (const value of [FIXTURE_ID, LABEL, DISPLAY_NAME, EMAIL, MISSION_TITLE, PREREQUISITE_TITLE, PURPOSE, INITIAL_OUTPUT, REVISED_OUTPUT, REQUIRED_EVIDENCE, CONTEXT_FOCUS, CONTEXT_REASON, ...CONTEXT_CONSTRAINTS]) {
     message = message.replaceAll(value, "[redacted fixture]");
   }
   return message.slice(0, 1_000);
@@ -350,6 +355,8 @@ async function inspectView(page: Page, viewport: string): Promise<ViewResult> {
       acceptedStateRendered: text.includes("PROOF PLAN") && text.includes("accepted") && text.includes("decision recorded"),
       prerequisiteCompleteRendered: text.includes(`✓ ${prerequisiteTitle}`),
       noAuthorityBoundaryRendered: text.includes("does not predict safety") && text.includes("grant authority") && text.includes("replace professional advice"),
+      planningContextRevisionRendered: text.includes("Revision 1") && text.includes("v1") && text.includes("Available time and the immediate objective changed."),
+      immutableCreationBoundaryRendered: text.includes("Corrections affect current planning only") && text.includes("creation snapshot") && text.includes("remain immutable"),
     };
   }, { viewportName: viewport, prerequisiteTitle: PREREQUISITE_TITLE });
 }
@@ -382,16 +389,20 @@ async function main(): Promise<void> {
   let materialRevisionInvalidatedDecision = false;
   let acceptedExactRevision = false;
   let completedAfterAllGates = false;
+  let contextRevisionRecorded = false;
+  let immutableCreationContextPreserved = false;
+  let staleContextWriteRejected = false;
   let accountErased = false;
   let sessionInvalidated = false;
   let emailReleased = false;
   let displayNameReleased = false;
-  let residualCounts: { users: number | null; missions: number | null; contracts: number | null; preflights: number | null; dependencies: number | null } = {
+  let residualCounts: { users: number | null; missions: number | null; contracts: number | null; preflights: number | null; dependencies: number | null; contextAmendments: number | null } = {
     users: null,
     missions: null,
     contracts: null,
     preflights: null,
     dependencies: null,
+    contextAmendments: null,
   };
   const views: ViewResult[] = [];
   let stage = `initialize ${MODE} Mission-safety journey`;
@@ -417,6 +428,44 @@ async function main(): Promise<void> {
     await page.setViewport(VIEWPORTS[0].value);
     stage = "open the canonical Mission detail surface";
     await openMission(page, missionId);
+
+    stage = "record a current-context correction through rendered controls";
+    const initialContext = await request("GET", `/api/quests/${missionId}/contract`, undefined, account.cookie);
+    assert(initialContext.status === 200 && initialContext.body.planningDecision?.contextRevision === 0, "The Mission did not expose its revision-zero creation context.");
+    const immutableContext = JSON.stringify(initialContext.body.planningDecision.context);
+    await clickText(page, "summary", "Review sources or correct current context");
+    await replaceInput(page, '[aria-label="Current mission focus"]', CONTEXT_FOCUS);
+    await replaceInput(page, '[aria-label="Declared weekly hours"]', "6.5");
+    await replaceInput(page, '[aria-label="Current planning constraints"]', CONTEXT_CONSTRAINTS.join("\n"));
+    await replaceInput(page, '[aria-label="Reason for context correction"]', CONTEXT_REASON);
+    const contextResponsePromise = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return response.request().method() === "POST" && url.origin === BASE_URL.origin && url.pathname === `/api/quests/${missionId}/planning-context/amendments`;
+    }, { timeout: 10_000 });
+    await activateRenderedControl(page, '[data-testid="mission-planning-context-record"]');
+    const contextResponse = await contextResponsePromise;
+    assert(contextResponse.status() === 201, `Rendered planning-context correction returned ${contextResponse.status()}.`);
+    const correctedContext = await poll(
+      () => request("GET", `/api/quests/${missionId}/contract`, undefined, account.cookie),
+      (result) => result.status === 200 && result.body.planningDecision?.contextRevision === 1,
+      "Rendered planning-context correction did not converge to revision one.",
+    );
+    contextRevisionRecorded = correctedContext.body.planningDecision.currentContext?.focus === CONTEXT_FOCUS
+      && correctedContext.body.planningDecision.currentContext?.declaredWeeklyHours === 6.5
+      && JSON.stringify(correctedContext.body.planningDecision.currentContext?.constraints) === JSON.stringify(CONTEXT_CONSTRAINTS);
+    immutableCreationContextPreserved = JSON.stringify(correctedContext.body.planningDecision.context) === immutableContext;
+    assert(contextRevisionRecorded && immutableCreationContextPreserved, "The current-context revision did not preserve the immutable creation snapshot.");
+    const staleContext = await request("POST", `/api/quests/${missionId}/planning-context/amendments`, {
+      expectedRevision: 0,
+      focus: "Stale overwrite",
+      declaredWeeklyHours: 2,
+      constraints: [],
+      reason: "Stale browser-contract overwrite attempt.",
+    }, account.cookie);
+    staleContextWriteRejected = staleContext.status === 409 && staleContext.body?.currentRevision === 1;
+    assert(staleContextWriteRejected, `Stale planning-context write returned ${staleContext.status}.`);
+    await waitForText(page, "Revision 1");
+    await waitForText(page, CONTEXT_REASON);
 
     stage = "author a high-risk proof plan through rendered controls";
     await fillProofPlan(page, INITIAL_OUTPUT);
@@ -498,11 +547,14 @@ async function main(): Promise<void> {
       await openMission(page, missionId);
       await waitForText(page, REVISED_OUTPUT);
       await waitForText(page, `✓ ${PREREQUISITE_TITLE}`);
+      const contextDetailsOpen = await page.$eval('[data-testid="mission-planning-context-details"]', (element) => (element as HTMLDetailsElement).open);
+      if (!contextDetailsOpen) await clickText(page, "summary", "Review sources or correct current context");
+      await waitForText(page, CONTEXT_REASON);
       const view = await inspectView(page, viewport.name);
       views.push(view);
       assert(view.mainCount === 1, `${viewport.name} rendered ${view.mainCount} main landmarks.`);
       assert(view.duplicateIds.length === 0 && view.unlabeledControls.length === 0 && view.horizontalOverflowPx <= 2, `${viewport.name} failed Mission-safety accessibility or overflow checks.`);
-      assert(view.renderedRevision === 2 && view.acceptedStateRendered && view.prerequisiteCompleteRendered && view.noAuthorityBoundaryRendered, `${viewport.name} did not render the accepted exact-revision safety boundary.`);
+      assert(view.renderedRevision === 2 && view.acceptedStateRendered && view.prerequisiteCompleteRendered && view.noAuthorityBoundaryRendered && view.planningContextRevisionRendered && view.immutableCreationBoundaryRendered, `${viewport.name} did not render the accepted exact-revision safety and planning-context boundary.`);
     }
     await acknowledgeBoundedChunkRecovery(page, signals);
   } catch (error) {
@@ -529,13 +581,14 @@ async function main(): Promise<void> {
       }
     }
     if (pool && account && missionId && prerequisiteId) {
-      const residual = await pool.query<{ users: string; missions: string; contracts: string; preflights: string; dependencies: string }>(
+      const residual = await pool.query<{ users: string; missions: string; contracts: string; preflights: string; dependencies: string; contextAmendments: string }>(
         `SELECT
           (SELECT count(*)::text FROM users WHERE id = $1) AS users,
           (SELECT count(*)::text FROM quests WHERE id = ANY($2::int[]) OR user_id = $1) AS missions,
           (SELECT count(*)::text FROM mission_contracts WHERE quest_id = ANY($2::int[])) AS contracts,
           (SELECT count(*)::text FROM mission_consequence_preflights WHERE user_id = $1) AS preflights,
-          (SELECT count(*)::text FROM mission_dependencies WHERE dependent_quest_id = ANY($2::int[]) OR prerequisite_quest_id = ANY($2::int[])) AS dependencies`,
+          (SELECT count(*)::text FROM mission_dependencies WHERE dependent_quest_id = ANY($2::int[]) OR prerequisite_quest_id = ANY($2::int[])) AS dependencies,
+          (SELECT count(*)::text FROM mission_planning_context_amendments WHERE user_id = $1) AS "contextAmendments"`,
         [account.id, [missionId, prerequisiteId]],
       );
       residualCounts = Object.fromEntries(Object.entries(residual.rows[0] || {}).map(([key, value]) => [key, Number(value)])) as typeof residualCounts;
@@ -551,24 +604,27 @@ async function main(): Promise<void> {
       && materialRevisionInvalidatedDecision
       && acceptedExactRevision
       && completedAfterAllGates
+      && contextRevisionRecorded
+      && immutableCreationContextPreserved
+      && staleContextWriteRejected
       && views.length === 2
       && browserClean
       && accountErased;
     const report = {
-      contract: ISOLATED ? "lyfeos.isolated-mission-safety-browser.v1" : "lyfeos.production-mission-safety-browser.v1",
+      contract: ISOLATED ? "lyfeos.isolated-mission-safety-browser.v2" : "lyfeos.production-mission-safety-browser.v2",
       generatedAt: new Date().toISOString(),
       baseUrl: BASE_URL.origin,
       sourceRevision: SOURCE,
       harnessSource: HARNESS_SOURCE,
       fixture: { missionId, prerequisiteId, accountCount: account ? 1 : 0 },
-      lifecycle: { initialCompletionBlocked, reviseDecisionWithheldAcceptance, prerequisiteBlockedCompletion, materialRevisionInvalidatedDecision, acceptedExactRevision, completedAfterAllGates },
+      lifecycle: { contextRevisionRecorded, immutableCreationContextPreserved, staleContextWriteRejected, initialCompletionBlocked, reviseDecisionWithheldAcceptance, prerequisiteBlockedCompletion, materialRevisionInvalidatedDecision, acceptedExactRevision, completedAfterAllGates },
       views,
       browserSignals: signals,
       cleanup: { accountErased, sessionInvalidated, emailReleased, displayNameReleased, residualCounts },
       summary: { passed, failure },
       boundary: ISOLATED
-        ? "Disposable isolated PostgreSQL plus Chromium evidence for the canonical LyfeOS Mission safety UI. It proves rendered high-risk proof-plan authoring, explicit revise/proceed decisions, exact-revision acceptance, material-revision invalidation, prerequisite completion blocking, responsive semantics and complete fixture erasure. It does not validate the user's assumptions, predict safety, grant external authority, replace professional advice, prove a production-account journey, or establish human assistive-technology comprehension."
-        : "Disposable production-account Chromium evidence for the canonical LyfeOS Mission safety UI. It proves the deployed immutable source rendered high-risk proof-plan authoring, explicit revise/proceed decisions, exact-revision acceptance, material-revision invalidation, prerequisite completion blocking, responsive semantics, session invalidation and released synthetic identifiers after erasure. It does not validate assumptions, predict safety, grant external authority, replace professional advice, establish human assistive-technology comprehension, or prove longitudinal effectiveness.",
+        ? "Disposable isolated PostgreSQL plus Chromium evidence for the canonical LyfeOS Mission safety UI. It proves rendered current-context correction with immutable creation evidence and stale-write refusal, high-risk proof-plan authoring, explicit revise/proceed decisions, exact-revision acceptance, material-revision invalidation, prerequisite completion blocking, responsive semantics and complete fixture erasure. It does not validate the user's assumptions, predict safety, grant external authority, replace professional advice, prove a production-account journey, or establish human assistive-technology comprehension."
+        : "Disposable production-account Chromium evidence for the canonical LyfeOS Mission safety UI. It proves the deployed immutable source rendered current-context correction with immutable creation evidence and stale-write refusal, high-risk proof-plan authoring, explicit revise/proceed decisions, exact-revision acceptance, material-revision invalidation, prerequisite completion blocking, responsive semantics, session invalidation and released synthetic identifiers after erasure. It does not validate assumptions, predict safety, grant external authority, replace professional advice, establish human assistive-technology comprehension, or prove longitudinal effectiveness.",
     };
     await fs.writeFile(OUTPUT_FILE, `${JSON.stringify(report, null, 2)}\n`, "utf8");
     if (process.env.GITHUB_STEP_SUMMARY) {
@@ -578,7 +634,7 @@ async function main(): Promise<void> {
         `- Runtime source: ${SOURCE}`,
         `- Harness source: ${HARNESS_SOURCE}`,
         `- Passed: ${passed}`,
-        `- All six safety lifecycle gates: ${Object.values(report.lifecycle).every(Boolean)}`,
+        `- All planning-context and safety lifecycle gates: ${Object.values(report.lifecycle).every(Boolean)}`,
         `- Desktop/mobile views: ${views.length}/${VIEWPORTS.length}`,
         `- Account erased: ${accountErased}`,
         "",
