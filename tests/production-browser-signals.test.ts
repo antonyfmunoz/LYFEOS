@@ -128,6 +128,7 @@ describe("production browser signal reconciliation", () => {
       "production-calendar-browser-acceptance.ts",
       "production-sheets-browser-acceptance.ts",
       "production-canvas-browser-acceptance.ts",
+      "production-health-trends-browser-acceptance.ts",
       "production-search-browser-acceptance.ts",
       "messages-browser-acceptance.ts",
       "production-projects-browser-acceptance.ts",
