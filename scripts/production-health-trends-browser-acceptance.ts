@@ -22,6 +22,7 @@ type ViewResult = {
   csvReconciled: boolean;
   audit: Audit;
   signals: BrowserSignals;
+  chartScreenshot: string;
   screenshot: string;
 };
 
@@ -280,6 +281,10 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     const sparseRecordedPointCount = (await page.$$('[role="img"][aria-label*="Hydration and Acceptance focus"] .recharts-line-dot')).length;
     const sparseRecordedPointsRendered = sparseRecordedPointCount === 4;
     const coverageRendered = await page.$eval('[aria-label="Trend evidence coverage"]', (element) => element.textContent?.includes("2 of 30 days") && element.textContent?.includes("28 missing"));
+    const chartScreenshot = `health-trends-chart-${viewport.name}.png`;
+    const chartHandle = await page.$('[role="img"][aria-label*="Hydration and Acceptance focus"]');
+    assert(chartHandle, "The rendered Health trend chart disappeared before evidence capture.");
+    await chartHandle.screenshot({ path: path.join(OUTPUT_DIR, chartScreenshot) });
 
     stage = "reconcile accessible trend table";
     await clickSummary(page, "View accessible trend data table");
@@ -328,7 +333,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     assert(!hasUnexpectedBrowserSignals(signals), `${viewport.name} produced unexpected browser signals: ${JSON.stringify(signals)}.`);
     const screenshot = `health-trends-${viewport.name}.png`;
     await page.screenshot({ path: path.join(OUTPUT_DIR, screenshot), fullPage: true });
-    view = { viewport: viewport.name, chartRendered, sparseRecordedPointsRendered, coverageRendered, missingStayedMissing, recordedZeroStayedZero, apiAndTableReconciled, savedThreeSeriesPanelRendered, savedPanelMissingStayedMissing, csvReconciled, audit, signals, screenshot };
+    view = { viewport: viewport.name, chartRendered, sparseRecordedPointsRendered, coverageRendered, missingStayedMissing, recordedZeroStayedZero, apiAndTableReconciled, savedThreeSeriesPanelRendered, savedPanelMissingStayedMissing, csvReconciled, audit, signals, chartScreenshot, screenshot };
   } catch (error) {
     failure = new Error(`${stage}: ${safeError(error)}`);
   } finally {

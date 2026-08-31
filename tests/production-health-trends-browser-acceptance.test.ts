@@ -30,6 +30,8 @@ describe("production Health trends browser acceptance custody", () => {
     expect(script).toContain("sparseRecordedPointCount");
     expect(script).toContain(".recharts-line-dot').length === 4");
     expect(script).toContain("{ timeout: 5_000 }");
+    expect(script).toContain("chartHandle.screenshot");
+    expect(script).toContain("chartScreenshot");
     expect(script).toContain("missingStayedMissing");
     expect(script).toContain("apiAndTableReconciled");
     expect(script).toContain("savedThreeSeriesPanelRendered");
