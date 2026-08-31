@@ -66,6 +66,31 @@ describe("production browser signal reconciliation", () => {
     expect(captured.recoveredChunkLoads).toEqual([exactTimeout]);
   });
 
+  it("waits through a transient document-reload context before retrying", async () => {
+    const captured = signals([exactTimeout]);
+    let storageReads = 0;
+    const page = {
+      evaluate: async () => {
+        storageReads += 1;
+        if (storageReads === 1) throw new Error("Execution context was destroyed during reload");
+        return String(Date.now());
+      },
+    };
+    const attempts: number[] = [];
+
+    const result = await retryOnceAfterBoundedChunkRecovery(page as never, captured, async (attempt) => {
+      attempts.push(attempt);
+      if (attempt === 0) throw new Error("obsolete document");
+      return "reopened";
+    });
+
+    expect(result).toBe("reopened");
+    expect(storageReads).toBe(2);
+    expect(attempts).toEqual([0, 1]);
+    expect(captured.consoleErrors).toEqual([]);
+    expect(captured.recoveredChunkLoads).toEqual([exactTimeout]);
+  });
+
   it("does not retry an operation without exact recovery evidence", async () => {
     const captured = signals(["TypeError: application failure"]);
     const page = { evaluate: async () => String(Date.now()) };

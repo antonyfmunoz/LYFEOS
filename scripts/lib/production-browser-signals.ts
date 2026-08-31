@@ -17,6 +17,8 @@ export type FixtureBrowserUser = {
 };
 
 const BOUNDED_ROUTE_CHUNK_TIMEOUT = /^ChunkLoadError: Failed to fetch dynamically imported module: route chunk timed out after 15000ms(?: @ https?:\/\/[^\s]+\/assets\/[^\s]+\.js)?$/;
+const BOUNDED_ROUTE_CHUNK_SETTLE_MS = 2_000;
+const BOUNDED_ROUTE_CHUNK_POLL_MS = 100;
 const SENTRY_BROWSER_INGEST = /https:\/\/o\d+\.ingest(?:\.[a-z0-9-]+)?\.sentry\.io\/api\/\d+\/envelope\//i;
 const POSTHOG_BROWSER_INGEST = /https:\/\/(?:[a-z0-9-]+\.)?i\.posthog\.com\/(?:e|batch)\//i;
 const ISOLATED_CLERK_BOOTSTRAP = /https:\/\/local\.lyfeos\.dev\/npm\/@clerk\/clerk-js@\d+(?:\.\d+){0,2}\/dist\/clerk(?:\.[a-z0-9-]+)*\.browser\.js(?:\?[^\s]*)?/i;
@@ -96,6 +98,29 @@ export async function acknowledgeBoundedChunkRecovery(
   return reconcileBoundedChunkRecovery(signals, storedAt);
 }
 
+async function waitForBoundedChunkRecoveryEvidence(
+  page: Page,
+  signals: BrowserSignals,
+): Promise<string[]> {
+  const deadline = Date.now() + BOUNDED_ROUTE_CHUNK_SETTLE_MS;
+  while (true) {
+    const recovered = await acknowledgeBoundedChunkRecovery(page, signals).catch(() => []);
+    if (recovered.length === 1) return recovered;
+
+    const independentSignal = signals.consoleErrors.some((entry) => !BOUNDED_ROUTE_CHUNK_TIMEOUT.test(entry))
+      || signals.pageErrors.length > 0
+      || signals.failedRequests.length > 0
+      || signals.serverErrors.length > 0;
+    if (independentSignal || Date.now() >= deadline) return [];
+
+    // An automatic document reload can briefly destroy the execution context
+    // after emitting the exact console signature but before the fresh
+    // sessionStorage marker is readable. Wait only for those two pieces of
+    // recovery evidence to converge; ordinary failures return immediately.
+    await new Promise((resolve) => setTimeout(resolve, BOUNDED_ROUTE_CHUNK_POLL_MS));
+  }
+}
+
 /**
  * Retry an idempotent browser operation only when the first failure coincides
  * with the one exact, marker-backed route recovery allowed by the production
@@ -109,8 +134,8 @@ export async function retryOnceAfterBoundedChunkRecovery<T>(
   try {
     return await operation(0);
   } catch (error) {
-    const recovered = await acknowledgeBoundedChunkRecovery(page, signals).catch(() => []);
-    if (recovered.length !== 1) throw error;
+    const recovered = await waitForBoundedChunkRecoveryEvidence(page, signals);
+    if (recovered.length !== 1 || hasUnexpectedBrowserSignals(signals)) throw error;
     return operation(1);
   }
 }
