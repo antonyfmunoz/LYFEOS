@@ -273,7 +273,12 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     await page.select('[aria-label="Second health trend"]', OBSERVATION_OPTION);
     await page.waitForFunction(() => document.querySelector('[aria-label="Trend evidence coverage"]')?.textContent?.includes("Acceptance focus"), { timeout: 45_000 });
     const chartRendered = Boolean(await page.$('[role="img"][aria-label*="Hydration and Acceptance focus"]'));
-    const sparseRecordedPointsRendered = (await page.$$('[role="img"][aria-label*="Hydration and Acceptance focus"] .recharts-line-dot')).length === 4;
+    await page.waitForFunction(
+      () => document.querySelectorAll('[role="img"][aria-label*="Hydration and Acceptance focus"] .recharts-line-dot').length === 4,
+      { timeout: 5_000 },
+    ).catch(() => undefined);
+    const sparseRecordedPointCount = (await page.$$('[role="img"][aria-label*="Hydration and Acceptance focus"] .recharts-line-dot')).length;
+    const sparseRecordedPointsRendered = sparseRecordedPointCount === 4;
     const coverageRendered = await page.$eval('[aria-label="Trend evidence coverage"]', (element) => element.textContent?.includes("2 of 30 days") && element.textContent?.includes("28 missing"));
 
     stage = "reconcile accessible trend table";
@@ -287,7 +292,10 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     const recordedZeroStayedZero = table[dates.earliestDate]?.[1] === "0";
     const missingStayedMissing = table[dates.middleDate]?.[0] === "Not recorded" && table[dates.latestDate]?.[1] === "Not recorded";
     const apiAndTableReconciled = table[dates.earliestDate]?.[0] === "500" && table[dates.middleDate]?.[1] === "7" && table[dates.latestDate]?.[0] === "750";
-    assert(chartRendered && sparseRecordedPointsRendered && coverageRendered && recordedZeroStayedZero && missingStayedMissing && apiAndTableReconciled, "Rendered Health trend evidence did not reconcile with its owner-scoped API facts.");
+    assert(
+      chartRendered && sparseRecordedPointsRendered && coverageRendered && recordedZeroStayedZero && missingStayedMissing && apiAndTableReconciled,
+      `Rendered Health trend evidence did not reconcile with its owner-scoped API facts: ${JSON.stringify({ chartRendered, sparseRecordedPointsRendered, sparseRecordedPointCount, coverageRendered, recordedZeroStayedZero, missingStayedMissing, apiAndTableReconciled, table })}.`,
+    );
 
     stage = "save and reopen a three-series panel";
     await clickSummary(page, "Saved metric panels (0)");

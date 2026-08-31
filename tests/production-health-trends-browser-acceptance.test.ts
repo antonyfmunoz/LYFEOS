@@ -27,6 +27,9 @@ describe("production Health trends browser acceptance custody", () => {
   it("proves chart, table, CSV, panel, missing-value, recorded-zero, and cleanup truthfulness", () => {
     expect(script).toContain("recordedZeroStayedZero");
     expect(script).toContain("sparseRecordedPointsRendered");
+    expect(script).toContain("sparseRecordedPointCount");
+    expect(script).toContain(".recharts-line-dot').length === 4");
+    expect(script).toContain("{ timeout: 5_000 }");
     expect(script).toContain("missingStayedMissing");
     expect(script).toContain("apiAndTableReconciled");
     expect(script).toContain("savedThreeSeriesPanelRendered");
