@@ -3,10 +3,10 @@ import { afterAll, describe, expect, it } from "vitest";
 const BASE_URL = process.env.LYFEOS_TEST_API_URL;
 const describeApi = BASE_URL && process.env.LYFEOS_TEST_ENV === "isolated" ? describe : describe.skip;
 
-async function request(method: string, path: string, body?: unknown, cookie = "") {
+async function request(method: string, path: string, body?: unknown, cookie = "", headers: Record<string, string> = {}) {
   const response = await fetch(`${BASE_URL}${path}`, {
     method,
-    headers: { "Content-Type": "application/json", "X-Forwarded-Proto": "https", ...(cookie ? { Cookie: cookie } : {}) },
+    headers: { "Content-Type": "application/json", "X-Forwarded-Proto": "https", ...(cookie ? { Cookie: cookie } : {}), ...headers },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   return {
@@ -63,11 +63,34 @@ describeApi("unified gamification authenticated journey", () => {
     expect(created.status).toBe(201);
     questId = created.data.quest.id;
 
-    const completed = await request("POST", `/api/quests/${questId}/toggle`, undefined, cookie);
-    expect(completed.status).toBe(200);
-    expect(completed.data.xpAwarded).toBe(1000);
+    const missingIdentity = await request("POST", `/api/quests/${questId}/toggle`, { completed: true }, cookie);
+    expect(missingIdentity.status).toBe(428);
+    const invalidIdentity = await request("POST", `/api/quests/${questId}/toggle`, { completed: true }, cookie, { "x-lyfeos-mutation-id": "too-short" });
+    expect(invalidIdentity.status).toBe(400);
+
+    const mutationIds = [`gamification-complete-a-${stamp}`, `gamification-complete-b-${stamp}`];
+    const completions = await Promise.all(mutationIds.map((mutationId) => request(
+      "POST",
+      `/api/quests/${questId}/toggle`,
+      { completed: true },
+      cookie,
+      { "x-lyfeos-mutation-id": mutationId },
+    )));
+    expect(completions.map((result) => result.status)).toEqual([200, 200]);
+    expect(completions.reduce((sum, result) => sum + Number(result.data.xpAwarded || 0), 0)).toBe(1000);
+    const completed = completions.find((result) => result.data.replayed === false)!;
+    const converged = completions.find((result) => result.data.reconciled === true)!;
     expect(completed.data.progression.transition.activityExperienceDelta).toBe(1000);
     expect(completed.data.progression.newlyAwardedBadges).toEqual(expect.arrayContaining([expect.objectContaining({ key: "first-real-action" })]));
+    expect(converged.data.quest.completed).toBe(true);
+    expect(converged.data.xpAwarded).toBe(0);
+
+    const replayed = await request("POST", `/api/quests/${questId}/toggle`, { completed: true }, cookie, { "x-lyfeos-mutation-id": mutationIds[0] });
+    expect(replayed.status).toBe(200);
+    expect(replayed.data).toMatchObject({ replayed: true, xpAwarded: 0, quest: { completed: true } });
+    const changedReuse = await request("POST", `/api/quests/${questId}/toggle`, { completed: false }, cookie, { "x-lyfeos-mutation-id": mutationIds[0] });
+    expect(changedReuse.status).toBe(409);
+    expect(changedReuse.cacheControl).toContain("private");
 
     const result = await request("GET", "/api/progression", undefined, cookie);
     expect(result.data.progression.tracks.activity).toMatchObject({ totalExperience: 1000, level: 2 });
@@ -112,7 +135,7 @@ describeApi("unified gamification authenticated journey", () => {
   });
 
   it("reverses unsupported XP and badges, then re-earns them exactly once", async () => {
-    const reopened = await request("POST", `/api/quests/${questId}/toggle`, undefined, cookie);
+    const reopened = await request("POST", `/api/quests/${questId}/toggle`, { completed: false }, cookie, { "x-lyfeos-mutation-id": `gamification-reopen-${stamp}` });
     expect(reopened.status).toBe(200);
     expect(reopened.data.progression.transition.activityExperienceDelta).toBe(-1000);
     expect(reopened.data.progression.reversedBadges).toEqual(expect.arrayContaining([expect.objectContaining({ key: "first-real-action" })]));
@@ -121,7 +144,7 @@ describeApi("unified gamification authenticated journey", () => {
     expect(result.data.progression.tracks.consistency.current).toBe(0);
     expect(result.data.progression.badges.find((badge: any) => badge.key === "first-real-action")).toBeUndefined();
 
-    const recompleted = await request("POST", `/api/quests/${questId}/toggle`, undefined, cookie);
+    const recompleted = await request("POST", `/api/quests/${questId}/toggle`, { completed: true }, cookie, { "x-lyfeos-mutation-id": `gamification-recomplete-${stamp}` });
     expect(recompleted.status).toBe(200);
     expect(recompleted.data.progression.transition.activityExperienceDelta).toBe(1000);
     expect(recompleted.data.progression.newlyAwardedBadges).toEqual(expect.arrayContaining([expect.objectContaining({ key: "first-real-action" })]));

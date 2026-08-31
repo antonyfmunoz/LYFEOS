@@ -93,6 +93,12 @@ type BrowserApiResponse = {
   body: unknown;
 };
 
+type MutationTransportReconciliation = {
+  missionId: number;
+  expectedCompleted: boolean;
+  evidence: "idempotent_replay_response" | "authoritative_state_after_response_timeout";
+};
+
 const BASE_URL = new URL(process.env.LYFEOS_ACCEPTANCE_BASE_URL || "https://lyfeos.net");
 const EMAIL = process.env.LYFEOS_ACCEPTANCE_EMAIL?.trim() || "";
 const PASSWORD = process.env.LYFEOS_ACCEPTANCE_PASSWORD || "";
@@ -133,6 +139,7 @@ let cleanupAttempted = false;
 let cleanupArchived = false;
 let failureMessage: string | null = null;
 const views: ViewEvidence[] = [];
+const mutationTransportReconciliations: MutationTransportReconciliation[] = [];
 
 function sanitizedMessage(error: unknown): string {
   let message = error instanceof Error ? error.message : String(error);
@@ -814,17 +821,50 @@ async function activateMissionControl(page: Page, action: "start" | "done" | "un
   }, { cardSelector, controlSelector: selector, controlLabel: label });
 }
 
-async function waitForMissionToggle(page: Page, action: () => Promise<void>): Promise<{ quest?: { completed?: boolean }; xpAwarded?: number }> {
+async function authoritativeMissionCompletion(page: Page): Promise<boolean | null> {
+  assert(missionId !== null, "Cannot reconcile a Mission completion without a synthetic Mission.");
+  const session = await browserApiRequest(page, "/api/auth/me");
+  const userId = Number((session.body as { user?: { id?: unknown } } | null)?.user?.id);
+  if (session.status !== 200 || !Number.isInteger(userId)) return null;
+  const missions = await browserApiRequest(page, `/api/users/${userId}/quests`);
+  if (missions.status !== 200) return null;
+  const mission = ((missions.body as { quests?: Array<{ id?: unknown; completed?: unknown }> } | null)?.quests || [])
+    .find((candidate) => Number(candidate.id) === missionId);
+  return mission && typeof mission.completed === "boolean" ? mission.completed : null;
+}
+
+async function waitForAuthoritativeMissionCompletion(page: Page, expectedCompleted: boolean): Promise<boolean> {
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    if (await authoritativeMissionCompletion(page) === expectedCompleted) return true;
+    await new Promise((resolve) => setTimeout(resolve, 2_000));
+  }
+  return false;
+}
+
+async function waitForMissionToggle(page: Page, expectedCompleted: boolean, action: () => Promise<void>): Promise<{ quest?: { completed?: boolean }; xpAwarded?: number; replayed?: boolean; reconciled?: boolean }> {
   assert(missionId !== null, "Cannot observe a Mission toggle without a synthetic Mission.");
   for (let attempt = 0; attempt < 3; attempt++) {
     const responsePromise = page.waitForResponse((response) => {
       const url = new URL(response.url());
       return url.origin === BASE_URL.origin && url.pathname === `/api/quests/${missionId}/toggle` && response.request().method() === "POST";
     }, { timeout: 30_000 });
-    await action();
-    const response = await responsePromise;
-    const body = await response.json() as { quest?: { completed?: boolean }; xpAwarded?: number; error?: unknown };
-    if (response.ok()) return body;
+    let response: Awaited<typeof responsePromise>;
+    try {
+      await action();
+      response = await responsePromise;
+    } catch (error) {
+      if (await waitForAuthoritativeMissionCompletion(page, expectedCompleted)) {
+        mutationTransportReconciliations.push({ missionId, expectedCompleted, evidence: "authoritative_state_after_response_timeout" });
+        return { quest: { completed: expectedCompleted }, xpAwarded: 0, replayed: true, reconciled: true };
+      }
+      throw error;
+    }
+    const body = await response.json() as { quest?: { completed?: boolean }; xpAwarded?: number; replayed?: boolean; reconciled?: boolean; error?: unknown };
+    if (response.ok()) {
+      assert(body.quest?.completed === expectedCompleted, "Mission completion response did not match the requested desired state.");
+      if (body.replayed) mutationTransportReconciliations.push({ missionId, expectedCompleted, evidence: "idempotent_replay_response" });
+      return body;
+    }
     if (response.status() !== 429 || attempt === 2) throw new Error(`Rendered Mission completion change failed (${response.status()}).`);
     const headers = response.headers();
     const remainingHeader = headers["ratelimit-remaining"];
@@ -1128,6 +1168,10 @@ async function writeReport(): Promise<void> {
         && reversedThreadContinuity.capability.reversesEventId === reviewedThreadContinuity.capability.eventId),
     },
     automationControls: automationControlEvidence,
+    mutationTransport: {
+      reconciliations: mutationTransportReconciliations,
+      repeatedWriteAfterUncertainResponse: false,
+    },
     views,
     cleanup: {
       mission: { attempted: cleanupAttempted, archived: cleanupArchived },
@@ -1287,7 +1331,7 @@ async function main(): Promise<void> {
     await activateMissionControl(page, "start");
     await page.waitForSelector('[data-testid="mission-timer-stop"]', { visible: true, timeout: 30_000 });
     await activateRenderedControl(page, '[data-testid="mission-timer-stop"]');
-    const completedBody = await waitForMissionToggle(page, () => activateMissionControl(page, "done"));
+    const completedBody = await waitForMissionToggle(page, true, () => activateMissionControl(page, "done"));
     assert(completedBody.quest?.completed === true, "Rendered Mission Done control did not produce a completed Mission.");
     assert(completedBody.xpAwarded === expectedActivityExperience, `Mission awarded ${completedBody.xpAwarded ?? "unknown"} activity XP instead of ${expectedActivityExperience}.`);
     progressionAfterCompletion = await readProgression(page);
@@ -1357,7 +1401,7 @@ async function main(): Promise<void> {
     // than the acceptance harness's own traffic volume.
     await waitForApiBudget(page, 80);
     await page.goto(new URL("/missions", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
-    const reopenedBody = await waitForMissionToggle(page, () => activateMissionControl(page, "undo"));
+    const reopenedBody = await waitForMissionToggle(page, false, () => activateMissionControl(page, "undo"));
     assert(reopenedBody.quest?.completed === false, "Rendered Mission Undo control did not reopen the Mission.");
     progressionAfterReopen = await readProgression(page);
     assert(progressionMatches(progressionBefore, progressionAfterReopen), "Rendered reopen did not restore activity XP, capability XP, badges, and authority to the exact baseline.");

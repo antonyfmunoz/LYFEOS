@@ -254,6 +254,11 @@ describe("production browser acceptance custody", () => {
     expect(coreLoopScript).toContain('response.headers.get("retry-after")');
     expect(coreLoopScript).toContain('response.status() !== 429 || attempt === 2');
     expect(coreLoopScript).toContain('Rendered Mission completion change attempt ${attempt + 1}');
+    expect(coreLoopScript).toContain("async function waitForAuthoritativeMissionCompletion");
+    expect(coreLoopScript).toContain('evidence: "authoritative_state_after_response_timeout"');
+    expect(coreLoopScript).toContain("repeatedWriteAfterUncertainResponse: false");
+    expect(coreLoopScript).toContain('waitForMissionToggle(page, true');
+    expect(coreLoopScript).toContain('waitForMissionToggle(page, false');
     expect(coreLoopScript).toContain('button[aria-label="Skip this tutorial"]');
     expect(coreLoopScript).toContain("button.click()");
     expect(coreLoopScript).toContain("const tutorialDismissed = await dismissBlockingTutorial(page)");

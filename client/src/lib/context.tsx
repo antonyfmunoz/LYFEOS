@@ -921,15 +921,21 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       return;
     }
     const currentQuest = quests.find(quest => quest.id === id);
-    const completed = currentQuest ? !currentQuest.completed : undefined;
+    if (!currentQuest) {
+      await refetchQuests();
+      toast({ title: "Mission refreshed", description: "Its current state was not loaded, so LyfeOS made no change." });
+      return;
+    }
+    const completed = !currentQuest.completed;
+    const mutationId = crypto.randomUUID();
     
     // Optimistically update local state
     const updatedQuests = quests.map((quest) => {
       if (quest.id === id) {
         return { 
           ...quest, 
-          completed: completed ?? quest.completed,
-          completedAt: completed === undefined ? quest.completedAt : completed ? new Date().toISOString() : null
+          completed,
+          completedAt: completed ? new Date().toISOString() : null
         };
       }
       return quest;
@@ -937,12 +943,31 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
     if (currentQuest) setQuests(updatedQuests);
     
     // Persist before celebrating so failed writes never create fictional progress.
+    const submitDesiredState = async () => {
+      const controller = new AbortController();
+      const timeout = window.setTimeout(() => controller.abort(), 30_000);
+      try {
+        return await fetch(`/api/quests/${id}/toggle`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-lyfeos-mutation-id": mutationId },
+          credentials: "include",
+          body: JSON.stringify({ completed }),
+          signal: controller.signal,
+        });
+      } finally {
+        window.clearTimeout(timeout);
+      }
+    };
+
     try {
-      const response = await fetch(`/api/quests/${id}/toggle`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-      });
+      let response: Response;
+      try {
+        response = await submitDesiredState();
+      } catch {
+        // The first request may have committed even when its response was lost.
+        // Reusing the exact mutation identity is the only safe retry.
+        response = await submitDesiredState();
+      }
       
       if (!response.ok) {
         setQuests(quests);
@@ -958,7 +983,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       
       const data = await response.json();
 
-      if (data.quest.completed) {
+      if (data.quest.completed && !data.replayed) {
         missionCompleteToast(data.quest.title, data.xpAwarded || 0);
         const isOnboarding1to6 = data.quest.category === "onboarding" && [
           "Archetype Calibration", "Identity & Direction", "Craft & Mastery",
@@ -1032,10 +1057,14 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       queryClient.invalidateQueries({ queryKey: ["calendar-missions"] });
     } catch (error) {
       setQuests(quests);
+      // A transport failure can occur after the server committed. Reload the
+      // canonical owner state instead of leaving either the optimistic value
+      // or the stale pre-click value as an unsupported claim.
+      await refetchQuests(user?.id, true);
       console.error("Error toggling quest completion:", error);
       toast({
-        title: "Update Failed",
-        description: "Could not save mission status. Please try again.",
+        title: "Mission state refreshed",
+        description: "LyfeOS could not confirm the response, so it reloaded the authoritative Mission state. Review it before trying again.",
         variant: "destructive",
         duration: 3000,
       });

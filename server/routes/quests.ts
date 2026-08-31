@@ -8,7 +8,7 @@ import { isAuthenticated, isOwner, calculateMissionCosts } from "./middleware";
 import { insertQuestSchema, insertMissionViewSchema, missionContracts, missionDeferrals, missionMutationReceipts, personalCapabilities, Quest, questSkillContributions, skillNodes, transformationThreadEvidence, transformationThreads, userDailyLogs, quests as questsTable } from "@shared/schema";
 import { allocateSkillExperience, buildSkillGraph } from "../skill-graph";
 import { missionExperience } from "@shared/progression";
-import { createMissionLifecycleResult, deferMissionLifecycle, MissionLifecycleError, toggleMissionLifecycle, updateMissionLifecycle } from "../mission-lifecycle";
+import { createMissionLifecycleResult, deferMissionLifecycle, MissionLifecycleError, setMissionCompletionLifecycle, toggleMissionLifecycle, updateMissionLifecycle } from "../mission-lifecycle";
 import { convertTodoIdeasToMissions } from "../todo-idea-conversion";
 import { localMidnight } from "../todo-idea-parsing";
 import { refreshProgressionState } from "../progression";
@@ -576,10 +576,30 @@ export function registerQuestRoutes(app: Express): void {
       if (isNaN(questId)) {
         return res.status(400).json({ error: "Invalid quest ID" });
       }
-      const result = await toggleMissionLifecycle({ questId, userId: req.session.userId!, source: "ui" });
+      const mutation = mutationIdentity(req);
+      if (mutation.raw && !mutation.id) return res.status(400).json({ error: "Invalid mutation identity." });
+      const desiredCompletion = z.object({ completed: z.boolean() }).strict().safeParse(req.body);
+      if (mutation.id && !desiredCompletion.success) {
+        return res.status(400).json({ error: "An idempotent completion request requires its desired completed state." });
+      }
+      if (!mutation.id && desiredCompletion.success) {
+        return res.status(428).json({ error: "A desired completion state requires a mutation identity." });
+      }
+      const result = mutation.id && desiredCompletion.success
+        ? await setMissionCompletionLifecycle({
+          questId,
+          userId: req.session.userId!,
+          completed: desiredCompletion.data.completed,
+          mutationId: mutation.id,
+          source: "ui",
+        })
+        : await toggleMissionLifecycle({ questId, userId: req.session.userId!, source: "ui" });
       return res.status(200).json({ ...result, quest: publicMission(result.quest) });
     } catch (error) {
-      if (error instanceof MissionLifecycleError) return res.status(error.status).json({ error: error.message });
+      if (error instanceof MissionLifecycleError) {
+        res.setHeader("Cache-Control", "private, no-store");
+        return res.status(error.status).json({ error: error.message, currentQuest: conflictMission(error.currentQuest) });
+      }
       logger.error("Error toggling quest completion:", error);
       return res.status(500).json({ error: "Internal server error" });
     }

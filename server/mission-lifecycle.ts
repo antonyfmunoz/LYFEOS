@@ -2,7 +2,7 @@ import { and, desc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import { db } from "./db";
 import { storage } from "./storage";
 import { logger } from "./utils";
-import { kanbanBoards, missionConsequencePreflights, missionContracts, missionDeferrals, missionDependencies, missionReviews, personalCapabilities, projectEvents, questSkillContributions, quests, skillNodes, skillProgressionEvents, userActivityEvents, type Quest } from "@shared/schema";
+import { kanbanBoards, missionConsequencePreflights, missionContracts, missionDeferrals, missionDependencies, missionMutationReceipts, missionReviews, personalCapabilities, projectEvents, questSkillContributions, quests, skillNodes, skillProgressionEvents, userActivityEvents, type Quest } from "@shared/schema";
 import { recordTransformationThreadEvidence } from "./transformation-thread-evidence";
 import { refreshProgressionState } from "./progression";
 import { queueLinkedWorkItemState } from "./cross-product";
@@ -14,6 +14,7 @@ import { capabilityLevelForExperience } from "./capabilities";
 import { buildPlanningContextSnapshot } from "./context-snapshot";
 import { calibrateMissionDifficulty } from "./transformation-intelligence";
 import { hashUMHPayload } from "./umh/crypto";
+import { missionMutationPayloadHash } from "./mission-mutation-integrity";
 
 /** The sole completion/reopening path for a LyfeOS mission. */
 export type MissionLifecycleSource = "ui" | "ai" | "onboarding" | "todo" | "umh" | "system" | "google" | "inbox" | "automation";
@@ -637,6 +638,87 @@ export async function toggleMissionLifecycle(input: { questId: number; userId: n
   return db.transaction(async (tx) => {
     await tx.execute(sql`SELECT pg_advisory_xact_lock(120010, ${input.questId})`);
     return toggleMissionLifecycleLocked(input);
+  });
+}
+
+/**
+ * Sets completion to an explicit desired state. The per-Mission advisory lock
+ * serializes competing devices, while the compact mutation receipt makes an
+ * exact retry safe after the browser cannot know whether the first response
+ * was delivered. A request that finds the desired state already committed is
+ * reconciled without toggling again, so transport uncertainty can never
+ * manufacture a second XP award or reverse a successful write.
+ */
+export async function setMissionCompletionLifecycle(input: {
+  questId: number;
+  userId: number;
+  completed: boolean;
+  mutationId: string;
+  source: MissionLifecycleSource;
+  suppressAutomations?: boolean;
+}) {
+  const payloadHash = missionMutationPayloadHash({ operation: "completion", questId: input.questId, completed: input.completed });
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`mission-completion:${input.userId}:${input.mutationId}`}, 0))`);
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(120010, ${input.questId})`);
+    const quest = await storage.getQuest(input.questId);
+    if (!quest) throw new MissionLifecycleError(404, "Mission not found.");
+    if (quest.userId !== input.userId) throw new MissionLifecycleError(403, "Not authorized to change this mission.");
+
+    const [receipt] = await tx.select().from(missionMutationReceipts).where(and(
+      eq(missionMutationReceipts.userId, input.userId),
+      eq(missionMutationReceipts.mutationId, input.mutationId),
+    )).limit(1);
+    if (receipt) {
+      if (receipt.operation !== "completion" || receipt.payloadHash !== payloadHash || receipt.questId !== input.questId) {
+        throw new MissionLifecycleError(409, "This mutation identity was already used for a different mission change.", quest);
+      }
+      if (quest.completed !== input.completed) {
+        throw new MissionLifecycleError(409, "This completion request was accepted earlier, but the Mission changed again. Review its current state before retrying.", quest);
+      }
+      return {
+        quest,
+        xpAwarded: 0,
+        skillExperienceAwarded: 0,
+        crossProductWorkUpdates: 0,
+        levelUp: false,
+        statsUpdated: false,
+        replayed: true,
+        reconciled: false,
+      };
+    }
+
+    if (quest.completed === input.completed) {
+      await tx.insert(missionMutationReceipts).values({
+        userId: input.userId,
+        mutationId: input.mutationId,
+        payloadHash,
+        operation: "completion",
+        questId: quest.id,
+        resultingRevision: quest.revision,
+      }).onConflictDoNothing();
+      return {
+        quest,
+        xpAwarded: 0,
+        skillExperienceAwarded: 0,
+        crossProductWorkUpdates: 0,
+        levelUp: false,
+        statsUpdated: false,
+        replayed: true,
+        reconciled: true,
+      };
+    }
+
+    const result = await toggleMissionLifecycleLocked(input);
+    await tx.insert(missionMutationReceipts).values({
+      userId: input.userId,
+      mutationId: input.mutationId,
+      payloadHash,
+      operation: "completion",
+      questId: result.quest.id,
+      resultingRevision: result.quest.revision,
+    }).onConflictDoNothing();
+    return { ...result, replayed: false, reconciled: false };
   });
 }
 

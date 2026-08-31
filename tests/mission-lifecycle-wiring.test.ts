@@ -24,7 +24,10 @@ describe("mission lifecycle wiring", () => {
   it("routes mission UI completion through the same lifecycle service", () => {
     const quests = readSource("server/routes/quests.ts");
     expect(quests).toContain('toggleMissionLifecycle({ questId, userId: req.session.userId!, source: "ui" })');
-    expect(quests).toContain("if (error instanceof MissionLifecycleError) return res.status(error.status)");
+    expect(quests).toContain("setMissionCompletionLifecycle({");
+    expect(quests).toContain("completed: desiredCompletion.data.completed");
+    expect(quests).toContain("mutationId: mutation.id");
+    expect(quests).toContain("if (error instanceof MissionLifecycleError) {");
     expect(quests).toContain('toggleMissionLifecycle({ questId: existingOnboardingQuest.id, userId: questData.userId, source: "onboarding" })');
     expect(quests).toContain('updateMissionLifecycle({');
     expect(quests).toContain('source: "onboarding"');
@@ -63,6 +66,22 @@ describe("mission lifecycle wiring", () => {
     expect(detail).toContain("Mission risk level");
     expect(detail).toContain("stopConditions: stopCondition");
     expect(detail).toContain("escalationPath: escalationPath");
+  });
+
+  it("makes rendered completion retries desired-state and mutation-identity bound", () => {
+    const lifecycle = readSource("server/mission-lifecycle.ts");
+    const context = readSource("client/src/lib/context.tsx");
+    expect(lifecycle).toContain("export async function setMissionCompletionLifecycle");
+    expect(lifecycle).toContain("mission-completion:${input.userId}:${input.mutationId}");
+    expect(lifecycle).toContain("pg_advisory_xact_lock(120010");
+    expect(lifecycle).toContain('operation: "completion"');
+    expect(lifecycle).toContain("quest.completed === input.completed");
+    expect(context).toContain('"x-lyfeos-mutation-id": mutationId');
+    expect(context).toContain("body: JSON.stringify({ completed })");
+    expect(context).toContain("response = await submitDesiredState()");
+    expect(context).toContain("if (data.quest.completed && !data.replayed)");
+    expect(context).toContain("await refetchQuests(user?.id, true)");
+    expect(context).toContain("reloaded the authoritative Mission state");
   });
 
   it("lets users revise automatic proof plans and displays canonical Mission costs and rewards", () => {
