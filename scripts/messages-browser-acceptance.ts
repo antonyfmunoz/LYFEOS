@@ -222,20 +222,30 @@ async function eraseAccount(account: FixtureAccount): Promise<boolean> {
   return session?.status === 401 && email?.status === 200 && email.body?.available === true && displayName?.status === 200 && displayName.body?.available === true;
 }
 
-async function openMessages(page: Page): Promise<void> {
+async function loadMessagesRoute(page: Page): Promise<void> {
   await page.goto(new URL("/messages", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
   await page.waitForFunction(() => [...document.querySelectorAll("h1")].some((heading) => heading.textContent?.trim() === "Messages"), { timeout: 30_000 });
 }
 
-async function reloadMessages(page: Page): Promise<void> {
-  await page.reload({ waitUntil: "domcontentloaded", timeout: 60_000 });
-  await page.waitForFunction(() => [...document.querySelectorAll("h1")].some((heading) => heading.textContent?.trim() === "Messages"), { timeout: 30_000 });
+async function openMessages(page: Page, signals: BrowserSignals): Promise<void> {
+  await retryOnceAfterBoundedChunkRecovery(page, signals, async () => loadMessagesRoute(page));
+}
+
+async function reloadMessages(page: Page, signals: BrowserSignals): Promise<void> {
+  await retryOnceAfterBoundedChunkRecovery(page, signals, async (attempt) => {
+    if (attempt === 0) {
+      await page.reload({ waitUntil: "domcontentloaded", timeout: 60_000 });
+      await page.waitForFunction(() => [...document.querySelectorAll("h1")].some((heading) => heading.textContent?.trim() === "Messages"), { timeout: 30_000 });
+      return;
+    }
+    await loadMessagesRoute(page);
+  });
 }
 
 async function selectConversation(page: Page, signals: BrowserSignals, conversationId: string): Promise<void> {
   const selector = `[data-testid="messages-conversation-${conversationId}"]`;
   await retryOnceAfterBoundedChunkRecovery(page, signals, async (attempt) => {
-    if (attempt === 1) await openMessages(page);
+    if (attempt === 1) await loadMessagesRoute(page);
     await page.waitForSelector(selector, { visible: true, timeout: 30_000 });
     await clickSelector(page, selector);
   });
@@ -325,7 +335,7 @@ async function main(): Promise<void> {
     const senderPage = senderBrowser.page;
     await senderPage.setViewport(VIEWPORTS[0].value);
     stage = "open sender Messages surface";
-    await openMessages(senderPage);
+    await openMessages(senderPage, senderBrowser.signals);
 
     stage = "create conversation through rendered controls";
     await replaceInput(senderPage, '[aria-label="Find a LyfeOS user"]', recipient.displayName);
@@ -356,7 +366,7 @@ async function main(): Promise<void> {
     signals.push(recipientBrowser.signals);
     const recipientPage = recipientBrowser.page;
     await recipientPage.setViewport(VIEWPORTS[0].value);
-    await openMessages(recipientPage);
+    await openMessages(recipientPage, recipientBrowser.signals);
     await selectConversation(recipientPage, recipientBrowser.signals, conversationId);
     await recipientPage.waitForSelector(`[data-testid="native-message-${initialMessageId}"]`, { timeout: 30_000 });
     await poll(
@@ -364,7 +374,7 @@ async function main(): Promise<void> {
       (result) => result.body.conversation?.messages?.some((message: any) => message.id === initialMessageId && message.status === "read"),
       "Opening the rendered recipient conversation did not create read evidence.",
     );
-    await reloadMessages(senderPage);
+    await reloadMessages(senderPage, senderBrowser.signals);
     await selectConversation(senderPage, senderBrowser.signals, conversationId);
     await senderPage.waitForSelector(`[data-testid="native-message-${initialMessageId}"]`, { timeout: 30_000 });
     readReceiptRendered = (await senderPage.$eval(`[data-testid="native-message-${initialMessageId}"]`, (element) => (element as HTMLElement).innerText)).includes("read");
@@ -390,7 +400,7 @@ async function main(): Promise<void> {
     assert(replyRendered, "The recipient UI did not render the reply reference.");
 
     stage = "edit the original message through sender controls";
-    await reloadMessages(senderPage);
+    await reloadMessages(senderPage, senderBrowser.signals);
     await selectConversation(senderPage, senderBrowser.signals, conversationId);
     await senderPage.waitForSelector(`[data-testid="native-message-${replyMessageId}"]`, { timeout: 30_000 });
     await clickSelector(senderPage, `[data-testid="native-message-edit-${initialMessageId}"]`);
@@ -412,7 +422,7 @@ async function main(): Promise<void> {
     await waitForText(senderPage, PRIVATE_NOTE);
     const ownerWithNote = await request("GET", `/api/message-hub/conversations/${conversationId}`, undefined, sender.cookie);
     const recipientWithoutNote = await request("GET", `/api/message-hub/conversations/${conversationId}`, undefined, recipient.cookie);
-    await reloadMessages(recipientPage);
+    await reloadMessages(recipientPage, recipientBrowser.signals);
     await selectConversation(recipientPage, recipientBrowser.signals, conversationId);
     await recipientPage.waitForSelector(`[data-testid="native-message-${initialMessageId}"]`, { timeout: 30_000 });
     privateNoteOwnerOnly = ownerWithNote.body.conversation?.notes?.some((note: any) => note.body === PRIVATE_NOTE)
@@ -436,7 +446,7 @@ async function main(): Promise<void> {
         { page: recipientPage, signals: recipientBrowser.signals, account: "recipient" as const, expectedMessage: EDITED_MESSAGE },
       ]) {
         await entry.page.setViewport(viewport.value);
-        await reloadMessages(entry.page);
+        await reloadMessages(entry.page, entry.signals);
         await selectConversation(entry.page, entry.signals, conversationId);
         await waitForText(entry.page, entry.expectedMessage);
         const view = await inspectView(entry.page, entry.account, viewport.name);
