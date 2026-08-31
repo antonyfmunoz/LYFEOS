@@ -15,6 +15,10 @@ import {
   isSameOriginRegistrationRequest,
   type OAuthRegistrationIntent,
 } from "../oauth-registration-disclosure";
+import {
+  isDisplayNameUniqueViolation,
+  oauthDisplayNameCandidate,
+} from "../oauth-display-name";
 
 declare module "express-session" {
   interface SessionData {
@@ -32,47 +36,101 @@ interface LocalUserSeed {
 }
 
 async function initializeUserRecords(userId: number) {
-  await storage.createUserStats({
-    userId, experienceCurrent: 0, experienceMax: 1000, level: 1,
-    timeTokensCurrent: 100, timeTokensMax: 100, energyPointsCurrent: 100,
-    energyPointsMax: 100, healthPointsCurrent: 100, healthPointsMax: 100,
-    attentionTokensCurrent: 100, attentionTokensMax: 100, streakDays: 0,
-    efficiencyScore: 0, aiAssistantName: "NOVA", primaryColor: "#ffffff",
-  });
-  await storage.upsertUserProfile(userId, {
-    startStage: "beginner", targetArchetype: "architect", flowStyle: "hyperfocus",
-    coreMotivation: "growth", setupMissionStatus: "not_started", primaryThemeColor: "#ffe03d",
-    onboardingCompleted: false,
-  });
-  await storage.createUserIntegration({ userId, appleHealthConnected: false, googleCalendarConnected: false, notionConnected: false });
-  await storage.createUserDailyLog({
-    userId, date: formatLocalDate(), yesterdayXp: 0,
-    todayPrimaryMission: "Get started with LYFEOS", optionalBoostsShown: false,
-  });
+  if (!await storage.getUserStats(userId)) {
+    await storage.createUserStats({
+      userId, experienceCurrent: 0, experienceMax: 1000, level: 1,
+      timeTokensCurrent: 100, timeTokensMax: 100, energyPointsCurrent: 100,
+      energyPointsMax: 100, healthPointsCurrent: 100, healthPointsMax: 100,
+      attentionTokensCurrent: 100, attentionTokensMax: 100, streakDays: 0,
+      efficiencyScore: 0, aiAssistantName: "NOVA", primaryColor: "#ffffff",
+    });
+  }
+
+  let profile = await storage.getUserProfile(userId);
+  if (!profile) {
+    profile = await storage.upsertUserProfile(userId, {
+      startStage: "beginner", targetArchetype: "architect", flowStyle: "hyperfocus",
+      coreMotivation: "growth", setupMissionStatus: "not_started", primaryThemeColor: "#ffe03d",
+      onboardingCompleted: false,
+    });
+  }
+
+  if (!await storage.getUserIntegration(userId)) {
+    await storage.createUserIntegration({ userId, appleHealthConnected: false, googleCalendarConnected: false, notionConnected: false });
+  }
+
+  if (!profile.onboardingCompleted && !await storage.getUserDailyLogByDate(userId, new Date())) {
+    await storage.createUserDailyLog({
+      userId, date: formatLocalDate(), yesterdayXp: 0,
+      todayPrimaryMission: "Get started with LYFEOS", optionalBoostsShown: false,
+    });
+  }
 }
 
-async function provisionLocalUser(seed: LocalUserSeed) {
-  const existing = await storage.getUserByEmail(seed.email);
+const localProvisioning = new Map<string, Promise<Awaited<ReturnType<typeof storage.createUser>>>>();
+
+async function provisionLocalUserOnce(seed: LocalUserSeed) {
+  const normalizedSeed = { ...seed, email: seed.email.trim().toLowerCase() };
+  let existing = await storage.getUserByClerkId(seed.clerkId);
   if (existing) {
-    if (!existing.clerkId) await storage.updateUserClerkId(existing.id, seed.clerkId);
+    await initializeUserRecords(existing.id);
     return existing;
   }
 
-  const displayName = [seed.firstName, seed.lastName].filter(Boolean).join(" ") || seed.email.split("@")[0];
-  const user = await storage.createUser({
-    password: null,
-    displayName,
-    firstName: seed.firstName ?? null,
-    lastName: seed.lastName ?? null,
-    title: "COMMANDER",
-    email: seed.email,
-    authProvider: "clerk",
-    clerkId: seed.clerkId,
-    termsAccepted: false,
-  });
+  existing = await storage.getUserByEmail(normalizedSeed.email);
+  if (existing) {
+    if (existing.clerkId && existing.clerkId !== seed.clerkId) {
+      throw new Error("Email is already bound to another Clerk identity");
+    }
+    const linked = existing.clerkId ? existing : await storage.updateUserClerkId(existing.id, seed.clerkId);
+    await initializeUserRecords(linked.id);
+    return linked;
+  }
 
-  await initializeUserRecords(user.id);
-  return user;
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    const displayName = oauthDisplayNameCandidate(normalizedSeed, attempt);
+    if (await storage.getUserByDisplayName(displayName)) continue;
+
+    try {
+      const user = await storage.createUser({
+        password: null,
+        displayName,
+        firstName: seed.firstName ?? null,
+        lastName: seed.lastName ?? null,
+        title: "COMMANDER",
+        email: normalizedSeed.email,
+        authProvider: "clerk",
+        clerkId: seed.clerkId,
+        termsAccepted: false,
+      });
+
+      await initializeUserRecords(user.id);
+      return user;
+    } catch (error) {
+      const concurrentUser = await storage.getUserByClerkId(seed.clerkId);
+      if (concurrentUser) {
+        await initializeUserRecords(concurrentUser.id);
+        return concurrentUser;
+      }
+      if (isDisplayNameUniqueViolation(error)) continue;
+      throw error;
+    }
+  }
+
+  throw new Error("Unable to allocate a unique initial display name");
+}
+
+async function provisionLocalUser(seed: LocalUserSeed) {
+  const pending = localProvisioning.get(seed.clerkId);
+  if (pending) return pending;
+
+  const provisioning = provisionLocalUserOnce(seed);
+  localProvisioning.set(seed.clerkId, provisioning);
+  try {
+    return await provisioning;
+  } finally {
+    if (localProvisioning.get(seed.clerkId) === provisioning) localProvisioning.delete(seed.clerkId);
+  }
 }
 
 export const bindAuthenticatedPrincipal = async (req: Request, res: Response, next: NextFunction) => {
