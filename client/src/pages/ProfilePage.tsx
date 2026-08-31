@@ -81,7 +81,7 @@ import update from 'immutability-helper';
 import type { UserProfile as UserProfileSchema } from "@shared/schema";
 import type { LyfeOSDataClass } from "@shared/data-rights";
 import { startThetaBeats, stopThetaBeats } from '@/lib/theta-beats';
-import { useUser } from "@clerk/clerk-react";
+import { useReverification, useUser } from "@clerk/clerk-react";
 import PushNotificationSettings from "@/components/profile/PushNotificationSettings";
 import CollaborationSettings from "@/components/profile/CollaborationSettings";
 import ExtensionSettings from "@/components/profile/ExtensionSettings";
@@ -630,7 +630,7 @@ export default function ProfilePage() {
   
   const { displayName, stats, updateUserStats, setPrimaryColor: setContextPrimaryColor } = useLYFEOS();
   const { setPrimaryColor: setThemePrimaryColor } = useTheme();
-  const { user, logout } = useAuth();
+  const { user, logout, linkGoogleSignIn } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -789,6 +789,9 @@ export default function ProfilePage() {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [isEditingAccount, setIsEditingAccount] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [isAddingGoogleSignIn, setIsAddingGoogleSignIn] = useState(false);
+  const [googleLinkPassword, setGoogleLinkPassword] = useState("");
+  const [isStartingGoogleLink, setIsStartingGoogleLink] = useState(false);
   const [twoFactorStep, setTwoFactorStep] = useState<'idle' | 'email' | 'phone' | 'complete'>('idle');
   const [emailCode, setEmailCode] = useState('');
   const [phoneCode, setPhoneCode] = useState('');
@@ -800,9 +803,13 @@ export default function ProfilePage() {
   const [clerkPhoneNumber, setClerkPhoneNumber] = useState<ClerkPhoneNumber | null>(null);
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
   const { user: clerkUser } = useUser();
+  const updateClerkPassword = useReverification(async (data: { currentPassword?: string; newPassword: string }) => {
+    if (!clerkUser) throw new Error("Your connected sign-in session is not available");
+    return clerkUser.updatePassword(data);
+  });
   
   // Fetch account data
-  const { data: accountData, isLoading: isAccountLoading } = useQuery<{ email?: string; phoneNumber?: string; authProvider?: string }>({
+  const { data: accountData, isLoading: isAccountLoading } = useQuery<{ email?: string; phoneNumber?: string; authProvider?: string; hasPassword: boolean; passwordManagedByClerk: boolean; googleLinked: boolean }>({
     queryKey: ["/api/account"],
     enabled: !!user?.id,
   });
@@ -1081,7 +1088,11 @@ export default function ProfilePage() {
   
   // Change password mutation
   const changePasswordMutation = useMutation({
-    mutationFn: async (data: { currentPassword: string; newPassword: string }) => {
+    mutationFn: async (data: { currentPassword?: string; newPassword: string }) => {
+      if (accountData?.passwordManagedByClerk) {
+        await updateClerkPassword(data);
+        return { created: !accountData.hasPassword };
+      }
       const response = await fetch("/api/account/change-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1094,14 +1105,15 @@ export default function ProfilePage() {
       }
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (result: { created?: boolean }) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/account"] });
       setIsChangingPassword(false);
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
       toast({
-        title: "Password Changed",
-        description: "Your password has been updated successfully.",
+        title: result.created ? "Password Created" : "Password Changed",
+        description: result.created ? "You can now sign in with Google or your password." : "Your password has been updated successfully.",
       });
     },
     onError: (error: Error) => {
@@ -1136,10 +1148,22 @@ export default function ProfilePage() {
       });
       return;
     }
-    changePasswordMutation.mutate({
-      currentPassword,
-      newPassword,
-    });
+    changePasswordMutation.mutate(accountData?.hasPassword
+      ? { currentPassword, newPassword }
+      : { newPassword });
+  };
+
+  const handleLinkGoogleSignIn = async () => {
+    if (!googleLinkPassword) {
+      toast({ title: "Current password required", description: "Confirm your password before adding Google sign-in.", variant: "destructive" });
+      return;
+    }
+    setIsStartingGoogleLink(true);
+    try {
+      await linkGoogleSignIn(googleLinkPassword);
+    } catch {
+      setIsStartingGoogleLink(false);
+    }
   };
 
   // Update profile mutation
@@ -1668,7 +1692,7 @@ export default function ProfilePage() {
                 </div>
               ) : isChangingPassword ? (
                 <div className="space-y-4">
-                  <div>
+                  {accountData?.hasPassword && <div>
                     <Label htmlFor="currentPassword" className="flex items-center gap-2 mb-2">
                       <Lock className="h-4 w-4 text-primary" />
                       Current Password
@@ -1692,8 +1716,8 @@ export default function ProfilePage() {
                         {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </Button>
                     </div>
-                  </div>
-                  
+                  </div>}
+
                   <div>
                     <Label htmlFor="newPassword" className="flex items-center gap-2 mb-2">
                       <Lock className="h-4 w-4 text-primary" />
@@ -1750,7 +1774,7 @@ export default function ProfilePage() {
                       ) : (
                         <Save className="h-3 w-3" />
                       )}
-                      Change Password
+                      {accountData?.hasPassword ? "Change Password" : "Create Password"}
                     </button>
                   </div>
                 </div>
@@ -1768,12 +1792,38 @@ export default function ProfilePage() {
                     <Lock className="h-4 w-4 text-primary" />
                     <div className="flex-1">
                       <div className="text-xs text-muted-foreground">Password</div>
-                      <div className="text-sm">••••••••</div>
+                      <div className="text-sm">{accountData?.hasPassword ? "••••••••" : "Not set"}</div>
                     </div>
                     <button onClick={() => setIsChangingPassword(true)} className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors">
-                      Change
+                      {accountData?.hasPassword ? "Change" : "Create"}
                     </button>
                   </div>
+
+                  <div className="flex items-center gap-3 p-3 bg-card/50 rounded-lg border border-primary/10">
+                    <Globe className="h-4 w-4 text-primary" />
+                    <div className="flex-1">
+                      <div className="text-xs text-muted-foreground">Google sign-in</div>
+                      <div className="text-sm">{accountData?.googleLinked ? "Connected" : "Not connected"}</div>
+                    </div>
+                    {!accountData?.googleLinked && !isAddingGoogleSignIn && (
+                      <button onClick={() => setIsAddingGoogleSignIn(true)} className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors">
+                        Add Google
+                      </button>
+                    )}
+                  </div>
+                  {!accountData?.googleLinked && isAddingGoogleSignIn && (
+                    <div className="space-y-2 p-3 bg-card/50 rounded-lg border border-primary/10">
+                      <Label htmlFor="googleLinkPassword" className="text-xs">Confirm current password</Label>
+                      <Input id="googleLinkPassword" type="password" value={googleLinkPassword} onChange={(event) => setGoogleLinkPassword(event.target.value)} placeholder="Current password" className="bg-background/50 border-primary/30" />
+                      <div className="flex gap-2">
+                        <button onClick={() => { setIsAddingGoogleSignIn(false); setGoogleLinkPassword(""); }} className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary">Cancel</button>
+                        <button onClick={() => void handleLinkGoogleSignIn()} disabled={isStartingGoogleLink} className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary disabled:opacity-40 inline-flex items-center gap-1.5">
+                          {isStartingGoogleLink && <Loader2 className="h-3 w-3 animate-spin" />}
+                          Continue with Google
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

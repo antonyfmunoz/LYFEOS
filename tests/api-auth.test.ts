@@ -12,6 +12,7 @@ async function apiRequest(method: string, path: string, body?: any, cookie?: str
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     'X-Forwarded-Proto': 'https',
+    'Origin': BASE_URL ? new URL(BASE_URL).origin : 'https://localhost',
   };
   if (cookie) headers['Cookie'] = cookie;
   
@@ -113,6 +114,21 @@ describeApi('Auth API', () => {
     expect(status).toBe(200);
     expect(data.user).toBeTruthy();
     expect(data.user.displayName).toBe(testUser.displayName);
+  });
+
+  it('reports the account sign-in methods', async () => {
+    const before = await apiRequest('GET', '/api/account', undefined, sessionCookie);
+    expect(before.status).toBe(200);
+    expect(before.data.hasPassword).toBe(true);
+    expect(before.data.passwordManagedByClerk).toBe(false);
+    expect(before.data.googleLinked).toBe(false);
+  });
+
+  it('creates a same-origin, session-bound Google link intent', async () => {
+    const { status, data } = await apiRequest('POST', '/api/auth/google-link-intent', { currentPassword: testUser.password }, sessionCookie);
+    expect(status).toBe(201);
+    expect(data.intentId).toBeTruthy();
+    expect(data.expiresAt).toBeTruthy();
   });
 
   it('rejects auth check without session', async () => {

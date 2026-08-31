@@ -32,6 +32,7 @@ interface AuthContextType {
   completeRegistration: (data: Record<string, any>) => Promise<{ id: number; displayName: string } | null>;
   logout: () => void;
   loginWithGoogle: (mode?: 'login' | 'register') => Promise<void>;
+  linkGoogleSignIn: (currentPassword: string) => Promise<void>;
   loginWithApple: (mode?: 'login' | 'register') => Promise<void>;
   registerPreLogoutCallback: (callback: () => Promise<void> | void) => void;
   unregisterPreLogoutCallback: (callback: () => Promise<void> | void) => void;
@@ -476,6 +477,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const linkGoogleSignIn = async (currentPassword: string) => {
+    try {
+      setIsLoading(true);
+      if (!signIn) throw new Error("Google sign-in is not available");
+      const response = await fetch("/api/auth/google-link-intent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ currentPassword }),
+      });
+      const intent = await response.json();
+      if (!response.ok || !intent?.intentId) {
+        throw new Error(intent?.error || "Could not start Google sign-in linking");
+      }
+
+      localStorage.setItem("lyfeos-oauth-mode", "link");
+      localStorage.setItem("lyfeos-oauth-redirect-pending", "true");
+      await signIn.authenticateWithRedirect({
+        strategy: "oauth_google",
+        redirectUrl: "/sso-callback",
+        redirectUrlComplete: "/profile?google-signin=linked",
+      });
+    } catch (error: any) {
+      localStorage.removeItem("lyfeos-oauth-mode");
+      localStorage.removeItem("lyfeos-oauth-redirect-pending");
+      toast({
+        title: "Could not add Google sign-in",
+        description: error?.message || String(error),
+        variant: "destructive",
+      });
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const loginWithApple = async (mode: 'login' | 'register' = 'login') => {
     try {
       setIsLoading(true);
@@ -539,6 +576,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         completeRegistration,
         logout,
         loginWithGoogle,
+        linkGoogleSignIn,
         loginWithApple,
         registerPreLogoutCallback,
         unregisterPreLogoutCallback,

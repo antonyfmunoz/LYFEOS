@@ -558,9 +558,8 @@ export function registerProfileRoutes(app: Express): void {
         return res.status(404).json({ error: "User not found" });
       }
       
-      // Verify current password
       if (!user.password) {
-        return res.status(400).json({ error: "No password set for this account" });
+        return res.status(409).json({ error: "This password is managed by your connected sign-in provider" });
       }
       const isValid = await bcrypt.compare(currentPassword, user.password);
       if (!isValid) {
@@ -571,7 +570,7 @@ export function registerProfileRoutes(app: Express): void {
       const hashedPassword = await bcrypt.hash(newPassword, 10);
       await storage.updateUserPassword(userId, hashedPassword);
       
-      res.json({ success: true, message: "Password updated successfully" });
+      res.json({ success: true, created: false, message: "Password updated successfully" });
     } catch (error) {
       logger.error("Error changing password:", error);
       res.status(500).json({ error: "Internal server error" });
@@ -588,10 +587,26 @@ export function registerProfileRoutes(app: Express): void {
         return res.status(404).json({ error: "User not found" });
       }
       
+      let googleLinked = false;
+      let clerkPasswordEnabled = false;
+      if (user.clerkId) {
+        try {
+          const identity = await clerkClient.users.getUser(user.clerkId);
+          googleLinked = identity.externalAccounts.some((account) => account.provider === "google");
+          clerkPasswordEnabled = identity.passwordEnabled;
+        } catch (error) {
+          logger.warn("Unable to refresh linked sign-in methods:", error);
+        }
+      }
+
+      res.setHeader("Cache-Control", "private, no-store");
       res.json({ 
         email: user.email, 
         phoneNumber: user.phoneNumber,
-        authProvider: user.authProvider
+        authProvider: user.authProvider,
+        hasPassword: Boolean(user.password) || clerkPasswordEnabled,
+        passwordManagedByClerk: !user.password && Boolean(user.clerkId),
+        googleLinked,
       });
     } catch (error) {
       logger.error("Error fetching account:", error);

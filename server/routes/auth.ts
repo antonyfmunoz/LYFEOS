@@ -19,12 +19,18 @@ import {
   isDisplayNameUniqueViolation,
   oauthDisplayNameCandidate,
 } from "../oauth-display-name";
+import {
+  createGoogleAuthLinkIntent,
+  isValidGoogleAuthLinkIntent,
+  type GoogleAuthLinkIntent,
+} from "../google-auth-link-intent";
 
 declare module "express-session" {
   interface SessionData {
     userId: number;
     displayName: string;
     oauthRegistrationIntent?: OAuthRegistrationIntent;
+    googleAuthLinkIntent?: GoogleAuthLinkIntent;
   }
 }
 
@@ -138,7 +144,43 @@ export const bindAuthenticatedPrincipal = async (req: Request, res: Response, ne
   if (!userId) return next();
   let user = await storage.getUserByClerkId(userId);
   const registrationIntent = req.session.oauthRegistrationIntent;
+  const googleLinkIntent = req.session.googleAuthLinkIntent;
   let clerkUser;
+  if (googleLinkIntent) {
+    try {
+      if (!isValidGoogleAuthLinkIntent(googleLinkIntent, req.session.userId)) {
+        delete req.session.googleAuthLinkIntent;
+        return res.status(403).json({ error: "Google sign-in link expired. Start again from Account settings." });
+      }
+
+      const targetUser = await storage.getUser(googleLinkIntent.localUserId);
+      if (!targetUser) {
+        delete req.session.googleAuthLinkIntent;
+        return res.status(404).json({ error: "The account being linked no longer exists" });
+      }
+      if (user && user.id !== targetUser.id) {
+        delete req.session.googleAuthLinkIntent;
+        return res.status(409).json({ error: "That Google sign-in is already attached to another LyfeOS account" });
+      }
+      if (targetUser.clerkId && targetUser.clerkId !== userId) {
+        delete req.session.googleAuthLinkIntent;
+        return res.status(409).json({ error: "This LyfeOS account is already attached to another sign-in identity" });
+      }
+
+      clerkUser = await clerkClient.users.getUser(userId);
+      const hasGoogleAccount = clerkUser.externalAccounts.some((account) => account.provider === "google");
+      if (!hasGoogleAccount) {
+        delete req.session.googleAuthLinkIntent;
+        return res.status(400).json({ error: "A verified Google sign-in was not returned" });
+      }
+
+      user = targetUser.clerkId ? targetUser : await storage.updateUserClerkId(targetUser.id, userId);
+      delete req.session.googleAuthLinkIntent;
+    } catch (error) {
+      logger.error("Unable to link Google sign-in to the current account:", error);
+      return res.status(503).json({ error: "Google sign-in could not be linked right now" });
+    }
+  }
   if (!user || registrationIntent) {
     try {
       clerkUser = await clerkClient.users.getUser(userId);
@@ -252,6 +294,39 @@ export function registerAuthRoutes(app: Express): void {
       return res.status(201).json({
         intentId: intent.id,
         registrationDisclosureVersion: intent.disclosureVersion,
+        expiresAt: new Date(intent.expiresAt).toISOString(),
+      });
+    });
+  });
+
+  app.post("/api/auth/google-link-intent", requireAuth, async (req: Request, res: Response) => {
+    if (!isSameOriginRegistrationRequest(req.get("origin"), req.get("host"), req.protocol)) {
+      return res.status(403).json({ error: "Google sign-in must be linked from LyfeOS" });
+    }
+    if (process.env.LYFEOS_TEST_ENV !== "isolated" && getAuth(req).userId) {
+      return res.status(409).json({ error: "Google sign-in is already attached to this account" });
+    }
+
+    const localUser = (req as any).dbUser;
+    if (!localUser?.password) {
+      return res.status(409).json({ error: "This account already uses a connected identity provider" });
+    }
+    if (typeof req.body?.currentPassword !== "string" || !req.body.currentPassword) {
+      return res.status(400).json({ error: "Enter your current password before adding Google sign-in" });
+    }
+    if (!await bcrypt.compare(req.body.currentPassword, localUser.password)) {
+      return res.status(401).json({ error: "Current password is incorrect" });
+    }
+
+    const intent = createGoogleAuthLinkIntent(req.session.userId!);
+    req.session.googleAuthLinkIntent = intent;
+    req.session.save((error) => {
+      if (error) {
+        logger.error("Unable to persist Google sign-in link intent:", error);
+        return res.status(503).json({ error: "Google sign-in could not be started right now" });
+      }
+      return res.status(201).json({
+        intentId: intent.id,
         expiresAt: new Date(intent.expiresAt).toISOString(),
       });
     });
