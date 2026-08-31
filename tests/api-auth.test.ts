@@ -12,7 +12,7 @@ async function apiRequest(method: string, path: string, body?: any, cookie?: str
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     'X-Forwarded-Proto': 'https',
-    'Origin': BASE_URL ? new URL(BASE_URL).origin : 'https://localhost',
+    'Origin': BASE_URL ? `https://${new URL(BASE_URL).host}` : 'https://localhost',
   };
   if (cookie) headers['Cookie'] = cookie;
   
