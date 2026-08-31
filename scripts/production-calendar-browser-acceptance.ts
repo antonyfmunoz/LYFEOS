@@ -514,6 +514,11 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     assert(staleEditStoppedAsConflict, "Stale Calendar edit overwrote the newer server mission.");
     const multiTabConflictReconciled = secondTabCommitted && staleEditStoppedAsConflict;
     assert(multiTabConflictReconciled, "A stale first-tab Calendar edit overwrote the second live tab's canonical revision.");
+    // Route-chunk recovery evidence is stored in the tab whose document was
+    // recovered. Reconcile the competing tab before closing it so a successful
+    // bounded recovery is attributed to the right document instead of being
+    // misreported later as an unexplained application error on the first tab.
+    await acknowledgeBoundedChunkRecovery(competingPage, signals);
     await competingPage.close();
     competingPage = null;
     page.once("dialog", (dialog) => void dialog.accept());

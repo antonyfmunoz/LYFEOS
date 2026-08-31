@@ -38,6 +38,10 @@ describe("production Calendar evidence custody", () => {
     expect(acceptance).toContain("competingPage = await context.newPage()");
     expect(acceptance).toContain("await page.bringToFront()");
     expect(acceptance).toContain("The second live tab did not commit Calendar mission revision two");
+    const competingRecovery = acceptance.indexOf("await acknowledgeBoundedChunkRecovery(competingPage, signals)");
+    const competingClose = acceptance.indexOf("await competingPage.close()", competingRecovery);
+    expect(competingRecovery).toBeGreaterThan(-1);
+    expect(competingClose).toBeGreaterThan(competingRecovery);
     expect(acceptance).toContain('window.dispatchEvent(new Event("offline"))');
     expect(acceptance).toContain('window.dispatchEvent(new Event("online"))');
     expect(acceptance).toContain("registerDisposableAccount");
