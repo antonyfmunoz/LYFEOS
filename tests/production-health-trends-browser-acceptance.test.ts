@@ -26,6 +26,7 @@ describe("production Health trends browser acceptance custody", () => {
 
   it("proves chart, table, CSV, panel, missing-value, recorded-zero, and cleanup truthfulness", () => {
     expect(script).toContain("recordedZeroStayedZero");
+    expect(script).toContain("sparseRecordedPointsRendered");
     expect(script).toContain("missingStayedMissing");
     expect(script).toContain("apiAndTableReconciled");
     expect(script).toContain("savedThreeSeriesPanelRendered");
@@ -45,6 +46,8 @@ describe("production Health trends browser acceptance custody", () => {
     expect(workbench).toContain('aria-label="Trend evidence coverage"');
     expect(workbench).toContain("View accessible trend data table");
     expect(workbench).toContain("View saved-panel data table");
+    expect(workbench).toContain("points.length <= 60");
+    expect(workbench).toContain("connectNulls={false}");
     expect(healthPage).toContain('targetId="health-section-trends"');
   });
 });

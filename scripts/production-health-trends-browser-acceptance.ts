@@ -12,6 +12,7 @@ type Audit = { mainCount: number; duplicateIds: string[]; invalidLabelReferences
 type ViewResult = {
   viewport: string;
   chartRendered: boolean;
+  sparseRecordedPointsRendered: boolean;
   coverageRendered: boolean;
   missingStayedMissing: boolean;
   recordedZeroStayedZero: boolean;
@@ -272,6 +273,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     await page.select('[aria-label="Second health trend"]', OBSERVATION_OPTION);
     await page.waitForFunction(() => document.querySelector('[aria-label="Trend evidence coverage"]')?.textContent?.includes("Acceptance focus"), { timeout: 45_000 });
     const chartRendered = Boolean(await page.$('[role="img"][aria-label*="Hydration and Acceptance focus"]'));
+    const sparseRecordedPointsRendered = (await page.$$('[role="img"][aria-label*="Hydration and Acceptance focus"] .recharts-line-dot')).length === 4;
     const coverageRendered = await page.$eval('[aria-label="Trend evidence coverage"]', (element) => element.textContent?.includes("2 of 30 days") && element.textContent?.includes("28 missing"));
 
     stage = "reconcile accessible trend table";
@@ -285,7 +287,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     const recordedZeroStayedZero = table[dates.earliestDate]?.[1] === "0";
     const missingStayedMissing = table[dates.middleDate]?.[0] === "Not recorded" && table[dates.latestDate]?.[1] === "Not recorded";
     const apiAndTableReconciled = table[dates.earliestDate]?.[0] === "500" && table[dates.middleDate]?.[1] === "7" && table[dates.latestDate]?.[0] === "750";
-    assert(chartRendered && coverageRendered && recordedZeroStayedZero && missingStayedMissing && apiAndTableReconciled, "Rendered Health trend evidence did not reconcile with its owner-scoped API facts.");
+    assert(chartRendered && sparseRecordedPointsRendered && coverageRendered && recordedZeroStayedZero && missingStayedMissing && apiAndTableReconciled, "Rendered Health trend evidence did not reconcile with its owner-scoped API facts.");
 
     stage = "save and reopen a three-series panel";
     await clickSummary(page, "Saved metric panels (0)");
@@ -318,7 +320,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     assert(!hasUnexpectedBrowserSignals(signals), `${viewport.name} produced unexpected browser signals: ${JSON.stringify(signals)}.`);
     const screenshot = `health-trends-${viewport.name}.png`;
     await page.screenshot({ path: path.join(OUTPUT_DIR, screenshot), fullPage: true });
-    view = { viewport: viewport.name, chartRendered, coverageRendered, missingStayedMissing, recordedZeroStayedZero, apiAndTableReconciled, savedThreeSeriesPanelRendered, savedPanelMissingStayedMissing, csvReconciled, audit, signals, screenshot };
+    view = { viewport: viewport.name, chartRendered, sparseRecordedPointsRendered, coverageRendered, missingStayedMissing, recordedZeroStayedZero, apiAndTableReconciled, savedThreeSeriesPanelRendered, savedPanelMissingStayedMissing, csvReconciled, audit, signals, screenshot };
   } catch (error) {
     failure = new Error(`${stage}: ${safeError(error)}`);
   } finally {
@@ -349,7 +351,7 @@ async function main(): Promise<void> {
   } finally {
     await browser.close().catch(() => undefined);
   }
-  const passed = views.length === VIEWPORTS.length && views.every((view) => view.chartRendered && view.coverageRendered && view.missingStayedMissing && view.recordedZeroStayedZero && view.apiAndTableReconciled && view.savedThreeSeriesPanelRendered && view.savedPanelMissingStayedMissing && view.csvReconciled && !hasUnexpectedBrowserSignals(view.signals)) && cleanup.every((item) => item.accountErased);
+  const passed = views.length === VIEWPORTS.length && views.every((view) => view.chartRendered && view.sparseRecordedPointsRendered && view.coverageRendered && view.missingStayedMissing && view.recordedZeroStayedZero && view.apiAndTableReconciled && view.savedThreeSeriesPanelRendered && view.savedPanelMissingStayedMissing && view.csvReconciled && !hasUnexpectedBrowserSignals(view.signals)) && cleanup.every((item) => item.accountErased);
   const report = {
     contract: "lyfeos.production-health-trends-browser.v1",
     generatedAt: new Date().toISOString(),
