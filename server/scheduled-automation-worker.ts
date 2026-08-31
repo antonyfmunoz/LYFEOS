@@ -2,12 +2,11 @@ import { and, asc, eq, isNull, lt, lte, or } from "drizzle-orm";
 import { automationDefinitionSchema, type AutomationScheduleTrigger } from "@shared/automations";
 import { quests, workflowAutomationRuns, workflowAutomations } from "@shared/schema";
 import { db } from "./db";
-import { dueScheduleWindow, scheduleOccurrenceContext } from "./automation-schedule";
+import { dueScheduleWindow, scheduleOccurrenceContext, scheduleWindowDelayed } from "./automation-schedule";
 import { executeAutomation } from "./automation-engine";
 import { logger } from "./utils";
 
 const CLAIM_LEASE_MS = 5 * 60_000;
-const MISSED_GRACE_MS = 2 * 60_000;
 
 async function claimScheduledAutomation(id: number, now: Date) {
   const staleBefore = new Date(now.getTime() - CLAIM_LEASE_MS);
@@ -30,7 +29,7 @@ async function recordSkippedWindow(automation: typeof workflowAutomations.$infer
     triggerQuestId: null,
     idempotencyKey,
     definitionSnapshot: automation.definition,
-    triggerContext: { ...scheduleOccurrenceContext(trigger, last, now), anchorMissionId: trigger.questId, missedOccurrences: due.length, missedRunPolicy: "skip" },
+    triggerContext: { ...scheduleOccurrenceContext(trigger, last, now), delayed: scheduleWindowDelayed(due, now), anchorMissionId: trigger.questId, missedOccurrences: due.length, missedRunPolicy: "skip" },
     status: "skipped",
     actionResults: [],
     errorCode: "MISSED_RUN_SKIPPED",
@@ -48,7 +47,7 @@ async function recordAnchorFailure(automation: typeof workflowAutomations.$infer
     triggerQuestId: null,
     idempotencyKey: `schedule:${first.toISOString()}:${last.toISOString()}`,
     definitionSnapshot: automation.definition,
-    triggerContext: { ...scheduleOccurrenceContext(trigger, last, now), anchorMissionId: trigger.questId, consolidatedOccurrences: due.length, missedRunPolicy: trigger.missedRunPolicy },
+    triggerContext: { ...scheduleOccurrenceContext(trigger, last, now), delayed: scheduleWindowDelayed(due, now), anchorMissionId: trigger.questId, consolidatedOccurrences: due.length, missedRunPolicy: trigger.missedRunPolicy },
     status: "failed",
     actionResults: [],
     errorCode: "SCHEDULE_ANCHOR_UNAVAILABLE",
@@ -88,7 +87,7 @@ export async function processScheduledAutomation(automationId: number, now = new
     await db.update(workflowAutomations).set({ scheduleNextRunAt: window.next, scheduleClaimedAt: null, ...(window.exhausted ? { enabled: false, pauseReason: "SCHEDULE_COMPLETE", pausedAt: now } : {}), updatedAt: now }).where(eq(workflowAutomations.id, automation.id));
     return window.exhausted ? "completed" : "busy";
   }
-  const delayed = now.getTime() > window.due[0].getTime() + MISSED_GRACE_MS;
+  const delayed = scheduleWindowDelayed(window.due, now);
   if (delayed && trigger.missedRunPolicy === "skip") {
     await recordSkippedWindow(automation, trigger, window.due, now);
     await advanceSchedule(automation, window.due, window.next, window.exhausted, now);
@@ -101,7 +100,7 @@ export async function processScheduledAutomation(automationId: number, now = new
     return "unavailable";
   }
   const scheduledFor = window.due[window.due.length - 1];
-  const context = { ...scheduleOccurrenceContext(trigger, scheduledFor, now), anchorMissionId: trigger.questId, consolidatedOccurrences: window.due.length, missedRunPolicy: trigger.missedRunPolicy };
+  const context = { ...scheduleOccurrenceContext(trigger, scheduledFor, now), delayed, anchorMissionId: trigger.questId, consolidatedOccurrences: window.due.length, missedRunPolicy: trigger.missedRunPolicy };
   const result = await executeAutomation({
     automation,
     quest: anchor,

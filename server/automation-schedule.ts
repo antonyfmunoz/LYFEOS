@@ -1,6 +1,8 @@
 import type { AutomationScheduleTrigger } from "@shared/automations";
 import { dateInTimeZone, zonedDateTime } from "./health-fitness";
 
+export const SCHEDULE_MISSED_GRACE_MS = 2 * 60_000;
+
 function shiftDate(date: string, days: number): string {
   const value = new Date(`${date}T00:00:00.000Z`);
   value.setUTCDate(value.getUTCDate() + days);
@@ -57,6 +59,10 @@ export function dueScheduleWindow(input: {
   return { due, next: exhausted ? null : (cursor && cursor.getTime() > input.now.getTime() ? cursor : nextScheduledOccurrence(input.trigger, input.now)), exhausted };
 }
 
+export function scheduleWindowDelayed(due: Date[], now: Date): boolean {
+  return Boolean(due[0] && now.getTime() > due[0].getTime() + SCHEDULE_MISSED_GRACE_MS);
+}
+
 export function scheduleOccurrenceContext(trigger: AutomationScheduleTrigger, scheduledFor: Date, now = new Date()) {
   return {
     schemaVersion: "lyfeos.automation.schedule-context.v1",
@@ -64,6 +70,6 @@ export function scheduleOccurrenceContext(trigger: AutomationScheduleTrigger, sc
     localDate: dateInTimeZone(scheduledFor, trigger.timeZone),
     localTime: trigger.localTime,
     timeZone: trigger.timeZone,
-    delayed: now.getTime() > scheduledFor.getTime() + 2 * 60_000,
+    delayed: now.getTime() > scheduledFor.getTime() + SCHEDULE_MISSED_GRACE_MS,
   } as const;
 }

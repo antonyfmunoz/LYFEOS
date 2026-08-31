@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { automationDefinitionSchema, automationScheduleTriggerSchema } from "../shared/automations";
-import { dueScheduleWindow, nextScheduledOccurrence, scheduledInstant } from "../server/automation-schedule";
+import { dueScheduleWindow, nextScheduledOccurrence, scheduledInstant, scheduleWindowDelayed } from "../server/automation-schedule";
 
 const daily = automationScheduleTriggerSchema.parse({
   type: "schedule",
@@ -34,6 +34,13 @@ describe("Scheduled workflow automations", () => {
     expect(window.due.map((date) => date.toISOString())).toEqual(["2026-08-23T12:00:00.000Z", "2026-08-24T12:00:00.000Z", "2026-08-25T12:00:00.000Z"]);
     expect(window.next?.toISOString()).toBe("2026-08-26T12:00:00.000Z");
     expect(window.exhausted).toBe(false);
+  });
+
+  it("marks a consolidated window delayed when an earlier occurrence was missed near midnight", () => {
+    const due = [new Date("2026-08-30T00:00:00.000Z"), new Date("2026-08-31T00:00:00.000Z")];
+    const now = new Date("2026-08-31T00:00:30.000Z");
+    expect(scheduleWindowDelayed(due, now)).toBe(true);
+    expect(scheduleWindowDelayed([due[1]], now)).toBe(false);
   });
 
   it("requires version two, bounded recurrence, valid weekdays, and ordered dates", () => {

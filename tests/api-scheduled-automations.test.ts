@@ -54,7 +54,7 @@ describeApi("Scheduled automation authenticated journey", () => {
   });
 
   it("consolidates missed run-once occurrences, claims concurrently, and creates one keyed follow-up", async () => {
-    const now = new Date(); now.setUTCSeconds(30, 0);
+    const now = new Date(); now.setUTCHours(0, 0, 30, 0);
     const firstDue = new Date(`${dateKey(shift(now, -2))}T00:00:00.000Z`);
     await pool.query(`UPDATE "workflow_automations" SET "schedule_next_run_at" = $2, "schedule_claimed_at" = NULL WHERE "id" = $1`, [runOnceId, firstDue]);
     const results = await Promise.all([processScheduledAutomation(runOnceId, now), processScheduledAutomation(runOnceId, now)]);
@@ -73,7 +73,7 @@ describeApi("Scheduled automation authenticated journey", () => {
   });
 
   it("records a skip policy without mutating Missions and advances to the next future occurrence", async () => {
-    const now = new Date(); now.setUTCSeconds(30, 0);
+    const now = new Date(); now.setUTCHours(0, 0, 30, 0);
     const definition = { version: 2, trigger: { type: "schedule", questId: anchorId, timeZone: "UTC", localTime: "00:00", cadence: "daily", weekdays: [], startDate: dateKey(shift(now, -2)), endDate: null, maxOccurrences: 5, missedRunPolicy: "skip" }, conditions: {}, actions: [{ type: "schedule_follow_up", title: "Should not be created", description: "", category: "operations", delayDays: 1 }], stopOnError: true };
     const created = await request("POST", "/api/automations", { name: "Skip missed reviews", description: "", definition }, cookie);
     expect(created.status).toBe(201); skipId = created.data.automation.id;
@@ -88,7 +88,7 @@ describeApi("Scheduled automation authenticated journey", () => {
     const run = (await pool.query(`SELECT * FROM "workflow_automation_runs" WHERE "automation_id" = $1`, [skipId])).rows[0];
     expect(run).toMatchObject({ status: "skipped", error_code: "MISSED_RUN_SKIPPED" });
     expect(run.trigger_context.missedOccurrences).toBe(automation.schedule_occurrences_run);
-    expect(run.trigger_context).toMatchObject({ missedRunPolicy: "skip" });
+    expect(run.trigger_context).toMatchObject({ missedRunPolicy: "skip", delayed: true });
     expect((await pool.query(`SELECT count(*)::int AS count FROM "quests" WHERE "user_id" = $1 AND "title" = 'Should not be created'`, [userId])).rows[0].count).toBe(0);
   });
 
