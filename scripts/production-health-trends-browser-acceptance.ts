@@ -171,10 +171,15 @@ async function scrollToTrendWorkbench(page: Page): Promise<void> {
   for (let attempt = 0; attempt < 30; attempt += 1) {
     const heading = await page.$("#health-trends-heading");
     if (heading) { await heading.evaluate((element) => element.scrollIntoView({ block: "center" })); return; }
-    await page.evaluate(() => window.scrollBy(0, Math.max(600, window.innerHeight * 0.85)));
-    await new Promise((resolve) => setTimeout(resolve, 350));
+    const targeted = await page.evaluate(() => {
+      const target = document.querySelector<HTMLElement>("#health-section-trends")
+        || [...document.querySelectorAll<HTMLElement>(".scroll-mt-6")][16];
+      target?.scrollIntoView({ block: "center" });
+      return Boolean(target);
+    });
+    assert(targeted, "The Health trends deferred-section anchor is missing.");
+    await new Promise((resolve) => setTimeout(resolve, 500));
   }
-  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
   await page.waitForSelector("#health-trends-heading", { visible: true, timeout: 30_000 });
 }
 

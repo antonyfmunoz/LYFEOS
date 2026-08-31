@@ -210,7 +210,7 @@ export default function HealthDetailPage() {
 
       <DeferredHealthSection label="health metrics" targetId="health-section-metrics"><HealthMetricsLedger /></DeferredHealthSection>
 
-      <DeferredHealthSection label="health trends"><HealthTrendWorkbench /></DeferredHealthSection>
+      <DeferredHealthSection label="health trends" targetId="health-section-trends"><HealthTrendWorkbench /></DeferredHealthSection>
 
       <DeferredHealthSection label="private health-record assistant"><HealthAssistant /></DeferredHealthSection>
 

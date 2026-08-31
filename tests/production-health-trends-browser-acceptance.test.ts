@@ -5,6 +5,7 @@ const script = fs.readFileSync("scripts/production-health-trends-browser-accepta
 const workflow = fs.readFileSync(".github/workflows/production-browser-acceptance.yml", "utf8");
 const packageJson = fs.readFileSync("package.json", "utf8");
 const workbench = fs.readFileSync("client/src/components/health/HealthTrendWorkbench.tsx", "utf8");
+const healthPage = fs.readFileSync("client/src/pages/HealthDetailPage.tsx", "utf8");
 
 describe("production Health trends browser acceptance custody", () => {
   it("binds exact-source desktop/mobile evidence into protected production acceptance", () => {
@@ -44,5 +45,6 @@ describe("production Health trends browser acceptance custody", () => {
     expect(workbench).toContain('aria-label="Trend evidence coverage"');
     expect(workbench).toContain("View accessible trend data table");
     expect(workbench).toContain("View saved-panel data table");
+    expect(healthPage).toContain('targetId="health-section-trends"');
   });
 });
