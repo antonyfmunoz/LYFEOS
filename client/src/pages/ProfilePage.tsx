@@ -66,6 +66,8 @@ import {
   Vibrate,
   Volume2,
   Calendar,
+  ListTodo,
+  HardDrive,
   Link2,
   StickyNote,
   Search,
@@ -107,60 +109,87 @@ const AI_CONTEXT_OPTIONS = [
 ] as const;
 type AIContextPreferenceKey = typeof AI_CONTEXT_OPTIONS[number]["key"];
 
+type GoogleIntegrationService = "calendar" | "tasks" | "drive";
+type GoogleIntegrationServiceStatus = {
+  connected: boolean;
+  configured: boolean;
+  scope: string | null;
+  connectedAt: string | null;
+  status: string | null;
+};
+type GoogleIntegrationStatus = {
+  connected: boolean;
+  configured: boolean;
+  services: Record<GoogleIntegrationService, GoogleIntegrationServiceStatus>;
+  capabilities: Record<GoogleIntegrationService, boolean>;
+};
+const GOOGLE_INTEGRATIONS: Array<{
+  service: GoogleIntegrationService;
+  name: string;
+  description: string;
+  icon: typeof Calendar;
+}> = [
+  { service: "calendar", name: "Google Calendar", description: "Import and update scheduled missions and events.", icon: Calendar },
+  { service: "tasks", name: "Google Tasks", description: "Import active tasks into your LyfeOS missions.", icon: ListTodo },
+  { service: "drive", name: "Google Drive", description: "Sync documents with your private vault.", icon: HardDrive },
+];
+
 function IntegrationsSection({ userId }: { userId?: number }) {
   const { toast } = useToast();
-  const [connectingGoogle, setConnectingGoogle] = useState(false);
-  const [disconnectingGoogle, setDisconnectingGoogle] = useState(false);
+  const [connectingGoogle, setConnectingGoogle] = useState<GoogleIntegrationService | null>(null);
+  const [disconnectingGoogle, setDisconnectingGoogle] = useState<GoogleIntegrationService | null>(null);
 
-  const { data: googleStatus, isLoading: isGoogleLoading } = useQuery<{ connected: boolean; configured: boolean; scope: string | null; capabilities?: { calendar: boolean; tasks: boolean; drive: boolean }; connectedAt: string | null; status: string | null }>({
+  const { data: googleStatus, isLoading: isGoogleLoading } = useQuery<GoogleIntegrationStatus>({
     queryKey: ["/api/google/status"],
     enabled: !!userId,
   });
 
   const [appSearchQuery, setAppSearchQuery] = useState("");
 
-  const connectGoogle = async () => {
-    setConnectingGoogle(true);
+  const connectGoogle = async (service: GoogleIntegrationService) => {
+    setConnectingGoogle(service);
     try {
-      const res = await fetch("/api/google/auth-url", { credentials: "include" });
+      const res = await fetch(`/api/google/${service}/auth-url`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to get auth URL");
       const data = await res.json();
       window.location.href = data.url;
     } catch {
-      toast({ title: "Error", description: "Could not start Google connection.", variant: "destructive" });
-      setConnectingGoogle(false);
+      const integration = GOOGLE_INTEGRATIONS.find((item) => item.service === service)!;
+      toast({ title: "Error", description: `Could not start the ${integration.name} connection.`, variant: "destructive" });
+      setConnectingGoogle(null);
     }
   };
 
-  const disconnectGoogle = async () => {
-    setDisconnectingGoogle(true);
+  const disconnectGoogle = async (service: GoogleIntegrationService) => {
+    setDisconnectingGoogle(service);
     try {
-      const result = await apiRequest<{ retainedMissionCount: number; message: string }>("/api/google/disconnect", { method: "POST" });
-      toast({ title: "Google disconnected", description: result.message });
+      const result = await apiRequest<{ retainedMissionCount: number; message: string }>(`/api/google/${service}/disconnect`, { method: "POST" });
+      const integration = GOOGLE_INTEGRATIONS.find((item) => item.service === service)!;
+      toast({ title: `${integration.name} disconnected`, description: result.message });
       queryClient.invalidateQueries({ queryKey: ["/api/google/status"] });
     } catch {
-      toast({ title: "Error", description: "Could not disconnect Google.", variant: "destructive" });
+      const integration = GOOGLE_INTEGRATIONS.find((item) => item.service === service)!;
+      toast({ title: "Error", description: `Could not disconnect ${integration.name}.`, variant: "destructive" });
     } finally {
-      setDisconnectingGoogle(false);
+      setDisconnectingGoogle(null);
     }
   };
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const googleParam = params.get("google");
+    const service = params.get("service") as GoogleIntegrationService | null;
+    const integration = GOOGLE_INTEGRATIONS.find((item) => item.service === service);
     if (googleParam === "connected") {
-      toast({ title: "Google Connected", description: "Your Google account has been linked successfully." });
+      toast({ title: `${integration?.name || "Google integration"} connected`, description: "Your account has been linked successfully." });
       window.history.replaceState({}, "", window.location.pathname);
       queryClient.invalidateQueries({ queryKey: ["/api/google/status"] });
     } else if (googleParam === "error") {
       const reason = params.get("reason") || "unknown";
-      toast({ title: "Connection Failed", description: `Google connection failed (${reason}). Please try again.`, variant: "destructive" });
+      toast({ title: "Connection failed", description: `${integration?.name || "Google integration"} connection failed (${reason}). Please try again.`, variant: "destructive" });
       window.history.replaceState({}, "", window.location.pathname);
     }
   }, []);
-
-  const isGoogleConnected = googleStatus?.connected ?? false;
-  const isGoogleConfigured = googleStatus?.configured ?? false;
 
   return (
     <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
@@ -182,47 +211,47 @@ function IntegrationsSection({ userId }: { userId?: number }) {
         />
       </div>
       <div className="space-y-2">
-        {"google".includes(appSearchQuery.toLowerCase()) ? (
-        <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors">
-          <div className="flex items-center">
-            <Calendar className="h-4 w-4 text-primary mr-2" />
-            <div>
-              <span className="text-sm">Google</span>
-              {isGoogleConnected && (
-                <p className="text-xs text-primary">
-                  Connected — {([googleStatus?.capabilities?.calendar && "Calendar", googleStatus?.capabilities?.tasks && "Tasks", googleStatus?.capabilities?.drive && "Drive"].filter(Boolean).join(", ") || "no data permissions")}
-                </p>
-              )}
-              {!isGoogleConnected && googleStatus?.status === "revoked" && (
-                <p className="text-xs text-muted-foreground">Disconnected — imported LyfeOS missions retained</p>
+        {GOOGLE_INTEGRATIONS.filter(({ name }) => name.toLowerCase().includes(appSearchQuery.toLowerCase())).map(({ service, name, description, icon: Icon }) => {
+          const status = googleStatus?.services?.[service];
+          const connected = status?.connected ?? false;
+          const configured = status?.configured ?? false;
+          return (
+            <div key={service} className="flex items-center justify-between gap-3 p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors">
+              <div className="flex min-w-0 items-start">
+                <Icon className="h-4 w-4 text-primary mr-2 mt-0.5 shrink-0" />
+                <div className="min-w-0">
+                  <span className="text-sm">{name}</span>
+                  <p className={`text-xs ${connected ? "text-primary" : "text-muted-foreground"}`}>
+                    {connected ? "Connected" : status?.status === "revoked" ? (service === "drive" ? "Disconnected" : "Disconnected — imported LyfeOS missions retained") : description}
+                  </p>
+                </div>
+              </div>
+              {isGoogleLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              ) : connected ? (
+                <button
+                  type="button"
+                  disabled={disconnectingGoogle !== null}
+                  onClick={() => disconnectGoogle(service)}
+                  className="text-xs font-mono px-3 py-1.5 rounded border border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors inline-flex items-center gap-1 disabled:opacity-50"
+                >
+                  {disconnectingGoogle === service ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3" />}
+                  Disconnect
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled={connectingGoogle !== null || !configured}
+                  onClick={() => connectGoogle(service)}
+                  className="text-xs font-mono px-3 py-1.5 rounded border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 transition-colors inline-flex items-center gap-1 disabled:opacity-50"
+                >
+                  {connectingGoogle === service ? <Loader2 className="h-3 w-3 animate-spin" /> : <Globe className="h-3 w-3" />}
+                  {configured ? "Connect" : "Coming soon"}
+                </button>
               )}
             </div>
-          </div>
-          {isGoogleLoading ? (
-            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-          ) : isGoogleConnected ? (
-            <button
-              type="button"
-              disabled={disconnectingGoogle}
-              onClick={disconnectGoogle}
-              className="text-xs font-mono px-3 py-1.5 rounded border border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors inline-flex items-center gap-1 disabled:opacity-50"
-            >
-              {disconnectingGoogle ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3" />}
-              Disconnect
-            </button>
-          ) : (
-            <button
-              type="button"
-              disabled={connectingGoogle || !isGoogleConfigured}
-              onClick={connectGoogle}
-              className="text-xs font-mono px-3 py-1.5 rounded border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 transition-colors inline-flex items-center gap-1 disabled:opacity-50"
-            >
-              {connectingGoogle ? <Loader2 className="h-3 w-3 animate-spin" /> : <Globe className="h-3 w-3" />}
-              {isGoogleConfigured ? "Connect" : "Coming soon"}
-            </button>
-          )}
-        </div>
-        ) : null}
+          );
+        })}
 
         {PLACEHOLDER_PROVIDERS.filter(({ name }) => name.toLowerCase().includes(appSearchQuery.toLowerCase())).map(({ provider, name, icon: Icon }) => {
           return (

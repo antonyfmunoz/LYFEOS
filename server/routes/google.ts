@@ -16,15 +16,25 @@ declare module "express-session" {
     googleOAuthState?: string;
     googleOAuthUserId?: number;
     googleOAuthStartedAt?: number;
+    googleOAuthService?: GoogleService;
   }
 }
 
-const GOOGLE_CALENDAR_SCOPE = "https://www.googleapis.com/auth/calendar";
+const GOOGLE_CALENDAR_SCOPE = "https://www.googleapis.com/auth/calendar.events";
 const GOOGLE_TASKS_SCOPE = "https://www.googleapis.com/auth/tasks.readonly";
 const GOOGLE_DRIVE_SCOPE = "https://www.googleapis.com/auth/drive";
-const SCOPES = [GOOGLE_CALENDAR_SCOPE, GOOGLE_TASKS_SCOPE, GOOGLE_DRIVE_SCOPE];
-const requestedGoogleScopes = new Set(SCOPES);
+const GOOGLE_SERVICES = ["calendar", "tasks", "drive"] as const;
+type GoogleService = typeof GOOGLE_SERVICES[number];
+const GOOGLE_SERVICE_CONFIG = {
+  calendar: { provider: "google_calendar", providerName: "Google Calendar", scope: GOOGLE_CALENDAR_SCOPE, envPrefix: "GOOGLE_CALENDAR" },
+  tasks: { provider: "google_tasks", providerName: "Google Tasks", scope: GOOGLE_TASKS_SCOPE, envPrefix: "GOOGLE_TASKS" },
+  drive: { provider: "google_drive", providerName: "Google Drive", scope: GOOGLE_DRIVE_SCOPE, envPrefix: "GOOGLE_DRIVE" },
+} as const satisfies Record<GoogleService, { provider: string; providerName: string; scope: string; envPrefix: string }>;
 const googleOAuthStateLifetimeMs = 10 * 60 * 1_000;
+
+function parseGoogleService(value: unknown): GoogleService | null {
+  return typeof value === "string" && (GOOGLE_SERVICES as readonly string[]).includes(value) ? value as GoogleService : null;
+}
 
 function googleStateMatches(received: unknown, expected: unknown): boolean {
   if (typeof received !== "string" || typeof expected !== "string") return false;
@@ -33,11 +43,12 @@ function googleStateMatches(received: unknown, expected: unknown): boolean {
 }
 
 function clearGoogleOAuthSession(req: Request): void {
-  delete req.session.googleOAuthState; delete req.session.googleOAuthUserId; delete req.session.googleOAuthStartedAt;
+  delete req.session.googleOAuthState; delete req.session.googleOAuthUserId; delete req.session.googleOAuthStartedAt; delete req.session.googleOAuthService;
 }
 
-function allowedGoogleScopes(scopes: Iterable<string>): string[] {
-  return Array.from(new Set(Array.from(scopes).filter((scope) => requestedGoogleScopes.has(scope)))).sort();
+function allowedGoogleScopes(service: GoogleService, scopes: Iterable<string>): string[] {
+  const requiredScope = GOOGLE_SERVICE_CONFIG[service].scope;
+  return Array.from(new Set(Array.from(scopes).filter((scope) => scope === requiredScope))).sort();
 }
 
 function googleProviderStatus(error: unknown): number | undefined {
@@ -54,45 +65,53 @@ function logGoogleFailure(operation: string, error: unknown, userId?: number): v
   });
 }
 
-function isGoogleOAuthConfigured(): boolean {
-  if (!process.env.GOOGLE_OAUTH_CLIENT_ID || !process.env.GOOGLE_OAUTH_CLIENT_SECRET) return false;
+function googleOAuthEnvironment(service: GoogleService, suffix: "CLIENT_ID" | "CLIENT_SECRET" | "REDIRECT_URI"): string | undefined {
+  const serviceValue = process.env[`${GOOGLE_SERVICE_CONFIG[service].envPrefix}_OAUTH_${suffix}`];
+  if (serviceValue) return serviceValue;
+  return process.env.NODE_ENV === "production" ? undefined : process.env[`GOOGLE_OAUTH_${suffix}`];
+}
+
+function isGoogleOAuthConfigured(service: GoogleService): boolean {
+  if (!googleOAuthEnvironment(service, "CLIENT_ID") || !googleOAuthEnvironment(service, "CLIENT_SECRET")) return false;
   try {
     configuredIntegrationCredentialKey();
-    const redirect = new URL(getRedirectUri());
-    if (process.env.NODE_ENV === "production" && (redirect.protocol !== "https:" || !process.env.GOOGLE_OAUTH_REDIRECT_URI)) return false;
+    const redirect = new URL(getRedirectUri(service));
+    if (process.env.NODE_ENV === "production" && (redirect.protocol !== "https:" || !googleOAuthEnvironment(service, "REDIRECT_URI"))) return false;
     return true;
   } catch {
     return false;
   }
 }
 
-function getRedirectUri(): string {
-  if (process.env.GOOGLE_OAUTH_REDIRECT_URI) return process.env.GOOGLE_OAUTH_REDIRECT_URI;
-  if (process.env.REPLIT_DOMAINS) return `https://${process.env.REPLIT_DOMAINS.split(",")[0]}/api/google/callback`;
-  return "http://localhost:5000/api/google/callback";
+function getRedirectUri(service: GoogleService): string {
+  const configured = googleOAuthEnvironment(service, "REDIRECT_URI");
+  if (configured) return configured;
+  if (process.env.REPLIT_DOMAINS) return `https://${process.env.REPLIT_DOMAINS.split(",")[0]}/api/google/${service}/callback`;
+  return `http://localhost:5000/api/google/${service}/callback`;
 }
 
-function getOAuth2Client() {
+function getOAuth2Client(service: GoogleService) {
   return new google.auth.OAuth2(
-    process.env.GOOGLE_OAUTH_CLIENT_ID,
-    process.env.GOOGLE_OAUTH_CLIENT_SECRET,
-    getRedirectUri(),
+    googleOAuthEnvironment(service, "CLIENT_ID"),
+    googleOAuthEnvironment(service, "CLIENT_SECRET"),
+    getRedirectUri(service),
   );
 }
 
-async function getAuthenticatedClient(userId: number) {
+async function getAuthenticatedClient(userId: number, service: GoogleService) {
   const integrations = await storage.getUserIntegrations(userId);
-  const googleIntegration = integrations.find(
-    (i) => i.provider === "google" && i.status === "active"
-  );
+  const config = GOOGLE_SERVICE_CONFIG[service];
+  const googleIntegration = integrations.find((i) => i.provider === config.provider && i.status === "active")
+    || integrations.find((i) => i.provider === "google" && i.status === "active" && (i.scope || "").split(/\s+/).includes(config.scope));
 
   if (!googleIntegration) {
     return null;
   }
-  const credential = await readIntegrationCredential({ userId, integrationId: googleIntegration.id, provider: "google" });
+  const credentialProvider = googleIntegration.provider;
+  const credential = await readIntegrationCredential({ userId, integrationId: googleIntegration.id, provider: credentialProvider });
   if (!credential?.accessToken) return null;
 
-  const oauth2Client = getOAuth2Client();
+  const oauth2Client = getOAuth2Client(service);
   oauth2Client.setCredentials({
     access_token: credential.accessToken,
     refresh_token: credential.refreshToken,
@@ -102,14 +121,14 @@ async function getAuthenticatedClient(userId: number) {
   oauth2Client.on("tokens", async (tokens) => {
     try {
       if (!tokens.access_token && !tokens.refresh_token && !tokens.expiry_date) return;
-      const current = await readIntegrationCredential({ userId, integrationId: googleIntegration.id, provider: "google" });
+      const current = await readIntegrationCredential({ userId, integrationId: googleIntegration.id, provider: credentialProvider });
       if (!current) return;
-      await writeIntegrationCredential({ userId, integrationId: googleIntegration.id, provider: "google" }, {
+      await writeIntegrationCredential({ userId, integrationId: googleIntegration.id, provider: credentialProvider }, {
         accessToken: tokens.access_token || current.accessToken,
         refreshToken: tokens.refresh_token || current.refreshToken || null,
         expiresAt: tokens.expiry_date ? new Date(tokens.expiry_date).toISOString() : current.expiresAt || null,
         tokenType: tokens.token_type || current.tokenType || "Bearer",
-        grantedScopes: tokens.scope ? allowedGoogleScopes(tokens.scope.split(/\s+/).filter(Boolean)) : current.grantedScopes,
+        grantedScopes: tokens.scope ? allowedGoogleScopes(service, tokens.scope.split(/\s+/).filter(Boolean)) : current.grantedScopes,
       });
     } catch (error) {
       logger.error("Failed to persist refreshed Google credential", { userId, integrationId: googleIntegration.id, errorType: error instanceof Error ? error.name : "unknown" });
@@ -119,11 +138,11 @@ async function getAuthenticatedClient(userId: number) {
   return { oauth2Client, integration: googleIntegration, grantedScopes: new Set(credential.grantedScopes) };
 }
 
-async function resolveGoogleGrantedScopes(oauth2Client: ReturnType<typeof getOAuth2Client>, accessToken: string, reportedScope?: string | null): Promise<string[]> {
+async function resolveGoogleGrantedScopes(service: GoogleService, oauth2Client: ReturnType<typeof getOAuth2Client>, accessToken: string, reportedScope?: string | null): Promise<string[]> {
   const reported = reportedScope?.split(/\s+/).filter(Boolean) || [];
   const providerScopes = reported.length > 0 ? reported : (await oauth2Client.getTokenInfo(accessToken)).scopes;
-  const allowed = allowedGoogleScopes(providerScopes);
-  if (allowed.length === 0) throw new Error("Google did not grant any requested scopes.");
+  const allowed = allowedGoogleScopes(service, providerScopes);
+  if (!allowed.includes(GOOGLE_SERVICE_CONFIG[service].scope)) throw new Error(`Google did not grant the required ${service} scope.`);
   return allowed;
 }
 
@@ -156,71 +175,76 @@ async function fetchGoogleTasksSnapshot(oauth2Client: ReturnType<typeof getOAuth
 }
 
 export function registerGoogleRoutes(app: Express): void {
-  app.get("/api/google/auth-url", isAuthenticated, (req: Request, res: Response) => {
-    if (!isGoogleOAuthConfigured()) {
-      return res.status(503).json({ error: "Google integration is not configured for this environment." });
+  app.get("/api/google/:service/auth-url", isAuthenticated, (req: Request, res: Response) => {
+    const service = parseGoogleService(req.params.service);
+    if (!service) return res.status(404).json({ error: "Unknown Google integration." });
+    if (!isGoogleOAuthConfigured(service)) {
+      return res.status(503).json({ error: `${GOOGLE_SERVICE_CONFIG[service].providerName} is not configured for this environment.` });
     }
     try {
-      const oauth2Client = getOAuth2Client();
+      const oauth2Client = getOAuth2Client(service);
       const state = crypto.randomUUID();
       req.session.googleOAuthState = state;
       req.session.googleOAuthUserId = req.session.userId;
       req.session.googleOAuthStartedAt = Date.now();
+      req.session.googleOAuthService = service;
 
       const authUrl = oauth2Client.generateAuthUrl({
         access_type: "offline",
-        scope: SCOPES,
+        scope: [GOOGLE_SERVICE_CONFIG[service].scope],
         state,
         prompt: "consent",
       });
 
       return res.json({ url: authUrl });
     } catch (error) {
-      logger.error("Error generating Google auth URL", { userId: req.session.userId, errorType: error instanceof Error ? error.name : "unknown" });
+      logger.error("Error generating Google auth URL", { userId: req.session.userId, service, errorType: error instanceof Error ? error.name : "unknown" });
       return res.status(500).json({ error: "Failed to generate auth URL" });
     }
   });
 
-  app.get("/api/google/callback", isAuthenticated, async (req: Request, res: Response) => {
+  const completeGoogleOAuth = async (req: Request, res: Response) => {
+    const service = parseGoogleService(req.params.service) || req.session.googleOAuthService || null;
     try {
       const { code, state, error: providerError } = req.query;
       const startedAt = req.session.googleOAuthStartedAt;
 
-      if (providerError || !code || typeof code !== "string") {
+      if (!service || providerError || !code || typeof code !== "string") {
         clearGoogleOAuthSession(req);
-        return res.redirect("/profile?google=error&reason=no_code");
+        return res.redirect(`/profile?google=error&service=${service || "unknown"}&reason=no_code`);
       }
 
-      if (!googleStateMatches(state, req.session.googleOAuthState) || req.session.googleOAuthUserId !== req.session.userId || typeof startedAt !== "number" || Date.now() - startedAt < 0 || Date.now() - startedAt > googleOAuthStateLifetimeMs) {
+      if (!googleStateMatches(state, req.session.googleOAuthState) || req.session.googleOAuthUserId !== req.session.userId || req.session.googleOAuthService !== service || typeof startedAt !== "number" || Date.now() - startedAt < 0 || Date.now() - startedAt > googleOAuthStateLifetimeMs) {
         clearGoogleOAuthSession(req);
-        return res.redirect("/profile?google=error&reason=session_mismatch");
+        return res.redirect(`/profile?google=error&service=${service}&reason=session_mismatch`);
       }
       const userId = req.session.userId!;
       clearGoogleOAuthSession(req);
 
-      const oauth2Client = getOAuth2Client();
+      const config = GOOGLE_SERVICE_CONFIG[service];
+      const oauth2Client = getOAuth2Client(service);
       const { tokens } = await oauth2Client.getToken(code);
 
       if (!tokens.access_token) throw new Error("Google did not return an access token.");
-      const grantedScopes = await resolveGoogleGrantedScopes(oauth2Client, tokens.access_token, tokens.scope);
+      const grantedScopes = await resolveGoogleGrantedScopes(service, oauth2Client, tokens.access_token, tokens.scope);
       const grantedScope = grantedScopes.join(" ");
       const existingIntegrations = await storage.getUserIntegrations(userId);
-      const existingGoogle = existingIntegrations.find((i) => i.provider === "google");
-      const previousCredential = existingGoogle ? await readIntegrationCredential({ userId, integrationId: existingGoogle.id, provider: "google" }) : null;
+      const existingGoogle = existingIntegrations.find((i) => i.provider === config.provider);
+      const previousCredential = existingGoogle ? await readIntegrationCredential({ userId, integrationId: existingGoogle.id, provider: config.provider }) : null;
       const integration = existingGoogle
         ? await storage.updateIntegration(existingGoogle.id, {
-          accessToken: null, refreshToken: null, tokenExpiry: null, status: "pending", scope: grantedScope, settings: writeGoogleCalendarSyncState(existingGoogle.settings, null),
+          accessToken: null, refreshToken: null, tokenExpiry: null, status: "pending", scope: grantedScope, settings: service === "calendar" ? writeGoogleCalendarSyncState(existingGoogle.settings, null) : existingGoogle.settings as any,
         })
         : await storage.createIntegration({
           userId,
-          provider: "google",
-          providerName: "Google",
+          provider: config.provider,
+          providerName: config.providerName,
           accessToken: null, refreshToken: null, tokenExpiry: null,
           scope: grantedScope,
           status: "pending",
           settings: {},
         });
-      await writeIntegrationCredential({ userId, integrationId: integration.id, provider: "google" }, {
+      await writeIntegrationCredential({ userId, integrationId: integration.id, provider: config.provider }, {
         accessToken: tokens.access_token,
         refreshToken: tokens.refresh_token || previousCredential?.refreshToken || null,
         expiresAt: tokens.expiry_date ? new Date(tokens.expiry_date).toISOString() : null,
@@ -229,17 +253,20 @@ export function registerGoogleRoutes(app: Express): void {
       });
       await storage.updateIntegration(integration.id, { status: "active" });
 
-      return res.redirect("/profile?google=connected");
+      return res.redirect(`/profile?google=connected&service=${service}`);
     } catch (error) {
-      logger.error("Google OAuth callback failed", { userId: req.session.userId, errorType: error instanceof Error ? error.name : "unknown" });
-      return res.redirect("/profile?google=error&reason=token_exchange");
+      logger.error("Google OAuth callback failed", { userId: req.session.userId, service, errorType: error instanceof Error ? error.name : "unknown" });
+      return res.redirect(`/profile?google=error&service=${service || "unknown"}&reason=token_exchange`);
     }
-  });
+  };
+
+  app.get("/api/google/:service/callback", isAuthenticated, completeGoogleOAuth);
+  app.get("/api/google/callback", isAuthenticated, completeGoogleOAuth);
 
   app.get("/api/google/calendar/events", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = req.session.userId as number;
-      const client = await getAuthenticatedClient(userId);
+      const client = await getAuthenticatedClient(userId, "calendar");
 
       if (!client) {
         return res.status(401).json({ error: "Google not connected" });
@@ -291,7 +318,7 @@ export function registerGoogleRoutes(app: Express): void {
     const lockNamespace = 1280922711;
     try {
       const userId = req.session.userId as number;
-      const client = await getAuthenticatedClient(userId);
+      const client = await getAuthenticatedClient(userId, "calendar");
 
       if (!client) {
         return res.status(401).json({ error: "Google not connected" });
@@ -490,7 +517,7 @@ export function registerGoogleRoutes(app: Express): void {
   app.post("/api/google/calendar/push", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = req.session.userId as number;
-      const client = await getAuthenticatedClient(userId);
+      const client = await getAuthenticatedClient(userId, "calendar");
 
       if (!client) {
         return res.status(401).json({ error: "Google not connected" });
@@ -580,7 +607,7 @@ export function registerGoogleRoutes(app: Express): void {
   app.get("/api/google/tasks", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = req.session.userId as number;
-      const client = await getAuthenticatedClient(userId);
+      const client = await getAuthenticatedClient(userId, "tasks");
 
       if (!client) {
         return res.status(401).json({ error: "Google not connected" });
@@ -600,7 +627,7 @@ export function registerGoogleRoutes(app: Express): void {
   app.post("/api/google/tasks/import", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = req.session.userId as number;
-      const client = await getAuthenticatedClient(userId);
+      const client = await getAuthenticatedClient(userId, "tasks");
       if (!client) return res.status(401).json({ error: "Google not connected" });
       if (!hasGoogleScope(client, GOOGLE_TASKS_SCOPE)) return res.status(403).json({ error: "Google Tasks permission was not granted. Reconnect Google to enable this feature." });
       // Re-read tasks from Google at mutation time. Browser-submitted task
@@ -677,48 +704,52 @@ export function registerGoogleRoutes(app: Express): void {
     }
   });
 
-  app.post("/api/google/disconnect", isAuthenticated, async (req: Request, res: Response) => {
+  app.post("/api/google/:service/disconnect", isAuthenticated, async (req: Request, res: Response) => {
+    const service = parseGoogleService(req.params.service);
+    if (!service) return res.status(404).json({ error: "Unknown Google integration." });
     try {
       const userId = req.session.userId as number;
       const integrations = await storage.getUserIntegrations(userId);
-      const googleIntegration = integrations.find((i) => i.provider === "google");
+      const config = GOOGLE_SERVICE_CONFIG[service];
+      const googleIntegration = integrations.find((i) => i.provider === config.provider);
       const retainedMissionCount = (await storage.getQuests(userId)).filter(
-        (quest) => quest.externalSource === "google_calendar" || quest.externalSource === "google_tasks",
+        (quest) => quest.externalSource === `google_${service}`,
       ).length;
       let providerRevocation: "confirmed" | "unconfirmed" | "not_needed" = "not_needed";
 
       if (googleIntegration) {
-        const credential = await readIntegrationCredential({ userId, integrationId: googleIntegration.id, provider: "google" });
+        const credential = await readIntegrationCredential({ userId, integrationId: googleIntegration.id, provider: config.provider });
         if (credential?.accessToken) {
           try {
-            const oauth2Client = getOAuth2Client();
+            const oauth2Client = getOAuth2Client(service);
             await oauth2Client.revokeToken(credential.accessToken);
             providerRevocation = "confirmed";
           } catch (error) {
             providerRevocation = "unconfirmed";
-            logGoogleFailure("Google provider revocation was not confirmed", error, userId);
+            logGoogleFailure(`${config.providerName} provider revocation was not confirmed`, error, userId);
           }
         }
-        await deleteIntegrationCredential({ userId, integrationId: googleIntegration.id, provider: "google" });
+        await deleteIntegrationCredential({ userId, integrationId: googleIntegration.id, provider: config.provider });
         await storage.updateIntegration(googleIntegration.id, {
           status: "revoked",
-          settings: writeGoogleCalendarSyncState(googleIntegration.settings, null),
+          settings: service === "calendar" ? writeGoogleCalendarSyncState(googleIntegration.settings, null) : googleIntegration.settings as any,
         });
       }
 
       return res.json({
         success: true,
+        service,
         providerRevocation,
         retainedMissionCount,
         message: providerRevocation === "unconfirmed"
-          ? "Google was disconnected locally and its stored credential was destroyed, but Google did not confirm remote revocation. Remove LyfeOS from your Google Account permissions to finish revocation."
+          ? `${config.providerName} was disconnected locally and its stored credential was destroyed, but Google did not confirm remote revocation. Remove LyfeOS from your Google Account permissions to finish revocation.`
           : retainedMissionCount > 0
-            ? "Google access was revoked. Imported LyfeOS missions were retained and will not sync until you reconnect."
-            : "Google access was revoked. No imported missions needed to be retained.",
+            ? `${config.providerName} access was revoked. Imported LyfeOS missions were retained and will not sync until you reconnect.`
+            : `${config.providerName} access was revoked.`,
       });
     } catch (error) {
-      logGoogleFailure("Google disconnect failed", error, req.session.userId);
-      return res.status(500).json({ error: "Failed to disconnect Google" });
+      logGoogleFailure(`${GOOGLE_SERVICE_CONFIG[service].providerName} disconnect failed`, error, req.session.userId);
+      return res.status(500).json({ error: `Failed to disconnect ${GOOGLE_SERVICE_CONFIG[service].providerName}` });
     }
   });
 
@@ -726,24 +757,32 @@ export function registerGoogleRoutes(app: Express): void {
     try {
       const userId = req.session.userId as number;
       const integrations = await storage.getUserIntegrations(userId);
-      const googleRecord = integrations.find((i) => i.provider === "google");
-      const googleIntegration = googleRecord?.status === "active" ? googleRecord : undefined;
-      const credential = googleIntegration
-        ? await readIntegrationCredential({ userId, integrationId: googleIntegration.id, provider: "google" })
-        : null;
-      const grantedScopes = new Set(credential?.grantedScopes || []);
+      const services = Object.fromEntries(await Promise.all(GOOGLE_SERVICES.map(async (service) => {
+        const config = GOOGLE_SERVICE_CONFIG[service];
+        const record = integrations.find((integration) => integration.provider === config.provider)
+          || integrations.find((integration) => integration.provider === "google" && (integration.scope || "").split(/\s+/).includes(config.scope));
+        const integration = record?.status === "active" ? record : undefined;
+        const credential = integration
+          ? await readIntegrationCredential({ userId, integrationId: integration.id, provider: integration.provider })
+          : null;
+        return [service, {
+          connected: Boolean(integration && credential?.accessToken && credential.grantedScopes.includes(config.scope)),
+          configured: isGoogleOAuthConfigured(service),
+          scope: credential?.grantedScopes.join(" ") || null,
+          connectedAt: integration?.connectedAt || null,
+          status: record?.status || null,
+        }];
+      })));
 
       return res.json({
-        connected: Boolean(googleIntegration && credential?.accessToken),
-        configured: isGoogleOAuthConfigured(),
-        scope: credential?.grantedScopes.join(" ") || null,
+        connected: GOOGLE_SERVICES.some((service) => services[service].connected),
+        configured: GOOGLE_SERVICES.some((service) => services[service].configured),
+        services,
         capabilities: {
-          calendar: grantedScopes.has(GOOGLE_CALENDAR_SCOPE),
-          tasks: grantedScopes.has(GOOGLE_TASKS_SCOPE),
-          drive: grantedScopes.has(GOOGLE_DRIVE_SCOPE),
+          calendar: services.calendar.connected,
+          tasks: services.tasks.connected,
+          drive: services.drive.connected,
         },
-        connectedAt: googleIntegration?.connectedAt || null,
-        status: googleRecord?.status || null,
       });
     } catch (error) {
       logGoogleFailure("Google status check failed", error, req.session.userId);
@@ -754,7 +793,7 @@ export function registerGoogleRoutes(app: Express): void {
   app.get("/api/google/drive/folders", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = req.session.userId as number;
-      const client = await getAuthenticatedClient(userId);
+      const client = await getAuthenticatedClient(userId, "drive");
       if (!client) {
         return res.status(401).json({ error: "Google not connected" });
       }
@@ -792,7 +831,7 @@ export function registerGoogleRoutes(app: Express): void {
   app.get("/api/google/drive/files", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = req.session.userId as number;
-      const client = await getAuthenticatedClient(userId);
+      const client = await getAuthenticatedClient(userId, "drive");
       if (!client) {
         return res.status(401).json({ error: "Google not connected" });
       }
@@ -838,7 +877,7 @@ export function registerGoogleRoutes(app: Express): void {
   app.post("/api/google/drive/sync", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = req.session.userId as number;
-      const client = await getAuthenticatedClient(userId);
+      const client = await getAuthenticatedClient(userId, "drive");
       if (!client) {
         return res.status(401).json({ error: "Google not connected" });
       }
@@ -1081,7 +1120,7 @@ export function registerGoogleRoutes(app: Express): void {
   app.post("/api/google/drive/push", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = req.session.userId as number;
-      const client = await getAuthenticatedClient(userId);
+      const client = await getAuthenticatedClient(userId, "drive");
       if (!client) {
         return res.status(401).json({ error: "Google not connected" });
       }
@@ -1183,7 +1222,7 @@ export function registerGoogleRoutes(app: Express): void {
         return res.status(400).json({ error: "Cannot push media files to Google Drive as documents" });
       }
 
-      const client = await getAuthenticatedClient(userId);
+      const client = await getAuthenticatedClient(userId, "drive");
       if (!client) {
         return res.status(401).json({ error: "Google not connected" });
       }
