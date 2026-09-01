@@ -15,12 +15,28 @@ import {
   defaultGoogleIntegrationPermissions,
   googleIntegrationApprovalRequired,
   googleIntegrationCapabilityAllowed,
+  googleFutureActionAllowed,
+  normalizeGoogleAccountPermissionPreferences,
   normalizeGoogleIntegrationPermissions,
+  parseGoogleAccountPermissionPreferences,
   parseGoogleIntegrationPermissionPatch,
+  writeGoogleAccountPermissionPreferences,
   writeGoogleIntegrationPermissions,
   type GoogleIntegrationCapability,
   type GoogleIntegrationService,
 } from "@shared/google-integration-permissions";
+import {
+  completeIntegrationActionReceipt,
+  consumeIntegrationApproval,
+  createAuthorizedIntegrationReceipt,
+  createPendingIntegrationApproval,
+  alwaysAllowIntegrationApproval,
+  decideIntegrationApproval,
+  listIntegrationActionReceipts,
+  type IntegrationActionDescriptor,
+  type IntegrationApprovalDecision,
+} from "../integration-action-approvals";
+import { integrationActionFingerprint } from "../integration-action-fingerprint";
 
 declare module "express-session" {
   interface SessionData {
@@ -40,6 +56,18 @@ const GOOGLE_SERVICE_CONFIG = {
   tasks: { provider: "google_tasks", providerName: "Google Tasks", scope: GOOGLE_TASKS_SCOPE, envPrefix: "GOOGLE_TASKS" },
   drive: { provider: "google_drive", providerName: "Google Drive", scope: GOOGLE_DRIVE_SCOPE, envPrefix: "GOOGLE_DRIVE" },
 } as const satisfies Record<GoogleIntegrationService, { provider: string; providerName: string; scope: string; envPrefix: string }>;
+const GOOGLE_ACTIONS = {
+  calendarRead: { key: "google.calendar.read_events", title: "Read Google Calendar", summary: "View Google Calendar event details for LyfeOS planning.", capability: "read", risk: "low", futureAction: false },
+  calendarSync: { key: "google.calendar.sync", title: "Sync Google Calendar", summary: "Import Google Calendar changes into your LyfeOS missions.", capability: "import", risk: "medium", futureAction: false },
+  calendarPush: { key: "google.calendar.push", title: "Change Google Calendar", summary: "Create or update a Google Calendar event from a LyfeOS mission.", capability: "write", risk: "important", futureAction: false },
+  tasksRead: { key: "google.tasks.read", title: "Read Google Tasks", summary: "View active tasks from your connected Google Tasks account.", capability: "read", risk: "low", futureAction: false },
+  tasksImport: { key: "google.tasks.import", title: "Import Google Tasks", summary: "Create LyfeOS missions from active Google Tasks.", capability: "import", risk: "medium", futureAction: false },
+  driveFolders: { key: "google.drive.list_folders", title: "Browse Google Drive folders", summary: "View folder names and structure from your connected Google Drive.", capability: "read", risk: "low", futureAction: false },
+  driveFiles: { key: "google.drive.list_files", title: "Browse Google Drive files", summary: "View supported file names and metadata from your connected Google Drive.", capability: "read", risk: "low", futureAction: false },
+  driveSync: { key: "google.drive.sync", title: "Sync Google Drive", summary: "Import supported Google Drive files into your private LyfeOS vault.", capability: "import", risk: "medium", futureAction: false },
+  drivePush: { key: "google.drive.push", title: "Change Google Drive", summary: "Update changed Drive-linked documents from your LyfeOS vault.", capability: "write", risk: "important", futureAction: false },
+  drivePushDocument: { key: "google.drive.push_document", title: "Change a Google Drive document", summary: "Create or update one Google Drive document from your LyfeOS vault.", capability: "write", risk: "important", futureAction: false },
+} as const satisfies Record<string, IntegrationActionDescriptor>;
 const googleOAuthStateLifetimeMs = 10 * 60 * 1_000;
 
 function parseGoogleService(value: unknown): GoogleIntegrationService | null {
@@ -168,6 +196,11 @@ function hasGoogleCapability(
   return Boolean(client && googleIntegrationCapabilityAllowed(service, client.integration.settings, capability));
 }
 
+async function getGoogleAccountPreferences(userId: number) {
+  const record = await storage.getUserIntegration(userId);
+  return normalizeGoogleAccountPermissionPreferences(record?.otherIntegrations);
+}
+
 function requireGoogleCapability(
   res: Response,
   client: Awaited<ReturnType<typeof getAuthenticatedClient>>,
@@ -184,24 +217,78 @@ function requireGoogleCapability(
   return false;
 }
 
-function requireGoogleActionApproval(
+async function requireGoogleActionApproval(
   req: Request,
   res: Response,
   client: Awaited<ReturnType<typeof getAuthenticatedClient>>,
   service: GoogleIntegrationService,
-  capability: GoogleIntegrationCapability,
-): boolean {
+  descriptor: IntegrationActionDescriptor,
+): Promise<boolean> {
   if (!client) return false;
-  const permissions = normalizeGoogleIntegrationPermissions(service, client.integration.settings);
-  if (!googleIntegrationApprovalRequired(permissions.approvalPolicy, capability)) return true;
-  const approved = req.body?.approvalConfirmed === true || req.header("x-lyfeos-action-approved") === "true";
-  if (approved) return true;
+  const userId = req.session.userId as number;
+  const accountPreferences = await getGoogleAccountPreferences(userId);
+  const permissions = normalizeGoogleIntegrationPermissions(service, client.integration.settings, accountPreferences);
+  if (descriptor.futureAction && !googleFutureActionAllowed(permissions.futureActionPolicy, descriptor.capability)) {
+    res.status(403).json({
+      error: `${GOOGLE_SERVICE_CONFIG[service].providerName} cannot use this newly added action under your future-action setting.`,
+      code: "integration_future_action_disabled",
+      service,
+      capability: descriptor.capability,
+    });
+    return false;
+  }
+  const fingerprint = integrationActionFingerprint({
+    actionKey: descriptor.key,
+    method: req.method,
+    body: req.body,
+    query: req.query,
+  });
+  const receiptInput = {
+    userId,
+    integrationId: client.integration.id,
+    service,
+    descriptor,
+    fingerprint,
+    approvalPolicy: permissions.approvalPolicy,
+  };
+  const suppliedApprovalId = typeof req.body?.approvalId === "string"
+    ? req.body.approvalId
+    : req.header("x-lyfeos-approval-id");
+  let receipt = suppliedApprovalId
+    ? await consumeIntegrationApproval({ ...receiptInput, id: suppliedApprovalId })
+    : null;
+  if (suppliedApprovalId && !receipt) {
+    res.status(409).json({ error: "This app-action approval is invalid, expired, already used, or does not match the request.", code: "integration_action_approval_invalid" });
+    return false;
+  }
+  if (!receipt && !googleIntegrationApprovalRequired(permissions.approvalPolicy, descriptor.risk)) {
+    receipt = await createAuthorizedIntegrationReceipt(receiptInput);
+  }
+  if (receipt) {
+    res.once("finish", () => {
+      void completeIntegrationActionReceipt(receipt!.id, res.statusCode).catch((error) => {
+        logger.error("Failed to complete integration action receipt", { userId, receiptId: receipt!.id, errorType: error instanceof Error ? error.name : "unknown" });
+      });
+    });
+    return true;
+  }
+  const pending = await createPendingIntegrationApproval(receiptInput);
   res.status(428).json({
     error: `${GOOGLE_SERVICE_CONFIG[service].providerName} requires your approval before this action.`,
     code: "integration_action_approval_required",
     service,
-    capability,
+    capability: descriptor.capability,
     approvalPolicy: permissions.approvalPolicy,
+    approvalRequest: {
+      id: pending.id,
+      app: GOOGLE_SERVICE_CONFIG[service].providerName,
+      title: pending.title,
+      summary: pending.summary,
+      capability: pending.capability,
+      risk: pending.risk,
+      expiresAt: pending.expiresAt?.toISOString() || null,
+      choices: ["deny", "allow_once", "always_allow"],
+    },
   });
   return false;
 }
@@ -286,13 +373,14 @@ export function registerGoogleRoutes(app: Express): void {
       const grantedScope = grantedScopes.join(" ");
       const existingIntegrations = await storage.getUserIntegrations(userId);
       const existingGoogle = existingIntegrations.find((i) => i.provider === config.provider);
+      const accountPreferences = await getGoogleAccountPreferences(userId);
       const previousCredential = existingGoogle ? await readIntegrationCredential({ userId, integrationId: existingGoogle.id, provider: config.provider }) : null;
       const permissionSettings = writeGoogleIntegrationPermissions(
         service === "calendar" && existingGoogle ? writeGoogleCalendarSyncState(existingGoogle.settings, null) : existingGoogle?.settings,
         service,
         existingGoogle
-          ? normalizeGoogleIntegrationPermissions(service, existingGoogle.settings)
-          : defaultGoogleIntegrationPermissions(service),
+          ? normalizeGoogleIntegrationPermissions(service, existingGoogle.settings, accountPreferences)
+          : defaultGoogleIntegrationPermissions(service, accountPreferences),
       );
       const integration = existingGoogle
         ? await storage.updateIntegration(existingGoogle.id, {
@@ -336,7 +424,7 @@ export function registerGoogleRoutes(app: Express): void {
       }
       if (!hasGoogleScope(client, GOOGLE_CALENDAR_SCOPE)) return res.status(403).json({ error: "Google Calendar permission was not granted. Reconnect Google to enable this feature." });
       if (!requireGoogleCapability(res, client, "calendar", "read")) return;
-      if (!requireGoogleActionApproval(req, res, client, "calendar", "read")) return;
+      if (!await requireGoogleActionApproval(req, res, client, "calendar", GOOGLE_ACTIONS.calendarRead)) return;
 
       const calendar = google.calendar({ version: "v3", auth: client.oauth2Client });
 
@@ -390,7 +478,7 @@ export function registerGoogleRoutes(app: Express): void {
       }
       if (!hasGoogleScope(client, GOOGLE_CALENDAR_SCOPE)) return res.status(403).json({ error: "Google Calendar permission was not granted. Reconnect Google to enable this feature." });
       if (!requireGoogleCapability(res, client, "calendar", "read") || !requireGoogleCapability(res, client, "calendar", "import")) return;
-      if (!requireGoogleActionApproval(req, res, client, "calendar", "import")) return;
+      if (!await requireGoogleActionApproval(req, res, client, "calendar", GOOGLE_ACTIONS.calendarSync)) return;
 
       lockClient = await pool.connect();
       lockedUserId = userId;
@@ -591,7 +679,7 @@ export function registerGoogleRoutes(app: Express): void {
       }
       if (!hasGoogleScope(client, GOOGLE_CALENDAR_SCOPE)) return res.status(403).json({ error: "Google Calendar permission was not granted. Reconnect Google to enable this feature." });
       if (!requireGoogleCapability(res, client, "calendar", "write")) return;
-      if (!requireGoogleActionApproval(req, res, client, "calendar", "write")) return;
+      if (!await requireGoogleActionApproval(req, res, client, "calendar", GOOGLE_ACTIONS.calendarPush)) return;
 
       const { missionId } = req.body;
       if (!missionId) {
@@ -683,7 +771,7 @@ export function registerGoogleRoutes(app: Express): void {
       }
       if (!hasGoogleScope(client, GOOGLE_TASKS_SCOPE)) return res.status(403).json({ error: "Google Tasks permission was not granted. Reconnect Google to enable this feature." });
       if (!requireGoogleCapability(res, client, "tasks", "read")) return;
-      if (!requireGoogleActionApproval(req, res, client, "tasks", "read")) return;
+      if (!await requireGoogleActionApproval(req, res, client, "tasks", GOOGLE_ACTIONS.tasksRead)) return;
 
       return res.json({ tasks: await fetchGoogleTasksSnapshot(client.oauth2Client) });
     } catch (error: any) {
@@ -702,7 +790,7 @@ export function registerGoogleRoutes(app: Express): void {
       if (!client) return res.status(401).json({ error: "Google not connected" });
       if (!hasGoogleScope(client, GOOGLE_TASKS_SCOPE)) return res.status(403).json({ error: "Google Tasks permission was not granted. Reconnect Google to enable this feature." });
       if (!requireGoogleCapability(res, client, "tasks", "read") || !requireGoogleCapability(res, client, "tasks", "import")) return;
-      if (!requireGoogleActionApproval(req, res, client, "tasks", "import")) return;
+      if (!await requireGoogleActionApproval(req, res, client, "tasks", GOOGLE_ACTIONS.tasksImport)) return;
       // Re-read tasks from Google at mutation time. Browser-submitted task
       // bodies are deliberately ignored so provider provenance cannot be forged.
       const tasksToImport = await fetchGoogleTasksSnapshot(client.oauth2Client);
@@ -777,6 +865,56 @@ export function registerGoogleRoutes(app: Express): void {
     }
   });
 
+  app.patch("/api/google/preferences", isAuthenticated, async (req: Request, res: Response) => {
+    const parsed = parseGoogleAccountPermissionPreferences(req.body);
+    if (!parsed) return res.status(400).json({ error: "Choose valid account-level app permission settings." });
+    try {
+      const userId = req.session.userId as number;
+      const existing = await storage.getUserIntegration(userId);
+      const otherIntegrations = writeGoogleAccountPermissionPreferences(existing?.otherIntegrations, parsed);
+      if (existing) await storage.updateUserIntegration(userId, { otherIntegrations });
+      else await storage.createUserIntegration({ userId, appleHealthConnected: false, googleCalendarConnected: false, notionConnected: false, otherIntegrations });
+      logger.info("Google account permission preferences updated", { userId, defaultApprovalPolicy: parsed.defaultApprovalPolicy, futureActionPolicy: parsed.futureActionPolicy });
+      return res.json({ preferences: parsed });
+    } catch (error) {
+      logGoogleFailure("Google account permission preference update failed", error, req.session.userId);
+      return res.status(500).json({ error: "Failed to update account app permissions." });
+    }
+  });
+
+  app.patch("/api/google/approvals/:id", isAuthenticated, async (req: Request, res: Response) => {
+    const decision = req.body?.decision as IntegrationApprovalDecision | undefined;
+    if (!decision || !(["allow_once", "always_allow", "deny"] as const).includes(decision)) {
+      return res.status(400).json({ error: "Choose Allow once, Always allow, or Deny." });
+    }
+    try {
+      const userId = req.session.userId as number;
+      const receipt = decision === "always_allow"
+        ? await alwaysAllowIntegrationApproval({ id: req.params.id, userId })
+        : await decideIntegrationApproval({ id: req.params.id, userId, decision });
+      if (!receipt) return res.status(409).json({ error: "This approval request expired or was already decided.", code: "integration_action_approval_unavailable" });
+
+      logger.info("Integration action approval decided", { userId, receiptId: receipt.id, service: receipt.service, actionKey: receipt.actionKey, decision });
+      return res.json({ approval: { id: receipt.id, state: receipt.state, decision, service: receipt.service }, permissionsChanged: decision === "always_allow" });
+    } catch (error) {
+      logGoogleFailure("Integration action approval decision failed", error, req.session.userId);
+      return res.status(500).json({ error: "Failed to record your app-action decision." });
+    }
+  });
+
+  app.get("/api/google/action-receipts", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const receipts = await listIntegrationActionReceipts(req.session.userId as number, Number(req.query.limit) || 20);
+      return res.json({ receipts: receipts.map(({ id, service, actionKey, capability, risk, title, summary, state, approvalPolicy, decision, createdAt, completedAt, httpStatus }) => ({
+        id, service, actionKey, capability, risk, title, summary, state, approvalPolicy, decision,
+        createdAt: createdAt.toISOString(), completedAt: completedAt?.toISOString() || null, httpStatus,
+      })) });
+    } catch (error) {
+      logGoogleFailure("Integration action receipt listing failed", error, req.session.userId);
+      return res.status(500).json({ error: "Failed to load connected-app activity." });
+    }
+  });
+
   app.patch("/api/google/:service/permissions", isAuthenticated, async (req: Request, res: Response) => {
     const service = parseGoogleService(req.params.service);
     if (!service) return res.status(404).json({ error: "Unknown Google integration." });
@@ -790,10 +928,11 @@ export function registerGoogleRoutes(app: Express): void {
       const integration = integrations.find((item) => item.provider === config.provider && item.status === "active");
       if (!integration) return res.status(409).json({ error: `Connect ${config.providerName} before changing its LyfeOS permissions.` });
 
+      const accountPreferences = await getGoogleAccountPreferences(userId);
       const updated = await storage.updateIntegration(integration.id, {
         settings: writeGoogleIntegrationPermissions(integration.settings, service, parsed),
       });
-      const permissions = normalizeGoogleIntegrationPermissions(service, updated.settings);
+      const permissions = normalizeGoogleIntegrationPermissions(service, updated.settings, accountPreferences);
       logger.info("Google integration permissions updated", {
         userId,
         service,
@@ -860,6 +999,7 @@ export function registerGoogleRoutes(app: Express): void {
     try {
       const userId = req.session.userId as number;
       const integrations = await storage.getUserIntegrations(userId);
+      const preferences = await getGoogleAccountPreferences(userId);
       const services = Object.fromEntries(await Promise.all(GOOGLE_SERVICES.map(async (service) => {
         const config = GOOGLE_SERVICE_CONFIG[service];
         const record = integrations.find((integration) => integration.provider === config.provider)
@@ -874,13 +1014,14 @@ export function registerGoogleRoutes(app: Express): void {
           scope: credential?.grantedScopes.join(" ") || null,
           connectedAt: integration?.connectedAt || null,
           status: record?.status || null,
-          permissions: normalizeGoogleIntegrationPermissions(service, record?.settings),
+          permissions: normalizeGoogleIntegrationPermissions(service, record?.settings, preferences),
         }];
       })));
 
       return res.json({
         connected: GOOGLE_SERVICES.some((service) => services[service].connected),
         configured: GOOGLE_SERVICES.some((service) => services[service].configured),
+        preferences,
         services,
         capabilities: {
           calendar: services.calendar.connected,
@@ -903,7 +1044,7 @@ export function registerGoogleRoutes(app: Express): void {
       }
       if (!hasGoogleScope(client, GOOGLE_DRIVE_SCOPE)) return res.status(403).json({ error: "Google Drive permission was not granted. Reconnect Google to enable this feature." });
       if (!requireGoogleCapability(res, client, "drive", "read")) return;
-      if (!requireGoogleActionApproval(req, res, client, "drive", "read")) return;
+      if (!await requireGoogleActionApproval(req, res, client, "drive", GOOGLE_ACTIONS.driveFolders)) return;
 
       const drive = google.drive({ version: "v3", auth: client.oauth2Client });
       const parentId = (req.query.parentId as string) || "root";
@@ -943,7 +1084,7 @@ export function registerGoogleRoutes(app: Express): void {
       }
       if (!hasGoogleScope(client, GOOGLE_DRIVE_SCOPE)) return res.status(403).json({ error: "Google Drive permission was not granted. Reconnect Google to enable this feature." });
       if (!requireGoogleCapability(res, client, "drive", "read")) return;
-      if (!requireGoogleActionApproval(req, res, client, "drive", "read")) return;
+      if (!await requireGoogleActionApproval(req, res, client, "drive", GOOGLE_ACTIONS.driveFiles)) return;
 
       const drive = google.drive({ version: "v3", auth: client.oauth2Client });
       const pageToken = req.query.pageToken as string | undefined;
@@ -991,7 +1132,7 @@ export function registerGoogleRoutes(app: Express): void {
       }
       if (!hasGoogleScope(client, GOOGLE_DRIVE_SCOPE)) return res.status(403).json({ error: "Google Drive permission was not granted. Reconnect Google to enable this feature." });
       if (!requireGoogleCapability(res, client, "drive", "read") || !requireGoogleCapability(res, client, "drive", "import")) return;
-      if (!requireGoogleActionApproval(req, res, client, "drive", "import")) return;
+      if (!await requireGoogleActionApproval(req, res, client, "drive", GOOGLE_ACTIONS.driveSync)) return;
 
       const drive = google.drive({ version: "v3", auth: client.oauth2Client });
 
@@ -1236,7 +1377,7 @@ export function registerGoogleRoutes(app: Express): void {
       }
       if (!hasGoogleScope(client, GOOGLE_DRIVE_SCOPE)) return res.status(403).json({ error: "Google Drive permission was not granted. Reconnect Google to enable this feature." });
       if (!requireGoogleCapability(res, client, "drive", "write")) return;
-      if (!requireGoogleActionApproval(req, res, client, "drive", "write")) return;
+      if (!await requireGoogleActionApproval(req, res, client, "drive", GOOGLE_ACTIONS.drivePush)) return;
 
       const drive = google.drive({ version: "v3", auth: client.oauth2Client });
       const allDocs = await storage.getDocuments(userId);
@@ -1340,7 +1481,7 @@ export function registerGoogleRoutes(app: Express): void {
       }
       if (!hasGoogleScope(client, GOOGLE_DRIVE_SCOPE)) return res.status(403).json({ error: "Google Drive permission was not granted. Reconnect Google to enable this feature." });
       if (!requireGoogleCapability(res, client, "drive", "write")) return;
-      if (!requireGoogleActionApproval(req, res, client, "drive", "write")) return;
+      if (!await requireGoogleActionApproval(req, res, client, "drive", GOOGLE_ACTIONS.drivePushDocument)) return;
 
       const drive = google.drive({ version: "v3", auth: client.oauth2Client });
 

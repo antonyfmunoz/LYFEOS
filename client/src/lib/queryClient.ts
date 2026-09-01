@@ -12,10 +12,23 @@ export function timeContextHeaders(): Record<string, string> {
   return { "x-lyfeos-time-zone": getBrowserTimeZone(), "x-lyfeos-utc-offset-minutes": String(-new Date().getTimezoneOffset()) };
 }
 
+export class ApiResponseError extends Error {
+  constructor(
+    public readonly status: number,
+    public readonly payload: unknown,
+    responseText: string,
+  ) {
+    super(`${status}: ${responseText || "Request failed"}`);
+    this.name = "ApiResponseError";
+  }
+}
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
-    throw new Error(`${res.status}: ${text}`);
+    let payload: unknown = null;
+    try { payload = JSON.parse(text); } catch { payload = { error: text }; }
+    throw new ApiResponseError(res.status, payload, text);
   }
 }
 

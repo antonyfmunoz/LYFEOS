@@ -17,6 +17,9 @@ describe("independent Google productivity integrations", () => {
     expect(google).toContain('app.get("/api/google/:service/auth-url"');
     expect(google).toContain('app.post("/api/google/:service/disconnect"');
     expect(google).toContain('app.patch("/api/google/:service/permissions"');
+    expect(google).toContain('app.patch("/api/google/preferences"');
+    expect(google).toContain('app.patch("/api/google/approvals/:id"');
+    expect(google).toContain('app.get("/api/google/action-receipts"');
     expect(google).toContain("requireGoogleCapability");
     expect(google).toContain("requireGoogleActionApproval");
     expect(google).not.toContain("scope: SCOPES");
@@ -43,7 +46,31 @@ describe("independent Google productivity integrations", () => {
     expect(profile).toContain("Manage permissions");
     expect(profile).toContain("Full authority");
     expect(profile).toContain("Action approval");
+    expect(profile).toContain("Account-wide defaults");
+    expect(profile).toContain("New actions added later");
+    expect(profile).toContain("Recent connected-app activity");
     expect(profile).not.toContain("<span className=\"text-sm\">Google</span>");
+  });
+
+  it("uses request-bound approval cards instead of client-side confirmation shortcuts", () => {
+    const provider = source("client/src/components/IntegrationActionApprovalProvider.tsx");
+    const quests = source("client/src/pages/QuestsPage.tsx");
+    const vault = source("client/src/pages/DocumentVaultPage.tsx");
+    const approvals = source("server/integration-action-approvals.ts");
+    const migration = source("migrations/0144_integration_action_governance.sql");
+    const release = source("server/release-migrate.ts");
+
+    expect(provider).toContain("Allow once");
+    expect(provider).toContain("Always allow");
+    expect(provider).toContain("IntegrationActionDeniedError");
+    expect(quests).not.toContain("approvalConfirmed");
+    expect(vault).not.toContain("approvalConfirmed");
+    expect(approvals).toContain("request_fingerprint = $6");
+    expect(approvals).toContain("state = 'approved'");
+    expect(approvals).toContain("FOR UPDATE");
+    expect(approvals).toContain("approvalPolicyOverride: \"never\"");
+    expect(migration).toContain('CREATE TABLE IF NOT EXISTS "integration_action_receipts"');
+    expect(release).toContain('id: "0144_integration_action_governance"');
   });
 
   it("documents distinct production credentials and callbacks", () => {

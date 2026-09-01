@@ -1683,6 +1683,34 @@ export const integrations = pgTable("integrations", {
   settings: jsonb("settings").default({}), // Provider-specific settings
 });
 
+// Durable, metadata-only authorization receipts for connected-app actions.
+// The request body is fingerprinted rather than stored so an approval can be
+// bound to one exact operation without duplicating private provider data.
+export const integrationActionReceipts = pgTable("integration_action_receipts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  integrationId: integer("integration_id").references(() => integrations.id, { onDelete: "set null" }),
+  service: text("service").notNull(),
+  actionKey: text("action_key").notNull(),
+  capability: text("capability").notNull(),
+  risk: text("risk").notNull(),
+  requestFingerprint: varchar("request_fingerprint", { length: 64 }).notNull(),
+  title: text("title").notNull(),
+  summary: text("summary").notNull(),
+  state: text("state").notNull().default("pending"),
+  approvalPolicy: text("approval_policy").notNull(),
+  decision: text("decision"),
+  expiresAt: timestamp("expires_at"),
+  decidedAt: timestamp("decided_at"),
+  consumedAt: timestamp("consumed_at"),
+  completedAt: timestamp("completed_at"),
+  httpStatus: integer("http_status"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("integration_action_receipts_user_created_idx").on(table.userId, table.createdAt),
+  index("integration_action_receipts_pending_idx").on(table.userId, table.state, table.expiresAt),
+]);
+
 // Integrations relations
 export const integrationsRelations = relations(integrations, ({ one }) => ({
   user: one(users, {

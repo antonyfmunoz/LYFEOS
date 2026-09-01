@@ -3,6 +3,7 @@ import { useLocation } from 'wouter';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useDrag, useDrop } from 'react-dnd';
 import { apiRequest, queryClient } from '@/lib/queryClient';
+import { IntegrationActionDeniedError, useIntegrationActionApproval } from '@/components/IntegrationActionApprovalProvider';
 import { useAuth } from '@/lib/authContext';
 import { usePageTitle } from '@/hooks/use-page-title';
 import { Button } from '@/components/ui/button';
@@ -1865,6 +1866,7 @@ function SyncImportDialog({ open, onOpenChange, obsidianInputRef, evernoteInputR
   currentFolderId: number | null;
   onSyncComplete: () => Promise<void>;
 }) {
+  const { runWithApproval } = useIntegrationActionApproval();
   const [gdStatus, setGdStatus] = useState<{
     connected: boolean;
     capabilities?: { drive: boolean };
@@ -1899,13 +1901,18 @@ function SyncImportDialog({ open, onOpenChange, obsidianInputRef, evernoteInputR
     setGdSyncStatus('syncing');
     setGdResult(null);
     try {
-      const res = await fetch('/api/google/drive/sync', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ approvalConfirmed: true }) });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Sync failed');
+      const data = await runWithApproval((approvalId) => apiRequest<SyncResult>('/api/google/drive/sync', {
+        method: 'POST',
+        body: JSON.stringify(approvalId ? { approvalId } : {}),
+      }));
       setGdResult(data);
       setGdSyncStatus('success');
       await onSyncComplete();
     } catch (err: any) {
+      if (err instanceof IntegrationActionDeniedError) {
+        setGdSyncStatus('idle');
+        return;
+      }
       setGdResult({ error: err.message });
       setGdSyncStatus('error');
     }
@@ -1915,16 +1922,17 @@ function SyncImportDialog({ open, onOpenChange, obsidianInputRef, evernoteInputR
     setGdPushStatus('syncing');
     setGdPushResult(null);
     try {
-      const res = await fetch('/api/google/drive/push', {
-        method: 'POST', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ includeLocal: false, approvalConfirmed: true }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Push failed');
+      const data = await runWithApproval((approvalId) => apiRequest<SyncResult>('/api/google/drive/push', {
+        method: 'POST',
+        body: JSON.stringify({ includeLocal: false, ...(approvalId ? { approvalId } : {}) }),
+      }));
       setGdPushResult(data);
       setGdPushStatus('success');
     } catch (err: any) {
+      if (err instanceof IntegrationActionDeniedError) {
+        setGdPushStatus('idle');
+        return;
+      }
       setGdPushResult({ error: err.message });
       setGdPushStatus('error');
     }

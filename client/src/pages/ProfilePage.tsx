@@ -89,9 +89,12 @@ import CollaborationSettings from "@/components/profile/CollaborationSettings";
 import ExtensionSettings from "@/components/profile/ExtensionSettings";
 import {
   defaultGoogleIntegrationPermissions,
+  defaultGoogleAccountPermissionPreferences,
   googlePermissionPreset,
   googleServiceCapabilities,
+  type GoogleAccountPermissionPreferences,
   type GoogleApprovalPolicy,
+  type GoogleFutureActionPolicy,
   type GoogleIntegrationCapability,
   type GoogleIntegrationPermissions,
   type GoogleIntegrationService,
@@ -129,8 +132,20 @@ type GoogleIntegrationServiceStatus = {
 type GoogleIntegrationStatus = {
   connected: boolean;
   configured: boolean;
+  preferences: GoogleAccountPermissionPreferences;
   services: Record<GoogleIntegrationService, GoogleIntegrationServiceStatus>;
   capabilities: Record<GoogleIntegrationService, boolean>;
+};
+type GoogleActionReceipt = {
+  id: string;
+  service: GoogleIntegrationService;
+  title: string;
+  summary: string;
+  state: "pending" | "approved" | "denied" | "expired" | "executing" | "succeeded" | "failed";
+  decision: "allow_once" | "always_allow" | "deny" | "not_required" | null;
+  risk: "low" | "medium" | "important" | "high";
+  createdAt: string;
+  completedAt: string | null;
 };
 const GOOGLE_INTEGRATIONS: Array<{
   service: GoogleIntegrationService;
@@ -167,19 +182,43 @@ const GOOGLE_APPROVAL_OPTIONS: Array<{ value: GoogleApprovalPolicy; label: strin
   { value: "important", label: "Ask for important actions", description: "Routine permitted actions can run; ask for consequential ones." },
   { value: "never", label: "Never ask", description: "Permitted actions may run automatically." },
 ];
+const GOOGLE_FUTURE_ACTION_OPTIONS: Array<{ value: GoogleFutureActionPolicy; label: string; description: string }> = [
+  { value: "disabled", label: "Keep disabled", description: "New capabilities stay off until you explicitly enable them." },
+  { value: "read_only", label: "Allow read only", description: "New read actions can follow your approval policy; changes stay disabled." },
+  { value: "allow_all", label: "Allow within app access", description: "New actions may use the capabilities you already granted." },
+];
 
 function IntegrationsSection({ userId }: { userId?: number }) {
   const { toast } = useToast();
   const [connectingGoogle, setConnectingGoogle] = useState<GoogleIntegrationService | null>(null);
   const [disconnectingGoogle, setDisconnectingGoogle] = useState<GoogleIntegrationService | null>(null);
   const [savingGooglePermissions, setSavingGooglePermissions] = useState<GoogleIntegrationService | null>(null);
+  const [savingGooglePreferences, setSavingGooglePreferences] = useState(false);
 
   const { data: googleStatus, isLoading: isGoogleLoading } = useQuery<GoogleIntegrationStatus>({
     queryKey: ["/api/google/status"],
     enabled: !!userId,
   });
+  const { data: googleActivity } = useQuery<{ receipts: GoogleActionReceipt[] }>({
+    queryKey: ["/api/google/action-receipts"],
+    enabled: !!userId,
+  });
 
   const [appSearchQuery, setAppSearchQuery] = useState("");
+  const accountPreferences = googleStatus?.preferences ?? defaultGoogleAccountPermissionPreferences();
+
+  const updateGooglePreferences = async (preferences: GoogleAccountPermissionPreferences) => {
+    setSavingGooglePreferences(true);
+    try {
+      await apiRequest("/api/google/preferences", { method: "PATCH", body: JSON.stringify(preferences) });
+      await queryClient.invalidateQueries({ queryKey: ["/api/google/status"] });
+      toast({ title: "App defaults updated", description: "Connected apps without their own override will use these settings." });
+    } catch {
+      toast({ title: "Default update failed", description: "Your previous connected-app defaults are still active.", variant: "destructive" });
+    } finally {
+      setSavingGooglePreferences(false);
+    }
+  };
 
   const connectGoogle = async (service: GoogleIntegrationService) => {
     setConnectingGoogle(service);
@@ -212,7 +251,7 @@ function IntegrationsSection({ userId }: { userId?: number }) {
 
   const updateGooglePermissions = async (
     service: GoogleIntegrationService,
-    permissions: Pick<GoogleIntegrationPermissions, "capabilities" | "approvalPolicy">,
+    permissions: Pick<GoogleIntegrationPermissions, "capabilities" | "approvalPolicyOverride" | "futureActionPolicyOverride">,
   ) => {
     setSavingGooglePermissions(service);
     try {
@@ -242,7 +281,11 @@ function IntegrationsSection({ userId }: { userId?: number }) {
     } else if ((capability === "import" || capability === "write") && enabled) {
       capabilities.read = true;
     }
-    void updateGooglePermissions(service, { capabilities, approvalPolicy: permissions.approvalPolicy });
+    void updateGooglePermissions(service, {
+      capabilities,
+      approvalPolicyOverride: permissions.approvalPolicyOverride,
+      futureActionPolicyOverride: permissions.futureActionPolicyOverride,
+    });
   };
 
   useEffect(() => {
@@ -268,8 +311,43 @@ function IntegrationsSection({ userId }: { userId?: number }) {
         <Label className="text-sm text-foreground">Connected Apps</Label>
       </div>
       <p className="text-xs text-muted-foreground mb-3">
-        Connect external apps to sync your data and enhance your experience.
+        Connect each app separately, choose what it can do, and approve consequential actions when they happen.
       </p>
+      <div className="mb-3 rounded-lg border border-primary/10 bg-card/40 p-3">
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <div>
+            <p className="text-xs font-medium text-foreground">Account-wide defaults</p>
+            <p className="text-[10px] text-muted-foreground">Each connected app can override these settings.</p>
+          </div>
+          {savingGooglePreferences ? <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" /> : <Shield className="h-3.5 w-3.5 text-primary" />}
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <label className="block">
+            <span className="text-[10px] font-medium text-foreground">Default action approval</span>
+            <select
+              aria-label="Default connected-app action approval"
+              value={accountPreferences.defaultApprovalPolicy}
+              disabled={savingGooglePreferences}
+              onChange={(event) => void updateGooglePreferences({ ...accountPreferences, defaultApprovalPolicy: event.target.value as GoogleApprovalPolicy })}
+              className="mt-1 w-full rounded-md border border-primary/20 bg-background px-2 py-1.5 text-xs text-foreground disabled:opacity-50"
+            >
+              {GOOGLE_APPROVAL_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+          </label>
+          <label className="block">
+            <span className="text-[10px] font-medium text-foreground">New actions added later</span>
+            <select
+              aria-label="Default policy for new connected-app actions"
+              value={accountPreferences.futureActionPolicy}
+              disabled={savingGooglePreferences}
+              onChange={(event) => void updateGooglePreferences({ ...accountPreferences, futureActionPolicy: event.target.value as GoogleFutureActionPolicy })}
+              className="mt-1 w-full rounded-md border border-primary/20 bg-background px-2 py-1.5 text-xs text-foreground disabled:opacity-50"
+            >
+              {GOOGLE_FUTURE_ACTION_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+          </label>
+        </div>
+      </div>
       <div className="relative mb-3">
         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
         <Input
@@ -349,7 +427,7 @@ function IntegrationsSection({ userId }: { userId?: number }) {
                             key={preset}
                             type="button"
                             disabled={savingGooglePermissions !== null}
-                            onClick={() => void updateGooglePermissions(service, googlePermissionPreset(service, preset, permissions.approvalPolicy))}
+                            onClick={() => void updateGooglePermissions(service, googlePermissionPreset(service, preset, permissions.approvalPolicyOverride, permissions.futureActionPolicyOverride))}
                             className={`rounded border px-2 py-1 text-[10px] font-mono transition-colors disabled:opacity-50 ${accessLevel === preset ? "border-primary/50 bg-primary/15 text-primary" : "border-primary/15 text-muted-foreground hover:text-foreground"}`}
                           >
                             {preset === "read_only" ? "Read only" : preset === "standard" ? "Standard" : "Full authority"}
@@ -380,14 +458,37 @@ function IntegrationsSection({ userId }: { userId?: number }) {
                       <span className="text-[11px] font-medium text-foreground">Action approval</span>
                       <select
                         aria-label={`${name} action approval`}
-                        value={permissions.approvalPolicy}
+                        value={permissions.approvalPolicyOverride ?? "inherit"}
                         disabled={savingGooglePermissions !== null}
-                        onChange={(event) => void updateGooglePermissions(service, { capabilities: permissions.capabilities, approvalPolicy: event.target.value as GoogleApprovalPolicy })}
+                        onChange={(event) => void updateGooglePermissions(service, {
+                          capabilities: permissions.capabilities,
+                          approvalPolicyOverride: event.target.value === "inherit" ? null : event.target.value as GoogleApprovalPolicy,
+                          futureActionPolicyOverride: permissions.futureActionPolicyOverride,
+                        })}
                         className="mt-1 w-full rounded-md border border-primary/20 bg-background px-2 py-1.5 text-xs text-foreground disabled:opacity-50"
                       >
+                        <option value="inherit">Use account default ({GOOGLE_APPROVAL_OPTIONS.find((option) => option.value === accountPreferences.defaultApprovalPolicy)?.label})</option>
                         {GOOGLE_APPROVAL_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                       </select>
-                      <span className="mt-1 block text-[10px] text-muted-foreground">{GOOGLE_APPROVAL_OPTIONS.find((option) => option.value === permissions.approvalPolicy)?.description}</span>
+                      <span className="mt-1 block text-[10px] text-muted-foreground">Effective setting: {GOOGLE_APPROVAL_OPTIONS.find((option) => option.value === permissions.approvalPolicy)?.label}. {GOOGLE_APPROVAL_OPTIONS.find((option) => option.value === permissions.approvalPolicy)?.description}</span>
+                    </label>
+                    <label className="block">
+                      <span className="text-[11px] font-medium text-foreground">New actions added to this app later</span>
+                      <select
+                        aria-label={`${name} new action policy`}
+                        value={permissions.futureActionPolicyOverride ?? "inherit"}
+                        disabled={savingGooglePermissions !== null}
+                        onChange={(event) => void updateGooglePermissions(service, {
+                          capabilities: permissions.capabilities,
+                          approvalPolicyOverride: permissions.approvalPolicyOverride,
+                          futureActionPolicyOverride: event.target.value === "inherit" ? null : event.target.value as GoogleFutureActionPolicy,
+                        })}
+                        className="mt-1 w-full rounded-md border border-primary/20 bg-background px-2 py-1.5 text-xs text-foreground disabled:opacity-50"
+                      >
+                        <option value="inherit">Use account default ({GOOGLE_FUTURE_ACTION_OPTIONS.find((option) => option.value === accountPreferences.futureActionPolicy)?.label})</option>
+                        {GOOGLE_FUTURE_ACTION_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                      </select>
+                      <span className="mt-1 block text-[10px] text-muted-foreground">Effective setting: {GOOGLE_FUTURE_ACTION_OPTIONS.find((option) => option.value === permissions.futureActionPolicy)?.label}.</span>
                     </label>
                     {permissions.capabilities.write || permissions.approvalPolicy === "never" ? (
                       <p className="rounded border border-amber-400/20 bg-amber-400/5 p-2 text-[10px] text-amber-200">
@@ -417,6 +518,31 @@ function IntegrationsSection({ userId }: { userId?: number }) {
           );
         })}
       </div>
+      {(googleActivity?.receipts.length ?? 0) > 0 ? (
+        <details className="mt-3 rounded-lg border border-primary/10 bg-card/30 p-3">
+          <summary className="cursor-pointer select-none text-xs font-medium text-foreground">Recent connected-app activity</summary>
+          <div className="mt-3 space-y-2">
+            {googleActivity!.receipts.slice(0, 8).map((receipt) => {
+              const appName = GOOGLE_INTEGRATIONS.find((item) => item.service === receipt.service)?.name || receipt.service;
+              const outcome = receipt.state === "succeeded" ? "Completed"
+                : receipt.state === "denied" ? "Denied"
+                  : receipt.state === "failed" ? "Failed"
+                    : receipt.state === "expired" ? "Expired"
+                      : receipt.state === "pending" ? "Awaiting approval"
+                        : "In progress";
+              return (
+                <div key={receipt.id} className="flex items-start justify-between gap-3 rounded border border-primary/10 bg-background/30 p-2">
+                  <div className="min-w-0">
+                    <p className="truncate text-xs text-foreground">{receipt.title}</p>
+                    <p className="text-[10px] text-muted-foreground">{appName} · {new Date(receipt.createdAt).toLocaleString()}</p>
+                  </div>
+                  <span className={`shrink-0 text-[10px] font-mono ${receipt.state === "failed" || receipt.state === "denied" ? "text-amber-300" : receipt.state === "succeeded" ? "text-primary" : "text-muted-foreground"}`}>{outcome}</span>
+                </div>
+              );
+            })}
+          </div>
+        </details>
+      ) : null}
     </div>
   );
 }

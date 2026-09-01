@@ -18,6 +18,7 @@ import { ProductAnalytics } from "./components/ProductAnalytics";
 import InstallationBrandRuntime from "./components/InstallationBrandRuntime";
 import { withRouteChunkRecovery } from "./lib/runtimeRecovery";
 import { AuthenticateWithRedirectCallback } from "@clerk/clerk-react";
+import { IntegrationActionApprovalProvider } from "./components/IntegrationActionApprovalProvider";
 
 function lazyRoute<T extends React.ComponentType<any>>(loader: () => Promise<{ default: T }>) {
   return React.lazy(() => withRouteChunkRecovery(loader));
@@ -711,7 +712,9 @@ function App() {
         <LYFEOSProvider>
           <ThemeProvider>
             <DndProvider backend={isTouchDevice() ? TouchBackend : HTML5Backend} options={isTouchDevice() ? { enableMouseEvents: true } : undefined}>
-              <Router />
+              <IntegrationActionApprovalProvider>
+                <Router />
+              </IntegrationActionApprovalProvider>
               <InstallationBrandRuntime />
               <HapticInit />
               <VoiceOverlay />
