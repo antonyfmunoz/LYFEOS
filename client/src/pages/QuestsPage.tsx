@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/authContext";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { IntegrationActionDeniedError, useIntegrationActionApproval } from "@/components/IntegrationActionApprovalProvider";
 import { useDrag, useDrop } from 'react-dnd';
 import update from 'immutability-helper';
 import QuestItem, { QUEST_DND_TYPE, DragItem } from "../components/dashboard/QuestItem";
@@ -305,6 +306,7 @@ export default function QuestsPage() {
   const { quests, toggleQuestCompletion, createQuest, updateQuest, deleteQuest, refetchQuests, activeTimerQuest, missionElapsedTimes, missionBreakTimes, startMissionTimer, resumeMissionTimer, restartMissionTimer, userProfile } = useLYFEOS();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { runWithApproval } = useIntegrationActionApproval();
   const { data: activeThreadData } = useQuery<ActiveThreadData>({
     queryKey: ["/api/transformation-thread"],
     enabled: !!user,
@@ -355,7 +357,10 @@ export default function QuestsPage() {
     setIsSyncing(true);
     try {
       if (mode === 'calendar') {
-        const result = await apiRequest<{ imported: number; updated: number; cancelled: number; linkedExisting: number; skipped: number; complete: boolean; moreAvailable: boolean; resetFromExpiredToken: boolean }>('/api/google/calendar/sync', { method: 'POST', body: JSON.stringify({ approvalConfirmed: true }) });
+        const result = await runWithApproval((approvalId) => apiRequest<{ imported: number; updated: number; cancelled: number; linkedExisting: number; skipped: number; complete: boolean; moreAvailable: boolean; resetFromExpiredToken: boolean }>('/api/google/calendar/sync', {
+          method: 'POST',
+          body: JSON.stringify(approvalId ? { approvalId } : {}),
+        }));
         const parts: string[] = [];
         if (result.imported > 0) parts.push(`${result.imported} imported`);
         if (result.updated > 0) parts.push(`${result.updated} updated`);
@@ -371,10 +376,10 @@ export default function QuestsPage() {
         });
         await refetchQuests();
       } else {
-        const result = await apiRequest<{ imported: number; skipped: number }>('/api/google/tasks/import', {
+        const result = await runWithApproval((approvalId) => apiRequest<{ imported: number; skipped: number }>('/api/google/tasks/import', {
           method: 'POST',
-          body: JSON.stringify({ approvalConfirmed: true }),
-        });
+          body: JSON.stringify(approvalId ? { approvalId } : {}),
+        }));
         if (result.imported === 0 && result.skipped === 0) {
           toast({ title: "No tasks found", description: "Your Google Tasks lists are empty." });
           return;
@@ -386,6 +391,10 @@ export default function QuestsPage() {
         await refetchQuests();
       }
     } catch (err) {
+      if (err instanceof IntegrationActionDeniedError) {
+        toast({ title: "Sync cancelled", description: "No connected-app data was changed." });
+        return;
+      }
       toast({ title: "Sync failed", description: `Could not sync ${mode === 'calendar' ? 'calendar' : 'tasks'}.`, variant: "destructive" });
     } finally {
       setIsSyncing(false);
