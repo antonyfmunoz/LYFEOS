@@ -14,6 +14,13 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  useEffect(() => {
+    const oauthNotice = sessionStorage.getItem("lyfeos-oauth-login-notice");
+    if (!oauthNotice) return;
+    sessionStorage.removeItem("lyfeos-oauth-login-notice");
+    setError(oauthNotice);
+  }, []);
+
   const accent = null as { color?: string; glow?: string; bg20?: string; border20?: string; border30?: string; border50?: string } | null;
 
   const handleSubmit = async (e: React.FormEvent) => {

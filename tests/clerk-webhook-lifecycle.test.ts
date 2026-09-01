@@ -11,11 +11,6 @@ function dependencies(seed: ClerkLifecycleUser[] = []): ClerkLifecycleDependenci
     users,
     getUserByClerkId: async (clerkId) => users.find((user) => user.clerkId === clerkId),
     getUserByEmail: async (email) => users.find((user) => user.email === email),
-    provisionUser: vi.fn(async (input) => {
-      const user = { id: users.length + 1, authProvider: "clerk", password: null, ...input };
-      users.push(user);
-      return user;
-    }),
     updateUser: vi.fn(async (id, patch) => {
       const user = users.find((candidate) => candidate.id === id);
       if (!user) throw new Error("missing user");
@@ -41,16 +36,11 @@ const clerkPayload = {
 };
 
 describe("Clerk webhook user lifecycle", () => {
-  it("provisions from the provider's primary email address", async () => {
+  it("does not provision an unknown provider identity without a LyfeOS registration callback", async () => {
     const deps = dependencies();
     const result = await applyClerkUserLifecycleEvent("user.created", clerkPayload, deps);
-    expect(result).toEqual({ status: 200, body: { success: true, action: "created" } });
-    expect(deps.users[0]).toMatchObject({
-      clerkId: "user_clerk_1",
-      email: "primary@example.com",
-      firstName: "First",
-      lastName: "Last",
-    });
+    expect(result).toEqual({ status: 200, body: { success: true, action: "ignored" } });
+    expect(deps.users).toHaveLength(0);
   });
 
   it("syncs provider-owned fields for a Clerk-owned account", async () => {

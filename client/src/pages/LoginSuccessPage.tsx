@@ -5,8 +5,14 @@ export default function LoginSuccessPage() {
   const [, navigate] = useLocation();
 
   useEffect(() => {
+    const isNewUser = sessionStorage.getItem("login_success_new_user") === "true"
+      || localStorage.getItem("lyfeos-pending-onboarding") === "true";
     sessionStorage.removeItem("login_success_username");
     sessionStorage.removeItem("login_success_new_user");
+    if (isNewUser) {
+      navigate("/onboarding", { replace: true });
+      return;
+    }
     const returnAfterLogin = sessionStorage.getItem("lyfeos-return-after-login");
     if (returnAfterLogin?.startsWith("/review-mission")) {
       sessionStorage.removeItem("lyfeos-return-after-login");

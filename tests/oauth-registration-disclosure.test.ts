@@ -66,7 +66,19 @@ describe("OAuth registration disclosure provenance", () => {
     expect(authContext).toContain("signUp.authenticateWithRedirect");
     expect(authContext).toContain("lyfeosRegistrationIntentId: intent.intentId");
     expect(app).toContain('<Route path="/sso-callback">');
-    expect(app).toContain("<AuthenticateWithRedirectCallback />");
+    expect(app).toContain('transferable={oauthMode !== "login"}');
+    expect(app).toContain('signInUrl="/login"');
+    expect(app).toContain('signUpUrl="/register"');
     expect(authRoutes).toContain("delete req.session.oauthRegistrationIntent");
+    expect(authRoutes).toContain("No LyfeOS account exists for this sign-in. Create an account first.");
+  });
+
+  it("routes every server-confirmed incomplete account through onboarding", () => {
+    const authContext = fs.readFileSync(path.resolve("client/src/lib/authContext.tsx"), "utf8");
+    const loginSuccess = fs.readFileSync(path.resolve("client/src/pages/LoginSuccessPage.tsx"), "utf8");
+    const authRoutes = fs.readFileSync(path.resolve("server/routes/auth.ts"), "utf8");
+    expect(authRoutes).toContain("isNewUser: !userProfile?.onboardingCompleted");
+    expect(authContext).toContain('localStorage.setItem("lyfeos-pending-onboarding", "true")');
+    expect(loginSuccess).toContain('navigate("/onboarding", { replace: true })');
   });
 });

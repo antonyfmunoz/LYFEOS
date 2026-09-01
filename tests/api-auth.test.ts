@@ -114,6 +114,7 @@ describeApi('Auth API', () => {
     expect(status).toBe(200);
     expect(data.user).toBeTruthy();
     expect(data.user.displayName).toBe(testUser.displayName);
+    expect(data.isNewUser).toBe(true);
   });
 
   it('reports the account sign-in methods', async () => {

@@ -119,6 +119,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (generation !== authSyncGenerationRef.current) return;
           console.log("Server auth check successful, user data:", data.user);
           setUser(data.user);
+          if (data.isNewUser === true) {
+            localStorage.setItem("lyfeos-pending-onboarding", "true");
+            sessionStorage.setItem("login_success_new_user", "true");
+          } else {
+            localStorage.removeItem("lyfeos-pending-onboarding");
+            sessionStorage.setItem("login_success_new_user", "false");
+          }
+          sessionStorage.removeItem("lyfeos-oauth-login-notice");
           localStorage.removeItem("lyfeos-oauth-mode");
           localStorage.removeItem("lyfeos-oauth-redirect-pending");
           localStorage.setItem("lyfeos_user", JSON.stringify(data.user));
@@ -457,6 +465,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
       } else {
         if (!signIn) throw new Error("Sign-in not available");
+        sessionStorage.setItem("lyfeos-oauth-login-notice", "No LyfeOS account exists for that Google sign-in. Use Register to create one.");
         await signIn.authenticateWithRedirect({
           strategy: "oauth_google",
           redirectUrl: "/sso-callback",
@@ -545,6 +554,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
       } else {
         if (!signIn) throw new Error("Sign-in not available");
+        sessionStorage.setItem("lyfeos-oauth-login-notice", "No LyfeOS account exists for that Apple sign-in. Use Register to create one.");
         await signIn.authenticateWithRedirect({
           strategy: "oauth_apple",
           redirectUrl: "/sso-callback",

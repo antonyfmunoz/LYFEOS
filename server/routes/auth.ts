@@ -181,12 +181,29 @@ export const bindAuthenticatedPrincipal = async (req: Request, res: Response, ne
       return res.status(503).json({ error: "Google sign-in could not be linked right now" });
     }
   }
+  if (!user && !registrationIntent) {
+    return res.status(401).json({ error: "No LyfeOS account exists for this sign-in. Create an account first." });
+  }
   if (!user || registrationIntent) {
     try {
       clerkUser = await clerkClient.users.getUser(userId);
       if (!user) {
         const email = clerkUser.primaryEmailAddress?.emailAddress ?? clerkUser.emailAddresses[0]?.emailAddress;
         if (!email) return res.status(401).json({ error: "A verified email is required to finish account setup" });
+        const registrationIsValid = registrationIntent && canApplyOAuthRegistrationDisclosure(
+          registrationIntent,
+          clerkUser,
+          {
+            clerkId: userId,
+            authProvider: "clerk",
+            registrationDisclosureVersion: null,
+            registrationDisclosureAcknowledgedAt: null,
+          },
+        );
+        if (!registrationIsValid) {
+          delete req.session.oauthRegistrationIntent;
+          return res.status(401).json({ error: "Start account creation from the LyfeOS registration page." });
+        }
         user = await provisionLocalUser({ clerkId: userId, email, firstName: clerkUser.firstName, lastName: clerkUser.lastName });
       }
     } catch (error) {
@@ -408,7 +425,6 @@ export function registerAuthRoutes(app: Express): void {
       const result = await applyClerkUserLifecycleEvent(type, data, {
         getUserByClerkId: (clerkId) => storage.getUserByClerkId(clerkId),
         getUserByEmail: (email) => storage.getUserByEmail(email),
-        provisionUser: provisionLocalUser,
         updateUser: (id, patch) => storage.updateUser(id, patch),
         deleteLocalAccountData,
       });
@@ -562,6 +578,7 @@ export function registerAuthRoutes(app: Express): void {
         id: user.id,
         displayName: user.displayName
       },
+      isNewUser: !userProfile?.onboardingCompleted,
       primaryColor: effectiveColor
     });
   });

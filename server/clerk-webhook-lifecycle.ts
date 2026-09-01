@@ -13,7 +13,6 @@ export interface ClerkLifecycleUser {
 export interface ClerkLifecycleDependencies {
   getUserByClerkId(clerkId: string): Promise<ClerkLifecycleUser | undefined>;
   getUserByEmail(email: string): Promise<ClerkLifecycleUser | undefined>;
-  provisionUser(seed: { clerkId: string; email: string; firstName?: string | null; lastName?: string | null }): Promise<ClerkLifecycleUser>;
   updateUser(id: number, patch: { clerkId?: string | null; email?: string; firstName?: string | null; lastName?: string | null }): Promise<ClerkLifecycleUser>;
   deleteLocalAccountData(userId: number): Promise<void>;
 }
@@ -71,11 +70,14 @@ export async function applyClerkUserLifecycleEvent(
   const email = primaryEmail(data);
   if (!email) return { status: 400, body: { error: "Webhook user email is missing" } };
   const { firstName, lastName } = names(data);
-  let user = await dependencies.getUserByClerkId(clerkId);
-
+  const user = await dependencies.getUserByClerkId(clerkId);
   if (!user) {
-    user = await dependencies.provisionUser({ clerkId, email, firstName, lastName });
-    if (type === "user.created") return { status: 200, body: { success: true, action: "created" } };
+    // Clerk can create an identity while completing a transferable OAuth
+    // sign-in. That provider event is not evidence that the person chose the
+    // LyfeOS registration path or acknowledged its disclosures. The
+    // authenticated registration callback owns first-time local provisioning;
+    // webhooks only synchronize or erase identities that LyfeOS already knows.
+    return { status: 200, body: { success: true, action: "ignored" } };
   }
 
   // Clerk is authoritative only for accounts provisioned by Clerk. For a

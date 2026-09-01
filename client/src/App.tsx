@@ -96,6 +96,20 @@ function hideAppPreloader() {
   if (root) root.style.visibility = 'visible';
 }
 
+function OAuthCallbackRoute() {
+  const oauthMode = localStorage.getItem("lyfeos-oauth-mode");
+  return (
+    <main className="min-h-screen flex flex-col items-center justify-center p-4 text-white" style={{ backgroundColor: 'hsl(0 0% 7%)' }}>
+      <AuthenticateWithRedirectCallback
+        transferable={oauthMode !== "login"}
+        signInUrl="/login"
+        signUpUrl="/register"
+      />
+      <p className="text-white/60 text-sm" role="status" aria-live="polite">Completing sign-in...</p>
+    </main>
+  );
+}
+
 function OAuthLoadingScreen() {
   useEffect(() => {
     hideOAuthPreloader();
@@ -337,10 +351,7 @@ function Router() {
     <Switch>
       {/* Public routes */}
       <Route path="/sso-callback">
-        <main className="min-h-screen flex flex-col items-center justify-center p-4 text-white" style={{ backgroundColor: 'hsl(0 0% 7%)' }}>
-          <AuthenticateWithRedirectCallback />
-          <p className="text-white/60 text-sm" role="status" aria-live="polite">Completing sign-in...</p>
-        </main>
+        <OAuthCallbackRoute />
       </Route>
       <Route path="/login">
         {isLoading && localStorage.getItem('lyfeos-oauth-mode') ? (
