@@ -63,6 +63,11 @@ describe("OAuth registration disclosure provenance", () => {
     const app = fs.readFileSync(path.resolve("client/src/App.tsx"), "utf8");
     const authRoutes = fs.readFileSync(path.resolve("server/routes/auth.ts"), "utf8");
     expect(authContext).toContain('fetch("/api/auth/oauth-registration-intent"');
+    expect(authContext).toContain('result.response.status === 409');
+    expect(authContext).toContain('result.intent?.error === "Sign out before creating another account"');
+    expect(authContext).toContain('await signOut()');
+    expect(authContext).toContain('fetch("/api/auth/logout"');
+    expect(authContext).toContain('result = await requestIntent()');
     expect(authContext).toContain("signUp.authenticateWithRedirect");
     expect(authContext).toContain("lyfeosRegistrationIntentId: intent.intentId");
     expect(app).toContain('<Route path="/sso-callback">');

@@ -433,6 +433,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const requestOAuthRegistrationIntent = async () => {
+    const requestIntent = async () => {
+      const response = await fetch("/api/auth/oauth-registration-intent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ registrationDisclosureVersion: REGISTRATION_DISCLOSURE_VERSION }),
+      });
+      return { response, intent: await response.json() };
+    };
+
+    let result = await requestIntent();
+    if (
+      result.response.status === 409
+      && result.intent?.error === "Sign out before creating another account"
+      && !user
+    ) {
+      // A provider-side deletion can leave the browser holding a session for an
+      // identity that no longer exists. Confirm there is no live LyfeOS account
+      // before clearing that stale provider/local session and retrying once.
+      const localSession = await fetch("/api/auth/me", {
+        credentials: "include",
+        cache: "no-store",
+      });
+      if (!localSession.ok) {
+        try {
+          await signOut();
+        } catch (error) {
+          console.error("Unable to clear stale Clerk registration session:", error);
+        }
+        await fetch("/api/auth/logout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+        });
+        result = await requestIntent();
+      }
+    }
+
+    if (!result.response.ok || !result.intent?.intentId) {
+      throw new Error(result.intent?.error || "Could not start registration");
+    }
+    return result.intent;
+  };
+
   const loginWithGoogle = async (mode: 'login' | 'register' = 'login') => {
     try {
       setIsLoading(true);
@@ -446,14 +491,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem("lyfeos-oauth-redirect-pending", "true");
       if (mode === "register") {
         if (!signUp) throw new Error("Sign-up not available");
-        const response = await fetch("/api/auth/oauth-registration-intent", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ registrationDisclosureVersion: REGISTRATION_DISCLOSURE_VERSION }),
-        });
-        const intent = await response.json();
-        if (!response.ok || !intent?.intentId) throw new Error(intent?.error || "Could not start registration");
+        const intent = await requestOAuthRegistrationIntent();
         await signUp.authenticateWithRedirect({
           strategy: "oauth_google",
           redirectUrl: "/sso-callback",
@@ -535,14 +573,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem("lyfeos-oauth-redirect-pending", "true");
       if (mode === "register") {
         if (!signUp) throw new Error("Sign-up not available");
-        const response = await fetch("/api/auth/oauth-registration-intent", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ registrationDisclosureVersion: REGISTRATION_DISCLOSURE_VERSION }),
-        });
-        const intent = await response.json();
-        if (!response.ok || !intent?.intentId) throw new Error(intent?.error || "Could not start registration");
+        const intent = await requestOAuthRegistrationIntent();
         await signUp.authenticateWithRedirect({
           strategy: "oauth_apple",
           redirectUrl: "/sso-callback",
