@@ -76,7 +76,7 @@ describe("UMH signed delivery receipt", () => {
   });
 
   it("requires a validated receipt before the outbox can settle delivery", () => {
-    const outbox = readFileSync(resolve(process.cwd(), "server/umh/outbox.ts"), "utf8");
+    const outbox = readFileSync(resolve(process.cwd(), "server/umh/outbox.ts"), "utf8").replace(/\r\n/g, "\n");
     expect(outbox).toContain('"x-umh-key-id": config.keyId');
     expect(outbox).toContain("validateSignedUMHEventReceipt({");
     expect(outbox).toContain('receipt.accepted\n          ? { ...entry, outcome: "delivered" }');

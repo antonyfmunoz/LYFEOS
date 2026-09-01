@@ -2,11 +2,12 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-const overlay = readFileSync(resolve(process.cwd(), "client/src/components/VoiceOverlay.tsx"), "utf8");
-const archive = readFileSync(resolve(process.cwd(), "client/src/components/ai/VoiceSessionArchive.tsx"), "utf8");
-const acceptance = readFileSync(resolve(process.cwd(), "scripts/production-voice-browser-acceptance.ts"), "utf8");
-const workflow = readFileSync(resolve(process.cwd(), ".github/workflows/production-browser-acceptance.yml"), "utf8");
-const packageJson = readFileSync(resolve(process.cwd(), "package.json"), "utf8");
+const source = (relativePath: string) => readFileSync(resolve(process.cwd(), relativePath), "utf8").replace(/\r\n/g, "\n");
+const overlay = source("client/src/components/VoiceOverlay.tsx");
+const archive = source("client/src/components/ai/VoiceSessionArchive.tsx");
+const acceptance = source("scripts/production-voice-browser-acceptance.ts");
+const workflow = source(".github/workflows/production-browser-acceptance.yml");
+const packageJson = source("package.json");
 
 describe("durable Voice overlay lifecycle", () => {
   it("retains only an opaque active-session reference across a browser reload", () => {
