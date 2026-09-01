@@ -228,7 +228,7 @@ async function requireGoogleActionApproval(
   const userId = req.session.userId as number;
   const accountPreferences = await getGoogleAccountPreferences(userId);
   const permissions = normalizeGoogleIntegrationPermissions(service, client.integration.settings, accountPreferences);
-  if (descriptor.futureAction && !googleFutureActionAllowed(permissions.futureActionPolicy, descriptor.capability)) {
+  if (descriptor.futureAction && !googleFutureActionAllowed(permissions.futureActionPolicy, descriptor.capability as GoogleIntegrationCapability)) {
     res.status(403).json({
       error: `${GOOGLE_SERVICE_CONFIG[service].providerName} cannot use this newly added action under your future-action setting.`,
       code: "integration_future_action_disabled",

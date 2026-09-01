@@ -58,7 +58,7 @@ describe("cross-product consent lifecycle contract", () => {
     expect(source(".github/workflows/verify.yml")).toContain("tests/db-cross-product-consent-lifecycle.test.ts");
   });
 
-  it("binds stale-write protection, signed outbox state, pseudonymous identity, export, erasure, and a visible receipt", () => {
+  it("binds stale-write protection, signed outbox state, pseudonymous identity, export, erasure, and independent connected-app grants", () => {
     const service = source("server/cross-product.ts");
     const routes = source("server/routes/cross-product-sharing.ts");
     const profile = source("server/routes/profile.ts");
@@ -76,7 +76,10 @@ describe("cross-product consent lifecycle contract", () => {
     expect(routes).toContain("currentRevision");
     expect(profile).toContain('"cross_product_sharing_revisions"');
     expect(profile).toContain(`audit."details"->>'eventId'`);
-    expect(ui).toContain('data-testid="ecosystem-consent-receipt"');
-    expect(ui).toContain("No mission title, XP, health, journal, relationship, or reflection content is in this receipt.");
+    expect(ui).toContain("ECOSYSTEM_INTEGRATIONS");
+    expect(ui).toContain("/api/ecosystem-integrations/");
+    expect(ui).toContain("This is a separate app connection.");
+    expect(routes).toContain("reconcileEcosystemIntegrationConsent");
+    expect(routes).toContain("Every linked product needs Linked work coordination enabled");
   });
 });

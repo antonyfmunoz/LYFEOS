@@ -72,7 +72,8 @@ import {
   StickyNote,
   Search,
   Download,
-  Trash2
+  Trash2,
+  BriefcaseBusiness
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { PRODUCT_ANALYTICS_POLICY_VERSION, type ProductAnalyticsStatus } from "@/lib/productAnalytics";
@@ -99,6 +100,11 @@ import {
   type GoogleIntegrationPermissions,
   type GoogleIntegrationService,
 } from "@shared/google-integration-permissions";
+import {
+  type EcosystemIntegrationCapability,
+  type EcosystemIntegrationPermissions,
+  type EcosystemIntegrationService,
+} from "@shared/ecosystem-integration-permissions";
 type ClerkPhoneNumber = {
   id: string;
   phoneNumber: string;
@@ -188,6 +194,21 @@ const GOOGLE_FUTURE_ACTION_OPTIONS: Array<{ value: GoogleFutureActionPolicy; lab
   { value: "allow_all", label: "Allow within app access", description: "New actions may use the capabilities you already granted." },
 ];
 
+const ECOSYSTEM_INTEGRATIONS: Array<{
+  service: EcosystemIntegrationService;
+  name: string;
+  description: string;
+  icon: typeof BriefcaseBusiness;
+}> = [
+  { service: "entrepreneuros", name: "EntrepreneurOS", description: "Coordinate explicitly linked work with your business operating system.", icon: BriefcaseBusiness },
+  { service: "creativesos", name: "CreativesOS", description: "Coordinate explicitly linked work with your creative operating system.", icon: PaletteIcon },
+];
+
+const ECOSYSTEM_PERMISSION_COPY: Record<EcosystemIntegrationCapability, { label: string; description: string }> = {
+  coordination: { label: "Linked work coordination", description: "Share only an explicitly linked work summary and its open or completed state." },
+  correlation: { label: "Capacity pattern insights", description: "Share only a daily low, steady, or high capacity band for patterns; never health records or causal claims." },
+};
+
 function IntegrationsSection({ userId }: { userId?: number }) {
   const { toast } = useToast();
   const [connectingGoogle, setConnectingGoogle] = useState<GoogleIntegrationService | null>(null);
@@ -203,8 +224,16 @@ function IntegrationsSection({ userId }: { userId?: number }) {
     queryKey: ["/api/google/action-receipts"],
     enabled: !!userId,
   });
+  const { data: ecosystemStatus, isLoading: isEcosystemLoading } = useQuery<{
+    availability: { available: boolean; reason: string | null };
+    revision: number;
+    integrations: Array<{ service: EcosystemIntegrationService; connected: boolean; integrationId: number | null; permissions: EcosystemIntegrationPermissions }>;
+  }>({ queryKey: ["/api/ecosystem-integrations/status"], enabled: !!userId });
 
   const [appSearchQuery, setAppSearchQuery] = useState("");
+  const [connectingEcosystem, setConnectingEcosystem] = useState<EcosystemIntegrationService | null>(null);
+  const [disconnectingEcosystem, setDisconnectingEcosystem] = useState<EcosystemIntegrationService | null>(null);
+  const [savingEcosystemPermissions, setSavingEcosystemPermissions] = useState<EcosystemIntegrationService | null>(null);
   const accountPreferences = googleStatus?.preferences ?? defaultGoogleAccountPermissionPreferences();
 
   const updateGooglePreferences = async (preferences: GoogleAccountPermissionPreferences) => {
@@ -231,6 +260,54 @@ function IntegrationsSection({ userId }: { userId?: number }) {
       const integration = GOOGLE_INTEGRATIONS.find((item) => item.service === service)!;
       toast({ title: "Error", description: `Could not start the ${integration.name} connection.`, variant: "destructive" });
       setConnectingGoogle(null);
+    }
+  };
+
+  const connectEcosystem = async (service: EcosystemIntegrationService) => {
+    setConnectingEcosystem(service);
+    try {
+      await apiRequest(`/api/ecosystem-integrations/${service}/connect`, { method: "POST" });
+      await queryClient.invalidateQueries({ queryKey: ["/api/ecosystem-integrations/status"] });
+      toast({ title: `${ECOSYSTEM_INTEGRATIONS.find((item) => item.service === service)?.name} connected`, description: "Choose exactly what this app can receive before anything is shared." });
+    } catch (error: any) {
+      toast({ title: "Could not connect app", description: error?.message || "The connection was not changed.", variant: "destructive" });
+    } finally {
+      setConnectingEcosystem(null);
+    }
+  };
+
+  const disconnectEcosystem = async (service: EcosystemIntegrationService) => {
+    setDisconnectingEcosystem(service);
+    try {
+      await apiRequest(`/api/ecosystem-integrations/${service}/disconnect`, { method: "POST" });
+      await queryClient.invalidateQueries({ queryKey: ["/api/ecosystem-integrations/status"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/cross-product-sharing"] });
+      toast({ title: `${ECOSYSTEM_INTEGRATIONS.find((item) => item.service === service)?.name} disconnected`, description: "No further LyfeOS data will be routed to this app." });
+    } catch (error: any) {
+      toast({ title: "Could not disconnect app", description: error?.message || "The connection was not changed.", variant: "destructive" });
+    } finally {
+      setDisconnectingEcosystem(null);
+    }
+  };
+
+  const updateEcosystemPermissions = async (service: EcosystemIntegrationService, permissions: EcosystemIntegrationPermissions) => {
+    setSavingEcosystemPermissions(service);
+    try {
+      await apiRequest(`/api/ecosystem-integrations/${service}/permissions`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          capabilities: permissions.capabilities,
+          approvalPolicyOverride: permissions.approvalPolicyOverride,
+          futureActionPolicyOverride: permissions.futureActionPolicyOverride,
+        }),
+      });
+      await queryClient.invalidateQueries({ queryKey: ["/api/ecosystem-integrations/status"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/cross-product-sharing"] });
+      toast({ title: "Permissions updated", description: "This app will receive only the capabilities now shown as enabled." });
+    } catch (error: any) {
+      toast({ title: "Permission update failed", description: error?.message || "Your previous app permissions are still active.", variant: "destructive" });
+    } finally {
+      setSavingEcosystemPermissions(null);
     }
   };
 
@@ -503,6 +580,88 @@ function IntegrationsSection({ userId }: { userId?: number }) {
           );
         })}
 
+        {"UMH".toLowerCase().includes(appSearchQuery.toLowerCase()) ? (
+          <div className="p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex min-w-0 items-start">
+                <Link2 className="h-4 w-4 text-primary mr-2 mt-0.5 shrink-0" />
+                <div className="min-w-0">
+                  <span className="text-sm">UMH</span>
+                  <p className={`text-xs ${ecosystemStatus?.availability.available ? "text-primary" : "text-muted-foreground"}`}>
+                    {ecosystemStatus?.availability.available ? "Available · routes approved ecosystem app actions" : "Not configured · no ecosystem data can leave LyfeOS"}
+                  </p>
+                </div>
+              </div>
+              <span className="text-xs font-mono text-muted-foreground border border-primary/10 rounded px-2 py-1">System route</span>
+            </div>
+            <p className="mt-2 border-t border-primary/10 pt-2 text-[10px] text-muted-foreground">UMH is the encrypted routing layer, never an implied permission. Each connected ecosystem app below has its own grant and can be disconnected independently.</p>
+          </div>
+        ) : null}
+
+        {ECOSYSTEM_INTEGRATIONS.filter(({ name }) => name.toLowerCase().includes(appSearchQuery.toLowerCase())).map(({ service, name, description, icon: Icon }) => {
+          const integration = ecosystemStatus?.integrations.find((item) => item.service === service);
+          const connected = integration?.connected ?? false;
+          const permissions = integration?.permissions;
+          const transportAvailable = ecosystemStatus?.availability.available ?? false;
+          return (
+            <div key={service} className="p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex min-w-0 items-start">
+                  <Icon className="h-4 w-4 text-primary mr-2 mt-0.5 shrink-0" />
+                  <div className="min-w-0">
+                    <span className="text-sm">{name}</span>
+                    <p className={`text-xs ${connected ? "text-primary" : "text-muted-foreground"}`}>
+                      {connected ? "Connected · choose what this app can receive" : description}
+                    </p>
+                  </div>
+                </div>
+                {isEcosystemLoading ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /> : connected ? (
+                  <button type="button" disabled={disconnectingEcosystem !== null} onClick={() => void disconnectEcosystem(service)} className="text-xs font-mono px-3 py-1.5 rounded border border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors inline-flex items-center gap-1 disabled:opacity-50">
+                    {disconnectingEcosystem === service ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3" />} Disconnect
+                  </button>
+                ) : (
+                  <button type="button" disabled={connectingEcosystem !== null || !transportAvailable} onClick={() => void connectEcosystem(service)} className="text-xs font-mono px-3 py-1.5 rounded border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 transition-colors inline-flex items-center gap-1 disabled:opacity-50">
+                    {connectingEcosystem === service ? <Loader2 className="h-3 w-3 animate-spin" /> : <Globe className="h-3 w-3" />} {transportAvailable ? "Connect" : "Unavailable"}
+                  </button>
+                )}
+              </div>
+              {connected && permissions ? (
+                <details className="mt-2 border-t border-primary/10 pt-2">
+                  <summary className="cursor-pointer select-none text-xs text-muted-foreground hover:text-foreground">Manage permissions</summary>
+                  <div className="mt-3 space-y-3" aria-label={`${name} permissions`}>
+                    <p className="rounded border border-primary/10 bg-background/30 p-2 text-[10px] text-muted-foreground">This is a separate app connection. Nothing is shared until you enable a capability below; private missions, XP, health, journal, relationships, and reflections stay private unless an explicitly described capability says otherwise.</p>
+                    <div className="space-y-2">
+                      {(["coordination", "correlation"] as const).map((capability) => {
+                        const copy = ECOSYSTEM_PERMISSION_COPY[capability];
+                        return <div key={capability} className="flex items-start justify-between gap-3 rounded border border-primary/10 bg-background/30 p-2">
+                          <div><p className="text-xs text-foreground">{copy.label}</p><p className="text-[10px] text-muted-foreground">{copy.description}</p></div>
+                          <Switch aria-label={`${name}: ${copy.label}`} checked={permissions.capabilities[capability]} disabled={savingEcosystemPermissions !== null} onCheckedChange={(enabled) => void updateEcosystemPermissions(service, { ...permissions, capabilities: { ...permissions.capabilities, [capability]: enabled } })} />
+                        </div>;
+                      })}
+                    </div>
+                    <label className="block">
+                      <span className="text-[11px] font-medium text-foreground">Action approval</span>
+                      <select aria-label={`${name} action approval`} value={permissions.approvalPolicyOverride ?? "inherit"} disabled={savingEcosystemPermissions !== null} onChange={(event) => void updateEcosystemPermissions(service, { ...permissions, approvalPolicyOverride: event.target.value === "inherit" ? null : event.target.value as GoogleApprovalPolicy })} className="mt-1 w-full rounded-md border border-primary/20 bg-background px-2 py-1.5 text-xs text-foreground disabled:opacity-50">
+                        <option value="inherit">Use account default ({GOOGLE_APPROVAL_OPTIONS.find((option) => option.value === accountPreferences.defaultApprovalPolicy)?.label})</option>
+                        {GOOGLE_APPROVAL_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                      </select>
+                      <span className="mt-1 block text-[10px] text-muted-foreground">Effective setting: {GOOGLE_APPROVAL_OPTIONS.find((option) => option.value === permissions.approvalPolicy)?.label}.</span>
+                    </label>
+                    <label className="block">
+                      <span className="text-[11px] font-medium text-foreground">New actions added to this app later</span>
+                      <select aria-label={`${name} new action policy`} value={permissions.futureActionPolicyOverride ?? "inherit"} disabled={savingEcosystemPermissions !== null} onChange={(event) => void updateEcosystemPermissions(service, { ...permissions, futureActionPolicyOverride: event.target.value === "inherit" ? null : event.target.value as GoogleFutureActionPolicy })} className="mt-1 w-full rounded-md border border-primary/20 bg-background px-2 py-1.5 text-xs text-foreground disabled:opacity-50">
+                        <option value="inherit">Use account default ({GOOGLE_FUTURE_ACTION_OPTIONS.find((option) => option.value === accountPreferences.futureActionPolicy)?.label})</option>
+                        {GOOGLE_FUTURE_ACTION_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                      </select>
+                      <span className="mt-1 block text-[10px] text-muted-foreground">Effective setting: {GOOGLE_FUTURE_ACTION_OPTIONS.find((option) => option.value === permissions.futureActionPolicy)?.label}.</span>
+                    </label>
+                  </div>
+                </details>
+              ) : null}
+            </div>
+          );
+        })}
+
         {PLACEHOLDER_PROVIDERS.filter(({ name }) => name.toLowerCase().includes(appSearchQuery.toLowerCase())).map(({ provider, name, icon: Icon }) => {
           return (
             <div key={provider} className="flex items-center justify-between p-3 bg-card/50 rounded-lg">
@@ -543,6 +702,7 @@ function IntegrationsSection({ userId }: { userId?: number }) {
           </div>
         </details>
       ) : null}
+      <CrossProductWorkLinksSection userId={userId} />
     </div>
   );
 }
@@ -553,6 +713,7 @@ type CrossProductSharing = {
   purposes: Array<"coordination" | "correlation">;
   revision: number;
   availability: { available: boolean; reason: string | null };
+  integrations: Array<{ service: EcosystemIntegrationService; connected: boolean; integrationId: number | null; permissions: EcosystemIntegrationPermissions }>;
   revisions: Array<{
     id: number;
     revision: number;
@@ -569,112 +730,6 @@ type CrossProductSharing = {
     createdAt: string;
   }>;
 };
-
-function CrossProductSharingSection() {
-  const { toast } = useToast();
-  const { data, isLoading } = useQuery<{ sharing: CrossProductSharing }>({
-    queryKey: ["/api/cross-product-sharing"],
-    refetchInterval: (query) => {
-      const latest = (query.state.data as { sharing?: CrossProductSharing } | undefined)?.sharing?.revisions?.[0];
-      return latest?.deliveryState === "queued" && !["delivered", "failed"].includes(latest.transportStatus || "") ? 5_000 : false;
-    },
-  });
-  const [enabled, setEnabled] = useState(false);
-  const [destinations, setDestinations] = useState<Array<"entrepreneuros" | "creativesos">>([]);
-  const [purposes, setPurposes] = useState<Array<"coordination" | "correlation">>([]);
-  const sharingAvailable = data?.sharing.availability.available ?? false;
-
-  useEffect(() => {
-    if (!data?.sharing) return;
-    setEnabled(data.sharing.enabled);
-    setDestinations(data.sharing.destinations);
-    setPurposes(data.sharing.purposes);
-  }, [data]);
-
-  const save = useMutation({
-    mutationFn: () => apiRequest<{ sharing: CrossProductSharing; receipt: { revision: number; replayed: boolean; eventQueued: boolean } }>("/api/cross-product-sharing", {
-      method: "PATCH",
-      body: JSON.stringify({ enabled, destinations, purposes, expectedRevision: data?.sharing.revision ?? 0 }),
-    }),
-    onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/cross-product-sharing"] });
-      toast({
-        title: enabled ? "Ecosystem sharing updated" : "Ecosystem sharing paused",
-        description: result.receipt.replayed
-          ? "Those exact settings were already current."
-          : result.receipt.eventQueued
-            ? "The complete consent state is queued for signed UMH delivery."
-            : "The local state changed, but no ecosystem receiver is configured.",
-      });
-    },
-    onError: (error: Error) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/cross-product-sharing"] });
-      toast({ title: "Could not update sharing", description: error.message, variant: "destructive" });
-    },
-  });
-  const toggleDestination = (destination: "entrepreneuros" | "creativesos") => {
-    setDestinations((current) => current.includes(destination)
-      ? current.filter((item) => item !== destination)
-      : [...current, destination]);
-  };
-  const togglePurpose = (purpose: "coordination" | "correlation") => {
-    setPurposes((current) => current.includes(purpose)
-      ? current.filter((item) => item !== purpose)
-      : [...current, purpose]);
-  };
-
-  return (
-    <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
-      <div className="flex items-center justify-between gap-3 mb-2">
-        <div className="flex items-center gap-2">
-          <Link2 className="h-4 w-4 text-primary" />
-          <Label className="text-sm text-foreground">Ecosystem connections</Label>
-        </div>
-        <Switch checked={enabled} onCheckedChange={setEnabled} disabled={isLoading || save.isPending || (!sharingAvailable && !enabled)} aria-label="Enable ecosystem sharing" />
-      </div>
-      <p className="text-xs text-muted-foreground mb-3">{sharingAvailable ? "LyfeOS keeps your XP, skills, missions, reflections, and health details private. Choose exactly what limited context may move through UMH to the products you select." : (data?.sharing.availability.reason || "Ecosystem sharing is unavailable.")}</p>
-      <div className="space-y-2 rounded-lg border border-primary/10 bg-card/50 p-3">
-        {(["entrepreneuros", "creativesos"] as const).map((destination) => (
-          <label key={destination} className="flex items-center gap-2 text-sm text-foreground">
-            <input type="checkbox" checked={destinations.includes(destination)} onChange={() => toggleDestination(destination)} disabled={isLoading || save.isPending || !sharingAvailable} className="accent-primary" />
-            {destination === "entrepreneuros" ? "EntrepreneurOS" : "CreativesOS"}
-          </label>
-        ))}
-      </div>
-      <div className="mt-2 space-y-2 rounded-lg border border-primary/10 bg-card/50 p-3">
-        <p className="text-xs font-medium text-foreground">Share for</p>
-        <label className="flex items-start gap-2 text-sm text-foreground">
-          <input type="checkbox" checked={purposes.includes("coordination")} onChange={() => togglePurpose("coordination")} disabled={isLoading || save.isPending || !sharingAvailable} className="mt-0.5 accent-primary" />
-          <span><span className="font-medium">Linked work coordination</span><span className="block text-xs text-muted-foreground">Only for a mission you explicitly link to work in another product; shares its open/completed state and your summary.</span></span>
-        </label>
-        <label className="flex items-start gap-2 text-sm text-foreground">
-          <input type="checkbox" checked={purposes.includes("correlation")} onChange={() => togglePurpose("correlation")} disabled={isLoading || save.isPending || !sharingAvailable} className="mt-0.5 accent-primary" />
-          <span><span className="font-medium">Capacity pattern insights</span><span className="block text-xs text-muted-foreground">Shares only a daily low, steady, or high capacity band. It is for patterns and hypotheses, never a health record or causal claim.</span></span>
-        </label>
-      </div>
-      <div className="mt-3 flex items-center justify-between gap-3">
-        <span className="text-[11px] text-muted-foreground">{!sharingAvailable ? "No ecosystem data is leaving LyfeOS" : enabled ? `${destinations.length} destination${destinations.length === 1 ? "" : "s"} / ${purposes.length} purpose${purposes.length === 1 ? "" : "s"}` : "Sharing is off"}</span>
-        <Button size="sm" variant="outline" className="border-primary/30 text-primary hover:bg-primary/10" onClick={() => save.mutate()} disabled={isLoading || save.isPending || (!sharingAvailable && enabled) || (enabled && (destinations.length === 0 || purposes.length === 0))}>
-          {save.isPending ? "Saving…" : "Save sharing"}
-        </Button>
-      </div>
-      {data?.sharing.revisions?.[0] ? (
-        <div className="mt-3 rounded-lg border border-primary/10 bg-card/30 p-3 text-[11px] text-muted-foreground" aria-live="polite" data-testid="ecosystem-consent-receipt">
-          <p className="font-medium text-foreground">Consent receipt · revision {data.sharing.revisions[0].revision}</p>
-          <p>
-            {data.sharing.revisions[0].state === "enabled" ? "Enabled" : "Disabled"} under {data.sharing.revisions[0].policyVersion}.{" "}
-            {data.sharing.revisions[0].transportStatus === "delivered"
-              ? "UMH accepted the signed update."
-              : data.sharing.revisions[0].deliveryState === "not_configured"
-                ? "No signed receiver was configured, so this receipt is local only."
-                : `Signed delivery is ${data.sharing.revisions[0].transportStatus || "pending"}.`}
-          </p>
-          <p>Changed products: {data.sharing.revisions[0].affectedDestinations.map((destination) => destination === "entrepreneuros" ? "EntrepreneurOS" : "CreativesOS").join(", ") || "none"}. No mission title, XP, health, journal, relationship, or reflection content is in this receipt.</p>
-        </div>
-      ) : null}
-    </div>
-  );
-}
 
 type CrossProductQuest = { id: number; title: string; completed: boolean };
 type CrossProductWorkLink = {
@@ -707,7 +762,7 @@ function CrossProductWorkLinksSection({ userId }: { userId?: number }) {
   const [sharedSummary, setSharedSummary] = useState("");
   const [destinations, setDestinations] = useState<Array<"entrepreneuros" | "creativesos">>([]);
   const sharing = sharingData?.sharing;
-  const coordinationEnabled = Boolean(sharing?.availability.available && sharing.enabled && sharing.purposes.includes("coordination"));
+  const coordinationEnabled = Boolean(sharing?.availability.available && sharing?.integrations.some((integration) => integration.connected && integration.permissions.capabilities.coordination));
 
   useEffect(() => {
     if (!sharing) return;
@@ -745,10 +800,10 @@ function CrossProductWorkLinksSection({ userId }: { userId?: number }) {
     <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
       <div className="flex items-center gap-2 mb-2">
         <Link2 className="h-4 w-4 text-primary" />
-        <Label className="text-sm text-foreground">Linked ecosystem work</Label>
+        <Label className="text-sm text-foreground">Linked connected-app work</Label>
       </div>
       {!coordinationEnabled ? (
-        <p className="text-xs text-muted-foreground">{sharing?.availability.available ? "Enable “Linked work coordination” above before connecting a mission. A link shares only the summary you write and the mission’s open/completed state." : "Ecosystem delivery is unavailable, so no mission can be linked for sharing."}</p>
+        <p className="text-xs text-muted-foreground">{sharing?.availability.available ? "Enable “Linked work coordination” for the receiving app above before linking a mission. A link shares only the summary you write and the mission’s open/completed state." : "UMH routing is unavailable, so no mission can be linked for sharing."}</p>
       ) : (
         <div className="space-y-3">
           <p className="text-xs text-muted-foreground">Use this only when one real-world work item belongs in LyfeOS and another product. Your mission title remains private.</p>
@@ -758,7 +813,7 @@ function CrossProductWorkLinksSection({ userId }: { userId?: number }) {
           </select>
           <Input value={sharedSummary} onChange={(event) => setSharedSummary(event.target.value)} maxLength={280} placeholder="Shared work summary (not the private mission title)" aria-label="Shared work summary" />
           <div className="flex flex-wrap gap-x-4 gap-y-2">
-            {(sharing?.destinations || []).map((destination) => (
+            {(sharing?.integrations || []).filter((integration) => integration.connected && integration.permissions.capabilities.coordination).map(({ service: destination }) => (
               <label key={destination} className="flex items-center gap-2 text-xs text-foreground">
                 <input type="checkbox" checked={destinations.includes(destination)} onChange={() => toggleDestination(destination)} className="accent-primary" />
                 {destination === "entrepreneuros" ? "EntrepreneurOS" : "CreativesOS"}
@@ -2131,9 +2186,6 @@ export default function ProfilePage() {
                 </div>
               )}
             </div>
-
-            <CrossProductSharingSection />
-            <CrossProductWorkLinksSection userId={user?.id} />
 
             <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
               <div className="flex items-center justify-between mb-3">

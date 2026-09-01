@@ -14,10 +14,11 @@ describe("cross-product sharing availability", () => {
     expect(routes).toContain("res.status(503)");
   });
 
-  it("makes unavailable ecosystem delivery clear in the profile without allowing new links", () => {
+  it("makes unavailable UMH routing clear in Connected Apps without allowing new links", () => {
     const profile = source("client/src/pages/ProfilePage.tsx");
-    expect(profile).toContain("No ecosystem data is leaving LyfeOS");
-    expect(profile).toContain("Ecosystem delivery is unavailable, so no mission can be linked for sharing.");
-    expect(profile).toContain("sharing?.availability.available && sharing.enabled");
+    expect(profile).toContain("Not configured · no ecosystem data can leave LyfeOS");
+    expect(profile).toContain("UMH routing is unavailable, so no mission can be linked for sharing.");
+    expect(profile).toContain("/api/ecosystem-integrations/status");
+    expect(profile).toContain("transportAvailable ? \"Connect\" : \"Unavailable\"");
   });
 });

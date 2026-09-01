@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import {
   LYFEOS_COORDINATION_CONTEXT_UPDATED_EVENT,
   LYFEOS_FEDERATION_CONSENT_UPDATED_EVENT,
@@ -11,12 +11,22 @@ import {
   crossProductSharingRevisions,
   crossProductSharingPreferences,
   crossProductWorkLinks,
+  integrations,
   quests,
+  userIntegrations,
   userDailyLogs,
   userStats,
   umhAuditRecords,
   umhOutboxEvents,
 } from "@shared/schema";
+import {
+  ECOSYSTEM_INTEGRATION_SERVICES,
+  ecosystemIntegrationProvider,
+  normalizeEcosystemIntegrationPermissions,
+  type EcosystemIntegrationCapability,
+  type EcosystemIntegrationService,
+} from "@shared/ecosystem-integration-permissions";
+import { normalizeGoogleAccountPermissionPreferences } from "@shared/google-integration-permissions";
 import { db } from "./db";
 import { getUMHFederationConfig } from "./umh/config";
 
@@ -26,6 +36,13 @@ export const CROSS_PRODUCT_SHARING_POLICY_VERSION = "lyfeos.cross-product-sharin
 export type CrossProductDestination = typeof crossProductDestinations[number];
 export type CrossProductPurpose = typeof crossProductPurposes[number];
 type CrossProductTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+export type EcosystemIntegrationGrant = {
+  service: EcosystemIntegrationService;
+  connected: boolean;
+  integrationId: number | null;
+  permissions: ReturnType<typeof normalizeEcosystemIntegrationPermissions>;
+};
 
 export type CrossProductSharingAvailability = {
   available: boolean;
@@ -71,6 +88,53 @@ async function sharingFor(userId: number) {
     revision: sharing?.revision ?? 0,
     federationSubjectId: sharing?.federationSubjectId ?? null,
   };
+}
+
+/**
+ * Product integrations are separate app records even though UMH is the secure
+ * transport. A product can only receive a purpose that its own app record has
+ * enabled; a global federation preference never broadens another app's grant.
+ */
+export async function getEcosystemIntegrationGrants(userId: number): Promise<EcosystemIntegrationGrant[]> {
+  const [account, rows] = await Promise.all([
+    db.select({ otherIntegrations: userIntegrations.otherIntegrations }).from(userIntegrations).where(eq(userIntegrations.userId, userId)).limit(1),
+    db.select().from(integrations).where(and(
+      eq(integrations.userId, userId),
+      inArray(integrations.provider, ECOSYSTEM_INTEGRATION_SERVICES.map(ecosystemIntegrationProvider)),
+    )),
+  ]);
+  const preferences = normalizeGoogleAccountPermissionPreferences(account[0]?.otherIntegrations);
+  return ECOSYSTEM_INTEGRATION_SERVICES.map((service) => {
+    const row = rows.find((candidate) => candidate.provider === ecosystemIntegrationProvider(service));
+    return {
+      service,
+      connected: row?.status === "active",
+      integrationId: row?.id ?? null,
+      permissions: normalizeEcosystemIntegrationPermissions(row?.settings, preferences),
+    };
+  });
+}
+
+function enabledDestinationsForPurpose(grants: EcosystemIntegrationGrant[], purpose: CrossProductPurpose): CrossProductDestination[] {
+  return grants
+    .filter((grant) => grant.connected && grant.permissions.capabilities[purpose as EcosystemIntegrationCapability])
+    .map((grant) => grant.service);
+}
+
+/** Rebuilds the legacy federation consent envelope from independent app grants. */
+export async function reconcileEcosystemIntegrationConsent(userId: number) {
+  const [sharing, grants] = await Promise.all([sharingFor(userId), getEcosystemIntegrationGrants(userId)]);
+  const coordination = enabledDestinationsForPurpose(grants, "coordination");
+  const correlation = enabledDestinationsForPurpose(grants, "correlation");
+  const destinations = crossProductDestinations.filter((destination) => coordination.includes(destination) || correlation.includes(destination));
+  const purposes = crossProductPurposes.filter((purpose) => (purpose === "coordination" ? coordination : correlation).length > 0);
+  return updateCrossProductSharing({
+    userId,
+    enabled: destinations.length > 0,
+    destinations,
+    purposes,
+    expectedRevision: sharing.revision,
+  });
 }
 
 async function insertEvent(tx: CrossProductTransaction, userId: number, event: UMHProjectionEventEnvelope, action: string, details: Record<string, unknown>): Promise<void> {
@@ -327,7 +391,9 @@ function capacityBand(input: { mentalState: number | null; physicalState: number
 /** Queues a coarse, opt-in daily context signal; raw health and journal data remain local. */
 export async function queueCoordinationContext(userId: number, date: string): Promise<boolean> {
   const sharing = await sharingFor(userId);
-  if (!sharing.enabled || !sharing.purposes.includes("correlation") || sharing.destinations.length === 0) return false;
+  const grants = await getEcosystemIntegrationGrants(userId);
+  const destinations = enabledDestinationsForPurpose(grants, "correlation");
+  if (!sharing.enabled || destinations.length === 0) return false;
   const config = getUMHFederationConfig();
   const [dailyLog, stats] = config ? await Promise.all([
     db.select({ mentalState: userDailyLogs.mentalState, physicalState: userDailyLogs.physicalState, emotionalState: userDailyLogs.emotionalState }).from(userDailyLogs)
@@ -347,21 +413,23 @@ export async function queueCoordinationContext(userId: number, date: string): Pr
     energyMax: userStat?.energyMax ?? null,
   });
   const evidenceQuality = log && userStat ? "combined" : log ? "self_reported" : "local_resource_state";
-  const version = crypto.createHash("sha256").update(JSON.stringify({ date, band, evidenceQuality, destinations: sharing.destinations })).digest("hex").slice(0, 24);
+  const version = crypto.createHash("sha256").update(JSON.stringify({ date, band, evidenceQuality, destinations })).digest("hex").slice(0, 24);
   const event: UMHProjectionEventEnvelope = {
     schemaVersion: "umh.v1", eventId: crypto.randomUUID(), projectionId: "lyfeos",
     eventType: LYFEOS_COORDINATION_CONTEXT_UPDATED_EVENT, installationId: config.installationId, tenantId: config.tenantId,
     actorId, aggregateType: "coordination_context", aggregateId: `${actorId}:${date}`,
     idempotencyKey: `capacity:${actorId}:${date}:${version}`, traceId: crypto.randomUUID(), correlationId: crypto.randomUUID(), occurredAt: new Date().toISOString(),
-    payload: { contextDate: date, capacityBand: band, evidenceQuality, purpose: "correlation", allowedDestinations: sharing.destinations },
+    payload: { contextDate: date, capacityBand: band, evidenceQuality, purpose: "correlation", allowedDestinations: destinations },
   };
-  return queueEvent(userId, event, "lyfeos.coordination_context.updated", { contextDate: date, capacityBand: band, allowedDestinations: sharing.destinations });
+  return queueEvent(userId, event, "lyfeos.coordination_context.updated", { contextDate: date, capacityBand: band, allowedDestinations: destinations });
 }
 
 /** Queues state for an explicitly linked work item, not for ordinary private missions. */
 export async function queueLinkedWorkItemState(userId: number, questId: number): Promise<number> {
   const sharing = await sharingFor(userId);
-  if (!sharing.enabled || !sharing.purposes.includes("coordination")) return 0;
+  const grants = await getEcosystemIntegrationGrants(userId);
+  const coordinationDestinations = enabledDestinationsForPurpose(grants, "coordination");
+  if (!sharing.enabled || coordinationDestinations.length === 0) return 0;
   const config = getUMHFederationConfig();
   const [quest, links] = config ? await Promise.all([
     db.select({ id: quests.id, completed: quests.completed, completedAt: quests.completedAt }).from(quests).where(and(eq(quests.id, questId), eq(quests.userId, userId))).limit(1),
@@ -372,7 +440,7 @@ export async function queueLinkedWorkItemState(userId: number, questId: number):
   if (!config || !actorId || !localQuest) return 0;
   let queued = 0;
   for (const link of links) {
-    const destinations = selected(link.destinations, crossProductDestinations).filter((destination) => sharing.destinations.includes(destination));
+    const destinations = selected(link.destinations, crossProductDestinations).filter((destination) => coordinationDestinations.includes(destination));
     if (!destinations.length) continue;
     const state = localQuest.completed ? "completed" as const : "open" as const;
     const event: UMHProjectionEventEnvelope = {
@@ -389,8 +457,9 @@ export async function queueLinkedWorkItemState(userId: number, questId: number):
 }
 
 export async function getCrossProductSharing(userId: number) {
-  const [sharing, revisions] = await Promise.all([
+  const [sharing, grants, revisions] = await Promise.all([
     sharingFor(userId),
+    getEcosystemIntegrationGrants(userId),
     db.select({
       id: crossProductSharingRevisions.id,
       revision: crossProductSharingRevisions.revision,
@@ -416,6 +485,12 @@ export async function getCrossProductSharing(userId: number) {
     purposes: sharing.purposes,
     revision: sharing.revision,
     availability: getCrossProductSharingAvailability(),
+    integrations: grants.map((grant) => ({
+      service: grant.service,
+      connected: grant.connected,
+      integrationId: grant.integrationId,
+      permissions: grant.permissions,
+    })),
     revisions: revisions.map((revision) => ({
       ...revision,
       allowedDestinations: selected(revision.allowedDestinations, crossProductDestinations),

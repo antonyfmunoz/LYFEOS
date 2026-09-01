@@ -6,12 +6,22 @@ import type {
   GoogleIntegrationService,
 } from "@shared/google-integration-permissions";
 import { normalizeGoogleIntegrationPermissions, writeGoogleIntegrationPermissions } from "@shared/google-integration-permissions";
+import {
+  ECOSYSTEM_INTEGRATION_SERVICES,
+  normalizeEcosystemIntegrationPermissions,
+  writeEcosystemIntegrationPermissions,
+  type EcosystemIntegrationCapability,
+  type EcosystemIntegrationService,
+} from "@shared/ecosystem-integration-permissions";
+
+export type ConnectedAppService = GoogleIntegrationService | EcosystemIntegrationService;
+export type ConnectedAppCapability = GoogleIntegrationCapability | EcosystemIntegrationCapability;
 
 export type IntegrationActionDescriptor = {
   key: string;
   title: string;
   summary: string;
-  capability: GoogleIntegrationCapability;
+  capability: ConnectedAppCapability;
   risk: GoogleIntegrationRisk;
   futureAction: boolean;
 };
@@ -22,9 +32,9 @@ export type IntegrationActionReceipt = {
   id: string;
   userId: number;
   integrationId: number | null;
-  service: GoogleIntegrationService;
+  service: ConnectedAppService;
   actionKey: string;
-  capability: GoogleIntegrationCapability;
+  capability: ConnectedAppCapability;
   risk: GoogleIntegrationRisk;
   title: string;
   summary: string;
@@ -42,9 +52,9 @@ function mapReceipt(row: Record<string, unknown>): IntegrationActionReceipt {
     id: String(row.id),
     userId: Number(row.user_id),
     integrationId: row.integration_id === null ? null : Number(row.integration_id),
-    service: row.service as GoogleIntegrationService,
+    service: row.service as ConnectedAppService,
     actionKey: String(row.action_key),
-    capability: row.capability as GoogleIntegrationCapability,
+    capability: row.capability as ConnectedAppCapability,
     risk: row.risk as GoogleIntegrationRisk,
     title: String(row.title),
     summary: String(row.summary),
@@ -61,7 +71,7 @@ function mapReceipt(row: Record<string, unknown>): IntegrationActionReceipt {
 type ActionReceiptInput = {
   userId: number;
   integrationId: number;
-  service: GoogleIntegrationService;
+  service: ConnectedAppService;
   descriptor: IntegrationActionDescriptor;
   fingerprint: string;
   approvalPolicy: GoogleApprovalPolicy;
@@ -150,12 +160,23 @@ export async function alwaysAllowIntegrationApproval(input: {
       return null;
     }
     const settings = integrationResult.rows[0].settings;
-    const current = normalizeGoogleIntegrationPermissions(receipt.service, settings);
-    const updatedSettings = writeGoogleIntegrationPermissions(settings, receipt.service, {
-      capabilities: current.capabilities,
-      approvalPolicyOverride: "never",
-      futureActionPolicyOverride: current.futureActionPolicyOverride,
-    });
+    const updatedSettings = (ECOSYSTEM_INTEGRATION_SERVICES as readonly string[]).includes(receipt.service)
+      ? (() => {
+          const current = normalizeEcosystemIntegrationPermissions(settings);
+          return writeEcosystemIntegrationPermissions(settings, {
+            capabilities: current.capabilities,
+            approvalPolicyOverride: "never",
+            futureActionPolicyOverride: current.futureActionPolicyOverride,
+          });
+        })()
+      : (() => {
+          const current = normalizeGoogleIntegrationPermissions(receipt.service as GoogleIntegrationService, settings);
+          return writeGoogleIntegrationPermissions(settings, receipt.service as GoogleIntegrationService, {
+            capabilities: current.capabilities,
+            approvalPolicyOverride: "never",
+            futureActionPolicyOverride: current.futureActionPolicyOverride,
+          });
+        })();
     await client.query(`UPDATE integrations SET settings = $2 WHERE id = $1`, [receipt.integrationId, updatedSettings]);
     const decided = await client.query(
       `UPDATE integration_action_receipts

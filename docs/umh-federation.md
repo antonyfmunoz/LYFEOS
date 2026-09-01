@@ -64,3 +64,18 @@ The public `lyfeos.umh-capability-manifest.v2` separately declares direction,
 LyfeOS authority, local effect, approval, consent boundary, delivery semantics,
 data class, event idempotency, and the mandatory receipt contract. Publishing a
 contract does not activate federation or prove consumer conformance.
+
+## Connected-app model
+
+UMH, EntrepreneurOS, and CreativesOS appear in LyfeOS **Connected Apps**. UMH
+is the system-managed signed route; it is never a user data grant.
+EntrepreneurOS and CreativesOS are separate, owner-controlled integrations.
+Connecting or authorizing one cannot connect or authorize the other.
+
+Each product starts with every share capability off. The user independently
+enables only `Linked work coordination` and/or `Capacity pattern insights` for
+that product. Outbound events are filtered by the receiving product's own
+grant—not merely by a broad ecosystem switch. Account-level approval and
+future-action defaults apply to these app records exactly as they do to other
+connected apps. Until UMH routing is configured, the UI reports the apps as
+unavailable and LyfeOS sends no ecosystem data.
