@@ -11,9 +11,15 @@ DATABASE_URL
 SESSION_SECRET
 CLERK_SECRET_KEY
 CLERK_WEBHOOK_SIGNING_SECRET
-GOOGLE_OAUTH_CLIENT_ID                 # only if Google Calendar is enabled
-GOOGLE_OAUTH_CLIENT_SECRET             # only if Google Calendar is enabled
-GOOGLE_OAUTH_REDIRECT_URI              # https://lyfeos.net/api/google/callback in production
+GOOGLE_CALENDAR_OAUTH_CLIENT_ID         # only if Google Calendar is enabled
+GOOGLE_CALENDAR_OAUTH_CLIENT_SECRET     # only if Google Calendar is enabled
+GOOGLE_CALENDAR_OAUTH_REDIRECT_URI      # https://lyfeos.net/api/google/calendar/callback
+GOOGLE_TASKS_OAUTH_CLIENT_ID            # only if Google Tasks is enabled
+GOOGLE_TASKS_OAUTH_CLIENT_SECRET        # only if Google Tasks is enabled
+GOOGLE_TASKS_OAUTH_REDIRECT_URI         # https://lyfeos.net/api/google/tasks/callback
+GOOGLE_DRIVE_OAUTH_CLIENT_ID            # only if Google Drive is enabled
+GOOGLE_DRIVE_OAUTH_CLIENT_SECRET        # only if Google Drive is enabled
+GOOGLE_DRIVE_OAUTH_REDIRECT_URI         # https://lyfeos.net/api/google/drive/callback
 INTEGRATION_PROVIDER_CREDENTIAL_KEY     # independent random 32 bytes, base64; required for Google
 HEALTH_PROVIDER_CREDENTIAL_KEY          # independent random 32 bytes, base64; required for direct Health OAuth
 OURA_CLIENT_ID                          # only if direct Oura sync is enabled

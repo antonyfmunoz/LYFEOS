@@ -3,9 +3,15 @@ DATABASE_URL=postgresql://USER:PASSWORD@HOST/DATABASE?sslmode=require
 SESSION_SECRET=generate-a-long-random-value-for-each-environment
 AI_INTEGRATIONS_ANTHROPIC_BASE_URL=http://localhost:1106/modelfarm/anthropic
 AI_INTEGRATIONS_ANTHROPIC_API_KEY=replace-with-provider-key
-GOOGLE_OAUTH_CLIENT_ID=your-google-client-id
-GOOGLE_OAUTH_CLIENT_SECRET=your-google-client-secret
-GOOGLE_OAUTH_REDIRECT_URI=https://lyfeos.net/api/google/callback
+GOOGLE_CALENDAR_OAUTH_CLIENT_ID=your-google-calendar-client-id
+GOOGLE_CALENDAR_OAUTH_CLIENT_SECRET=your-google-calendar-client-secret
+GOOGLE_CALENDAR_OAUTH_REDIRECT_URI=https://lyfeos.net/api/google/calendar/callback
+GOOGLE_TASKS_OAUTH_CLIENT_ID=your-google-tasks-client-id
+GOOGLE_TASKS_OAUTH_CLIENT_SECRET=your-google-tasks-client-secret
+GOOGLE_TASKS_OAUTH_REDIRECT_URI=https://lyfeos.net/api/google/tasks/callback
+GOOGLE_DRIVE_OAUTH_CLIENT_ID=your-google-drive-client-id
+GOOGLE_DRIVE_OAUTH_CLIENT_SECRET=your-google-drive-client-secret
+GOOGLE_DRIVE_OAUTH_REDIRECT_URI=https://lyfeos.net/api/google/drive/callback
 # Independent random 32-byte values encoded as base64. Never reuse these keys.
 INTEGRATION_PROVIDER_CREDENTIAL_KEY=generate-32-random-bytes-and-base64-encode
 HEALTH_PROVIDER_CREDENTIAL_KEY=generate-a-different-32-random-bytes-and-base64-encode
