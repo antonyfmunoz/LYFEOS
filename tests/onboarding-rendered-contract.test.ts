@@ -48,4 +48,10 @@ describe("rendered onboarding acceptance contract", () => {
     expect(app).toMatch(/useEffect\(\(\) => \{\s*if \(!isLoading\) \{\s*hideOAuthPreloader\(\);[\s\S]*?hideAppPreloader\(\);\s*}\s*}, \[isLoading\]\);/);
     expect(app).toContain('<Route path="/onboarding" component={OnboardingPage} />');
   });
+
+  it("lands a newly registered account on Dashboard even when the browser has stale prior-account state", () => {
+    expect(onboarding.match(/const isInitialOnboarding = localStorage\.getItem\("lyfeos-pending-onboarding"\) === "true";/g)).toHaveLength(2);
+    expect(onboarding.match(/if \(isInitialOnboarding \|\| !hasSeenDashboard\)/g)).toHaveLength(2);
+    expect(onboarding).toContain('localStorage.setItem("lyfeos-ceremony-destination", "/dashboard")');
+  });
 });

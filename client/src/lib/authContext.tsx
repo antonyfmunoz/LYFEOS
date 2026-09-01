@@ -274,6 +274,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("lyfeos-onboarding-answers");
       localStorage.removeItem("lyfeos-onboarding-resume");
       localStorage.removeItem("lyfeos-continued-past-mission0");
+      localStorage.removeItem("lyfeos-has-seen-dashboard");
+      localStorage.removeItem("lyfeos-ceremony-mode");
+      localStorage.removeItem("lyfeos-ceremony-destination");
       sessionStorage.removeItem("lyfeos-pending-registration");
 
       const trimmedEmail = email.trim();
@@ -490,6 +493,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem("lyfeos-oauth-mode", mode);
       localStorage.setItem("lyfeos-oauth-redirect-pending", "true");
       if (mode === "register") {
+        localStorage.removeItem("lyfeos-has-seen-dashboard");
+        localStorage.removeItem("lyfeos-ceremony-mode");
+        localStorage.removeItem("lyfeos-ceremony-destination");
         if (!signUp) throw new Error("Sign-up not available");
         const intent = await requestOAuthRegistrationIntent();
         await signUp.authenticateWithRedirect({
@@ -572,6 +578,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem("lyfeos-oauth-mode", mode);
       localStorage.setItem("lyfeos-oauth-redirect-pending", "true");
       if (mode === "register") {
+        localStorage.removeItem("lyfeos-has-seen-dashboard");
+        localStorage.removeItem("lyfeos-ceremony-mode");
+        localStorage.removeItem("lyfeos-ceremony-destination");
         if (!signUp) throw new Error("Sign-up not available");
         const intent = await requestOAuthRegistrationIntent();
         await signUp.authenticateWithRedirect({

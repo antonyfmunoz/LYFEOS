@@ -1322,6 +1322,7 @@ export default function OnboardingPage() {
 
   const handleStop = async () => {
     if (currentMission === 0) return;
+    const isInitialOnboarding = localStorage.getItem("lyfeos-pending-onboarding") === "true";
 
     const colorToRestore = selectedThemeColor !== "#ffffff" 
       ? selectedThemeColor 
@@ -1344,7 +1345,7 @@ export default function OnboardingPage() {
     localStorage.removeItem(STORAGE_KEY);
     
     const hasSeenDashboard = localStorage.getItem("lyfeos-has-seen-dashboard") === "true";
-    if (!hasSeenDashboard) {
+    if (isInitialOnboarding || !hasSeenDashboard) {
       localStorage.setItem("lyfeos-ceremony-mode", "init");
       localStorage.setItem("lyfeos-ceremony-destination", "/dashboard");
       
@@ -1401,6 +1402,7 @@ export default function OnboardingPage() {
   };
 
   const handleSkipToSystem = async () => {
+    const isInitialOnboarding = localStorage.getItem("lyfeos-pending-onboarding") === "true";
     localStorage.removeItem("lyfeos-pending-onboarding");
     localStorage.removeItem("lyfeos-onboarding-resume");
     localStorage.removeItem("lyfeos-continued-past-mission0");
@@ -1415,7 +1417,7 @@ export default function OnboardingPage() {
     
     const hasSeenDashboard = localStorage.getItem("lyfeos-has-seen-dashboard") === "true";
     
-    if (!hasSeenDashboard) {
+    if (isInitialOnboarding || !hasSeenDashboard) {
       localStorage.setItem("lyfeos-ceremony-mode", "init");
       localStorage.setItem("lyfeos-ceremony-destination", "/dashboard");
 

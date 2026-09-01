@@ -68,6 +68,8 @@ describe("OAuth registration disclosure provenance", () => {
     expect(authContext).toContain('await signOut()');
     expect(authContext).toContain('fetch("/api/auth/logout"');
     expect(authContext).toContain('result = await requestIntent()');
+    expect(authContext).toContain('localStorage.removeItem("lyfeos-has-seen-dashboard")');
+    expect(authContext).toContain('localStorage.removeItem("lyfeos-ceremony-destination")');
     expect(authContext).toContain("signUp.authenticateWithRedirect");
     expect(authContext).toContain("lyfeosRegistrationIntentId: intent.intentId");
     expect(app).toContain('<Route path="/sso-callback">');
