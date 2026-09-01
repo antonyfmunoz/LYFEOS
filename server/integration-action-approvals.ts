@@ -156,7 +156,7 @@ export async function alwaysAllowIntegrationApproval(input: {
       approvalPolicyOverride: "never",
       futureActionPolicyOverride: current.futureActionPolicyOverride,
     });
-    await client.query(`UPDATE integrations SET settings = $2, updated_at = NOW() WHERE id = $1`, [receipt.integrationId, updatedSettings]);
+    await client.query(`UPDATE integrations SET settings = $2 WHERE id = $1`, [receipt.integrationId, updatedSettings]);
     const decided = await client.query(
       `UPDATE integration_action_receipts
         SET state = 'approved', decision = 'always_allow', decided_at = NOW()
