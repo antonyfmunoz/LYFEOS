@@ -317,3 +317,9 @@ Implementation evidence:
 - tests, `docs/production-operations.md`, `docs/public-mvp-release.md`, `docs/umh-federation.md`, and GitHub workflows.
 
 This is a static, source-grounded register. Runtime claims require fresh verification in the deployment environment; external configuration and credentials were not read or recorded here.
+
+### 2026-09-01 current-state correction
+
+Release 214 at source `6c5dbc8e3b116976a2e45690ca19d291169fa83a` supersedes the older release identities in this static register. Google registration now follows the onboarding path; Google account attachment, password creation for Google-created accounts, and password recovery/session handoff were confirmed end to end and are protected by exact-source CI `33537416051`. The remaining identity gates are Apple Sign In plus a fresh complete provider-owned erasure cycle for each enabled social provider.
+
+The provider-independent web product remains implemented and production-qualified within the evidence boundaries above. Known desired-state gaps now require at least one of: approved provider credentials or contracts, a receiving UMH/product implementation, a supported physical browser/device, legal/commercial decisions, managed-production scale, human review, or longitudinal field evidence. The controlled monitor exercise `33538849605` → `33539234802` additionally qualifies automated incident detection, issue creation, recovery rechecks, receipt, and closure, but not human organization response. Future source qualification includes a tracked-text null-byte integrity gate so hidden local source corruption cannot silently enter a verified release.

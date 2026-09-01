@@ -35,7 +35,8 @@
     "acceptance:mission-safety": "tsx scripts/mission-safety-browser-acceptance.ts",
     "acceptance:collaboration": "tsx scripts/collaboration-browser-acceptance.ts",
     "acceptance:thread-successor": "tsx scripts/thread-successor-browser-acceptance.ts",
-    "verify": "npm run check && npm test && npm run build && npm run budget",
+    "check:worktree-integrity": "tsx scripts/check-worktree-integrity.ts",
+    "verify": "npm run check:worktree-integrity && npm run check && npm test && npm run build && npm run budget",
     "ops:health-integrity": "tsx scripts/health-integrity-drill.ts",
     "db:push": "drizzle-kit push"
   },
