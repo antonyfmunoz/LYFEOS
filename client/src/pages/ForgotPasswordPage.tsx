@@ -50,7 +50,7 @@ export default function ForgotPasswordPage() {
           <p className="text-white text-sm">
             We've sent a verification code to your email. Enter it on the next page to reset your password.
           </p>
-          <div className="pt-2 space-y-3">
+          <div className="pt-2 flex flex-col items-center gap-4">
             <button
               onClick={() => navigate("/reset-password")}
               className="w-full text-sm font-mono px-4 py-2.5 rounded border hover:opacity-80 transition-colors inline-flex items-center justify-center gap-2"

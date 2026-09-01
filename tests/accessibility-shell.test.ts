@@ -65,6 +65,7 @@ describe("shared accessibility shell", () => {
     expect(forgot).toContain('<label htmlFor="reset-email"');
     expect(forgot).toContain('id="reset-email"');
     expect(forgot).toContain('autoComplete="email"');
+    expect(forgot).toContain('className="pt-2 flex flex-col items-center gap-4"');
     expect(reset).toContain('<main className="min-h-screen');
     expect(reset).toContain('aria-label="Verification code"');
     expect(reset).toContain('aria-label="New password"');
