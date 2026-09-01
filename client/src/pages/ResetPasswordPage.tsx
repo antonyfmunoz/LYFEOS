@@ -120,7 +120,7 @@ export default function ResetPasswordPage() {
                 onChange={(e) => setCode(e.target.value)}
                 placeholder="Enter code from email"
                 required
-                className="w-full bg-transparent rounded-lg p-3 outline-none text-white font-mono tracking-widest"
+                className="w-full bg-transparent rounded-lg p-3 outline-none text-white"
                 style={{ borderColor: accent?.border30 || 'rgba(255,255,255,0.3)', '--tw-ring-color': accent?.border30 || 'rgba(255,255,255,0.3)' } as any}
               />
             </div>

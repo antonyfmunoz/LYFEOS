@@ -68,6 +68,8 @@ describe("shared accessibility shell", () => {
     expect(forgot).toContain('className="pt-2 flex flex-col items-center gap-4"');
     expect(reset).toContain('<main className="min-h-screen');
     expect(reset).toContain('aria-label="Verification code"');
+    expect(reset).toContain('className="w-full bg-transparent rounded-lg p-3 outline-none text-white"');
+    expect(reset).not.toContain('text-white font-mono tracking-widest');
     expect(reset).toContain('aria-label="New password"');
     expect(reset).toContain('aria-label="Confirm new password"');
     expect(reset).toContain('aria-label={showPassword ? "Hide password" : "Show password"}');
