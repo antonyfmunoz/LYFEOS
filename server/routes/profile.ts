@@ -21,6 +21,7 @@ import { missionExperience } from "@shared/progression";
 import { LYFEOS_DATA_RIGHTS } from "@shared/data-rights";
 import { SESSION_COOKIE_NAME } from "../session-config";
 import { InFlightRequestCoalescer } from "../in-flight-request-coalescer";
+import { hasGoogleExternalAccount } from "../clerk-external-accounts";
 
 async function loadFreshUserStats(userId: number) {
   // Daily token/streak resets stay exact-current. Activity XP is a stored
@@ -592,7 +593,7 @@ export function registerProfileRoutes(app: Express): void {
       if (user.clerkId) {
         try {
           const identity = await clerkClient.users.getUser(user.clerkId);
-          googleLinked = identity.externalAccounts.some((account) => account.provider === "google");
+          googleLinked = hasGoogleExternalAccount(identity.externalAccounts);
           clerkPasswordEnabled = identity.passwordEnabled;
         } catch (error) {
           logger.warn("Unable to refresh linked sign-in methods:", error);

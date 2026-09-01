@@ -24,7 +24,7 @@ describe("Google sign-in account linking", () => {
     const profile = fs.readFileSync(path.resolve("client/src/pages/ProfilePage.tsx"), "utf8");
     expect(authRoutes).toContain('app.post("/api/auth/google-link-intent", requireAuth');
     expect(authRoutes).toContain("isValidGoogleAuthLinkIntent(googleLinkIntent, req.session.userId)");
-    expect(authRoutes).toContain('account.provider === "google"');
+    expect(authRoutes).toContain("hasGoogleExternalAccount(clerkUser.externalAccounts)");
     expect(authContext).toContain('redirectUrlComplete: "/profile?google-signin=linked"');
     expect(authContext).toContain("body: JSON.stringify({ currentPassword })");
     expect(profile).toContain("Add Google");

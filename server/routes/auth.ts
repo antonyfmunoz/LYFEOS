@@ -24,6 +24,7 @@ import {
   isValidGoogleAuthLinkIntent,
   type GoogleAuthLinkIntent,
 } from "../google-auth-link-intent";
+import { hasGoogleExternalAccount } from "../clerk-external-accounts";
 
 declare module "express-session" {
   interface SessionData {
@@ -168,7 +169,7 @@ export const bindAuthenticatedPrincipal = async (req: Request, res: Response, ne
       }
 
       clerkUser = await clerkClient.users.getUser(userId);
-      const hasGoogleAccount = clerkUser.externalAccounts.some((account) => account.provider === "google");
+      const hasGoogleAccount = hasGoogleExternalAccount(clerkUser.externalAccounts);
       if (!hasGoogleAccount) {
         delete req.session.googleAuthLinkIntent;
         return res.status(400).json({ error: "A verified Google sign-in was not returned" });
