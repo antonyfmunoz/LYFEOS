@@ -68,7 +68,6 @@ if ('serviceWorker' in navigator) {
 const application = (
   <ClerkProvider
     publishableKey={PUBLISHABLE_KEY}
-    clerkJSVariant="headless"
     clerkJSVersion={CLERK_JS_VERSION}
   >
     <QueryClientProvider client={queryClient}>
