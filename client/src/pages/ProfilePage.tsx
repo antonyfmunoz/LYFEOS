@@ -87,6 +87,15 @@ import { useReverification, useUser } from "@clerk/clerk-react";
 import PushNotificationSettings from "@/components/profile/PushNotificationSettings";
 import CollaborationSettings from "@/components/profile/CollaborationSettings";
 import ExtensionSettings from "@/components/profile/ExtensionSettings";
+import {
+  defaultGoogleIntegrationPermissions,
+  googlePermissionPreset,
+  googleServiceCapabilities,
+  type GoogleApprovalPolicy,
+  type GoogleIntegrationCapability,
+  type GoogleIntegrationPermissions,
+  type GoogleIntegrationService,
+} from "@shared/google-integration-permissions";
 type ClerkPhoneNumber = {
   id: string;
   phoneNumber: string;
@@ -109,13 +118,13 @@ const AI_CONTEXT_OPTIONS = [
 ] as const;
 type AIContextPreferenceKey = typeof AI_CONTEXT_OPTIONS[number]["key"];
 
-type GoogleIntegrationService = "calendar" | "tasks" | "drive";
 type GoogleIntegrationServiceStatus = {
   connected: boolean;
   configured: boolean;
   scope: string | null;
   connectedAt: string | null;
   status: string | null;
+  permissions: GoogleIntegrationPermissions;
 };
 type GoogleIntegrationStatus = {
   connected: boolean;
@@ -134,10 +143,36 @@ const GOOGLE_INTEGRATIONS: Array<{
   { service: "drive", name: "Google Drive", description: "Sync documents with your private vault.", icon: HardDrive },
 ];
 
+const GOOGLE_PERMISSION_COPY: Record<GoogleIntegrationService, Record<GoogleIntegrationCapability, { label: string; description: string }>> = {
+  calendar: {
+    read: { label: "Read events", description: "View event details needed for planning." },
+    import: { label: "Sync into LyfeOS", description: "Create and update LyfeOS missions from events." },
+    write: { label: "Change Google Calendar", description: "Create or update events in Google Calendar." },
+  },
+  tasks: {
+    read: { label: "Read tasks", description: "View active Google Tasks and their details." },
+    import: { label: "Import into LyfeOS", description: "Create LyfeOS missions from Google Tasks." },
+    write: { label: "Change Google Tasks", description: "Not supported by this read-only connection." },
+  },
+  drive: {
+    read: { label: "Read files", description: "Browse and read supported Drive files." },
+    import: { label: "Sync into LyfeOS", description: "Import supported files into your private vault." },
+    write: { label: "Change Google Drive", description: "Create or update files in Google Drive." },
+  },
+};
+
+const GOOGLE_APPROVAL_OPTIONS: Array<{ value: GoogleApprovalPolicy; label: string; description: string }> = [
+  { value: "always_ask", label: "Always ask", description: "Ask before connected-app actions." },
+  { value: "changes", label: "Ask for changes", description: "Read automatically; ask before imports or writes." },
+  { value: "important", label: "Ask for important actions", description: "Routine permitted actions can run; ask for consequential ones." },
+  { value: "never", label: "Never ask", description: "Permitted actions may run automatically." },
+];
+
 function IntegrationsSection({ userId }: { userId?: number }) {
   const { toast } = useToast();
   const [connectingGoogle, setConnectingGoogle] = useState<GoogleIntegrationService | null>(null);
   const [disconnectingGoogle, setDisconnectingGoogle] = useState<GoogleIntegrationService | null>(null);
+  const [savingGooglePermissions, setSavingGooglePermissions] = useState<GoogleIntegrationService | null>(null);
 
   const { data: googleStatus, isLoading: isGoogleLoading } = useQuery<GoogleIntegrationStatus>({
     queryKey: ["/api/google/status"],
@@ -173,6 +208,41 @@ function IntegrationsSection({ userId }: { userId?: number }) {
     } finally {
       setDisconnectingGoogle(null);
     }
+  };
+
+  const updateGooglePermissions = async (
+    service: GoogleIntegrationService,
+    permissions: Pick<GoogleIntegrationPermissions, "capabilities" | "approvalPolicy">,
+  ) => {
+    setSavingGooglePermissions(service);
+    try {
+      await apiRequest(`/api/google/${service}/permissions`, {
+        method: "PATCH",
+        body: JSON.stringify(permissions),
+      });
+      await queryClient.invalidateQueries({ queryKey: ["/api/google/status"] });
+      toast({ title: "Permissions updated", description: `${GOOGLE_INTEGRATIONS.find((item) => item.service === service)?.name} will follow your new access controls.` });
+    } catch {
+      toast({ title: "Permission update failed", description: "Your previous integration permissions are still active.", variant: "destructive" });
+    } finally {
+      setSavingGooglePermissions(null);
+    }
+  };
+
+  const changeGoogleCapability = (
+    service: GoogleIntegrationService,
+    permissions: GoogleIntegrationPermissions,
+    capability: GoogleIntegrationCapability,
+    enabled: boolean,
+  ) => {
+    const capabilities = { ...permissions.capabilities, [capability]: enabled };
+    if (capability === "read" && !enabled) {
+      capabilities.import = false;
+      capabilities.write = false;
+    } else if ((capability === "import" || capability === "write") && enabled) {
+      capabilities.read = true;
+    }
+    void updateGooglePermissions(service, { capabilities, approvalPolicy: permissions.approvalPolicy });
   };
 
   useEffect(() => {
@@ -215,40 +285,119 @@ function IntegrationsSection({ userId }: { userId?: number }) {
           const status = googleStatus?.services?.[service];
           const connected = status?.connected ?? false;
           const configured = status?.configured ?? false;
+          const permissions = status?.permissions ?? defaultGoogleIntegrationPermissions(service);
+          const supportedCapabilities = googleServiceCapabilities(service);
+          const enabledCapabilities = supportedCapabilities.filter((capability) => permissions.capabilities[capability]);
+          const permissionPresets: Array<"read_only" | "standard" | "full"> = service === "tasks"
+            ? ["read_only", "standard"]
+            : ["read_only", "standard", "full"];
+          const accessLevel = service !== "tasks" && enabledCapabilities.length === supportedCapabilities.length
+            ? "full"
+            : permissions.capabilities.read && !permissions.capabilities.import && !permissions.capabilities.write
+              ? "read_only"
+              : permissions.capabilities.read && permissions.capabilities.import && !permissions.capabilities.write
+                ? "standard"
+                : "custom";
           return (
-            <div key={service} className="flex items-center justify-between gap-3 p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors">
-              <div className="flex min-w-0 items-start">
-                <Icon className="h-4 w-4 text-primary mr-2 mt-0.5 shrink-0" />
-                <div className="min-w-0">
-                  <span className="text-sm">{name}</span>
-                  <p className={`text-xs ${connected ? "text-primary" : "text-muted-foreground"}`}>
-                    {connected ? "Connected" : status?.status === "revoked" ? (service === "drive" ? "Disconnected" : "Disconnected — imported LyfeOS missions retained") : description}
-                  </p>
+            <div key={service} className="p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex min-w-0 items-start">
+                  <Icon className="h-4 w-4 text-primary mr-2 mt-0.5 shrink-0" />
+                  <div className="min-w-0">
+                    <span className="text-sm">{name}</span>
+                    <p className={`text-xs ${connected ? "text-primary" : "text-muted-foreground"}`}>
+                      {connected ? `Connected · ${accessLevel === "full" ? "Full authority" : accessLevel === "read_only" ? "Read only" : accessLevel === "standard" ? "Standard access" : "Custom access"}` : status?.status === "revoked" ? (service === "drive" ? "Disconnected" : "Disconnected — imported LyfeOS missions retained") : description}
+                    </p>
+                  </div>
                 </div>
+                {isGoogleLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                ) : connected ? (
+                  <button
+                    type="button"
+                    disabled={disconnectingGoogle !== null}
+                    onClick={() => disconnectGoogle(service)}
+                    className="text-xs font-mono px-3 py-1.5 rounded border border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors inline-flex items-center gap-1 disabled:opacity-50"
+                  >
+                    {disconnectingGoogle === service ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3" />}
+                    Disconnect
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={connectingGoogle !== null || !configured}
+                    onClick={() => connectGoogle(service)}
+                    className="text-xs font-mono px-3 py-1.5 rounded border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 transition-colors inline-flex items-center gap-1 disabled:opacity-50"
+                  >
+                    {connectingGoogle === service ? <Loader2 className="h-3 w-3 animate-spin" /> : <Globe className="h-3 w-3" />}
+                    {configured ? "Connect" : "Coming soon"}
+                  </button>
+                )}
               </div>
-              {isGoogleLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-              ) : connected ? (
-                <button
-                  type="button"
-                  disabled={disconnectingGoogle !== null}
-                  onClick={() => disconnectGoogle(service)}
-                  className="text-xs font-mono px-3 py-1.5 rounded border border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors inline-flex items-center gap-1 disabled:opacity-50"
-                >
-                  {disconnectingGoogle === service ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3" />}
-                  Disconnect
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  disabled={connectingGoogle !== null || !configured}
-                  onClick={() => connectGoogle(service)}
-                  className="text-xs font-mono px-3 py-1.5 rounded border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 transition-colors inline-flex items-center gap-1 disabled:opacity-50"
-                >
-                  {connectingGoogle === service ? <Loader2 className="h-3 w-3 animate-spin" /> : <Globe className="h-3 w-3" />}
-                  {configured ? "Connect" : "Coming soon"}
-                </button>
-              )}
+              {connected ? (
+                <details className="mt-2 border-t border-primary/10 pt-2">
+                  <summary className="cursor-pointer select-none text-xs text-muted-foreground hover:text-foreground">Manage permissions</summary>
+                  <div className="mt-3 space-y-3" aria-label={`${name} permissions`}>
+                    <p className="rounded border border-primary/10 bg-background/30 p-2 text-[10px] text-muted-foreground">
+                      Google grant: {service === "tasks" ? "read only" : "read and write"}. The controls below can further restrict LyfeOS but can never exceed Google’s grant.
+                    </p>
+                    <div>
+                      <p className="text-[11px] font-medium text-foreground">Access level</p>
+                      <div className="mt-1.5 flex flex-wrap gap-1.5">
+                        {permissionPresets.map((preset) => (
+                          <button
+                            key={preset}
+                            type="button"
+                            disabled={savingGooglePermissions !== null}
+                            onClick={() => void updateGooglePermissions(service, googlePermissionPreset(service, preset, permissions.approvalPolicy))}
+                            className={`rounded border px-2 py-1 text-[10px] font-mono transition-colors disabled:opacity-50 ${accessLevel === preset ? "border-primary/50 bg-primary/15 text-primary" : "border-primary/15 text-muted-foreground hover:text-foreground"}`}
+                          >
+                            {preset === "read_only" ? "Read only" : preset === "standard" ? "Standard" : "Full authority"}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      {supportedCapabilities.map((capability) => {
+                        const copy = GOOGLE_PERMISSION_COPY[service][capability];
+                        return (
+                          <div key={capability} className="flex items-start justify-between gap-3 rounded border border-primary/10 bg-background/30 p-2">
+                            <div>
+                              <p className="text-xs text-foreground">{copy.label}</p>
+                              <p className="text-[10px] text-muted-foreground">{copy.description}</p>
+                            </div>
+                            <Switch
+                              aria-label={`${name}: ${copy.label}`}
+                              checked={permissions.capabilities[capability]}
+                              disabled={savingGooglePermissions !== null}
+                              onCheckedChange={(enabled) => changeGoogleCapability(service, permissions, capability, enabled)}
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <label className="block">
+                      <span className="text-[11px] font-medium text-foreground">Action approval</span>
+                      <select
+                        aria-label={`${name} action approval`}
+                        value={permissions.approvalPolicy}
+                        disabled={savingGooglePermissions !== null}
+                        onChange={(event) => void updateGooglePermissions(service, { capabilities: permissions.capabilities, approvalPolicy: event.target.value as GoogleApprovalPolicy })}
+                        className="mt-1 w-full rounded-md border border-primary/20 bg-background px-2 py-1.5 text-xs text-foreground disabled:opacity-50"
+                      >
+                        {GOOGLE_APPROVAL_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                      </select>
+                      <span className="mt-1 block text-[10px] text-muted-foreground">{GOOGLE_APPROVAL_OPTIONS.find((option) => option.value === permissions.approvalPolicy)?.description}</span>
+                    </label>
+                    {permissions.capabilities.write || permissions.approvalPolicy === "never" ? (
+                      <p className="rounded border border-amber-400/20 bg-amber-400/5 p-2 text-[10px] text-amber-200">
+                        Elevated access is enabled. LyfeOS will still stay within the selected capabilities and your Google account permissions.
+                      </p>
+                    ) : null}
+                    {savingGooglePermissions === service ? <p className="inline-flex items-center gap-1 text-[10px] text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" />Saving permissions…</p> : null}
+                  </div>
+                </details>
+              ) : null}
             </div>
           );
         })}
