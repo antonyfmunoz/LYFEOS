@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useAuth } from "@/lib/authContext";
+import { useAuth as useClerkAuth } from "@clerk/clerk-react";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { Input } from "@/components/ui/input";
 import { Loader2 } from "lucide-react";
@@ -8,7 +9,9 @@ import { Loader2 } from "lucide-react";
 export default function LoginPage() {
   usePageTitle('Login');
   
-  const { login, loginWithGoogle, loginWithApple } = useAuth();
+  const { login, loginWithGoogle, loginWithApple, user, isLoading } = useAuth();
+  const { isLoaded: isClerkLoaded, isSignedIn } = useClerkAuth();
+  const [, navigate] = useLocation();
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -21,11 +24,22 @@ export default function LoginPage() {
     setError(oauthNotice);
   }, []);
 
+  useEffect(() => {
+    if ((!isLoading && user) || (isClerkLoaded && isSignedIn)) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [isClerkLoaded, isLoading, isSignedIn, navigate, user]);
+
   const accent = null as { color?: string; glow?: string; bg20?: string; border20?: string; border30?: string; border50?: string } | null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    if (user || isSignedIn) {
+      navigate("/dashboard", { replace: true });
+      return;
+    }
     
     if (!identifier.trim() || !password.trim()) {
       setError("Please enter your email and password");

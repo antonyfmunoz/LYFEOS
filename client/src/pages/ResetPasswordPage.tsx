@@ -50,8 +50,11 @@ export default function ResetPasswordPage() {
           password: newPassword,
         });
 
-        if (resetResult.status === "complete" && setActive) {
+        if (resetResult.status === "complete" && setActive && resetResult.createdSessionId) {
           await setActive({ session: resetResult.createdSessionId });
+          sessionStorage.setItem("login_success_new_user", "false");
+          navigate("/login-success", { replace: true });
+          return;
         }
 
         setSuccess(true);
@@ -85,7 +88,7 @@ export default function ResetPasswordPage() {
           <CheckCircle className="w-16 h-16 mx-auto text-green-500" />
           <h2 className="text-xl font-orbitron" style={{ color: accent?.color || 'white' }}>Password Reset!</h2>
           <p className="text-white text-sm">
-            Your password has been updated successfully. You can now log in with your new password.
+            Your password has been updated successfully. Continue to log in with your new password.
           </p>
           <button
             onClick={() => navigate("/login")}

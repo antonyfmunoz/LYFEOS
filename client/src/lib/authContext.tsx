@@ -190,13 +190,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Local email/password accounts do not require an email verification
       // detour. Fall back to Clerk only for accounts that live there.
       if (!response.ok) {
-        if (!signIn) throw new Error("Sign-in not available");
-        const result = await signIn.create({ identifier: trimmedIdentifier, password });
-        if (result.status !== "complete" || !setSignInActive || !result.createdSessionId) {
-          throw new Error("Check your email and password");
+        if (isSignedIn) {
+          // Password reset activates the newly authenticated Clerk session.
+          // Reuse it instead of asking Clerk to create a second sign-in, which
+          // Clerk correctly rejects with "You're already signed in."
+          response = await fetch("/api/auth/me", { credentials: "include" });
+        } else {
+          if (!signIn) throw new Error("Sign-in not available");
+          const result = await signIn.create({ identifier: trimmedIdentifier, password });
+          if (result.status !== "complete" || !setSignInActive || !result.createdSessionId) {
+            throw new Error("Check your email and password");
+          }
+          await setSignInActive({ session: result.createdSessionId });
+          response = await fetch("/api/auth/me", { credentials: "include" });
         }
-        await setSignInActive({ session: result.createdSessionId });
-        response = await fetch("/api/auth/me", { credentials: "include" });
       }
 
       const responseText = await response.text();
