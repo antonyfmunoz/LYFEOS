@@ -16,6 +16,9 @@ describe("independent Google productivity integrations", () => {
     expect(google).toContain('scope: [GOOGLE_SERVICE_CONFIG[service].scope]');
     expect(google).toContain('app.get("/api/google/:service/auth-url"');
     expect(google).toContain('app.post("/api/google/:service/disconnect"');
+    expect(google).toContain('app.patch("/api/google/:service/permissions"');
+    expect(google).toContain("requireGoogleCapability");
+    expect(google).toContain("requireGoogleActionApproval");
     expect(google).not.toContain("scope: SCOPES");
   });
 
@@ -37,6 +40,9 @@ describe("independent Google productivity integrations", () => {
     expect(profile).toContain('name: "Google Drive"');
     expect(profile).toContain("`/api/google/${service}/auth-url`");
     expect(profile).toContain("`/api/google/${service}/disconnect`");
+    expect(profile).toContain("Manage permissions");
+    expect(profile).toContain("Full authority");
+    expect(profile).toContain("Action approval");
     expect(profile).not.toContain("<span className=\"text-sm\">Google</span>");
   });
 

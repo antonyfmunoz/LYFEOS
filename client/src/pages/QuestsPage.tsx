@@ -42,6 +42,7 @@ import {
 import { Plus, Zap, Star, Bell, BellOff, BellRing, Edit3, Trash2, X, ChevronDown, ChevronRight, ChevronLeft, Target, Calendar, CalendarDays, LayoutList, Clock, CheckCircle2, GraduationCap, Inbox, Info, Archive, Undo2, Repeat, Loader2, FileText, FolderOpen, Link2, GripVertical, Download, MapPin, Users, Columns3, Search, SlidersHorizontal, ArrowUpDown, Check, MoreVertical, Eye } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import type { MissionView } from "@shared/schema";
+import type { GoogleIntegrationPermissions } from "@shared/google-integration-permissions";
 import { calendarVisibleRange } from "@shared/calendar";
 import OfflineCalendarQueueStatus from "@/components/calendar/OfflineCalendarQueueStatus";
 import { Badge } from "@/components/ui/badge";
@@ -335,11 +336,18 @@ export default function QuestsPage() {
     staleTime: 0,
   });
 
-  interface GoogleStatus { connected: boolean; configured: boolean; scope: string | null; capabilities?: { calendar: boolean; tasks: boolean; drive: boolean }; connectedAt: string | null; }
+  interface GoogleStatus {
+    connected: boolean;
+    configured: boolean;
+    capabilities?: { calendar: boolean; tasks: boolean; drive: boolean };
+    services?: Partial<Record<"calendar" | "tasks" | "drive", { permissions: GoogleIntegrationPermissions }>>;
+  }
   const { data: googleStatus } = useQuery<GoogleStatus>({
     queryKey: ['/api/google/status'],
     enabled: !!user,
   });
+  const canSyncGoogleCalendar = Boolean(googleStatus?.capabilities?.calendar && googleStatus.services?.calendar?.permissions.capabilities.import);
+  const canSyncGoogleTasks = Boolean(googleStatus?.capabilities?.tasks && googleStatus.services?.tasks?.permissions.capabilities.import);
 
   const [isSyncing, setIsSyncing] = useState(false);
   const syncGoogle = async (mode: 'calendar' | 'tasks') => {
@@ -347,7 +355,7 @@ export default function QuestsPage() {
     setIsSyncing(true);
     try {
       if (mode === 'calendar') {
-        const result = await apiRequest<{ imported: number; updated: number; cancelled: number; linkedExisting: number; skipped: number; complete: boolean; moreAvailable: boolean; resetFromExpiredToken: boolean }>('/api/google/calendar/sync', { method: 'POST' });
+        const result = await apiRequest<{ imported: number; updated: number; cancelled: number; linkedExisting: number; skipped: number; complete: boolean; moreAvailable: boolean; resetFromExpiredToken: boolean }>('/api/google/calendar/sync', { method: 'POST', body: JSON.stringify({ approvalConfirmed: true }) });
         const parts: string[] = [];
         if (result.imported > 0) parts.push(`${result.imported} imported`);
         if (result.updated > 0) parts.push(`${result.updated} updated`);
@@ -365,6 +373,7 @@ export default function QuestsPage() {
       } else {
         const result = await apiRequest<{ imported: number; skipped: number }>('/api/google/tasks/import', {
           method: 'POST',
+          body: JSON.stringify({ approvalConfirmed: true }),
         });
         if (result.imported === 0 && result.skipped === 0) {
           toast({ title: "No tasks found", description: "Your Google Tasks lists are empty." });
@@ -3076,15 +3085,15 @@ export default function QuestsPage() {
               Calendar
             </button>
           </div>
-          {googleStatus?.connected && (googleStatus.capabilities?.calendar || googleStatus.capabilities?.tasks) && (
+          {googleStatus?.connected && (canSyncGoogleCalendar || canSyncGoogleTasks) && (
             <div className="flex items-center gap-1">
-              {googleStatus.capabilities?.calendar && (
+              {canSyncGoogleCalendar && (
               <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-primary hover:bg-primary/10" onClick={() => syncGoogle('calendar')} disabled={isSyncing}>
                 {isSyncing ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Download className="h-3.5 w-3.5 mr-1" />}
                 Sync Calendar
               </Button>
               )}
-              {googleStatus.capabilities?.tasks && (
+              {canSyncGoogleTasks && (
               <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-primary hover:bg-primary/10" onClick={() => syncGoogle('tasks')} disabled={isSyncing}>
                 {isSyncing ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Download className="h-3.5 w-3.5 mr-1" />}
                 Sync Tasks

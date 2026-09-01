@@ -33,6 +33,7 @@ import { SiGoogledrive, SiObsidian, SiEvernote } from 'react-icons/si';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import type { Document, Folder as FolderType } from '@shared/schema';
+import type { GoogleIntegrationPermissions } from '@shared/google-integration-permissions';
 
 type ViewMode = 'browse' | 'edit' | 'preview';
 type VaultViewMode = 'list' | 'grid';
@@ -1864,11 +1865,18 @@ function SyncImportDialog({ open, onOpenChange, obsidianInputRef, evernoteInputR
   currentFolderId: number | null;
   onSyncComplete: () => Promise<void>;
 }) {
-  const [gdStatus, setGdStatus] = useState<{ connected: boolean; capabilities?: { drive: boolean }; connectedAt?: string } | null>(null);
+  const [gdStatus, setGdStatus] = useState<{
+    connected: boolean;
+    capabilities?: { drive: boolean };
+    services?: { drive?: { connectedAt: string | null; permissions: GoogleIntegrationPermissions } };
+  } | null>(null);
   const [gdSyncStatus, setGdSyncStatus] = useState<SyncStatus>('idle');
   const [gdResult, setGdResult] = useState<SyncResult | null>(null);
   const [gdPushStatus, setGdPushStatus] = useState<SyncStatus>('idle');
   const [gdPushResult, setGdPushResult] = useState<SyncResult | null>(null);
+  const driveConnected = Boolean(gdStatus?.capabilities?.drive);
+  const driveCanImport = Boolean(driveConnected && gdStatus?.services?.drive?.permissions.capabilities.import);
+  const driveCanWrite = Boolean(driveConnected && gdStatus?.services?.drive?.permissions.capabilities.write);
 
   const [obStatus, setObStatus] = useState<SyncStatus>('idle');
   const [obResult, setObResult] = useState<SyncResult | null>(null);
@@ -1891,7 +1899,7 @@ function SyncImportDialog({ open, onOpenChange, obsidianInputRef, evernoteInputR
     setGdSyncStatus('syncing');
     setGdResult(null);
     try {
-      const res = await fetch('/api/google/drive/sync', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' } });
+      const res = await fetch('/api/google/drive/sync', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ approvalConfirmed: true }) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Sync failed');
       setGdResult(data);
@@ -1910,7 +1918,7 @@ function SyncImportDialog({ open, onOpenChange, obsidianInputRef, evernoteInputR
       const res = await fetch('/api/google/drive/push', {
         method: 'POST', credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ includeLocal: false }),
+        body: JSON.stringify({ includeLocal: false, approvalConfirmed: true }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Push failed');
@@ -2053,45 +2061,51 @@ function SyncImportDialog({ open, onOpenChange, obsidianInputRef, evernoteInputR
           <TabsContent value="google-drive" className="space-y-4 mt-4">
             <div className="flex items-center justify-between p-3 rounded-lg bg-primary/5 border border-primary/10">
               <div className="flex items-center gap-2">
-                <div className={cn("h-2 w-2 rounded-full", gdStatus?.connected && gdStatus.capabilities?.drive ? "bg-green-500" : "bg-muted-foreground/50")} />
-                <span className="text-sm">{gdStatus?.connected && gdStatus.capabilities?.drive ? 'Connected' : 'Drive not authorized'}</span>
+                <div className={cn("h-2 w-2 rounded-full", driveConnected ? "bg-green-500" : "bg-muted-foreground/50")} />
+                <span className="text-sm">{driveConnected ? 'Connected' : 'Drive not authorized'}</span>
               </div>
-              {gdStatus?.connectedAt && (
+              {gdStatus?.services?.drive?.connectedAt && (
                 <span className="text-[10px] text-muted-foreground">
-                  Since {new Date(gdStatus.connectedAt).toLocaleDateString()}
+                  Since {new Date(gdStatus.services.drive.connectedAt).toLocaleDateString()}
                 </span>
               )}
             </div>
 
-            {gdStatus?.connected && gdStatus.capabilities?.drive ? (
+            {driveConnected ? (
               <div className="space-y-3">
-                <Button
-                  className="w-full bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30 font-mono text-xs"
-                  onClick={handleGoogleDriveSync}
-                  disabled={gdSyncStatus === 'syncing'}
-                >
-                  {gdSyncStatus === 'syncing' ? (
-                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Syncing...</>
-                  ) : (
-                    <><RefreshCw className="h-4 w-4 mr-2" /> Sync All from Drive</>
-                  )}
-                </Button>
-                {gdSyncStatus === 'syncing' && <Progress value={undefined} className="h-1" />}
-                {renderSyncResult(gdResult)}
+                {driveCanImport ? <>
+                  <Button
+                    className="w-full bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30 font-mono text-xs"
+                    onClick={handleGoogleDriveSync}
+                    disabled={gdSyncStatus === 'syncing'}
+                  >
+                    {gdSyncStatus === 'syncing' ? (
+                      <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Syncing...</>
+                    ) : (
+                      <><RefreshCw className="h-4 w-4 mr-2" /> Sync All from Drive</>
+                    )}
+                  </Button>
+                  {gdSyncStatus === 'syncing' && <Progress value={undefined} className="h-1" />}
+                  {renderSyncResult(gdResult)}
+                </> : null}
 
-                <Button
-                  variant="outline"
-                  className="w-full border-primary/30 text-foreground hover:bg-primary/10 font-mono text-xs"
-                  onClick={handleGoogleDrivePush}
-                  disabled={gdPushStatus === 'syncing'}
-                >
-                  {gdPushStatus === 'syncing' ? (
-                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Pushing...</>
-                  ) : (
-                    <><CloudUpload className="h-4 w-4 mr-2" /> Push Changes to Drive</>
-                  )}
-                </Button>
-                {renderSyncResult(gdPushResult)}
+                {driveCanWrite ? <>
+                  <Button
+                    variant="outline"
+                    className="w-full border-primary/30 text-foreground hover:bg-primary/10 font-mono text-xs"
+                    onClick={handleGoogleDrivePush}
+                    disabled={gdPushStatus === 'syncing'}
+                  >
+                    {gdPushStatus === 'syncing' ? (
+                      <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Pushing...</>
+                    ) : (
+                      <><CloudUpload className="h-4 w-4 mr-2" /> Push Changes to Drive</>
+                    )}
+                  </Button>
+                  {renderSyncResult(gdPushResult)}
+                </> : null}
+
+                {!driveCanImport && !driveCanWrite ? <p className="text-center text-xs text-muted-foreground">Drive is connected, but its LyfeOS sync permissions are turned off. Manage them from Profile.</p> : null}
               </div>
             ) : (
               <div className="text-center py-4">
