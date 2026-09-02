@@ -21,6 +21,8 @@ describe("on-device ingredient label OCR normalization", () => {
     const routes = readFileSync(resolve(process.cwd(), "server/routes/ingredient-scanner.ts"), "utf8");
     expect(scanner).toContain("TextDetectorApi");
     expect(scanner).toContain("photos are not uploaded");
+    expect(scanner).toContain("Read package mark on-device");
+    expect(scanner).toContain("Confirm a kosher mark on the package");
     expect(scanner).toContain("only an editable draft until you review and save it");
     expect(routes).toContain('z.enum(["manual_label", "photo_ocr"])');
   });

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { normalizeDetectedLabelText } from "@/lib/on-device-label-ocr";
+import { inspectKosherPackageText, type KosherPackageCheck } from "@/lib/kosher-package-check";
 
 type IngredientPreference = { id: number; displayName: string; preferenceType: "avoid" | "limit" | "watch"; note: string | null };
 type ScanItem = { id: number; rawName: string; classification: string; evidenceStrength: string; preference: IngredientPreference | null };
@@ -38,9 +39,11 @@ export default function IngredientScanner({ onCatalogFoodImported, onManualFoodR
   const [catalogBrand, setCatalogBrand] = useState<string | null>(null);
   const [recallResult, setRecallResult] = useState<FoodRecallLookup | null>(null);
   const [ownershipResult, setOwnershipResult] = useState<BrandOwnershipLookup | null>(null);
+  const [kosherPackageCheck, setKosherPackageCheck] = useState<KosherPackageCheck | null>(null);
   const [captureMethod, setCaptureMethod] = useState<"manual_label" | "photo_ocr">("manual_label");
   const cameraInput = useRef<HTMLInputElement>(null);
   const labelInput = useRef<HTMLInputElement>(null);
+  const kosherPackageInput = useRef<HTMLInputElement>(null);
   const scans = useQuery<{ scans: IngredientScan[]; disclosure: string }>({
     queryKey: ["/api/ingredient-scans"], queryFn: () => apiRequest("/api/ingredient-scans"),
   });
@@ -160,6 +163,26 @@ export default function IngredientScanner({ onCatalogFoodImported, onManualFoodR
       if (labelInput.current) labelInput.current.value = "";
     }
   };
+  const readKosherPackageImage = async (file: File | undefined) => {
+    if (!file) return;
+    setCameraStatus("Reading the package mark on this device…");
+    const TextDetectorApi = (globalThis as unknown as { TextDetector?: new () => { detect: (source: ImageBitmap) => Promise<Array<{ rawValue: string; boundingBox?: { x: number; y: number } }>> } }).TextDetector;
+    if (!TextDetectorApi || typeof createImageBitmap !== "function") {
+      setCameraStatus("On-device package-mark reading is not available in this browser. Check the printed package mark directly; the photo was not uploaded.");
+      if (kosherPackageInput.current) kosherPackageInput.current.value = "";
+      return;
+    }
+    try {
+      const bitmap = await createImageBitmap(file);
+      try {
+        const detected = normalizeDetectedLabelText(await new TextDetectorApi().detect(bitmap));
+        setKosherPackageCheck(inspectKosherPackageText(detected.text));
+        setCameraStatus(detected.text ? "Package text was read on-device. Review the possible mark below against the actual package." : "No readable package text was found. Check the printed certification mark directly.");
+      } finally { bitmap.close(); }
+    } catch {
+      setCameraStatus("That package image could not be read on this device. Check the printed certification mark directly.");
+    } finally { if (kosherPackageInput.current) kosherPackageInput.current.value = ""; }
+  };
   const editScan = (scan: IngredientScan) => { setCatalogLookupToken(null); setCatalogImportCandidate(null); setCatalogBrand(null); setRecallResult(null); setOwnershipResult(null); setEditingScanId(scan.id); setEditingRevision(scan.revision); setCaptureMethod(scan.captureMethod === "photo_ocr" ? "photo_ocr" : "manual_label"); setProductName(scan.productName || ""); setBarcode(scan.barcode || ""); setIngredients(scan.rawIngredientsText); };
   const cancelEdit = () => { setEditingScanId(null); setEditingRevision(null); setCatalogLookupToken(null); setCatalogImportCandidate(null); setCatalogBrand(null); setRecallResult(null); setOwnershipResult(null); setCaptureMethod("manual_label"); setProductName(""); setBarcode(""); setIngredients(""); };
 
@@ -174,9 +197,11 @@ export default function IngredientScanner({ onCatalogFoodImported, onManualFoodR
     </div>
     <input ref={cameraInput} className="sr-only" type="file" accept="image/*" capture="environment" aria-label="Take a barcode photo" onChange={(event) => void decodeBarcodeImage(event.target.files?.[0])} />
     <input ref={labelInput} className="sr-only" type="file" accept="image/*" capture="environment" aria-label="Take an ingredient label photo" onChange={(event) => void readLabelImage(event.target.files?.[0])} />
+    <input ref={kosherPackageInput} className="sr-only" type="file" accept="image/*" capture="environment" aria-label="Take a photo of a kosher certification mark" onChange={(event) => void readKosherPackageImage(event.target.files?.[0])} />
     <div className="mt-2 flex flex-wrap items-center gap-3"><Button type="button" size="sm" variant="outline" onClick={() => cameraInput.current?.click()}><Camera />Scan barcode with camera</Button><Button type="button" size="sm" variant="outline" onClick={() => labelInput.current?.click()}><ScanLine />Read label text on-device</Button><Button type="button" size="sm" variant="outline" disabled={!barcode.trim() || lookup.isPending} onClick={() => lookup.mutate()}><Search />Search my saved labels</Button><Button type="button" size="sm" variant="outline" disabled={!catalogStatus.data?.available || !/^\d{8,14}$/.test(barcode.trim()) || catalogLookup.isPending} onClick={() => catalogLookup.mutate()}><Database />Search product catalog</Button>{catalogImportCandidate ? <Button type="button" size="sm" disabled={!catalogImportCandidate.hasEnergy || importCatalogFood.isPending} onClick={() => importCatalogFood.mutate()}><Database />Save scanned food as private copy</Button> : null}{onManualFoodRequested ? <Button type="button" size="sm" variant="outline" onClick={() => onManualFoodRequested(productName.trim())}><Plus />Create nutrition food manually</Button> : null}{(catalogStatus.data?.providers?.length || 0) > 1 ? <label className="flex items-center gap-1 text-xs text-muted-foreground">Source<select aria-label="Ingredient scanner catalog source" className="h-8 rounded-md border border-input bg-background px-2 text-foreground" value={catalogProviderId || catalogStatus.data?.defaultProviderId || ""} onChange={(event) => { setCatalogProviderId(event.target.value); setCatalogLookupToken(null); setCatalogImportCandidate(null); setRecallResult(null); setOwnershipResult(null); }}><option value="">Default source</option>{catalogStatus.data?.providers?.map((provider) => <option key={provider.id} value={provider.id}>{provider.name}</option>)}</select></label> : null}{cameraStatus ? <p className="text-xs text-muted-foreground" role="status">{cameraStatus}</p> : null}</div>
     {catalogImportCandidate ? <div className="mt-2 space-y-1 text-xs text-muted-foreground"><p>{catalogImportCandidate.name} has {catalogImportCandidate.nutrientCount} source-attributed nutrient value{catalogImportCandidate.nutrientCount === 1 ? "" : "s"}. {catalogImportCandidate.hasEnergy ? "Save only if you want a private Nutrition Diary food copy." : "It cannot be saved as a diary food because the source did not provide energy."}</p>{catalogImportCandidate.certifications.some((certification) => certification.kind === "kosher") ? <p className="font-medium text-primary">Kosher: {catalogImportCandidate.certifications.find((certification) => certification.kind === "kosher")?.label}. Confirm the current package certification mark if this matters for your observance.</p> : <p>Kosher: not verified by the selected catalog. This is not a determination that the product is non-kosher.</p>}</div> : null}
     {!catalogStatus.data?.available ? <p className="mt-2 text-xs text-muted-foreground">{catalogStatus.data?.reason || "Checking catalog availability…"}</p> : null}
+    <div className="mt-3 rounded-lg border border-primary/15 bg-background/20 p-3"><div className="flex flex-wrap items-center justify-between gap-2"><div><h3 className="text-sm font-semibold">Confirm a kosher mark on the package</h3><p className="mt-1 text-xs text-muted-foreground">Look for a certification mark printed on this exact package, not a shelf tag or an old online listing. A plain OU is a common example; OU-D and OU-P carry different qualifiers.</p></div><Button type="button" size="sm" variant="outline" onClick={() => kosherPackageInput.current?.click()}><Camera />Read package mark on-device</Button></div>{kosherPackageCheck ? <div className="mt-3 text-xs text-muted-foreground">{kosherPackageCheck.matches.length ? <div className="flex flex-wrap gap-1.5">{kosherPackageCheck.matches.map((match) => <span key={match.key} className="rounded border border-primary/25 bg-primary/10 px-1.5 py-0.5 text-primary">{match.label}</span>)}</div> : null}<p className="mt-2">{kosherPackageCheck.disclosure}</p></div> : null}<a className="mt-3 inline-block text-xs text-primary underline" href="https://oukosher.org/blog/consumer-kosher/eight-points-to-remember-when-looking-for-the-kosher-symbol/" target="_blank" rel="noreferrer">How to verify an OU mark on a package</a></div>
     <div className="mt-3 rounded-lg border border-primary/15 bg-background/20 p-3">
       <div className="flex flex-wrap items-center justify-between gap-2"><div><h3 className="flex items-center gap-2 text-sm font-semibold"><ShieldAlert className="h-4 w-4 text-primary" />FDA food recall check</h3><p className="mt-1 text-xs text-muted-foreground">Checks the official FDA Food Enforcement Reports feed against product-description text. It does not save the search or make a safety determination.</p></div><Button type="button" size="sm" variant="outline" disabled={!recallStatus.data?.available || productName.trim().length < 2 || recallLookup.isPending} onClick={() => recallLookup.mutate()}><ShieldAlert />{recallLookup.isPending ? "Checking…" : "Check FDA recalls"}</Button></div>
       {!recallStatus.data?.available ? <p className="mt-2 text-xs text-muted-foreground">{recallStatus.data?.reason || "Checking recall availability…"}</p> : null}
