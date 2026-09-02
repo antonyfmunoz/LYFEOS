@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Activity, BookOpenCheck, Pencil, Plus, Trash2 } from "lucide-react";
+import { Activity, BookOpenCheck, Pencil, Plus, Trash2, Upload } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +37,7 @@ type IntervalConflict = {
   id: string; metricKey: string; displayName: string; unit: string; source: string; resolved: boolean;
   records: Array<Pick<Observation, "id" | "value" | "unit" | "method" | "methodVersion" | "deviceName" | "intervalStartAt" | "intervalEndAt" | "includedInCalculations">>;
 };
+type CsvPreview = { importHash: string; validCount: number; invalidCount: number; disclosure: string; rows: Array<{ rowNumber: number; entry: { displayName: string; value: number; unit: string; observedAt: string; sourceRecordId: string } | null; errors: string[] }> };
 
 export default function HealthMetricsLedger() {
   const { user } = useAuth();
@@ -69,6 +70,8 @@ export default function HealthMetricsLedger() {
   const [definitionMax, setDefinitionMax] = useState("");
   const [definitionActive, setDefinitionActive] = useState(true);
   const [editingDefinitionId, setEditingDefinitionId] = useState<number | null>(null);
+  const [csvText, setCsvText] = useState("");
+  const [csvPreview, setCsvPreview] = useState<CsvPreview | null>(null);
 
   const definitions = useQuery<{ definitions: MetricDefinition[] }>({
     queryKey: ["/api/health-metric-definitions", { includeInactive: true }],
@@ -76,6 +79,8 @@ export default function HealthMetricsLedger() {
   });
   const metricCatalog = useQuery<{ version: string; releases: Array<{ version: string; status: string; successor: string | null; note: string }>; migrationPolicy: { id: string; immutableHistory: string; displayOnlyChange: string; semanticChange: string; unsupportedMetric: string }; metrics: CatalogMetric[]; disclosure: string }>({ queryKey: ["/api/health-metric-catalog"], queryFn: () => apiRequest("/api/health-metric-catalog") });
   const observations = useQuery<{ observations: Observation[]; sourceComparisons: SourceComparison[]; intervalConflicts: IntervalConflict[]; providerConnectionStates: Record<string, string> }>({ queryKey: ["/api/health-observations"], queryFn: () => apiRequest("/api/health-observations") });
+  const previewCsv = useMutation({ mutationFn: () => apiRequest<CsvPreview>("/api/health-observations/imports/preview", { method: "POST", body: JSON.stringify({ csvText }) }), onSuccess: setCsvPreview });
+  const commitCsv = useMutation({ mutationFn: () => apiRequest<{ importedCount: number }>("/api/health-observations/imports/commit", { method: "POST", body: JSON.stringify({ csvText, importHash: csvPreview?.importHash, confirmed: true }) }), onSuccess: (result) => { setCsvText(""); setCsvPreview(null); void queryClient.invalidateQueries({ queryKey: ["/api/health-observations"] }); toast({ title: `${result.importedCount} health records imported`, description: "Each row remains a private transcribed record with its source ID." }); } });
 
   const resetDefinition = () => {
     setEditingDefinitionId(null); setDefinitionName(""); setDefinitionCategory("strength"); setDefinitionUnit("");
@@ -184,6 +189,8 @@ export default function HealthMetricsLedger() {
 
   return <section className="glassmorphic rounded-2xl p-6 mb-8 border border-primary/30" aria-labelledby="metrics-ledger-heading">
     <div><h2 id="metrics-ledger-heading" className="font-orbitron text-lg text-primary flex items-center gap-2"><Activity className="h-5 w-5" />Performance & health metrics</h2><p className="text-sm text-muted-foreground mt-1">Record measured facts with their unit, method, source, and version. Values are never automatically interpreted as clinical advice.</p></div>
+
+    <details className="mt-4 rounded-xl border border-primary/15 bg-background/20 p-4"><summary className="cursor-pointer text-sm font-medium text-white flex items-center gap-2"><Upload className="h-4 w-4 text-primary" />Import a reviewed health CSV</summary><p className="mt-2 text-xs text-muted-foreground">Paste up to 200 rows, preview every result, then explicitly import. Required headers: <span className="font-mono">source_record_id, metric_key, display_name, category, value, unit, observed_at</span>. ISO timestamps must include a timezone. Optional: method, method_version, device_name, lab_name, specimen_type, collected_at, reference_low, reference_high, reference_unit, note.</p><textarea aria-label="Health CSV import" className="mt-3 min-h-32 w-full rounded-md border border-input bg-background p-3 font-mono text-xs text-foreground" placeholder="source_record_id,metric_key,display_name,category,value,unit,observed_at\nlab-001,ldl,LDL,lab,120,mg/dL,2026-09-01T10:00:00Z" value={csvText} onChange={(event) => { setCsvText(event.target.value); setCsvPreview(null); }} /><div className="mt-2 flex flex-wrap gap-2"><Button size="sm" variant="outline" disabled={!csvText.trim() || previewCsv.isPending} onClick={() => previewCsv.mutate()}>{previewCsv.isPending ? "Checking…" : "Preview CSV"}</Button>{csvPreview ? <Button size="sm" disabled={csvPreview.invalidCount > 0 || !csvPreview.validCount || commitCsv.isPending} onClick={() => commitCsv.mutate()}>{commitCsv.isPending ? "Importing…" : `Import ${csvPreview.validCount} reviewed rows`}</Button> : null}</div>{previewCsv.error ? <p className="mt-2 text-xs text-destructive">Could not preview this CSV. Check the headers, values, and ISO timestamps.</p> : null}{csvPreview ? <div className="mt-3 rounded-md border border-muted/20 p-3 text-xs"><p className="font-medium">Preview: {csvPreview.validCount} valid · {csvPreview.invalidCount} blocked</p><p className="mt-1 text-muted-foreground">{csvPreview.disclosure}</p><div className="mt-2 space-y-1">{csvPreview.rows.slice(0, 20).map((row) => <p key={row.rowNumber} className={row.errors.length ? "text-destructive" : "text-muted-foreground"}>Row {row.rowNumber}: {row.errors.length ? row.errors.join(" ") : `${row.entry?.displayName} · ${row.entry?.value} ${row.entry?.unit} · ${row.entry?.sourceRecordId}`}</p>)}</div>{csvPreview.rows.length > 20 ? <p className="mt-2 text-muted-foreground">Only the first 20 preview rows are displayed; the same validated CSV is imported atomically.</p> : null}</div> : null}{commitCsv.error ? <p className="mt-2 text-xs text-destructive">Could not import this CSV. It may have changed or include source records already imported.</p> : null}</details>
 
     <details className="mt-4 rounded-xl border border-muted/20 bg-background/20 p-4">
       <summary className="cursor-pointer text-sm font-medium text-white flex items-center gap-2"><BookOpenCheck className="h-4 w-4 text-primary" />Manage reusable metric definitions</summary>

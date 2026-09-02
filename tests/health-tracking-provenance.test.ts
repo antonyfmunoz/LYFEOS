@@ -59,6 +59,9 @@ describe("health tracking provenance", () => {
     expect(client).toContain('aria-label="Source record identifier"');
     expect(client).toContain("Device (transcribed)");
     expect(client).toContain("does not create a live device or provider connection");
+    expect(routes).toContain('app.post("/api/health-observations/imports/preview", isAuthenticated');
+    expect(routes).toContain('app.post("/api/health-observations/imports/commit", isAuthenticated');
+    expect(client).toContain('aria-label="Health CSV import"');
     expect(profile).toContain('"health_metric_definitions"');
     expect(profile).toContain('"recovery_routines"');
   });

@@ -1,5 +1,5 @@
 import type { Express, Request, Response } from "express";
-import { and, desc, eq, ne, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { z } from "zod";
 import { healthConnections, healthMetricDefinitions, healthObservationCalculationPreferences, healthObservations, healthSourcePreferences, healthSourceRecords, healthSourceSuppressions } from "@shared/schema";
 import { db } from "../db";
@@ -11,6 +11,7 @@ import { healthSourceRecordKeyHash } from "../health-import";
 import { canonicalHealthMetricDefinition, canonicalHealthMetricMigrationPolicy, canonicalHealthMetricRegistry, canonicalHealthMetricRegistryReleases, canonicalHealthMetricRegistryVersion } from "../health-provider-metrics";
 import { buildHealthIntervalConflictGroups } from "../health-interval-conflicts";
 import { healthMutationId, healthMutationPayloadHash } from "../health-mutation-integrity";
+import { previewHealthObservationCsv } from "../health-observation-csv";
 
 const categories = ["strength", "endurance", "cardiovascular", "flexibility", "mobility", "recovery", "body_composition", "lab", "other"] as const;
 const sources = ["manual", "lab", "device", "imported"] as const;
@@ -57,6 +58,7 @@ const validateObservation = (input: z.infer<typeof observationInput>, context: z
 const observationSchema = observationInput.superRefine(validateObservation);
 const observationUpdateSchema = observationInput.omit({ observedAt: true }).superRefine(validateObservation);
 const calculationInclusionInput = z.object({ included: z.boolean(), confirmed: z.literal(true) });
+const csvImportInput = z.object({ csvText: z.string().max(250_000), importHash: z.string().regex(/^[a-f0-9]{64}$/).optional(), confirmed: z.literal(true).optional() });
 
 async function ownedDefinition(userId: number, id: number | null | undefined) {
   if (!id) return null;
@@ -87,6 +89,22 @@ function observationAggregationKind(metricKey: string, unit: string) {
 }
 
 export function registerHealthObservationRoutes(app: Express): void {
+  app.post("/api/health-observations/imports/preview", isAuthenticated, async (req: Request, res: Response) => {
+    const parsed = csvImportInput.pick({ csvText: true }).safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: "Paste a valid health CSV." });
+    try { return res.json(previewHealthObservationCsv(parsed.data.csvText)); } catch (error) { return res.status(400).json({ error: error instanceof Error ? error.message : "Could not parse that CSV." }); }
+  });
+  app.post("/api/health-observations/imports/commit", isAuthenticated, async (req: Request, res: Response) => {
+    const parsed = csvImportInput.safeParse(req.body); if (!parsed.success || !parsed.data.confirmed || !parsed.data.importHash) return res.status(400).json({ error: "Review this CSV and explicitly confirm the import." });
+    let preview; try { preview = previewHealthObservationCsv(parsed.data.csvText); } catch (error) { return res.status(400).json({ error: error instanceof Error ? error.message : "Could not parse that CSV." }); }
+    if (preview.importHash !== parsed.data.importHash || preview.invalidCount || !preview.validCount) return res.status(409).json({ error: "The CSV changed or contains invalid rows. Preview it again before importing." });
+    const entries = preview.rows.map((row) => row.entry!); const sourceRecordIds = entries.map((entry) => entry.sourceRecordId);
+    if (new Set(sourceRecordIds).size !== sourceRecordIds.length) return res.status(409).json({ error: "Each source_record_id must be unique within this CSV." });
+    const userId = req.session.userId!; const existing = await db.select({ sourceRecordId: healthObservations.sourceRecordId }).from(healthObservations).where(and(eq(healthObservations.userId, userId), eq(healthObservations.source, "imported"), inArray(healthObservations.sourceRecordId, sourceRecordIds)));
+    if (existing.length) return res.status(409).json({ error: "One or more source records were already imported. Nothing was changed.", sourceRecordIds: existing.map((row) => row.sourceRecordId) });
+    const importedAt = new Date(); const created = await db.insert(healthObservations).values(entries.map((entry) => ({ userId, metricDefinitionId: null, definitionVersion: null, category: entry.category, metricKey: entry.metricKey, displayName: entry.displayName, value: entry.value, unit: entry.unit, source: "imported", sourceRecordId: entry.sourceRecordId, method: entry.method, methodVersion: entry.methodVersion, deviceName: entry.deviceName, observedAt: entry.observedAt, importedAt, labName: entry.labName, specimenType: entry.specimenType, collectedAt: entry.collectedAt, referenceLow: entry.referenceLow, referenceHigh: entry.referenceHigh, referenceUnit: entry.referenceUnit, note: entry.note, temporalType: "instant", intervalStartAt: null, intervalEndAt: null, aggregationKind: observationAggregationKind(entry.metricKey, entry.unit) }))).returning({ id: healthObservations.id });
+    return res.status(201).json({ importedCount: created.length, disclosure: "Imported rows are private, transcribed records. Their source IDs prevent duplicate re-import; this does not establish a live provider connection." });
+  });
   app.get("/api/health-metric-catalog", isAuthenticated, (_req: Request, res: Response) => {
     return res.json({
       version: canonicalHealthMetricRegistryVersion,
