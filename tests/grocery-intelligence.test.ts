@@ -27,6 +27,8 @@ describe("grocery intelligence", () => {
     expect(routes).toContain('receipt-drafts/:id/apply');
     expect(routes).toContain('app.post("/api/grocery-intelligence/pantry-recall-review", isAuthenticated');
     expect(routes).toContain('app.post("/api/grocery-intelligence/pantry/:id/replacements", isAuthenticated');
+    expect(routes).toContain('app.delete("/api/grocery-intelligence/receipt-drafts/:id", isAuthenticated');
+    expect(routes).toContain('app.delete("/api/grocery-intelligence/research-reports/:id", isAuthenticated');
     expect(routes).toContain("not endorsements or guaranteed substitutes");
     expect(routes).toContain("Results are not stored by LyfeOS");
     expect(appRoutes).toContain('"/api/grocery-intelligence"');
@@ -35,6 +37,8 @@ describe("grocery intelligence", () => {
     expect(component).toContain("Add reviewed items to pantry");
     expect(component).toContain("Check FDA recalls");
     expect(component).toContain("Preference-aware replacements");
+    expect(component).toContain("Discard receipt draft");
+    expect(component).toContain("Withdraw");
     expect(component).toContain("Ingredient label unavailable—preference comparison is unknown.");
     expect(component).toContain("No product-description text match. This is not a safety finding.");
   });

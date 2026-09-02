@@ -271,10 +271,33 @@ export function registerGroceryIntelligenceRoutes(app: Express): void {
     return res.json({ items });
   });
 
+  // Receipt text is private owner-supplied data. Deleting a draft removes only
+  // the stored source text/draft; it deliberately does not remove pantry items
+  // that the owner previously reviewed and added.
+  app.delete("/api/grocery-intelligence/receipt-drafts/:id", isAuthenticated, async (req: Request, res: Response) => {
+    const id = itemId(req.params.id);
+    if (!id.success) return res.status(400).json({ error: "Invalid receipt draft." });
+    const [deleted] = await db.delete(groceryReceiptDrafts)
+      .where(and(eq(groceryReceiptDrafts.id, id.data), eq(groceryReceiptDrafts.userId, req.session.userId!)))
+      .returning({ id: groceryReceiptDrafts.id });
+    return deleted ? res.status(204).send() : res.status(404).json({ error: "Receipt draft not found." });
+  });
+
   app.post("/api/grocery-intelligence/research-reports", isAuthenticated, async (req: Request, res: Response) => {
     const parsed = reportSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: "Enter a valid ownership research report." });
     const [report] = await db.insert(brandOwnershipResearchReports).values({ userId: req.session.userId!, ...parsed.data }).returning();
     return res.status(201).json({ report, disclosure: "A report is research intake only. It cannot change the cited ownership registry automatically." });
+  });
+
+  // Research reports are private intake, not public reviews. The owner may
+  // withdraw one at any time; this has no effect on the shared registry.
+  app.delete("/api/grocery-intelligence/research-reports/:id", isAuthenticated, async (req: Request, res: Response) => {
+    const id = itemId(req.params.id);
+    if (!id.success) return res.status(400).json({ error: "Invalid ownership research report." });
+    const [deleted] = await db.delete(brandOwnershipResearchReports)
+      .where(and(eq(brandOwnershipResearchReports.id, id.data), eq(brandOwnershipResearchReports.userId, req.session.userId!)))
+      .returning({ id: brandOwnershipResearchReports.id });
+    return deleted ? res.status(204).send() : res.status(404).json({ error: "Ownership research report not found." });
   });
 }
