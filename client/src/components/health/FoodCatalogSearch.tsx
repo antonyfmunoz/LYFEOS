@@ -8,9 +8,17 @@ import { Input } from "@/components/ui/input";
 type CatalogStatus = { available: boolean; reason: string | null; behavior: string; providers?: Array<{ id: string; name: string; territories: string[] }>; defaultProviderId?: string | null };
 type CatalogProvider = { id: string; name: string; datasetVersion: string; territories: string[]; attributionText: string; attributionUrl?: string | null };
 type CatalogPortion = { label: string; gramsPerUnit: number };
-type CatalogItem = { externalId: string; itemVersion: string; name: string; brand?: string | null; barcode?: string | null; territory: string; servingSizeGrams?: number | null; portions: CatalogPortion[]; nutrients: Array<{ nutrientKey: string; amountPer100g: number; unit: string }>; lookupToken: string };
+type CatalogEvidence = { sourceKind: "community_catalog" | "government_branded_database" | "government_reference_database" | "provider_classification_unavailable"; measurementBasis: "catalog_or_label_reported" | "government_reference" | "provider_basis_unavailable"; recordUpdatedAt: string | null; reportedNutrientCount: number; reportedCoreNutrientKeys: string[] };
+type CatalogItem = { externalId: string; itemVersion: string; name: string; brand?: string | null; barcode?: string | null; territory: string; servingSizeGrams?: number | null; portions: CatalogPortion[]; nutrients: Array<{ nutrientKey: string; amountPer100g: number; unit: string }>; evidence: CatalogEvidence; lookupToken: string };
 type CatalogResults = { provider: CatalogProvider; items: CatalogItem[]; nextCursor?: string | null };
 type SelectedFood = { name: string; catalogProviderId: string | null; catalogDatasetVersion: string | null; catalogItemVersion: string | null; catalogAttributionText: string | null; catalogAttributionUrl: string | null; catalogSourceModified: boolean; portions: Array<CatalogPortion & { source: string; sourceModified: boolean; catalogLabel: string | null; catalogGramsPerUnit: number | null }> };
+
+function catalogEvidenceLabel(evidence: CatalogEvidence): string {
+  if (evidence.sourceKind === "community_catalog") return "Community catalog record";
+  if (evidence.sourceKind === "government_branded_database") return "Government branded-food record";
+  if (evidence.sourceKind === "government_reference_database") return "Government reference-food record";
+  return "Provider classification unavailable";
+}
 
 export default function FoodCatalogSearch({ onImported, selectedFood }: { onImported: (foodId: number) => void; selectedFood?: SelectedFood }) {
   const [query, setQuery] = useState("");
@@ -48,7 +56,7 @@ export default function FoodCatalogSearch({ onImported, selectedFood }: { onImpo
       {results.items.length ? results.items.map((item) => {
         const energy = item.nutrients.find((nutrient) => nutrient.nutrientKey === "energy_kcal");
         return <div key={`${item.externalId}:${item.itemVersion}`} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-muted/20 p-3">
-          <div><p className="text-sm text-white">{item.name}{item.brand ? ` — ${item.brand}` : ""}</p><p className="text-[11px] text-muted-foreground">{item.territory} · {item.nutrients.length} known nutrient values{energy ? ` · ${energy.amountPer100g} kcal/100g` : " · energy unavailable"}{item.barcode ? ` · ${item.barcode}` : ""}</p>{item.portions.length ? <p className="text-[11px] text-muted-foreground">Portions: {item.portions.map((portion) => `${portion.label} = ${portion.gramsPerUnit} g`).join("; ")}</p> : null}</div>
+          <div><p className="text-sm text-white">{item.name}{item.brand ? ` — ${item.brand}` : ""}</p><p className="text-[11px] text-muted-foreground">{item.territory} · {item.nutrients.length} known nutrient values{energy ? ` · ${energy.amountPer100g} kcal/100g` : " · energy unavailable"}{item.barcode ? ` · ${item.barcode}` : ""}</p><p className="text-[11px] text-muted-foreground">{catalogEvidenceLabel(item.evidence)} · {item.evidence.measurementBasis === "government_reference" ? "government reference basis" : item.evidence.measurementBasis === "catalog_or_label_reported" ? "catalog or label-reported basis" : "measurement basis unavailable"} · {item.evidence.reportedCoreNutrientKeys.length}/8 core nutrients reported{item.evidence.recordUpdatedAt ? ` · updated ${new Date(item.evidence.recordUpdatedAt).toLocaleDateString()}` : " · update date unavailable"}. This is provenance and coverage, not proof the item is accurate for every package.</p>{item.portions.length ? <p className="text-[11px] text-muted-foreground">Portions: {item.portions.map((portion) => `${portion.label} = ${portion.gramsPerUnit} g`).join("; ")}</p> : null}</div>
           <Button size="sm" variant="outline" disabled={!energy || save.isPending} onClick={() => save.mutate(item.lookupToken)}>Save private copy</Button>
         </div>;
       }) : <p className="text-xs text-muted-foreground">No catalog result matched. Create a private food manually instead.</p>}
