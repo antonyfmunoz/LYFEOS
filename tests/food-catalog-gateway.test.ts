@@ -101,7 +101,7 @@ describe("food catalog gateway", () => {
     expect(getFoodCatalogConfig(openFoodFactsEnv)).toMatchObject({ kind: "open_food_facts" });
     expect(getFoodCatalogConfig({ ...openFoodFactsEnv, OPEN_FOOD_FACTS_USER_AGENT: "short" })).toBeNull();
     const product = {
-      code: "3017620422003", product_name: "Nutella", brands: "Ferrero", ingredients_text: "Sugar, hazelnuts", serving_size: "15 g", last_modified_t: 1_700_000_000,
+      code: "3017620422003", product_name: "Nutella", brands: "Ferrero", ingredients_text: "Sugar, hazelnuts", serving_size: "15 g", last_modified_t: 1_700_000_000, labels_tags: ["en:kosher"],
       nutriments: { "energy-kcal_100g": 539, "energy-kcal_unit": "kcal", proteins_100g: 6.3, proteins_unit: "g", sodium_100g: 0.0428, sodium_unit: "g" },
     };
     let attempts = 0;
@@ -119,6 +119,7 @@ describe("food catalog gateway", () => {
     expect(search.items[0].nutrients).toEqual(expect.arrayContaining([{ nutrientKey: "energy_kcal", amountPer100g: 539, unit: "kcal" }, { nutrientKey: "sodium_mg", amountPer100g: 42.8, unit: "mg" }]));
     const barcode = await (await import("../server/food-catalog")).lookupFoodCatalogBarcode("3017620422003", openFoodFactsEnv, fetchMock as typeof fetch);
     expect(barcode.item?.ingredientsText).toBe("Sugar, hazelnuts");
+    expect(barcode.item?.certifications).toEqual([{ kind: "kosher", status: "catalog_label_reported", label: "Kosher label reported by catalog" }]);
     expect(JSON.stringify(search)).not.toContain("FOOD_CATALOG_GATEWAY_TOKEN");
   });
 
@@ -145,6 +146,7 @@ describe("food catalog gateway", () => {
     const routes = readFileSync(resolve(process.cwd(), "server/routes/food-catalog.ts"), "utf8");
     const nutrition = readFileSync(resolve(process.cwd(), "server/routes/nutrition.ts"), "utf8");
     const scanner = readFileSync(resolve(process.cwd(), "server/routes/ingredient-scanner.ts"), "utf8");
+    const ingredientScannerUi = readFileSync(resolve(process.cwd(), "client/src/components/health/IngredientScanner.tsx"), "utf8");
     const ui = readFileSync(resolve(process.cwd(), "client/src/components/health/FoodCatalogSearch.tsx"), "utf8");
     const migration = readFileSync(resolve(process.cwd(), "migrations/0104_food_catalog_gateway.sql"), "utf8");
     const portionMigration = readFileSync(resolve(process.cwd(), "migrations/0105_food_catalog_portions.sql"), "utf8");
@@ -153,6 +155,8 @@ describe("food catalog gateway", () => {
     expect(nutrition).toContain('"/api/nutrition/foods/catalog-import"');
     expect(nutrition).toContain("verifyConfiguredFoodCatalogToken");
     expect(scanner).toContain("catalogLookupToken");
+    expect(ingredientScannerUi).toContain("Kosher: not verified by the selected catalog");
+    expect(ingredientScannerUi).toContain("Confirm the current package certification mark");
     expect(ui).toContain("Save private copy");
     expect(ui).toContain("configured data provider");
     expect(ui).toContain("Manual foods remain available");

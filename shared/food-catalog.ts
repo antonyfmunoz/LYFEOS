@@ -20,6 +20,15 @@ export const foodCatalogPortionSchema = z.object({
   gramsPerUnit: z.number().finite().positive().max(100_000),
 }).strict();
 
+// Catalog certifications are source-reported package labels, not LyfeOS
+// certifications. A missing entry is always unknown rather than a conclusion
+// that the product is not kosher.
+export const foodCatalogCertificationSchema = z.object({
+  kind: z.literal("kosher"),
+  status: z.literal("catalog_label_reported"),
+  label: z.string().trim().min(1).max(120),
+}).strict();
+
 export const foodCatalogItemSchema = z.object({
   externalId: z.string().trim().min(1).max(200),
   itemVersion: z.string().trim().min(1).max(120),
@@ -30,6 +39,7 @@ export const foodCatalogItemSchema = z.object({
   territory: z.string().trim().min(2).max(16),
   servingSizeGrams: z.number().finite().positive().max(100_000).nullable().optional(),
   ingredientsText: z.string().trim().max(20_000).nullable().optional(),
+  certifications: z.array(foodCatalogCertificationSchema).max(10).default([]),
   portions: z.array(foodCatalogPortionSchema).max(25).default([]),
   nutrients: z.array(foodCatalogNutrientSchema).max(100),
 }).strict().superRefine((value, context) => {

@@ -241,6 +241,23 @@ function gramsFromServingSize(value: unknown): number | null {
   return Number.isFinite(grams) && grams > 0 && grams <= 100_000 ? grams : null;
 }
 
+function catalogTextValues(value: unknown): string[] {
+  if (Array.isArray(value)) return value.flatMap((entry) => typeof entry === "string" ? [entry.trim()] : []).filter(Boolean);
+  if (typeof value === "string") return value.split(",").map((entry) => entry.trim()).filter(Boolean);
+  return [];
+}
+
+function openFoodFactsCertifications(product: Record<string, unknown>) {
+  const labels = [
+    ...catalogTextValues(product.labels_tags),
+    ...catalogTextValues(product.labels),
+  ].map((label) => label.toLocaleLowerCase("en-US"));
+  // Only accept the explicit kosher taxonomy label (including a named kosher
+  // variant). Ingredients, a brand name, or an absent label never imply it.
+  const kosher = labels.some((label) => /^(?:[a-z]{2}:)?kosher(?:[-_].+)?$/.test(label));
+  return kosher ? [{ kind: "kosher" as const, status: "catalog_label_reported" as const, label: "Kosher label reported by catalog" }] : [];
+}
+
 function normalizedOpenFoodFactsItem(raw: unknown, territory: string, locale: string): FoodCatalogItem | null {
   if (!raw || typeof raw !== "object") return null;
   const product = raw as Record<string, unknown>;
@@ -267,6 +284,7 @@ function normalizedOpenFoodFactsItem(raw: unknown, territory: string, locale: st
     territory,
     servingSizeGrams,
     ingredientsText: typeof product.ingredients_text === "string" && product.ingredients_text.trim() ? product.ingredients_text.trim().slice(0, 20_000) : null,
+    certifications: openFoodFactsCertifications(product),
     portions,
     nutrients,
   };
@@ -313,6 +331,7 @@ function normalizedUsdaFoodDataItem(raw: unknown, territory: string, locale: str
     territory,
     servingSizeGrams,
     ingredientsText: null,
+    certifications: [],
     portions: householdServing && serving && servingUnit === "g" ? [{ label: householdServing, gramsPerUnit: serving }] : [],
     nutrients: Array.from(nutrientsByKey.values()),
   };
@@ -359,7 +378,7 @@ async function searchOpenFoodFacts(input: FoodCatalogSearchInput, config: OpenFo
   if (!openFoodFactsProvider.territories.includes(request.territory as never)) throw new FoodCatalogError("unavailable", "This food catalog is not configured for the selected territory.");
   const page = continuation ? Number(continuation.providerCursor) : 1;
   if (!Number.isInteger(page) || page < 1 || page > 500) throw new FoodCatalogError("invalid_cursor", "This catalog result page expired or is invalid. Start the search again.");
-  const params = new URLSearchParams({ q: request.query, page: String(page), page_size: String(request.limit) });
+  const params = new URLSearchParams({ q: request.query, page: String(page), page_size: String(request.limit), fields: "code,product_name,brands,nutriments,ingredients_text,serving_size,last_modified_t,labels_tags,labels" });
   const response = await openFoodFactsRequest(`${openFoodFactsSearchBaseUrl}/search?${params}`, config, fetchImpl) as { hits?: unknown[]; page_count?: number | string };
   const items = Array.isArray(response.hits) ? response.hits.map((product) => normalizedOpenFoodFactsItem(product, request.territory, request.locale)).filter((item): item is FoodCatalogItem => Boolean(item)) : [];
   const pageCount = typeof response.page_count === "string" ? Number(response.page_count) : response.page_count;
@@ -370,7 +389,7 @@ async function searchOpenFoodFacts(input: FoodCatalogSearchInput, config: OpenFo
 }
 
 async function lookupOpenFoodFactsBarcode(barcode: string, config: OpenFoodFactsCatalogConfig, fetchImpl: typeof fetch) {
-  const fields = "code,product_name,brands,nutriments,ingredients_text,serving_size,last_modified_t";
+  const fields = "code,product_name,brands,nutriments,ingredients_text,serving_size,last_modified_t,labels_tags,labels";
   const response = await openFoodFactsRequest(`/api/v3/product/${encodeURIComponent(barcode)}?fields=${fields}`, config, fetchImpl) as { status?: number | string; product?: unknown; result?: { id?: string } };
   const found = response.status === 1 || response.status === "success" || response.result?.id === "product_found";
   return { provider: openFoodFactsProvider, item: found ? normalizedOpenFoodFactsItem(response.product, "US", "en-US") : null };
