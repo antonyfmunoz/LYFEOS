@@ -117,6 +117,7 @@ describe("independent Google productivity integrations", () => {
     expect(google).toContain('app.get("/api/google/drive/sync-status"');
     expect(google).toContain('status: state.state');
     expect(google).toContain('state: "succeeded"');
+    expect(google).toContain("isStaleGoogleDriveSync(state)");
     expect(vault).toContain('/api/google/drive/sync-status');
     expect(vault).toContain('Syncing safely in the background');
     expect(vault).not.toContain('Continue Drive sync');

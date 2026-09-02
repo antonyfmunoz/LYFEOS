@@ -81,6 +81,7 @@ const googleDriveSyncStateKey = "googleDriveSyncV1";
 const googleDriveFolderPageSize = 100;
 const googleDriveFilePageSize = 25;
 const maxGoogleDriveTextImportBytes = 1 * 1024 * 1024;
+const googleDriveSyncStaleAfterMs = 2 * 60 * 1_000;
 
 type GoogleDriveSyncState = {
   version: 1;
@@ -149,6 +150,10 @@ async function readGoogleDriveTextImport(value: unknown): Promise<string | null>
     chunks.push(buffer);
   }
   return Buffer.concat(chunks, byteLength).toString("utf8");
+}
+
+function isStaleGoogleDriveSync(state: GoogleDriveSyncState): boolean {
+  return state.state === "running" && Date.now() - Date.parse(state.updatedAt) > googleDriveSyncStaleAfterMs;
 }
 
 function parseGoogleService(value: unknown): GoogleIntegrationService | null {
@@ -1622,7 +1627,11 @@ export function registerGoogleRoutes(app: Express): void {
     const userId = req.session.userId as number;
     const client = await getAuthenticatedClient(userId, "drive");
     if (!client) return res.status(401).json({ error: "Google Drive is not connected" });
-    const state = readGoogleDriveSyncState(client.integration.settings);
+    let state = readGoogleDriveSyncState(client.integration.settings);
+    if (state && isStaleGoogleDriveSync(state)) {
+      state = { ...state, state: "failed", updatedAt: new Date().toISOString(), error: "provider_unavailable" };
+      try { await saveGoogleDriveSyncState(userId, client.integration.id, state); } catch { /* The connection may have been revoked. */ }
+    }
     return res.json(state
       ? { status: state.state, ...state }
       : { version: 1, status: "succeeded", imported: 0, updated: 0, skipped: 0, folders: 0, startedAt: null, updatedAt: null });
