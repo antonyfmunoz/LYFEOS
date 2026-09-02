@@ -75,6 +75,12 @@ const GOOGLE_ACTIONS = {
 } as const satisfies Record<string, IntegrationActionDescriptor>;
 const googleOAuthStateLifetimeMs = 10 * 60 * 1_000;
 const googleDriveSyncStateKey = "googleDriveSyncV1";
+// Keep an import within the memory envelope of the production web process.
+// Binary files remain available through their private Drive link; text imports
+// are streamed and bounded before they are stored in the LyfeOS vault.
+const googleDriveFolderPageSize = 100;
+const googleDriveFilePageSize = 25;
+const maxGoogleDriveTextImportBytes = 1 * 1024 * 1024;
 
 type GoogleDriveSyncState = {
   version: 1;
@@ -121,6 +127,28 @@ async function saveGoogleDriveSyncState(userId: number, integrationId: number, s
     settings: writeGoogleDriveSyncState(latest.settings, state),
     ...(state.state === "succeeded" ? { lastSyncedAt: new Date() } : {}),
   });
+}
+
+async function readGoogleDriveTextImport(value: unknown): Promise<string | null> {
+  if (typeof value === "string") {
+    return Buffer.byteLength(value, "utf8") <= maxGoogleDriveTextImportBytes ? value : null;
+  }
+
+  const stream = value as AsyncIterable<unknown> & { destroy?: () => void };
+  if (!stream || typeof stream[Symbol.asyncIterator] !== "function") return null;
+
+  const chunks: Buffer[] = [];
+  let byteLength = 0;
+  for await (const chunk of stream) {
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as Uint8Array);
+    byteLength += buffer.length;
+    if (byteLength > maxGoogleDriveTextImportBytes) {
+      stream.destroy?.();
+      return null;
+    }
+    chunks.push(buffer);
+  }
+  return Buffer.concat(chunks, byteLength).toString("utf8");
 }
 
 function parseGoogleService(value: unknown): GoogleIntegrationService | null {
@@ -1392,73 +1420,53 @@ export function registerGoogleRoutes(app: Express): void {
       let updated = 0;
       let skipped = 0;
 
-      const folderIdMap = new Map<string, number>();
-      folderIdMap.set("root", rootFolder.id);
+      let folders = 0;
+      const syncFolderChildren = async (parentDriveId: string, parentVaultId: number): Promise<void> => {
+        let folderPageToken: string | undefined;
+        do {
+          const folderRes = await drive.files.list({
+            q: `'${parentDriveId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
+            fields: "nextPageToken, files(id, name, webViewLink)",
+            pageSize: googleDriveFolderPageSize,
+            pageToken: folderPageToken,
+          });
 
-      let folderPageToken: string | undefined;
-      const allDriveFolders: any[] = [];
-      do {
-        const folderRes = await drive.files.list({
-          q: "mimeType = 'application/vnd.google-apps.folder' and trashed = false",
-          fields: "nextPageToken, files(id, name, parents, webViewLink)",
-          pageSize: 1000,
-          pageToken: folderPageToken,
-        });
-        allDriveFolders.push(...(folderRes.data.files || []));
-        folderPageToken = folderRes.data.nextPageToken || undefined;
-      } while (folderPageToken);
-
-      const processFolderBatch = async (driveFolders: any[]) => {
-        const pending = [...driveFolders];
-        let lastPendingCount = -1;
-
-        while (pending.length > 0 && pending.length !== lastPendingCount) {
-          lastPendingCount = pending.length;
-          const stillPending: any[] = [];
-
-          for (const df of pending) {
-            const driveParentId = df.parents?.[0] || "root";
-            const parentVaultId = folderIdMap.get(driveParentId);
-
-            if (parentVaultId === undefined) {
-              stillPending.push(df);
-              continue;
-            }
-
-            let existingFolder = await storage.getFolderByExternalId(userId, "google_drive", df.id!);
-            if (existingFolder) {
-              await storage.updateFolder(existingFolder.id, {
-                name: df.name!,
+          for (const driveFolder of folderRes.data.files || []) {
+            if (!driveFolder.id || !driveFolder.name) continue;
+            const existingFolder = await storage.getFolderByExternalId(userId, "google_drive", driveFolder.id);
+            const vaultFolder = existingFolder
+              ? await storage.updateFolder(existingFolder.id, {
+                name: driveFolder.name,
                 parentId: parentVaultId,
-                externalUrl: df.webViewLink || undefined,
-              });
-              folderIdMap.set(df.id!, existingFolder.id);
-            } else {
-              const newFolder = await storage.createFolder({
+                externalUrl: driveFolder.webViewLink || undefined,
+              })
+              : await storage.createFolder({
                 userId,
-                name: df.name!,
+                name: driveFolder.name,
                 parentId: parentVaultId,
                 source: "google_drive",
-                externalId: df.id!,
-                externalUrl: df.webViewLink || undefined,
+                externalId: driveFolder.id,
+                externalUrl: driveFolder.webViewLink || undefined,
                 favorite: false,
               });
-              folderIdMap.set(df.id!, newFolder.id);
-            }
+            folders++;
+            await syncFolderChildren(driveFolder.id, vaultFolder.id);
           }
-          pending.length = 0;
-          pending.push(...stillPending);
-        }
+
+          folderPageToken = folderRes.data.nextPageToken || undefined;
+          driveSyncState = { ...driveSyncState, updatedAt: new Date().toISOString(), imported, updated, skipped, folders };
+          await saveGoogleDriveSyncState(userId, integrationId, driveSyncState);
+        } while (folderPageToken);
       };
 
-      await processFolderBatch(allDriveFolders);
+      await syncFolderChildren("root", rootFolder.id);
 
       let filePageToken: string | undefined;
       do {
         const fileRes = await drive.files.list({
           q: "mimeType != 'application/vnd.google-apps.folder' and trashed = false",
           fields: "nextPageToken, files(id, name, mimeType, parents, webViewLink, modifiedTime, size)",
-          pageSize: 25,
+          pageSize: googleDriveFilePageSize,
           pageToken: filePageToken,
         });
 
@@ -1468,7 +1476,10 @@ export function registerGoogleRoutes(app: Express): void {
           if (!file.id || !file.name) continue;
 
           const driveParentId = file.parents?.[0] || "root";
-          const vaultFolderId = folderIdMap.get(driveParentId) || rootFolder.id;
+          const parentVaultFolder = driveParentId === "root"
+            ? rootFolder
+            : await storage.getFolderByExternalId(userId, "google_drive", driveParentId);
+          const vaultFolderId = parentVaultFolder?.id || rootFolder.id;
           const mimeType = file.mimeType || "";
 
           const existingDoc = await storage.getDocumentByExternalId(userId, "google_drive", file.id);
@@ -1479,8 +1490,8 @@ export function registerGoogleRoutes(app: Express): void {
               const exported = await drive.files.export({
                 fileId: file.id,
                 mimeType: "text/plain",
-              });
-              markdownContent = (exported.data as string) || "";
+              }, { responseType: "stream" });
+              markdownContent = await readGoogleDriveTextImport(exported.data) || "";
             } catch (exportErr) {
               logGoogleFailure("Google document export failed", exportErr, userId);
               markdownContent = "";
@@ -1519,21 +1530,6 @@ export function registerGoogleRoutes(app: Express): void {
             else if (mimeType.startsWith("video/")) fileType = "video";
             else fileType = "pdf";
 
-            let fileData: string | null = null;
-            try {
-              const fileSize = file.size ? parseInt(file.size) : 0;
-              if (fileSize < 10 * 1024 * 1024) {
-                const downloaded = await drive.files.get(
-                  { fileId: file.id, alt: "media" },
-                  { responseType: "arraybuffer" }
-                );
-                const buffer = Buffer.from(downloaded.data as ArrayBuffer);
-                fileData = `data:${mimeType};base64,${buffer.toString("base64")}`;
-              }
-            } catch (dlErr) {
-              logGoogleFailure("Google Drive file download failed", dlErr, userId);
-            }
-
             if (existingDoc) {
               await storage.updateDocument(existingDoc.id, {
                 title: file.name,
@@ -1542,7 +1538,6 @@ export function registerGoogleRoutes(app: Express): void {
                 fileType,
                 mimeType,
                 fileSize: file.size ? parseInt(file.size) : undefined,
-                fileData: fileData || undefined,
                 lastSyncedAt: new Date(),
               });
               updated++;
@@ -1559,7 +1554,6 @@ export function registerGoogleRoutes(app: Express): void {
                 fileType,
                 mimeType,
                 fileSize: file.size ? parseInt(file.size) : undefined,
-                fileData: fileData || undefined,
                 favorite: false,
               });
               imported++;
@@ -1597,11 +1591,11 @@ export function registerGoogleRoutes(app: Express): void {
         }
 
         filePageToken = fileRes.data.nextPageToken || undefined;
-        driveSyncState = { ...driveSyncState, updatedAt: new Date().toISOString(), imported, updated, skipped, folders: allDriveFolders.length };
+        driveSyncState = { ...driveSyncState, updatedAt: new Date().toISOString(), imported, updated, skipped, folders };
         await saveGoogleDriveSyncState(userId, integrationId, driveSyncState);
       } while (filePageToken);
 
-      driveSyncState = { ...driveSyncState, state: "succeeded", updatedAt: new Date().toISOString(), imported, updated, skipped, folders: allDriveFolders.length };
+      driveSyncState = { ...driveSyncState, state: "succeeded", updatedAt: new Date().toISOString(), imported, updated, skipped, folders };
       await saveGoogleDriveSyncState(userId, integrationId, driveSyncState);
       return;
     } catch (error: any) {

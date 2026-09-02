@@ -122,6 +122,16 @@ describe("independent Google productivity integrations", () => {
     expect(vault).not.toContain('Continue Drive sync');
   });
 
+  it("bounds Drive import memory while retaining private source links", () => {
+    const google = source("server/routes/google.ts");
+
+    expect(google).toContain("const maxGoogleDriveTextImportBytes = 1 * 1024 * 1024");
+    expect(google).toContain("responseType: \"stream\"");
+    expect(google).toContain("readGoogleDriveTextImport(exported.data)");
+    expect(google).not.toContain("const allDriveFolders: any[]");
+    expect(google).not.toContain('responseType: "arraybuffer"');
+  });
+
   it("documents distinct production credentials and callbacks", () => {
     const environment = source(".env.tpl");
 
