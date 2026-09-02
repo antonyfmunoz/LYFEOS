@@ -33,7 +33,11 @@ function sourceUrl(recallNumber: string): string {
   return `${openFdaBaseUrl}?${params.toString()}`;
 }
 
-function normalizeMatch(value: unknown): FoodRecallMatch | null {
+function comparablePackageCode(value: string): string {
+  return value.toLocaleLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function normalizeMatch(value: unknown, packageCode: string | null): FoodRecallMatch | null {
   if (!value || typeof value !== "object") return null;
   const record = value as Record<string, unknown>;
   const recallNumber = cleanText(record.recall_number, 80);
@@ -48,6 +52,7 @@ function normalizeMatch(value: unknown): FoodRecallMatch | null {
     recallingFirm: cleanText(record.recalling_firm, 300),
     distributionPattern: cleanText(record.distribution_pattern, 4_000),
     codeInfo: cleanText(record.code_info, 4_000),
+    packageCodeTextMatch: Boolean(packageCode && cleanText(record.code_info, 4_000) && comparablePackageCode(cleanText(record.code_info, 4_000)!).includes(comparablePackageCode(packageCode))),
     recallInitiationDate: cleanDate(record.recall_initiation_date),
     reportDate: cleanDate(record.report_date),
     terminationDate: cleanDate(record.termination_date),
@@ -66,7 +71,7 @@ export function foodRecallAvailability(env: NodeJS.ProcessEnv = process.env) {
 }
 
 export async function lookupFoodRecalls(
-  input: { productName: string; brand?: string | null },
+  input: { productName: string; brand?: string | null; packageCode?: string | null },
   env: NodeJS.ProcessEnv = process.env,
   fetchImpl: typeof fetch = fetch,
 ): Promise<FoodRecallLookup> {
@@ -75,6 +80,7 @@ export async function lookupFoodRecalls(
 
   const productName = input.productName.trim().slice(0, 160);
   const brand = input.brand?.trim().slice(0, 120) || null;
+  const packageCode = input.packageCode?.trim().slice(0, 120) || null;
   if (productName.length < 2) throw new FoodRecallError("invalid_response", "Enter a product name before checking recall reports.");
 
   const phrase = escapedPhrase([brand, productName].filter(Boolean).join(" ")) || escapedPhrase(productName);
@@ -98,7 +104,7 @@ export async function lookupFoodRecalls(
   if (response.status === 404) {
     return foodRecallLookupSchema.parse({
       provider,
-      query: { productName, brand, matchMethod: "product_description_text" },
+      query: { productName, brand, packageCode, matchMethod: "product_description_text" },
       checkedAt: new Date().toISOString(),
       matches: [],
       disclosure: "No FDA enforcement-report product-description text matched this search. That is not a finding that the product is safe or not recalled; verify current package codes and official recall notices.",
@@ -114,12 +120,12 @@ export async function lookupFoodRecalls(
   }
   const rawResults = body && typeof body === "object" && Array.isArray((body as { results?: unknown[] }).results) ? (body as { results: unknown[] }).results : null;
   if (!rawResults) throw new FoodRecallError("invalid_response", "The FDA recall service returned an unexpected response.");
-  const matches = rawResults.map(normalizeMatch).filter((match): match is FoodRecallMatch => Boolean(match));
+  const matches = rawResults.map((match) => normalizeMatch(match, packageCode)).filter((match): match is FoodRecallMatch => Boolean(match));
   return foodRecallLookupSchema.parse({
     provider,
-    query: { productName, brand, matchMethod: "product_description_text" },
+    query: { productName, brand, packageCode, matchMethod: "product_description_text" },
     checkedAt: new Date().toISOString(),
     matches,
-    disclosure: "These are possible product-description text matches from FDA Food Enforcement Reports. Compare the package code or lot, dates, distribution, and recall number before acting. A search cannot determine whether your specific package is included.",
+    disclosure: packageCode ? "These are possible product-description text matches from FDA Food Enforcement Reports. A package-code text match means your entered code appears in the FDA record, not that LyfeOS has determined your package is included. Compare the full code, dates, distribution, and official recall notice before acting." : "These are possible product-description text matches from FDA Food Enforcement Reports. Compare the package code or lot, dates, distribution, and recall number before acting. A search cannot determine whether your specific package is included.",
   });
 }

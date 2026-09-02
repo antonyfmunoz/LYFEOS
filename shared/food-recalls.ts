@@ -9,6 +9,7 @@ export const foodRecallMatchSchema = z.object({
   recallingFirm: z.string().trim().min(1).max(300).nullable(),
   distributionPattern: z.string().trim().min(1).max(4_000).nullable(),
   codeInfo: z.string().trim().min(1).max(4_000).nullable(),
+  packageCodeTextMatch: z.boolean(),
   recallInitiationDate: z.string().regex(/^\d{8}$/).nullable(),
   reportDate: z.string().regex(/^\d{8}$/).nullable(),
   terminationDate: z.string().regex(/^\d{8}$/).nullable(),
@@ -28,6 +29,7 @@ export const foodRecallLookupSchema = z.object({
   query: z.object({
     productName: z.string().trim().min(2).max(160),
     brand: z.string().trim().min(1).max(120).nullable(),
+    packageCode: z.string().trim().min(3).max(120).nullable(),
     matchMethod: z.literal("product_description_text"),
   }).strict(),
   checkedAt: z.string().datetime(),

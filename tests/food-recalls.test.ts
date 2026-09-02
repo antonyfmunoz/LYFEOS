@@ -16,11 +16,12 @@ describe("FDA food recall lookup", () => {
         recall_initiation_date: "20260901", report_date: "20260902", termination_date: "",
       }] }), { status: 200, headers: { "content-type": "application/json" } });
     });
-    const result = await lookupFoodRecalls({ productName: "Oat Bites", brand: "Acme" }, {
+    const result = await lookupFoodRecalls({ productName: "Oat Bites", brand: "Acme", packageCode: "lot-42" }, {
       OPENFDA_API_KEY: "server-only-data-gov-key",
       OPENFDA_USER_AGENT: "LyfeOS/1.0 (support@lyfeos.net)",
     } as NodeJS.ProcessEnv, fetchMock as typeof fetch);
-    expect(result.matches).toEqual([expect.objectContaining({ recallNumber: "F-1234-2026", codeInfo: "LOT 42", sourceUrl: expect.stringContaining("recall_number") })]);
+    expect(result.matches).toEqual([expect.objectContaining({ recallNumber: "F-1234-2026", codeInfo: "LOT 42", packageCodeTextMatch: true, sourceUrl: expect.stringContaining("recall_number") })]);
+    expect(result.query).toMatchObject({ packageCode: "lot-42" });
     expect(result.disclosure).toContain("possible product-description text matches");
     expect(JSON.stringify(result)).not.toContain("server-only-data-gov-key");
   });
@@ -41,5 +42,6 @@ describe("FDA food recall lookup", () => {
     expect(appRoutes).toContain('"/api/food-recalls"');
     expect(scanner).toContain("Check FDA recalls");
     expect(scanner).toContain("possible product-description matches");
+    expect(scanner).toContain("entered code appears in FDA record");
   });
 });

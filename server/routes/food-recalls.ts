@@ -6,6 +6,7 @@ import { isAuthenticated } from "./middleware";
 const lookupSchema = z.object({
   productName: z.string().trim().min(2).max(160),
   brand: z.string().trim().min(1).max(120).nullable().optional(),
+  packageCode: z.string().trim().min(3).max(120).nullable().optional(),
 }).strict();
 
 function lookupFailure(error: unknown, res: Response) {
