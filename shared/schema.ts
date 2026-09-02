@@ -3319,6 +3319,9 @@ export const nutritionDiaryEntries = pgTable("nutrition_diary_entries", {
   clientMutationId: text("client_mutation_id"),
   mutationPayloadHash: text("mutation_payload_hash"),
   nutrientSnapshot: jsonb("nutrient_snapshot").notNull().default([]),
+  // Retains the food-source context used when the entry was recorded. This is
+  // deliberately separate from mutable saved-food metadata.
+  foodEvidenceSnapshot: jsonb("food_evidence_snapshot"),
   mealSlot: text("meal_slot").notNull().default("other"),
   occurredAt: timestamp("occurred_at").notNull().defaultNow(),
   recordedTimeZone: text("recorded_time_zone"),

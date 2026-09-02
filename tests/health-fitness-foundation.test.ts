@@ -268,6 +268,20 @@ describe("health and fitness foundation", () => {
     expect(routes).toContain('eq(nutritionDiaryEntries.userId, req.session.userId!)');
   });
 
+  it("retains food-source context with every new, copied, recipe, and restored diary entry", () => {
+    const migration = readFileSync(resolve(process.cwd(), "migrations/0151_nutrition_diary_food_evidence.sql"), "utf8");
+    const releaseRunner = readFileSync(resolve(process.cwd(), "server/release-migrate.ts"), "utf8");
+    const routes = readFileSync(resolve(process.cwd(), "server/routes/nutrition.ts"), "utf8");
+    const diary = readFileSync(resolve(process.cwd(), "client/src/components/health/NutritionDiary.tsx"), "utf8");
+    expect(migration).toContain('ADD COLUMN IF NOT EXISTS "food_evidence_snapshot"');
+    expect(releaseRunner).toContain('id: "0151_nutrition_diary_food_evidence"');
+    expect(routes).toContain("foodEvidenceSnapshot: foodEvidenceSnapshot(food)");
+    expect(routes).toContain("foodEvidenceSnapshot: evidenceByFood.get(ingredient.foodId) || null");
+    expect(routes).toContain("foodEvidenceSnapshot: entry.foodEvidenceSnapshot");
+    expect(routes).toContain("foodEvidenceSnapshot: snapshot.foodEvidenceSnapshot");
+    expect(diary).toContain("legacy source context unavailable");
+  });
+
   it("lets users correct and favorite saved foods without rewriting diary snapshots", () => {
     const migration = readFileSync(resolve(process.cwd(), "migrations/0044_nutrition_food_favorites.sql"), "utf8");
     const releaseRunner = readFileSync(resolve(process.cwd(), "server/release-migrate.ts"), "utf8");

@@ -3514,12 +3514,19 @@ const migrations = [
     `,
   },
   {
-    id: "0150_nutrition_food_catalog_evidence",
-    sql: `
-      ALTER TABLE "nutrition_foods"
-        ADD COLUMN IF NOT EXISTS "catalog_evidence" jsonb;
-    `,
-  },
+      id: "0150_nutrition_food_catalog_evidence",
+      sql: `
+        ALTER TABLE "nutrition_foods"
+          ADD COLUMN IF NOT EXISTS "catalog_evidence" jsonb;
+      `,
+    },
+  {
+      id: "0151_nutrition_diary_food_evidence",
+      sql: `
+        ALTER TABLE "nutrition_diary_entries"
+          ADD COLUMN IF NOT EXISTS "food_evidence_snapshot" jsonb;
+      `,
+    },
 ];
 
 async function run(): Promise<void> {

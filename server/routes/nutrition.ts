@@ -73,6 +73,25 @@ const recipeRevisionIngredientsSchema = z.array(z.object({
 })).min(1).max(60);
 const logRecipeSchema = z.object({ servings: z.number().positive().max(1000).default(1), mealSlot: z.enum(["breakfast", "lunch", "dinner", "snack", "other"]).default("other"), occurredAt: z.string().datetime().optional(), note: z.string().trim().max(500).nullable().optional() });
 type NutrientSnapshot = { nutrientKey: string; amountPer100g: number; unit: string };
+type FoodEvidenceSnapshot = {
+  source: string;
+  catalogProviderId: string | null;
+  catalogDatasetVersion: string | null;
+  catalogItemVersion: string | null;
+  catalogEvidence: unknown | null;
+  catalogSourceModified: boolean;
+};
+
+function foodEvidenceSnapshot(food: FoodEvidenceSnapshot): FoodEvidenceSnapshot {
+  return {
+    source: food.source,
+    catalogProviderId: food.catalogProviderId,
+    catalogDatasetVersion: food.catalogDatasetVersion,
+    catalogItemVersion: food.catalogItemVersion,
+    catalogEvidence: food.catalogEvidence,
+    catalogSourceModified: food.catalogSourceModified,
+  };
+}
 
 function asNutrientSnapshot(value: unknown): NutrientSnapshot[] {
   if (!Array.isArray(value)) return [];
@@ -120,7 +139,7 @@ async function diaryForDate(userId: number, date: string, timeZone: string) {
   const entries = await db.select({
     id: nutritionDiaryEntries.id, foodId: nutritionDiaryEntries.foodId, servingGrams: nutritionDiaryEntries.servingGrams, inputQuantity: nutritionDiaryEntries.inputQuantity, inputUnit: nutritionDiaryEntries.inputUnit, inputPortionId: nutritionDiaryEntries.inputPortionId, inputUnitLabel: nutritionDiaryEntries.inputUnitLabel, inputGramsPerUnit: nutritionDiaryEntries.inputGramsPerUnit,
     mealSlot: nutritionDiaryEntries.mealSlot, occurredAt: nutritionDiaryEntries.occurredAt, note: nutritionDiaryEntries.note,
-    nutrientSnapshot: nutritionDiaryEntries.nutrientSnapshot,
+    nutrientSnapshot: nutritionDiaryEntries.nutrientSnapshot, foodEvidenceSnapshot: nutritionDiaryEntries.foodEvidenceSnapshot,
     foodName: nutritionFoods.name, foodBrand: nutritionFoods.brand,
   }).from(nutritionDiaryEntries).innerJoin(nutritionFoods, eq(nutritionDiaryEntries.foodId, nutritionFoods.id))
     .where(and(eq(nutritionDiaryEntries.userId, userId), gte(nutritionDiaryEntries.occurredAt, start), lt(nutritionDiaryEntries.occurredAt, end)))
@@ -418,10 +437,15 @@ export function registerNutritionRoutes(app: Express): void {
     const occurredAt = parsed.data.occurredAt ? new Date(parsed.data.occurredAt) : new Date();
     if (Number.isNaN(occurredAt.getTime())) return res.status(400).json({ error: "Invalid diary time." });
     const ingredients = await db.select().from(nutritionRecipeIngredients).where(eq(nutritionRecipeIngredients.recipeId, recipe.id));
-    const snapshots = await nutrientSnapshots(ingredients.map((ingredient) => ingredient.foodId));
+    const ingredientFoodIds = ingredients.map((ingredient) => ingredient.foodId);
+    const [snapshots, ingredientFoods] = await Promise.all([
+      nutrientSnapshots(ingredientFoodIds),
+      db.select({ id: nutritionFoods.id, source: nutritionFoods.source, catalogProviderId: nutritionFoods.catalogProviderId, catalogDatasetVersion: nutritionFoods.catalogDatasetVersion, catalogItemVersion: nutritionFoods.catalogItemVersion, catalogEvidence: nutritionFoods.catalogEvidence, catalogSourceModified: nutritionFoods.catalogSourceModified }).from(nutritionFoods).where(and(eq(nutritionFoods.userId, userId), inArray(nutritionFoods.id, ingredientFoodIds))),
+    ]);
+    const evidenceByFood = new Map(ingredientFoods.map((food) => [food.id, foodEvidenceSnapshot(food)]));
     const timeContext = requestTimeContext(req, occurredAt);
     const entries = await db.transaction(async (tx) => {
-      const entries = await tx.insert(nutritionDiaryEntries).values(ingredients.map((ingredient) => ({ userId, foodId: ingredient.foodId, servingGrams: ingredient.grams * (parsed.data.servings / recipe.servings), inputQuantity: null, inputUnit: null, nutrientSnapshot: snapshots.get(ingredient.foodId) || [], mealSlot: parsed.data.mealSlot, occurredAt, note: parsed.data.note || `Recipe: ${recipe.name}`, recordedTimeZone: timeContext.timeZone, recordedUtcOffsetMinutes: timeContext.utcOffsetMinutes }))).returning();
+      const entries = await tx.insert(nutritionDiaryEntries).values(ingredients.map((ingredient) => ({ userId, foodId: ingredient.foodId, servingGrams: ingredient.grams * (parsed.data.servings / recipe.servings), inputQuantity: null, inputUnit: null, nutrientSnapshot: snapshots.get(ingredient.foodId) || [], foodEvidenceSnapshot: evidenceByFood.get(ingredient.foodId) || null, mealSlot: parsed.data.mealSlot, occurredAt, note: parsed.data.note || `Recipe: ${recipe.name}`, recordedTimeZone: timeContext.timeZone, recordedUtcOffsetMinutes: timeContext.utcOffsetMinutes }))).returning();
       return entries;
     });
     return res.status(201).json({ entries });
@@ -535,7 +559,7 @@ export function registerNutritionRoutes(app: Express): void {
     const copiedAt = copyToDate(sourceEntries[0].occurredAt, parsed.data.targetDate, timeContext.timeZone);
     const recordTimeContext = requestTimeContext(req, copiedAt);
     const entries = await db.insert(nutritionDiaryEntries).values(sourceEntries.map((entry) => ({
-      userId, foodId: entry.foodId, servingGrams: entry.servingGrams, inputQuantity: entry.inputQuantity, inputUnit: entry.inputUnit, inputPortionId: entry.inputPortionId, inputUnitLabel: entry.inputUnitLabel, inputGramsPerUnit: entry.inputGramsPerUnit, nutrientSnapshot: entry.nutrientSnapshot, mealSlot: entry.mealSlot,
+      userId, foodId: entry.foodId, servingGrams: entry.servingGrams, inputQuantity: entry.inputQuantity, inputUnit: entry.inputUnit, inputPortionId: entry.inputPortionId, inputUnitLabel: entry.inputUnitLabel, inputGramsPerUnit: entry.inputGramsPerUnit, nutrientSnapshot: entry.nutrientSnapshot, foodEvidenceSnapshot: entry.foodEvidenceSnapshot, mealSlot: entry.mealSlot,
       occurredAt: copyToDate(entry.occurredAt, parsed.data.targetDate, timeContext.timeZone), note: entry.note, recordedTimeZone: recordTimeContext.timeZone, recordedUtcOffsetMinutes: recordTimeContext.utcOffsetMinutes,
     }))).returning();
     return res.status(201).json({ sourceDate: parsed.data.sourceDate, targetDate: parsed.data.targetDate, entries });
@@ -564,7 +588,7 @@ export function registerNutritionRoutes(app: Express): void {
     const recordTimeContext = requestTimeContext(req, copiedAt);
     const entries = await db.insert(nutritionDiaryEntries).values(sourceEntries.map((entry) => ({
       userId, foodId: entry.foodId, servingGrams: entry.servingGrams, inputQuantity: entry.inputQuantity, inputUnit: entry.inputUnit, inputPortionId: entry.inputPortionId, inputUnitLabel: entry.inputUnitLabel, inputGramsPerUnit: entry.inputGramsPerUnit,
-      nutrientSnapshot: entry.nutrientSnapshot, mealSlot: parsed.data.targetMealSlot,
+      nutrientSnapshot: entry.nutrientSnapshot, foodEvidenceSnapshot: entry.foodEvidenceSnapshot, mealSlot: parsed.data.targetMealSlot,
       occurredAt: copyToDate(entry.occurredAt, parsed.data.targetDate, timeContext.timeZone), note: entry.note, recordedTimeZone: recordTimeContext.timeZone, recordedUtcOffsetMinutes: recordTimeContext.utcOffsetMinutes,
     }))).returning();
     return res.status(201).json({ sourceDate: parsed.data.sourceDate, targetDate: parsed.data.targetDate, sourceMealSlot: parsed.data.sourceMealSlot, targetMealSlot: parsed.data.targetMealSlot, entries });
@@ -584,7 +608,7 @@ export function registerNutritionRoutes(app: Express): void {
         ? res.json({ entry: existing, replayed: true })
         : res.status(409).json({ error: "This mutation identity was already used for a different diary entry." });
     }
-    const [food] = await db.select({ id: nutritionFoods.id, servingSizeGrams: nutritionFoods.servingSizeGrams, densityGramsPerMl: nutritionFoods.densityGramsPerMl }).from(nutritionFoods).where(and(eq(nutritionFoods.id, parsed.data.foodId), eq(nutritionFoods.userId, userId))).limit(1);
+    const [food] = await db.select({ id: nutritionFoods.id, servingSizeGrams: nutritionFoods.servingSizeGrams, densityGramsPerMl: nutritionFoods.densityGramsPerMl, source: nutritionFoods.source, catalogProviderId: nutritionFoods.catalogProviderId, catalogDatasetVersion: nutritionFoods.catalogDatasetVersion, catalogItemVersion: nutritionFoods.catalogItemVersion, catalogEvidence: nutritionFoods.catalogEvidence, catalogSourceModified: nutritionFoods.catalogSourceModified }).from(nutritionFoods).where(and(eq(nutritionFoods.id, parsed.data.foodId), eq(nutritionFoods.userId, userId))).limit(1);
     if (!food) return res.status(404).json({ error: "Food not found." });
     const occurredAt = parsed.data.occurredAt ? new Date(parsed.data.occurredAt) : new Date();
     if (Number.isNaN(occurredAt.getTime())) return res.status(400).json({ error: "Invalid diary time." });
@@ -596,7 +620,7 @@ export function registerNutritionRoutes(app: Express): void {
     const snapshot = (await nutrientSnapshots([food.id])).get(food.id) || [];
     try {
       const timeContext = requestTimeContext(req, occurredAt);
-      const [entry] = await db.insert(nutritionDiaryEntries).values({ userId, foodId: food.id, servingGrams, inputQuantity, inputUnit, inputPortionId: parsed.data.portionId || null, inputUnitLabel: conversion.label, inputGramsPerUnit: conversion.gramsPerUnit, clientMutationId, mutationPayloadHash, nutrientSnapshot: snapshot, mealSlot: parsed.data.mealSlot, occurredAt, note: parsed.data.note || null, recordedTimeZone: timeContext.timeZone, recordedUtcOffsetMinutes: timeContext.utcOffsetMinutes }).returning();
+      const [entry] = await db.insert(nutritionDiaryEntries).values({ userId, foodId: food.id, servingGrams, inputQuantity, inputUnit, inputPortionId: parsed.data.portionId || null, inputUnitLabel: conversion.label, inputGramsPerUnit: conversion.gramsPerUnit, clientMutationId, mutationPayloadHash, nutrientSnapshot: snapshot, foodEvidenceSnapshot: foodEvidenceSnapshot(food), mealSlot: parsed.data.mealSlot, occurredAt, note: parsed.data.note || null, recordedTimeZone: timeContext.timeZone, recordedUtcOffsetMinutes: timeContext.utcOffsetMinutes }).returning();
       return res.status(201).json({ entry, replayed: false });
     } catch (error) {
       if (!clientMutationId) throw error;
@@ -655,7 +679,7 @@ export function registerNutritionRoutes(app: Express): void {
         userId, foodId: snapshot.foodId, servingGrams: snapshot.servingGrams, inputQuantity: snapshot.inputQuantity,
         inputUnit: snapshot.inputUnit, inputPortionId: snapshot.inputPortionId, inputUnitLabel: snapshot.inputUnitLabel,
         inputGramsPerUnit: snapshot.inputGramsPerUnit, clientMutationId: null, mutationPayloadHash: null,
-        nutrientSnapshot: snapshot.nutrientSnapshot, mealSlot: snapshot.mealSlot, occurredAt: new Date(snapshot.occurredAt), note: snapshot.note, recordedTimeZone: snapshot.recordedTimeZone, recordedUtcOffsetMinutes: snapshot.recordedUtcOffsetMinutes,
+        nutrientSnapshot: snapshot.nutrientSnapshot, foodEvidenceSnapshot: snapshot.foodEvidenceSnapshot, mealSlot: snapshot.mealSlot, occurredAt: new Date(snapshot.occurredAt), note: snapshot.note, recordedTimeZone: snapshot.recordedTimeZone, recordedUtcOffsetMinutes: snapshot.recordedUtcOffsetMinutes,
       }).returning();
       const [claimed] = await tx.update(healthDeletionReceipts).set({ restoredAt: new Date() }).where(and(eq(healthDeletionReceipts.id, receiptId), eq(healthDeletionReceipts.userId, userId), isNull(healthDeletionReceipts.restoredAt))).returning({ id: healthDeletionReceipts.id });
       if (!claimed) throw new Error("Deletion receipt was already restored.");
