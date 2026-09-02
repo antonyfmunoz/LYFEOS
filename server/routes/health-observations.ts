@@ -51,6 +51,8 @@ const validateObservation = (input: z.infer<typeof observationInput>, context: z
   if (input.category === "lab" && input.source !== "lab" && !input.labName) context.addIssue({ code: z.ZodIssueCode.custom, message: "Use a lab source or identify the originating lab for a lab observation." });
   if (input.category !== "lab" && (input.specimenType || input.collectedAt)) context.addIssue({ code: z.ZodIssueCode.custom, message: "Specimen and collection metadata can only be attached to a lab observation." });
   if (input.source === "manual" && input.sourceRecordId) context.addIssue({ code: z.ZodIssueCode.custom, message: "A manual entry cannot claim an external source record identifier." });
+  if (input.source === "device" && !input.deviceName) context.addIssue({ code: z.ZodIssueCode.custom, message: "Name the device when transcribing a device measurement." });
+  if (input.source === "imported" && !input.sourceRecordId) context.addIssue({ code: z.ZodIssueCode.custom, message: "An imported measurement needs its source record identifier." });
 };
 const observationSchema = observationInput.superRefine(validateObservation);
 const observationUpdateSchema = observationInput.omit({ observedAt: true }).superRefine(validateObservation);

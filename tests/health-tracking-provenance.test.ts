@@ -52,9 +52,13 @@ describe("health tracking provenance", () => {
     expect(routes).toContain("eq(healthMetricDefinitions.userId, req.session.userId!)");
     expect(routes).toContain("definitionVersion: definition?.version || null");
     expect(routes).toContain("That source record has already been imported");
+    expect(routes).toContain("Name the device when transcribing a device measurement");
+    expect(routes).toContain("An imported measurement needs its source record identifier");
     expect(routes).toContain("not a clinical interpretation");
     expect(client).toContain('aria-label="Measurement method version"');
     expect(client).toContain('aria-label="Source record identifier"');
+    expect(client).toContain("Device (transcribed)");
+    expect(client).toContain("does not create a live device or provider connection");
     expect(profile).toContain('"health_metric_definitions"');
     expect(profile).toContain('"recovery_routines"');
   });
