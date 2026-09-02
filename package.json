@@ -26,6 +26,7 @@
     "acceptance:production-canvas": "tsx scripts/production-canvas-browser-acceptance.ts",
     "acceptance:production-health-offline": "tsx scripts/production-health-offline-browser-acceptance.ts",
     "acceptance:production-health-trends": "tsx scripts/production-health-trends-browser-acceptance.ts",
+    "acceptance:production-grocery-intelligence": "tsx scripts/production-grocery-intelligence-acceptance.ts",
     "acceptance:production-web-push": "tsx scripts/production-web-push-browser-acceptance.ts",
     "acceptance:production-search": "tsx scripts/production-search-browser-acceptance.ts",
     "acceptance:production-projects": "tsx scripts/production-projects-browser-acceptance.ts",
