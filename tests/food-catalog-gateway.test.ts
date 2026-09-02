@@ -98,14 +98,18 @@ describe("food catalog gateway", () => {
       code: "3017620422003", product_name: "Nutella", brands: "Ferrero", ingredients_text: "Sugar, hazelnuts", serving_size: "15 g", last_modified_t: 1_700_000_000,
       nutriments: { "energy-kcal_100g": 539, "energy-kcal_unit": "kcal", proteins_100g: 6.3, proteins_unit: "g", sodium_100g: 0.0428, sodium_unit: "g" },
     };
+    let attempts = 0;
     const fetchMock = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
       expect(init?.headers).toEqual(expect.objectContaining({ "User-Agent": openFoodFactsEnv.OPEN_FOOD_FACTS_USER_AGENT }));
       if (String(url).includes("/api/v3/product/")) return new Response(JSON.stringify({ status: 1, product }), { status: 200 });
-      return new Response(JSON.stringify({ products: [product], page_count: 1 }), { status: 200 });
+      attempts += 1;
+      if (attempts === 1) return new Response("busy", { status: 503 });
+      return new Response(JSON.stringify({ hits: [product], page_count: "10" }), { status: 200 });
     });
     const search = await searchFoodCatalog({ query: "nutella", territory: "US", locale: "en-US", limit: 10 }, openFoodFactsEnv, fetchMock as typeof fetch);
     expect(search.provider.id).toBe("open_food_facts");
     expect(search.provider.attributionText).toContain("Open Database License");
+    expect(search.nextCursor).toBeTruthy();
     expect(search.items[0].nutrients).toEqual(expect.arrayContaining([{ nutrientKey: "energy_kcal", amountPer100g: 539, unit: "kcal" }, { nutrientKey: "sodium_mg", amountPer100g: 42.8, unit: "mg" }]));
     const barcode = await (await import("../server/food-catalog")).lookupFoodCatalogBarcode("3017620422003", openFoodFactsEnv, fetchMock as typeof fetch);
     expect(barcode.item?.ingredientsText).toBe("Sugar, hazelnuts");

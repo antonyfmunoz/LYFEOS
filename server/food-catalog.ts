@@ -23,6 +23,7 @@ type OpenFoodFactsCatalogConfig = { kind: "open_food_facts"; signingSecret: stri
 type CatalogConfig = GatewayCatalogConfig | OpenFoodFactsCatalogConfig;
 
 const openFoodFactsBaseUrl = "https://world.openfoodfacts.org";
+const openFoodFactsSearchBaseUrl = "https://search.openfoodfacts.org";
 const openFoodFactsProvider = {
   id: "open_food_facts",
   name: "Open Food Facts",
@@ -245,15 +246,20 @@ function normalizedOpenFoodFactsItem(raw: unknown, territory: string, locale: st
 }
 
 async function openFoodFactsRequest(path: string, config: OpenFoodFactsCatalogConfig, fetchImpl: typeof fetch): Promise<unknown> {
-  let response: Response;
-  try {
-    response = await fetchImpl(`${openFoodFactsBaseUrl}${path}`, {
-      headers: { Accept: "application/json", "User-Agent": config.userAgent },
-      signal: AbortSignal.timeout(5_000),
-    });
-  } catch {
-    throw new FoodCatalogError("provider_failure", "The food catalog did not respond.");
+  let response: Response | null = null;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      response = await fetchImpl(path.startsWith("https://") ? path : `${openFoodFactsBaseUrl}${path}`, {
+        headers: { Accept: "application/json", "User-Agent": config.userAgent },
+        signal: AbortSignal.timeout(5_000),
+      });
+    } catch {
+      if (attempt === 0) continue;
+      throw new FoodCatalogError("provider_failure", "The food catalog did not respond.");
+    }
+    if (response.ok || ![429, 502, 503, 504].includes(response.status) || attempt === 1) break;
   }
+  if (!response) throw new FoodCatalogError("provider_failure", "The food catalog did not respond.");
   if (!response.ok) throw new FoodCatalogError("provider_failure", "The food catalog could not complete this lookup.");
   try { return await response.json(); } catch { throw new FoodCatalogError("invalid_response", "The food catalog returned an invalid response."); }
 }
@@ -265,10 +271,11 @@ async function searchOpenFoodFacts(input: FoodCatalogSearchInput, config: OpenFo
   if (!openFoodFactsProvider.territories.includes(request.territory as never)) throw new FoodCatalogError("unavailable", "This food catalog is not configured for the selected territory.");
   const page = continuation ? Number(continuation.providerCursor) : 1;
   if (!Number.isInteger(page) || page < 1 || page > 500) throw new FoodCatalogError("invalid_cursor", "This catalog result page expired or is invalid. Start the search again.");
-  const params = new URLSearchParams({ search_terms: request.query, search_simple: "1", action: "process", json: "1", page: String(page), page_size: String(request.limit), fields: "code,product_name,brands,nutriments,ingredients_text,serving_size,last_modified_t" });
-  const response = await openFoodFactsRequest(`/cgi/search.pl?${params}`, config, fetchImpl) as { products?: unknown[]; page_count?: number };
-  const items = Array.isArray(response.products) ? response.products.map((product) => normalizedOpenFoodFactsItem(product, request.territory, request.locale)).filter((item): item is FoodCatalogItem => Boolean(item)) : [];
-  const nextCursor = typeof response.page_count === "number" && response.page_count >= request.limit
+  const params = new URLSearchParams({ q: request.query, page: String(page), page_size: String(request.limit) });
+  const response = await openFoodFactsRequest(`${openFoodFactsSearchBaseUrl}/search?${params}`, config, fetchImpl) as { hits?: unknown[]; page_count?: number | string };
+  const items = Array.isArray(response.hits) ? response.hits.map((product) => normalizedOpenFoodFactsItem(product, request.territory, request.locale)).filter((item): item is FoodCatalogItem => Boolean(item)) : [];
+  const pageCount = typeof response.page_count === "string" ? Number(response.page_count) : response.page_count;
+  const nextCursor = Number.isFinite(pageCount) && pageCount! >= request.limit
     ? createFoodCatalogCursorToken({ query: request.query, territory: request.territory, locale: request.locale, limit: request.limit, providerId: openFoodFactsProvider.id, datasetVersion: openFoodFactsProvider.datasetVersion, providerCursor: String(page + 1) }, config.signingSecret)
     : null;
   return { provider: openFoodFactsProvider, items, nextCursor };
@@ -276,8 +283,9 @@ async function searchOpenFoodFacts(input: FoodCatalogSearchInput, config: OpenFo
 
 async function lookupOpenFoodFactsBarcode(barcode: string, config: OpenFoodFactsCatalogConfig, fetchImpl: typeof fetch) {
   const fields = "code,product_name,brands,nutriments,ingredients_text,serving_size,last_modified_t";
-  const response = await openFoodFactsRequest(`/api/v3/product/${encodeURIComponent(barcode)}?fields=${fields}`, config, fetchImpl) as { status?: number; product?: unknown };
-  return { provider: openFoodFactsProvider, item: response.status === 1 ? normalizedOpenFoodFactsItem(response.product, "US", "en-US") : null };
+  const response = await openFoodFactsRequest(`/api/v3/product/${encodeURIComponent(barcode)}?fields=${fields}`, config, fetchImpl) as { status?: number | string; product?: unknown; result?: { id?: string } };
+  const found = response.status === 1 || response.status === "success" || response.result?.id === "product_found";
+  return { provider: openFoodFactsProvider, item: found ? normalizedOpenFoodFactsItem(response.product, "US", "en-US") : null };
 }
 
 type FoodCatalogSearchInput = { query: string; territory: string; locale: string; limit: number } | { cursor: string };
