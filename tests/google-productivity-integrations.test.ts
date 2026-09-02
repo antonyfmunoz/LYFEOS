@@ -54,6 +54,7 @@ describe("independent Google productivity integrations", () => {
 
   it("uses request-bound approval cards instead of client-side confirmation shortcuts", () => {
     const provider = source("client/src/components/IntegrationActionApprovalProvider.tsx");
+    const theme = source("client/src/index.css");
     const quests = source("client/src/pages/QuestsPage.tsx");
     const vault = source("client/src/pages/DocumentVaultPage.tsx");
     const approvals = source("server/integration-action-approvals.ts");
@@ -62,6 +63,11 @@ describe("independent Google productivity integrations", () => {
 
     expect(provider).toContain("Allow once");
     expect(provider).toContain("Always allow");
+    expect(provider).toContain('variant="secondary"');
+    expect(theme).toContain('--secondary: var(--primary-hsl, 188 100% 50%) !important;');
+    expect(theme).toContain('--secondary: var(--primary-hsl, 188 95% 40%) !important;');
+    expect(theme).not.toContain('--secondary: 188 80% 35% !important;');
+    expect(theme).not.toContain('--secondary: 188 75% 30% !important;');
     expect(provider).toContain("IntegrationActionDeniedError");
     expect(quests).not.toContain("approvalConfirmed");
     expect(vault).not.toContain("approvalConfirmed");

@@ -46,8 +46,11 @@ input[type="range"].theme-slider::-moz-range-thumb {
     --primary: var(--primary-hsl, 188 100% 50%) !important;
     --primary-foreground: 0 0% 7% !important;
     
-    --secondary: 188 80% 35% !important;
-    --secondary-foreground: 0 0% 93% !important;
+    /* Secondary actions must follow the member's selected LyfeOS accent too.
+       A fixed cyan here made isolated controls (such as Allow once) look like
+       they belonged to a different product when the member chose another theme. */
+    --secondary: var(--primary-hsl, 188 100% 50%) !important;
+    --secondary-foreground: var(--primary-foreground, 0 0% 7%) !important;
     
     --accent: var(--primary-hsl, 188 100% 50%) / 0.15 !important;
     --accent-foreground: 0 0% 93% !important;
@@ -84,8 +87,8 @@ input[type="range"].theme-slider::-moz-range-thumb {
     --primary: var(--primary-hsl, 188 95% 40%) !important;
     --primary-foreground: 0 0% 98% !important;
     
-    --secondary: 188 75% 30% !important;
-    --secondary-foreground: 0 0% 98% !important;
+    --secondary: var(--primary-hsl, 188 95% 40%) !important;
+    --secondary-foreground: var(--primary-foreground, 0 0% 98%) !important;
     
     --accent: 188 95% 40% !important;
     --accent-foreground: 0 0% 98% !important;
