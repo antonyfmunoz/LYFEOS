@@ -3448,6 +3448,33 @@ export const foodReviewPreferences = pgTable("food_review_preferences", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+// A package confirmation is a private record of what the user visually
+// confirmed on one versioned catalog product. It is intentionally not a
+// certification claim, and neither the source image nor OCR text is retained.
+export const foodPackageConfirmations = pgTable("food_package_confirmations", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  productKey: text("product_key").notNull(),
+  barcode: text("barcode").notNull(),
+  productName: text("product_name").notNull(),
+  brand: text("brand"),
+  catalogProviderId: text("catalog_provider_id").notNull(),
+  catalogExternalId: text("catalog_external_id").notNull(),
+  catalogDatasetVersion: text("catalog_dataset_version").notNull(),
+  catalogItemVersion: text("catalog_item_version").notNull(),
+  catalogTerritory: text("catalog_territory").notNull(),
+  kind: text("kind").notNull(), // kosher_package_mark
+  markKey: text("mark_key").notNull(),
+  markLabel: text("mark_label").notNull(),
+  confirmationMethod: text("confirmation_method").notNull(), // visual_package_review | ocr_hint_then_visual_review
+  confirmedAt: timestamp("confirmed_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("food_package_confirmations_user_product_mark_unique_idx").on(table.userId, table.productKey, table.kind, table.markKey),
+  index("food_package_confirmations_user_barcode_confirmed_idx").on(table.userId, table.barcode, table.confirmedAt),
+]);
+
 // Private household inventory. Product catalog provenance is preserved when a
 // barcode lookup creates the item, while ownership is resolved afresh from the
 // cited registry so a changed corporate relationship is never silently frozen.

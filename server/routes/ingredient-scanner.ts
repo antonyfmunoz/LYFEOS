@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
-import { foodReviewPreferences, ingredientPreferenceRules, ingredientScanItems, ingredientScans } from "@shared/schema";
+import { foodPackageConfirmations, foodReviewPreferences, ingredientPreferenceRules, ingredientScanItems, ingredientScans } from "@shared/schema";
 import { db } from "../db";
 import { normalizeIngredientKey, parseIngredientLabel } from "../ingredient-scanner";
 import { isAuthenticated } from "./middleware";
@@ -23,6 +23,17 @@ const preferenceSchema = z.object({
 const foodReviewPreferencesSchema = z.object({
   kosherPackageConfirmation: z.boolean(),
 });
+const packageConfirmationSchema = z.object({
+  catalogLookupToken: z.string().min(80).max(100_000),
+  kind: z.literal("kosher_package_mark"),
+  markKey: z.enum(["ou", "star_k", "kof_k", "generic_kosher", "other_printed_mark"]),
+  markLabel: z.string().trim().min(1).max(120),
+  confirmationMethod: z.enum(["visual_package_review", "ocr_hint_then_visual_review"]),
+});
+
+function foodPackageProductKey(receipt: { provider: { id: string }; item: { externalId: string; barcode?: string | null } }): string {
+  return `${receipt.provider.id}:${receipt.item.externalId}:${receipt.item.barcode || "no_barcode"}`;
+}
 
 export function registerIngredientScannerRoutes(app: Express): void {
   app.get("/api/ingredient-scans", isAuthenticated, async (req: Request, res: Response) => {
@@ -72,6 +83,56 @@ export function registerIngredientScannerRoutes(app: Express): void {
       set: { kosherPackageConfirmation: parsed.data.kosherPackageConfirmation, updatedAt: new Date() },
     }).returning();
     return res.json({ preferences: { kosherPackageConfirmation: preferences.kosherPackageConfirmation } });
+  });
+
+  app.get("/api/food-package-confirmations", isAuthenticated, async (req: Request, res: Response) => {
+    const barcode = z.string().trim().regex(/^\d{8,14}$/).safeParse(req.query.barcode);
+    if (!barcode.success) return res.status(400).json({ error: "Enter a valid product barcode." });
+    const confirmations = await db.select().from(foodPackageConfirmations)
+      .where(and(eq(foodPackageConfirmations.userId, req.session.userId!), eq(foodPackageConfirmations.barcode, barcode.data)))
+      .orderBy(desc(foodPackageConfirmations.confirmedAt)).limit(20);
+    return res.json({
+      confirmations,
+      disclosure: "These are your private visual package-review records. They do not certify a product, establish current manufacturer status, or replace an observance authority. A changed catalog item version requires a fresh package review.",
+    });
+  });
+
+  app.post("/api/food-package-confirmations", isAuthenticated, async (req: Request, res: Response) => {
+    const parsed = packageConfirmationSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: "Enter a valid package confirmation." });
+    const receipt = verifyConfiguredFoodCatalogToken(parsed.data.catalogLookupToken);
+    if (!receipt) return res.status(400).json({ error: "This product lookup is invalid or expired. Look up the current package again before confirming it." });
+    if (!receipt.item.barcode) return res.status(422).json({ error: "LyfeOS needs a product barcode to keep this package confirmation tied to the exact product." });
+    const productKey = foodPackageProductKey(receipt);
+    const now = new Date();
+    const [confirmation] = await db.insert(foodPackageConfirmations).values({
+      userId: req.session.userId!, productKey, barcode: receipt.item.barcode, productName: receipt.item.name,
+      brand: receipt.item.brand || null, catalogProviderId: receipt.provider.id, catalogExternalId: receipt.item.externalId,
+      catalogDatasetVersion: receipt.provider.datasetVersion, catalogItemVersion: receipt.item.itemVersion,
+      catalogTerritory: receipt.item.territory, kind: parsed.data.kind, markKey: parsed.data.markKey,
+      markLabel: parsed.data.markLabel, confirmationMethod: parsed.data.confirmationMethod, confirmedAt: now, updatedAt: now,
+    }).onConflictDoUpdate({
+      target: [foodPackageConfirmations.userId, foodPackageConfirmations.productKey, foodPackageConfirmations.kind, foodPackageConfirmations.markKey],
+      set: {
+        barcode: receipt.item.barcode, productName: receipt.item.name, brand: receipt.item.brand || null,
+        catalogDatasetVersion: receipt.provider.datasetVersion, catalogItemVersion: receipt.item.itemVersion,
+        catalogTerritory: receipt.item.territory, markLabel: parsed.data.markLabel,
+        confirmationMethod: parsed.data.confirmationMethod, confirmedAt: now, updatedAt: now,
+      },
+    }).returning();
+    return res.status(201).json({
+      confirmation,
+      disclosure: "Saved your private visual confirmation for this versioned catalog product. LyfeOS did not save the image or OCR text, and this record is not a certification.",
+    });
+  });
+
+  app.delete("/api/food-package-confirmations/:id", isAuthenticated, async (req: Request, res: Response) => {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) return res.status(400).json({ error: "Invalid package confirmation." });
+    const [confirmation] = await db.delete(foodPackageConfirmations)
+      .where(and(eq(foodPackageConfirmations.id, id), eq(foodPackageConfirmations.userId, req.session.userId!)))
+      .returning({ id: foodPackageConfirmations.id });
+    return confirmation ? res.status(204).send() : res.status(404).json({ error: "Package confirmation not found." });
   });
 
   app.get("/api/ingredient-scans/lookup", isAuthenticated, async (req: Request, res: Response) => {
