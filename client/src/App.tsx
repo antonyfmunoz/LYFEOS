@@ -141,6 +141,16 @@ function RouteLoadingScreen() {
   );
 }
 
+function RoutePreloaderReady({ children }: { children: React.ReactNode }) {
+  // This component only commits after the active lazy route has resolved.
+  // Keeping the static cover until then prevents a cold authenticated route
+  // from flashing an empty application shell before its content is ready.
+  useEffect(() => {
+    hideAppPreloader();
+  }, []);
+  return <>{children}</>;
+}
+
 function HapticInit() {
   const { user } = useAuth();
   useEffect(() => {
@@ -207,12 +217,6 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     }
   }, [isAuthenticated, isLoading, isRecoveringSession, navigate]);
 
-  useEffect(() => {
-    if (isAuthenticated && !isLoading) {
-      hideAppPreloader();
-    }
-  }, [isAuthenticated, isLoading]);
-
   if (isLoading || isRecoveringSession) {
     const savedColor = localStorage.getItem('lyfeos-primary-color');
     const spinnerColor = (savedColor && savedColor !== '#ffffff') ? savedColor : '#fff';
@@ -239,14 +243,7 @@ function Router() {
   const [isLoginTransition, setIsLoginTransition] = React.useState(false);
   
   useEffect(() => {
-    if (!isLoading) {
-      hideOAuthPreloader();
-      // The static app preloader is enabled for any page load that has a
-      // cached user, including /onboarding and /ceremony. Those routes live
-      // outside ProtectedRoute by design, so auth settling at the router is
-      // the shared point where the mounted application must become visible.
-      hideAppPreloader();
-    }
+    if (!isLoading) hideOAuthPreloader();
   }, [isLoading]);
   
   useEffect(() => {
@@ -353,6 +350,7 @@ function Router() {
 
   return (
     <Suspense fallback={<RouteLoadingScreen />}>
+    <RoutePreloaderReady>
     <Switch>
       {/* Public routes */}
       <Route path="/sso-callback">
@@ -708,6 +706,7 @@ function Router() {
       {/* Fallback to 404 */}
       <Route component={NotFound} />
     </Switch>
+    </RoutePreloaderReady>
     </Suspense>
   );
 }
