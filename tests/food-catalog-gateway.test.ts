@@ -103,7 +103,7 @@ describe("food catalog gateway", () => {
     expect(getFoodCatalogConfig({ ...openFoodFactsEnv, OPEN_FOOD_FACTS_USER_AGENT: "short" })).toBeNull();
     const product = {
       code: "3017620422003", product_name: "Nutella", brands: "Ferrero", ingredients_text: "Sugar, hazelnuts", serving_size: "15 g", last_modified_t: 1_700_000_000, labels_tags: ["en:kosher"],
-      nutriments: { "energy-kcal_100g": 539, "energy-kcal_unit": "kcal", proteins_100g: 6.3, proteins_unit: "g", sodium_100g: 0.0428, sodium_unit: "g" },
+      nutriments: { "energy-kcal_100g": 539, proteins_100g: 6.3, proteins_unit: "g", sodium_100g: 0.0428, sodium_unit: "g" },
     };
     let attempts = 0;
     const fetchMock = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {

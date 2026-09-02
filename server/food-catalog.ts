@@ -295,7 +295,10 @@ function normalizedOpenFoodFactsItem(raw: unknown, territory: string, locale: st
   const nutrients = openFoodFactsNutrients.flatMap(({ sourceKey, nutrientKey, unit }) => {
     const rawValue = openFoodFactsNumber(nutriments[`${sourceKey}_100g`] ?? nutriments[sourceKey]);
     if (rawValue === null) return [];
-    const converted = convertOpenFoodFactsUnit(rawValue, nutriments[`${sourceKey}_unit`], unit);
+    // Open Food Facts commonly omits the separate energy-kcal unit. Its field
+    // name itself establishes kcal; other missing units retain the conservative
+    // grams default used by the normalizer.
+    const converted = convertOpenFoodFactsUnit(rawValue, nutriments[`${sourceKey}_unit`] ?? (sourceKey === "energy-kcal" ? "kcal" : undefined), unit);
     return converted === null ? [] : [{ nutrientKey, amountPer100g: Number(converted.toFixed(6)), unit }];
   });
   const servingSizeGrams = gramsFromServingSize(product.serving_size) || 100;
