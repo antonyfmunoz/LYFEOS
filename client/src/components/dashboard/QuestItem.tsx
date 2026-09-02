@@ -6,6 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/authContext";
 import { useLocation } from "wouter";
+import { apiRequest } from "@/lib/queryClient";
+import { IntegrationActionDeniedError, useIntegrationActionApproval } from "@/components/IntegrationActionApprovalProvider";
+import { useToast } from "@/hooks/use-toast";
+import { useLYFEOS } from "@/lib/context";
 
 
 export const QUEST_DND_TYPE = 'QUEST_ITEM';
@@ -97,8 +101,12 @@ const ONBOARDING_DESCRIPTIONS: Record<string, string> = {
 
 export default function QuestItem({ quest, index, section, onToggle, onDelete, onEdit, onStart, onResume, onDone, onUndo, onRestart, onMoveQuest, elapsedSeconds, breakSeconds, isTimerActive, timerBlocked }: QuestItemProps) {
   const [showDescription, setShowDescription] = useState(false);
+  const [isSyncingToGoogle, setIsSyncingToGoogle] = useState(false);
   const { user } = useAuth();
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  const { runWithApproval } = useIntegrationActionApproval();
+  const { refetchQuests } = useLYFEOS();
   const { title, description, completed, energyCost, attentionCost, timeCost, experienceReward, startDate, startTime, endDate, endTime, notificationEnabled, difficulty, category, visionGoalId } = quest;
   const rawLinkedItems = (quest.linkedItems as { type: "document" | "folder"; id: number; title: string }[]) || [];
 
@@ -207,6 +215,32 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
 
   const hasSchedule = startDate || startTime || endDate || endTime;
   const hasBeenStarted = elapsedSeconds !== undefined || isTimerActive;
+  const canSyncToGoogleCalendar = category !== "onboarding" && Boolean(startDate);
+  const syncToGoogleCalendar = async () => {
+    if (!startDate || isSyncingToGoogle) return;
+    setIsSyncingToGoogle(true);
+    try {
+      const result = await runWithApproval((approvalId) => apiRequest<{ action: "created" | "updated" }>("/api/google/calendar/push", {
+        method: "POST",
+        body: JSON.stringify({ missionId: quest.id, ...(approvalId ? { approvalId } : {}) }),
+      }));
+      await refetchQuests();
+      toast({
+        title: result.action === "created" ? "Added to Google Calendar" : "Google Calendar updated",
+        description: result.action === "created"
+          ? "This scheduled mission is now linked to an event in your primary Google Calendar."
+          : "The linked Google Calendar event now matches this mission.",
+      });
+    } catch (error) {
+      if (error instanceof IntegrationActionDeniedError) {
+        toast({ title: "Calendar change cancelled", description: "Google Calendar was not changed." });
+      } else {
+        toast({ title: "Calendar change failed", description: "Check your Google Calendar connection and its Change Google Calendar permission.", variant: "destructive" });
+      }
+    } finally {
+      setIsSyncingToGoogle(false);
+    }
+  };
 
   return (
     <div 
@@ -416,6 +450,20 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
           )}
           {!completed && (
             <div className="flex items-center gap-2 mt-2">
+              {canSyncToGoogleCalendar && (
+                <button
+                  type="button"
+                  data-testid={`mission-sync-google-calendar-${quest.id}`}
+                  disabled={isSyncingToGoogle}
+                  className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void syncToGoogleCalendar();
+                  }}
+                >
+                  {isSyncingToGoogle ? "Syncing…" : quest.externalSource === "google_calendar" ? "Update Calendar" : "Add to Calendar"}
+                </button>
+              )}
               {!hasBeenStarted && onStart && (
                 <button
                   data-testid={`mission-start-${quest.id}`}
