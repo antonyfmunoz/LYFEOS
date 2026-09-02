@@ -109,6 +109,17 @@ describe("independent Google productivity integrations", () => {
     expect(release).toContain('id: "0144_integration_action_governance"');
   });
 
+  it("keeps Drive imports resumable instead of processing an entire Drive in one request", () => {
+    const google = source("server/routes/google.ts");
+    const vault = source("client/src/pages/DocumentVaultPage.tsx");
+
+    expect(google).toContain('pageSize: 10');
+    expect(google).toContain('moreAvailable: Boolean(nextPageToken)');
+    expect(google).toContain('nextPageToken');
+    expect(vault).toContain('Continue Drive sync');
+    expect(vault).toContain('handleGoogleDriveSync(gdNextPageToken)');
+  });
+
   it("documents distinct production credentials and callbacks", () => {
     const environment = source(".env.tpl");
 

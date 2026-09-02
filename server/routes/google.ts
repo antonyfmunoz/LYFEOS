@@ -1392,18 +1392,22 @@ export function registerGoogleRoutes(app: Express): void {
 
       await processFolderBatch(allDriveFolders);
 
-      let filePageToken: string | undefined;
-      do {
-        const fileRes = await drive.files.list({
-          q: "mimeType != 'application/vnd.google-apps.folder' and trashed = false",
-          fields: "nextPageToken, files(id, name, mimeType, parents, webViewLink, modifiedTime, size)",
-          pageSize: 100,
-          pageToken: filePageToken,
-        });
+      // A Drive can contain thousands of records and each supported file may need
+      // an additional export/download. Keep a user-visible sync request bounded
+      // rather than holding one browser request open until it appears frozen.
+      const requestedPageToken = typeof req.body?.pageToken === "string" && req.body.pageToken.length <= 512
+        ? req.body.pageToken
+        : undefined;
+      const fileRes = await drive.files.list({
+        q: "mimeType != 'application/vnd.google-apps.folder' and trashed = false",
+        fields: "nextPageToken, files(id, name, mimeType, parents, webViewLink, modifiedTime, size)",
+        pageSize: 10,
+        pageToken: requestedPageToken,
+      });
 
-        const files = fileRes.data.files || [];
+      const files = fileRes.data.files || [];
 
-        for (const file of files) {
+      for (const file of files) {
           if (!file.id || !file.name) continue;
 
           const driveParentId = file.parents?.[0] || "root";
@@ -1533,12 +1537,17 @@ export function registerGoogleRoutes(app: Express): void {
           } else {
             skipped++;
           }
-        }
+      }
 
-        filePageToken = fileRes.data.nextPageToken || undefined;
-      } while (filePageToken);
-
-      return res.json({ imported, updated, skipped, folders: allDriveFolders.length });
+      const nextPageToken = fileRes.data.nextPageToken || null;
+      return res.json({
+        imported,
+        updated,
+        skipped,
+        folders: allDriveFolders.length,
+        moreAvailable: Boolean(nextPageToken),
+        nextPageToken,
+      });
     } catch (error: any) {
       if (error?.code === 401 || error?.response?.status === 401) {
         return res.status(401).json({ error: "Google token expired. Please reconnect." });
