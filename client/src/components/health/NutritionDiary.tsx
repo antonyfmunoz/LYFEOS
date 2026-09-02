@@ -36,7 +36,7 @@ function today(): string { return getLocalDateString(); }
 function previousDay(date: string): string { const value = new Date(`${date}T00:00:00.000Z`); value.setUTCDate(value.getUTCDate() - 1); return value.toISOString().slice(0, 10); }
 function nextDay(date: string): string { const value = new Date(`${date}T00:00:00.000Z`); value.setUTCDate(value.getUTCDate() + 1); return value.toISOString().slice(0, 10); }
 function invalidNumber(value: string): boolean { return !Number.isFinite(Number(value)) || Number(value) <= 0; }
-export default function NutritionDiary({ importedFoodId, onImportedFoodHandled }: { importedFoodId?: number | null; onImportedFoodHandled?: () => void }) {
+export default function NutritionDiary({ importedFoodId, onImportedFoodHandled, manualFoodRequest, onManualFoodHandled }: { importedFoodId?: number | null; onImportedFoodHandled?: () => void; manualFoodRequest?: { name: string } | null; onManualFoodHandled?: () => void }) {
   const { attempt: foodCatalogAttempt, Component: FoodCatalogSearch, retry: retryFoodCatalog } = useDeferredFeature(loadFoodCatalogSearch);
   const { attempt: nutritionReportsAttempt, Component: NutritionReportsPanel, retry: retryNutritionReports } = useDeferredFeature(loadNutritionReportsPanel);
   const { user } = useAuth();
@@ -100,6 +100,11 @@ export default function NutritionDiary({ importedFoodId, onImportedFoodHandled }
     setEditingEntryId(null); setSelectedFoodId(String(importedFoodId)); setInputUnit("g"); setInputPortionId(""); setServingGrams(importedFood ? String(importedFood.servingSizeGrams) : "100"); setExpanded(true);
     onImportedFoodHandled?.();
   }, [foods.data?.foods, importedFoodId, onImportedFoodHandled]);
+  useEffect(() => {
+    if (!manualFoodRequest) return;
+    setEditingEntryId(null); setSelectedFoodId(""); setInputUnit("g"); setInputPortionId(""); setFoodName(manualFoodRequest.name); setEnergy(""); setProtein("0"); setCarbs("0"); setFat("0"); setExtraNutrients({}); setFoodServingSize("100"); setFoodDensity(""); setEditingFoodId(null); setExpanded(true);
+    onManualFoodHandled?.();
+  }, [manualFoodRequest, onManualFoodHandled]);
   const mealSummaries = useMemo(() => {
     const summaries = new Map<string, { entries: number; recordedEnergyEntries: number; energyKcal: number }>();
     for (const entry of diary.data?.entries || []) {

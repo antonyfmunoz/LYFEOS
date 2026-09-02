@@ -308,7 +308,10 @@ describe("health and fitness foundation", () => {
     expect(scanner).toContain("catalogImportCandidate.hasEnergy");
     expect(scanner).toContain("setCatalogImportCandidate(null)");
     expect(scanner).toContain("onCatalogFoodImported?.(food.id)");
+    expect(scanner).toContain("Create nutrition food manually");
+    expect(scanner).toContain("onManualFoodRequested(productName.trim())");
     expect(diary).toContain("importedFoodId");
+    expect(diary).toContain("manualFoodRequest");
     expect(diary).toContain("setExpanded(true)");
     expect(healthPage).toContain('"health-section-nutrition"');
   });
