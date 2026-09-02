@@ -36,7 +36,7 @@ export type GoogleIntegrationPermissionPatch = {
 
 const serviceCapabilities: Record<GoogleIntegrationService, readonly GoogleIntegrationCapability[]> = {
   calendar: ["read", "import", "write"],
-  tasks: ["read", "import"],
+  tasks: ["read", "import", "write"],
   drive: ["read", "import", "write"],
 };
 

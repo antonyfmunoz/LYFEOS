@@ -350,10 +350,14 @@ export default function QuestsPage() {
   });
   const canSyncGoogleCalendar = Boolean(googleStatus?.capabilities?.calendar && googleStatus.services?.calendar?.permissions.capabilities.import);
   const canSyncGoogleTasks = Boolean(googleStatus?.capabilities?.tasks && googleStatus.services?.tasks?.permissions.capabilities.import);
+  const canWriteGoogleCalendar = Boolean(googleStatus?.capabilities?.calendar && googleStatus.services?.calendar?.permissions.capabilities.write);
+  const canWriteGoogleTasks = Boolean(googleStatus?.capabilities?.tasks && googleStatus.services?.tasks?.permissions.capabilities.write);
 
   const [isSyncing, setIsSyncing] = useState(false);
   const [isPushingCalendar, setIsPushingCalendar] = useState(false);
   const [isRemovingFromGoogleCalendar, setIsRemovingFromGoogleCalendar] = useState(false);
+  const [isPushingGoogleTasks, setIsPushingGoogleTasks] = useState(false);
+  const [isRemovingFromGoogleTasks, setIsRemovingFromGoogleTasks] = useState(false);
   const syncGoogle = async (mode: 'calendar' | 'tasks') => {
     if (isSyncing) return;
     setIsSyncing(true);
@@ -453,6 +457,59 @@ export default function QuestsPage() {
       }
     } finally {
       setIsRemovingFromGoogleCalendar(false);
+    }
+  };
+
+  const pushMissionToGoogleTasks = async (mission: Quest) => {
+    if (isPushingGoogleTasks || (mission.externalSource && mission.externalSource !== "google_tasks")) return;
+    setIsPushingGoogleTasks(true);
+    try {
+      const result = await runWithApproval((approvalId) => apiRequest<{ action: "created" | "updated" }>("/api/google/tasks/push", {
+        method: "POST",
+        body: JSON.stringify({ missionId: mission.id, ...(approvalId ? { approvalId } : {}) }),
+      }));
+      await refetchQuests();
+      toast({
+        title: result.action === "created" ? "Added to Google Tasks" : "Google Task updated",
+        description: result.action === "created"
+          ? "This saved mission is now linked to a task in your default Google Tasks list."
+          : "The linked Google Task now matches this saved mission.",
+      });
+    } catch (error) {
+      if (error instanceof IntegrationActionDeniedError) {
+        toast({ title: "Google Tasks change cancelled", description: "Google Tasks was not changed." });
+      } else {
+        toast({ title: "Google Tasks change failed", description: "Reconnect Google Tasks and enable its Change Google Tasks permission.", variant: "destructive" });
+      }
+    } finally {
+      setIsPushingGoogleTasks(false);
+    }
+  };
+
+  const removeMissionFromGoogleTasks = async (mission: Quest) => {
+    if (mission.externalSource !== "google_tasks" || !mission.externalId || isRemovingFromGoogleTasks) return;
+    setIsRemovingFromGoogleTasks(true);
+    try {
+      const result = await runWithApproval((approvalId) => apiRequest<{ action: "removed" | "already_removed" }>("/api/google/tasks/push", {
+        method: "DELETE",
+        body: JSON.stringify({ missionId: mission.id, ...(approvalId ? { approvalId } : {}) }),
+      }));
+      await refetchQuests();
+      setEditingQuest((current) => current?.id === mission.id
+        ? { ...current, externalId: null, externalSource: null }
+        : current);
+      toast({
+        title: result.action === "removed" ? "Removed from Google Tasks" : "Google Task already removed",
+        description: "Your LyfeOS mission was kept and is no longer linked to Google Tasks.",
+      });
+    } catch (error) {
+      if (error instanceof IntegrationActionDeniedError) {
+        toast({ title: "Google Tasks removal cancelled", description: "Google Tasks was not changed." });
+      } else {
+        toast({ title: "Google Tasks removal failed", description: "Reconnect Google Tasks and enable its Change Google Tasks permission.", variant: "destructive" });
+      }
+    } finally {
+      setIsRemovingFromGoogleTasks(false);
     }
   };
 
@@ -3131,7 +3188,7 @@ export default function QuestsPage() {
             >
               {isSubmitting ? "Updating..." : "Update Mission"}
             </button>
-            {editingQuest?.startDate && (
+            {editingQuest?.startDate && canWriteGoogleCalendar && (!editingQuest.externalSource || editingQuest.externalSource === "google_calendar") && (
               <button
                 type="button"
                 data-testid={`mission-edit-sync-google-calendar-${editingQuest.id}`}
@@ -3157,11 +3214,37 @@ export default function QuestsPage() {
                 {isRemovingFromGoogleCalendar ? "Removing from Google Calendar..." : "Remove from Google Calendar"}
               </button>
             )}
+            {editingQuest && canWriteGoogleTasks && (!editingQuest.externalSource || editingQuest.externalSource === "google_tasks") && (
+              <button
+                type="button"
+                data-testid={`mission-edit-sync-google-tasks-${editingQuest.id}`}
+                onClick={() => void pushMissionToGoogleTasks(editingQuest)}
+                disabled={isSubmitting || isPushingGoogleTasks}
+                className="w-full mt-2 text-sm font-mono px-4 py-2.5 rounded border bg-background/50 border-primary/30 text-primary hover:bg-primary/10 transition-colors disabled:opacity-40 inline-flex items-center justify-center"
+              >
+                {isPushingGoogleTasks
+                  ? "Syncing Google Tasks..."
+                  : editingQuest.externalSource === "google_tasks"
+                    ? "Update Google Task"
+                    : "Add to Google Tasks"}
+              </button>
+            )}
+            {editingQuest?.externalSource === "google_tasks" && editingQuest.externalId && (
+              <button
+                type="button"
+                data-testid={`mission-edit-remove-google-tasks-${editingQuest.id}`}
+                onClick={() => void removeMissionFromGoogleTasks(editingQuest)}
+                disabled={isSubmitting || isRemovingFromGoogleTasks}
+                className="w-full mt-2 text-sm font-mono px-4 py-2.5 rounded border bg-background/50 border-destructive/40 text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-40 inline-flex items-center justify-center"
+              >
+                {isRemovingFromGoogleTasks ? "Removing from Google Tasks..." : "Remove from Google Tasks"}
+              </button>
+            )}
             <button
               type="button"
               data-testid="mission-edit-delete"
               onClick={() => void handleDeleteMissionFromEditor()}
-              disabled={isSubmitting || isRemovingFromGoogleCalendar}
+              disabled={isSubmitting || isRemovingFromGoogleCalendar || isRemovingFromGoogleTasks}
               className="w-full mt-2 text-sm font-mono px-4 py-2.5 rounded border bg-background/50 border-destructive/40 text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-40 inline-flex items-center justify-center"
             >
               Delete Mission

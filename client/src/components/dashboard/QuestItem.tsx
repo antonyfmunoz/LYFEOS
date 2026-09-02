@@ -215,7 +215,7 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
 
   const hasSchedule = startDate || startTime || endDate || endTime;
   const hasBeenStarted = elapsedSeconds !== undefined || isTimerActive;
-  const canSyncToGoogleCalendar = category !== "onboarding" && Boolean(startDate);
+  const canSyncToGoogleCalendar = category !== "onboarding" && Boolean(startDate) && (!quest.externalSource || quest.externalSource === "google_calendar");
   const syncToGoogleCalendar = async () => {
     if (!startDate || isSyncingToGoogle) return;
     setIsSyncingToGoogle(true);

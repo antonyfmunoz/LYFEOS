@@ -35,6 +35,27 @@ describe("independent Google productivity integrations", () => {
     expect(google).toContain('app.get("/api/google/:service/callback"');
   });
 
+  it("gives Google Tasks the same opt-in writeback lifecycle as the other connected apps", () => {
+    const google = source("server/routes/google.ts");
+    const permissions = source("shared/google-integration-permissions.ts");
+    const profile = source("client/src/pages/ProfilePage.tsx");
+    const quests = source("client/src/pages/QuestsPage.tsx");
+
+    expect(google).toContain('const GOOGLE_TASKS_SCOPE = "https://www.googleapis.com/auth/tasks"');
+    expect(google).toContain('app.post("/api/google/tasks/push"');
+    expect(google).toContain('app.delete("/api/google/tasks/push"');
+    expect(google).toContain("tasks.tasks.insert");
+    expect(google).toContain("tasks.tasks.patch");
+    expect(google).toContain(".tasks.delete");
+    expect(google).toContain("GOOGLE_ACTIONS.tasksPush");
+    expect(google).toContain("GOOGLE_ACTIONS.tasksDelete");
+    expect(permissions).toContain('tasks: ["read", "import", "write"]');
+    expect(profile).toContain("Create, update, or remove linked Google Tasks.");
+    expect(profile).toContain("read only — reconnect to permit task changes");
+    expect(quests).toContain('data-testid={`mission-edit-sync-google-tasks-${editingQuest.id}`}');
+    expect(quests).toContain('data-testid={`mission-edit-remove-google-tasks-${editingQuest.id}`}');
+  });
+
   it("renders three independently controlled profile integrations", () => {
     const profile = source("client/src/pages/ProfilePage.tsx");
 

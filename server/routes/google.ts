@@ -48,7 +48,7 @@ declare module "express-session" {
 }
 
 const GOOGLE_CALENDAR_SCOPE = "https://www.googleapis.com/auth/calendar.events";
-const GOOGLE_TASKS_SCOPE = "https://www.googleapis.com/auth/tasks.readonly";
+const GOOGLE_TASKS_SCOPE = "https://www.googleapis.com/auth/tasks";
 const GOOGLE_DRIVE_SCOPE = "https://www.googleapis.com/auth/drive";
 const GOOGLE_SERVICES = GOOGLE_INTEGRATION_SERVICES;
 const GOOGLE_SERVICE_CONFIG = {
@@ -63,6 +63,8 @@ const GOOGLE_ACTIONS = {
   calendarDelete: { key: "google.calendar.delete_event", title: "Remove Google Calendar event", summary: "Delete the Google Calendar event linked to this LyfeOS mission. The LyfeOS mission will be kept.", capability: "write", risk: "important", futureAction: false },
   tasksRead: { key: "google.tasks.read", title: "Read Google Tasks", summary: "View active tasks from your connected Google Tasks account.", capability: "read", risk: "low", futureAction: false },
   tasksImport: { key: "google.tasks.import", title: "Import Google Tasks", summary: "Create LyfeOS missions from active Google Tasks.", capability: "import", risk: "medium", futureAction: false },
+  tasksPush: { key: "google.tasks.push", title: "Change Google Tasks", summary: "Create or update a Google Task from a LyfeOS mission.", capability: "write", risk: "important", futureAction: false },
+  tasksDelete: { key: "google.tasks.delete_task", title: "Remove Google Task", summary: "Delete the Google Task linked to this LyfeOS mission. The LyfeOS mission will be kept.", capability: "write", risk: "important", futureAction: false },
   driveFolders: { key: "google.drive.list_folders", title: "Browse Google Drive folders", summary: "View folder names and structure from your connected Google Drive.", capability: "read", risk: "low", futureAction: false },
   driveFiles: { key: "google.drive.list_files", title: "Browse Google Drive files", summary: "View supported file names and metadata from your connected Google Drive.", capability: "read", risk: "low", futureAction: false },
   driveSync: { key: "google.drive.sync", title: "Sync Google Drive", summary: "Import supported Google Drive files into your private LyfeOS vault.", capability: "import", risk: "medium", futureAction: false },
@@ -316,6 +318,43 @@ async function fetchGoogleTasksSnapshot(oauth2Client: ReturnType<typeof getOAuth
     })));
   }
   return allTasks;
+}
+
+type GoogleTaskAddress = { listId: string; taskId: string };
+const googleTaskExternalIdPrefix = "gt1:";
+
+function encodeGoogleTaskExternalId(address: GoogleTaskAddress): string {
+  return `${googleTaskExternalIdPrefix}${Buffer.from(JSON.stringify([address.listId, address.taskId])).toString("base64url")}`;
+}
+
+function decodeGoogleTaskExternalId(value: string | null | undefined): GoogleTaskAddress | null {
+  if (!value?.startsWith(googleTaskExternalIdPrefix)) return null;
+  try {
+    const parsed = JSON.parse(Buffer.from(value.slice(googleTaskExternalIdPrefix.length), "base64url").toString("utf8"));
+    return Array.isArray(parsed) && typeof parsed[0] === "string" && typeof parsed[1] === "string"
+      ? { listId: parsed[0], taskId: parsed[1] }
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+async function findGoogleTaskAddress(oauth2Client: ReturnType<typeof getOAuth2Client>, externalId: string): Promise<GoogleTaskAddress | null> {
+  const encoded = decodeGoogleTaskExternalId(externalId);
+  if (encoded) return encoded;
+  // Older imports stored only Google’s task ID. Resolve those records once so
+  // they remain fully usable after the writeback upgrade.
+  const task = (await fetchGoogleTasksSnapshot(oauth2Client)).find((item) => item.id === externalId);
+  return task?.listId ? { listId: task.listId, taskId: task.id } : null;
+}
+
+function googleTaskRequestBody(mission: { title: string; description?: string | null; startDate?: string | null; completed?: boolean | null }) {
+  return {
+    title: mission.title,
+    notes: mission.description || undefined,
+    due: mission.startDate ? `${mission.startDate}T00:00:00.000Z` : undefined,
+    status: mission.completed ? "completed" : "needsAction",
+  };
 }
 
 export function registerGoogleRoutes(app: Express): void {
@@ -692,6 +731,10 @@ export function registerGoogleRoutes(app: Express): void {
         return res.status(404).json({ error: "Mission not found" });
       }
 
+      if (mission.externalSource && mission.externalSource !== "google_calendar") {
+        return res.status(409).json({ error: "This mission is linked to another app. Remove that app link before linking it to Google Calendar." });
+      }
+
       if (!mission.startDate) {
         return res.status(400).json({ error: "Mission has no date — cannot push to Google Calendar" });
       }
@@ -867,11 +910,9 @@ export function registerGoogleRoutes(app: Express): void {
           continue;
         }
 
-        let startDate = null;
-        if (task.due) {
-          const d = new Date(task.due);
-          startDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-        }
+        const startDate = typeof task.due === "string" && /^\d{4}-\d{2}-\d{2}/.test(task.due)
+          ? task.due.slice(0, 10)
+          : null;
 
         const titleNorm = normalizeTitle(task.title);
         if (startDate && missionFingerprints.has(`${titleNorm}|${startDate}`)) {
@@ -892,7 +933,7 @@ export function registerGoogleRoutes(app: Express): void {
           energyCost: 1,
           experienceReward: 25,
           startDate,
-          externalId: task.id,
+          externalId: encodeGoogleTaskExternalId({ listId: task.listId, taskId: task.id }),
           externalSource: "google_tasks",
           lifecycleKey: `google-task:${task.id}`,
           source: "google",
@@ -907,6 +948,89 @@ export function registerGoogleRoutes(app: Express): void {
       if (error instanceof MissionLifecycleError) return res.status(error.status).json({ error: error.message });
       logGoogleFailure("Google Tasks import failed", error, req.session.userId);
       return res.status(500).json({ error: "Failed to import tasks" });
+    }
+  });
+
+  app.post("/api/google/tasks/push", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId as number;
+      const client = await getAuthenticatedClient(userId, "tasks");
+      if (!client) return res.status(401).json({ error: "Google Tasks is not connected" });
+      if (!hasGoogleScope(client, GOOGLE_TASKS_SCOPE)) return res.status(403).json({ error: "Google Tasks write permission was not granted. Reconnect Google Tasks to enable this feature." });
+      if (!requireGoogleCapability(res, client, "tasks", "write")) return;
+      if (!await requireGoogleActionApproval(req, res, client, "tasks", GOOGLE_ACTIONS.tasksPush)) return;
+
+      const missionId = Number(req.body?.missionId);
+      if (!Number.isInteger(missionId) || missionId <= 0) return res.status(400).json({ error: "missionId is required" });
+      const mission = await storage.getQuest(missionId);
+      if (!mission || mission.userId !== userId) return res.status(404).json({ error: "Mission not found" });
+      if (mission.externalSource && mission.externalSource !== "google_tasks") {
+        return res.status(409).json({ error: "This mission is linked to another app. Remove that app link before linking it to Google Tasks." });
+      }
+
+      const tasks = google.tasks({ version: "v1", auth: client.oauth2Client });
+      const requestBody = googleTaskRequestBody(mission);
+      const existingAddress = mission.externalSource === "google_tasks"
+        ? await findGoogleTaskAddress(client.oauth2Client, mission.externalId || "")
+        : null;
+      if (existingAddress) {
+        try {
+          await tasks.tasks.patch({ tasklist: existingAddress.listId, task: existingAddress.taskId, requestBody });
+          return res.json({ success: true, action: "updated" });
+        } catch (error: any) {
+          if (error?.code !== 404 && error?.response?.status !== 404) throw error;
+        }
+      }
+
+      const created = await tasks.tasks.insert({ tasklist: "@default", requestBody });
+      if (!created.data.id) throw new Error("Google Tasks did not return a task ID.");
+      await updateMissionLifecycle({
+        questId: mission.id,
+        userId,
+        updates: { externalId: encodeGoogleTaskExternalId({ listId: "@default", taskId: created.data.id }), externalSource: "google_tasks" },
+        source: "google",
+      });
+      return res.json({ success: true, action: "created", googleTaskId: created.data.id });
+    } catch (error: any) {
+      if (error?.code === 401 || error?.response?.status === 401) return res.status(401).json({ error: "Google token expired. Please reconnect." });
+      logGoogleFailure("Google Tasks push failed", error, req.session.userId);
+      return res.status(500).json({ error: "Failed to update Google Tasks" });
+    }
+  });
+
+  app.delete("/api/google/tasks/push", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId as number;
+      const client = await getAuthenticatedClient(userId, "tasks");
+      if (!client) return res.status(401).json({ error: "Google Tasks is not connected" });
+      if (!hasGoogleScope(client, GOOGLE_TASKS_SCOPE)) return res.status(403).json({ error: "Google Tasks write permission was not granted. Reconnect Google Tasks to enable this feature." });
+      if (!requireGoogleCapability(res, client, "tasks", "write")) return;
+      if (!await requireGoogleActionApproval(req, res, client, "tasks", GOOGLE_ACTIONS.tasksDelete)) return;
+
+      const missionId = Number(req.body?.missionId);
+      if (!Number.isInteger(missionId) || missionId <= 0) return res.status(400).json({ error: "missionId is required" });
+      const mission = await storage.getQuest(missionId);
+      if (!mission || mission.userId !== userId) return res.status(404).json({ error: "Mission not found" });
+      if (mission.externalSource !== "google_tasks" || !mission.externalId) return res.status(409).json({ error: "This mission is not linked to a Google Task." });
+
+      const address = await findGoogleTaskAddress(client.oauth2Client, mission.externalId);
+      let action: "removed" | "already_removed" = "removed";
+      if (address) {
+        try {
+          await google.tasks({ version: "v1", auth: client.oauth2Client }).tasks.delete({ tasklist: address.listId, task: address.taskId });
+        } catch (error: any) {
+          if (error?.code === 404 || error?.response?.status === 404) action = "already_removed";
+          else throw error;
+        }
+      } else {
+        action = "already_removed";
+      }
+      await updateMissionLifecycle({ questId: mission.id, userId, updates: { externalId: null, externalSource: null }, source: "google" });
+      return res.json({ success: true, action });
+    } catch (error: any) {
+      if (error?.code === 401 || error?.response?.status === 401) return res.status(401).json({ error: "Google token expired. Please reconnect." });
+      logGoogleFailure("Google Tasks removal failed", error, req.session.userId);
+      return res.status(500).json({ error: "Failed to remove the Google Task" });
     }
   });
 

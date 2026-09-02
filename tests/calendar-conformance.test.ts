@@ -66,6 +66,7 @@ describe("canonical mission Calendar", () => {
     expect(google).toContain('app.delete("/api/google/calendar/push"');
     expect(google).toContain("calendar.events.delete");
     expect(google).toContain('updates: { externalId: null, externalSource: null }');
+    expect(google).toContain("This mission is linked to another app. Remove that app link before linking it to Google Calendar.");
     expect(quests).toContain('data-testid={`mission-edit-remove-google-calendar-${editingQuest.id}`}');
     expect(quests).toContain('data-testid="mission-edit-delete"');
     expect(quests).toContain("Your LyfeOS mission was kept and is no longer linked to Google Calendar.");

@@ -160,7 +160,7 @@ const GOOGLE_INTEGRATIONS: Array<{
   icon: typeof Calendar;
 }> = [
   { service: "calendar", name: "Google Calendar", description: "Import and update scheduled missions and events.", icon: Calendar },
-  { service: "tasks", name: "Google Tasks", description: "Import active tasks into your LyfeOS missions.", icon: ListTodo },
+  { service: "tasks", name: "Google Tasks", description: "Import, create, and update tasks from your LyfeOS missions.", icon: ListTodo },
   { service: "drive", name: "Google Drive", description: "Sync documents with your private vault.", icon: HardDrive },
 ];
 
@@ -173,7 +173,7 @@ const GOOGLE_PERMISSION_COPY: Record<GoogleIntegrationService, Record<GoogleInte
   tasks: {
     read: { label: "Read tasks", description: "View active Google Tasks and their details." },
     import: { label: "Import into LyfeOS", description: "Create LyfeOS missions from Google Tasks." },
-    write: { label: "Change Google Tasks", description: "Not supported by this read-only connection." },
+    write: { label: "Change Google Tasks", description: "Create, update, or remove linked Google Tasks." },
   },
   drive: {
     read: { label: "Read files", description: "Browse and read supported Drive files." },
@@ -208,6 +208,7 @@ const ECOSYSTEM_PERMISSION_COPY: Record<EcosystemIntegrationCapability, { label:
   coordination: { label: "Linked work coordination", description: "Share only an explicitly linked work summary and its open or completed state." },
   correlation: { label: "Capacity pattern insights", description: "Share only a daily low, steady, or high capacity band for patterns; never health records or causal claims." },
 };
+const GOOGLE_TASKS_WRITE_SCOPE = "https://www.googleapis.com/auth/tasks";
 
 function IntegrationsSection({ userId }: { userId?: number }) {
   const { toast } = useToast();
@@ -443,10 +444,9 @@ function IntegrationsSection({ userId }: { userId?: number }) {
           const permissions = status?.permissions ?? defaultGoogleIntegrationPermissions(service);
           const supportedCapabilities = googleServiceCapabilities(service);
           const enabledCapabilities = supportedCapabilities.filter((capability) => permissions.capabilities[capability]);
-          const permissionPresets: Array<"read_only" | "standard" | "full"> = service === "tasks"
-            ? ["read_only", "standard"]
-            : ["read_only", "standard", "full"];
-          const accessLevel = service !== "tasks" && enabledCapabilities.length === supportedCapabilities.length
+          const taskWriteGrantMissing = service === "tasks" && !status?.scope?.split(/\s+/).includes(GOOGLE_TASKS_WRITE_SCOPE);
+          const permissionPresets: Array<"read_only" | "standard" | "full"> = ["read_only", "standard", "full"];
+          const accessLevel = enabledCapabilities.length === supportedCapabilities.length
             ? "full"
             : permissions.capabilities.read && !permissions.capabilities.import && !permissions.capabilities.write
               ? "read_only"
@@ -468,15 +468,28 @@ function IntegrationsSection({ userId }: { userId?: number }) {
                 {isGoogleLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                 ) : connected ? (
-                  <button
-                    type="button"
-                    disabled={disconnectingGoogle !== null}
-                    onClick={() => disconnectGoogle(service)}
-                    className="text-xs font-mono px-3 py-1.5 rounded border border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors inline-flex items-center gap-1 disabled:opacity-50"
-                  >
-                    {disconnectingGoogle === service ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3" />}
-                    Disconnect
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {taskWriteGrantMissing && (
+                      <button
+                        type="button"
+                        disabled={connectingGoogle !== null || !configured}
+                        onClick={() => connectGoogle(service)}
+                        className="text-xs font-mono px-3 py-1.5 rounded border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 transition-colors inline-flex items-center gap-1 disabled:opacity-50"
+                      >
+                        {connectingGoogle === service ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                        Reconnect
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      disabled={disconnectingGoogle !== null}
+                      onClick={() => disconnectGoogle(service)}
+                      className="text-xs font-mono px-3 py-1.5 rounded border border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors inline-flex items-center gap-1 disabled:opacity-50"
+                    >
+                      {disconnectingGoogle === service ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3" />}
+                      Disconnect
+                    </button>
+                  </div>
                 ) : (
                   <button
                     type="button"
@@ -494,7 +507,7 @@ function IntegrationsSection({ userId }: { userId?: number }) {
                   <summary className="cursor-pointer select-none text-xs text-muted-foreground hover:text-foreground">Manage permissions</summary>
                   <div className="mt-3 space-y-3" aria-label={`${name} permissions`}>
                     <p className="rounded border border-primary/10 bg-background/30 p-2 text-[10px] text-muted-foreground">
-                      Google grant: {service === "tasks" ? "read only" : "read and write"}. The controls below can further restrict LyfeOS but can never exceed Google’s grant.
+                      Google grant: {taskWriteGrantMissing ? "read only — reconnect to permit task changes" : "read and write"}. The controls below can further restrict LyfeOS but can never exceed Google’s grant.
                     </p>
                     <div>
                       <p className="text-[11px] font-medium text-foreground">Access level</p>
