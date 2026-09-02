@@ -3,10 +3,10 @@ import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { brandOwnershipResearchReports, groceryPantryItems, groceryReceiptDrafts, groceryShoppingItems, ingredientPreferenceRules } from "@shared/schema";
 import { db } from "../db";
-import { listBrandSpotlights, lookupBrandOwnership } from "../brand-ownership";
+import { listReviewedBrandSpotlights, lookupReviewedBrandOwnership } from "../brand-ownership";
 import { FoodCatalogError, searchFoodCatalog } from "../food-catalog";
 import { FoodRecallError, lookupFoodRecalls } from "../food-recalls";
-import { ownershipScore, parseReceiptText } from "../grocery-intelligence";
+import { ownershipScoreFromProfiles, parseReceiptText } from "../grocery-intelligence";
 import { parseIngredientLabel } from "../ingredient-scanner";
 import { isAuthenticated } from "./middleware";
 
@@ -58,6 +58,7 @@ const reportSchema = z.object({
   reportType: z.enum(["missing_brand", "correction", "new_source"]),
   note: optionalText(2_000),
   evidenceUrl: z.string().url().max(1_000).nullable().optional(),
+  shareWithOwnershipReviewers: z.literal(true),
 }).strict();
 
 type PantryRecallReview = {
@@ -127,16 +128,17 @@ export function registerGroceryIntelligenceRoutes(app: Express): void {
       db.select().from(groceryReceiptDrafts).where(eq(groceryReceiptDrafts.userId, userId)).orderBy(desc(groceryReceiptDrafts.createdAt)).limit(10),
       db.select().from(brandOwnershipResearchReports).where(eq(brandOwnershipResearchReports.userId, userId)).orderBy(desc(brandOwnershipResearchReports.createdAt)).limit(20),
     ]);
+    const ownershipProfiles = await Promise.all(pantry.map((item) => item.brand ? lookupReviewedBrandOwnership(item.brand).then((lookup) => lookup.profile) : Promise.resolve(null)));
     const lowStock = pantry.filter((item) => item.reorderAt !== null && item.quantity <= item.reorderAt);
     return res.json({
-      pantry: pantry.map((item) => ({ ...item, ownership: item.brand ? lookupBrandOwnership(item.brand).profile : null })),
+      pantry: pantry.map((item, index) => ({ ...item, ownership: ownershipProfiles[index] })),
       shopping,
       receipts,
       reports,
       lowStock: lowStock.map((item) => item.id),
-      impact: ownershipScore(pantry),
-      spotlights: listBrandSpotlights(),
-      disclosure: "Pantry, receipt text, shopping items, and research reports are private to this account. Ownership results are shown only for exact, cited registry matches; missing coverage remains unknown.",
+      impact: ownershipScoreFromProfiles(ownershipProfiles),
+      spotlights: await listReviewedBrandSpotlights(),
+      disclosure: "Pantry, receipt text, and shopping items are private to this account. An ownership research report shares only the fields you submit with narrowly authorized ownership reviewers; it never shares your pantry or other LyfeOS data. Ownership results are shown only for exact, cited registry matches; missing coverage remains unknown.",
     });
   });
 
@@ -197,14 +199,14 @@ export function registerGroceryIntelligenceRoutes(app: Express): void {
     if (!item) return res.status(404).json({ error: "Pantry item not found." });
     try {
       const page = await searchFoodCatalog({ query: item.name.slice(0, 80), territory: "US", locale: "en-US", limit: 10 });
-      const candidates = page.items.filter((candidate) => candidate.externalId !== item.catalogExternalId).slice(0, 8).map((candidate) => ({
+      const candidates = await Promise.all(page.items.filter((candidate) => candidate.externalId !== item.catalogExternalId).slice(0, 8).map(async (candidate) => ({
         externalId: candidate.externalId,
         name: candidate.name,
         brand: candidate.brand || null,
         barcode: candidate.barcode || null,
-        ownership: candidate.brand ? lookupBrandOwnership(candidate.brand).profile : null,
+        ownership: candidate.brand ? (await lookupReviewedBrandOwnership(candidate.brand)).profile : null,
         preferenceReview: preferenceReview(candidate.ingredientsText, preferences),
-      }));
+      })));
       return res.json({
         pantryItemId: item.id,
         query: item.name,
@@ -286,8 +288,9 @@ export function registerGroceryIntelligenceRoutes(app: Express): void {
   app.post("/api/grocery-intelligence/research-reports", isAuthenticated, async (req: Request, res: Response) => {
     const parsed = reportSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: "Enter a valid ownership research report." });
-    const [report] = await db.insert(brandOwnershipResearchReports).values({ userId: req.session.userId!, ...parsed.data }).returning();
-    return res.status(201).json({ report, disclosure: "A report is research intake only. It cannot change the cited ownership registry automatically." });
+    const { shareWithOwnershipReviewers: _shareWithOwnershipReviewers, ...reportInput } = parsed.data;
+    const [report] = await db.insert(brandOwnershipResearchReports).values({ userId: req.session.userId!, reviewerAccessGranted: true, ...reportInput }).returning();
+    return res.status(201).json({ report, disclosure: "A report shares only its submitted brand, optional source URL, and note with narrowly authorized ownership reviewers. It cannot change the cited ownership registry automatically." });
   });
 
   // Research reports are private intake, not public reviews. The owner may

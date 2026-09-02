@@ -3511,9 +3511,57 @@ export const brandOwnershipResearchReports = pgTable("brand_ownership_research_r
   reportType: text("report_type").notNull(),
   note: text("note"),
   evidenceUrl: text("evidence_url"),
+  // A report remains private unless its author explicitly authorizes the
+  // narrowly scoped ownership-review queue.
+  reviewerAccessGranted: boolean("reviewer_access_granted").notNull().default(false),
   status: text("status").notNull().default("received"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => [index("brand_ownership_research_reports_user_created_idx").on(table.userId, table.createdAt)]);
+
+// This narrow role is intentionally separate from installation administration.
+// It permits review of opted-in ownership reports only; it confers no access to
+// personal LyfeOS records.
+export const ownershipReviewGrants = pgTable("ownership_review_grants", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  status: text("status").notNull().default("active"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  revokedAt: timestamp("revoked_at"),
+}, (table) => [uniqueIndex("ownership_review_grants_user_unique_idx").on(table.userId), index("ownership_review_grants_status_idx").on(table.status)]);
+
+// The ownership registry is a small, independently reviewed public knowledge
+// projection. A submitted report is only a lead; publishing requires a
+// separate cited profile and retains a revision record.
+export const brandOwnershipRegistryEntries = pgTable("brand_ownership_registry_entries", {
+  id: serial("id").primaryKey(),
+  canonicalKey: text("canonical_key").notNull(),
+  profile: jsonb("profile").notNull(),
+  status: text("status").notNull().default("active"),
+  revision: integer("revision").notNull().default(1),
+  sourceReportId: integer("source_report_id").references(() => brandOwnershipResearchReports.id, { onDelete: "set null" }),
+  reviewedByUserId: integer("reviewed_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  reviewNote: text("review_note").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [uniqueIndex("brand_ownership_registry_entries_key_unique_idx").on(table.canonicalKey), index("brand_ownership_registry_entries_status_updated_idx").on(table.status, table.updatedAt)]);
+
+export const brandOwnershipRegistryLookupKeys = pgTable("brand_ownership_registry_lookup_keys", {
+  normalizedKey: text("normalized_key").primaryKey(),
+  entryId: integer("entry_id").notNull().references(() => brandOwnershipRegistryEntries.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [index("brand_ownership_registry_lookup_keys_entry_idx").on(table.entryId)]);
+
+export const brandOwnershipRegistryRevisions = pgTable("brand_ownership_registry_revisions", {
+  id: serial("id").primaryKey(),
+  entryId: integer("entry_id").notNull().references(() => brandOwnershipRegistryEntries.id, { onDelete: "cascade" }),
+  revision: integer("revision").notNull(),
+  profile: jsonb("profile").notNull(),
+  status: text("status").notNull(),
+  sourceReportId: integer("source_report_id").references(() => brandOwnershipResearchReports.id, { onDelete: "set null" }),
+  reviewedByUserId: integer("reviewed_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  reason: text("reason").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [uniqueIndex("brand_ownership_registry_revisions_entry_revision_unique_idx").on(table.entryId, table.revision)]);
 
 export const workouts = pgTable("workouts", {
   id: serial("id").primaryKey(),

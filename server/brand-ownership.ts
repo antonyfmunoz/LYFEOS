@@ -1,4 +1,7 @@
 import { brandOwnershipLookupSchema, brandOwnershipProfileSchema, type BrandOwnershipLookup, type BrandOwnershipProfile } from "@shared/brand-ownership";
+import { brandOwnershipRegistryEntries, brandOwnershipRegistryLookupKeys } from "@shared/schema";
+import { and, eq } from "drizzle-orm";
+import { db } from "./db";
 
 const accessedAt = "2026-09-02";
 const provider = {
@@ -112,9 +115,11 @@ const profiles: BrandOwnershipProfile[] = [
   },
 ].map((profile) => brandOwnershipProfileSchema.parse(profile));
 
-function normalized(value: string): string {
+export function normalizeBrandOwnershipKey(value: string): string {
   return value.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("en-US").replace(/[^a-z0-9]+/g, " ").trim();
 }
+
+function normalized(value: string): string { return normalizeBrandOwnershipKey(value); }
 
 export function brandOwnershipAvailability() {
   return {
@@ -143,4 +148,56 @@ export function lookupBrandOwnership(requestedBrand: string, now = new Date()): 
       ? "Read the linked evidence and its verification date. Corporate ownership can change; this profile is not a rating, recommendation, or statement about product quality."
       : "No verified ownership profile is registered for this exact brand. LyfeOS does not infer that it is independent, family-owned, or corporate-owned from an unmatched name.",
   });
+}
+
+function lookupFromProfile(requestedBrand: string, profile: BrandOwnershipProfile, now: Date): BrandOwnershipLookup {
+  const cleanBrand = requestedBrand.trim().slice(0, 160);
+  return brandOwnershipLookupSchema.parse({
+    provider,
+    requestedBrand: cleanBrand,
+    matched: true,
+    matchMethod: "exact_registered_brand",
+    profile,
+    checkedAt: now.toISOString(),
+    disclosure: "Read the linked evidence and its verification date. Corporate ownership can change; this profile is not a rating, recommendation, or statement about product quality.",
+  });
+}
+
+// Dynamic entries are written only by the narrowly authorized reviewer path.
+// If no reviewed database profile exists, fall back to the versioned built-in
+// registry so deployed citations remain available during a database outage.
+export async function lookupReviewedBrandOwnership(requestedBrand: string, now = new Date()): Promise<BrandOwnershipLookup> {
+  const cleanBrand = requestedBrand.trim().slice(0, 160);
+  const key = normalized(cleanBrand);
+  if (!key) return lookupBrandOwnership(requestedBrand, now);
+  try {
+    const [row] = await db.select({ profile: brandOwnershipRegistryEntries.profile })
+      .from(brandOwnershipRegistryLookupKeys)
+      .innerJoin(brandOwnershipRegistryEntries, eq(brandOwnershipRegistryLookupKeys.entryId, brandOwnershipRegistryEntries.id))
+      .where(and(eq(brandOwnershipRegistryLookupKeys.normalizedKey, key), eq(brandOwnershipRegistryEntries.status, "active")))
+      .limit(1);
+    const parsed = row ? brandOwnershipProfileSchema.safeParse(row.profile) : null;
+    if (parsed?.success) return lookupFromProfile(cleanBrand, parsed.data, now);
+  } catch {
+    // A lookup failure must never manufacture an ownership conclusion.
+  }
+  return lookupBrandOwnership(cleanBrand, now);
+}
+
+export async function listReviewedBrandSpotlights(): Promise<BrandOwnershipProfile[]> {
+  try {
+    const rows = await db.select({ profile: brandOwnershipRegistryEntries.profile })
+      .from(brandOwnershipRegistryEntries)
+      .where(eq(brandOwnershipRegistryEntries.status, "active"))
+      .orderBy(brandOwnershipRegistryEntries.updatedAt)
+      .limit(100);
+    const reviewed = rows.flatMap((row) => {
+      const parsed = brandOwnershipProfileSchema.safeParse(row.profile);
+      return parsed.success ? [parsed.data] : [];
+    });
+    const known = new Set(reviewed.map((profile) => normalized(profile.brand)));
+    return [...reviewed, ...listBrandSpotlights().filter((profile) => !known.has(normalized(profile.brand)))];
+  } catch {
+    return listBrandSpotlights();
+  }
 }

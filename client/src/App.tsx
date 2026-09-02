@@ -40,6 +40,7 @@ const StreakDetailPage = lazyRoute(() => import("./pages/StreakDetailPage"));
 const EfficiencyDetailPage = lazyRoute(() => import("./pages/EfficiencyDetailPage"));
 const EnergyDetailPage = lazyRoute(() => import("./pages/EnergyDetailPage"));
 const HealthDetailPage = lazyRoute(() => import("./pages/HealthDetailPage"));
+const OwnershipReviewPage = lazyRoute(() => import("./pages/OwnershipReviewPage"));
 const WealthDetailPage = lazyRoute(() => import("./pages/WealthDetailPage"));
 const PersonalFinancePage = lazyRoute(() => import("./pages/PersonalFinancePage"));
 const AttentionDetailPage = lazyRoute(() => import("./pages/AttentionDetailPage"));
@@ -487,6 +488,9 @@ function Router() {
             <HealthDetailPage />
           </RootLayout>
         </ProtectedRoute>
+      </Route>
+      <Route path="/ownership-review">
+        <ProtectedRoute><RootLayout><OwnershipReviewPage /></RootLayout></ProtectedRoute>
       </Route>
       
       <Route path="/wealth">

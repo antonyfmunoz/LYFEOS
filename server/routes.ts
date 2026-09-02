@@ -32,6 +32,7 @@ import { registerHealthConnectionRoutes } from "./routes/health-connections";
 import { registerFoodCatalogRoutes } from "./routes/food-catalog";
 import { registerFoodRecallRoutes } from "./routes/food-recalls";
 import { registerBrandOwnershipRoutes } from "./routes/brand-ownership";
+import { registerOwnershipReviewRoutes } from "./routes/ownership-review";
 import { registerGroceryIntelligenceRoutes } from "./routes/grocery-intelligence";
 import { registerOperationalRoutes } from "./routes/operations";
 import { registerSearchRoutes } from "./routes/search";
@@ -64,6 +65,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       "/api/food-catalog",
       "/api/food-recalls",
       "/api/brand-ownership",
+      "/api/ownership-review",
       "/api/grocery-intelligence",
     ];
     if (privateHealthPrefixes.some((prefix) => req.path === prefix || req.path.startsWith(`${prefix}/`))) {
@@ -188,6 +190,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerFoodCatalogRoutes(app);
   registerFoodRecallRoutes(app);
   registerBrandOwnershipRoutes(app);
+  registerOwnershipReviewRoutes(app);
   registerGroceryIntelligenceRoutes(app);
 
   const httpServer = createServer(app);

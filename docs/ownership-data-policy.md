@@ -23,6 +23,16 @@ Every published profile must retain:
 - a clear distinction between company statements, regulatory filings, and
   acquisition announcements.
 
+## Review and privacy boundary
+
+An ownership report is private by default. It enters the review queue only
+when its author explicitly opts in at submission. A narrowly authorized
+ownership reviewer may see only the submitted brand, barcode, report type,
+note, and source URL—not the reporter's pantry, health records, account data,
+or other LyfeOS activity. The reviewer must make an explicit publish or reject
+decision. Publishing creates an append-only cited revision; it is never an
+automatic consequence of a report.
+
 ## Free-source stack
 
 | Source | Use | License / access boundary |

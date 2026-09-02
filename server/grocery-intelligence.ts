@@ -28,7 +28,11 @@ export function parseReceiptText(sourceText: string): ReceiptItem[] {
 }
 
 export function ownershipScore(items: Array<{ brand: string | null }>) {
-  const matched = items.map((item) => item.brand ? lookupBrandOwnership(item.brand).profile : null).filter((profile): profile is NonNullable<typeof profile> => Boolean(profile));
+  return ownershipScoreFromProfiles(items.map((item) => item.brand ? lookupBrandOwnership(item.brand).profile : null));
+}
+
+export function ownershipScoreFromProfiles(profiles: Array<ReturnType<typeof lookupBrandOwnership>["profile"]>) {
+  const matched = profiles.filter((profile): profile is NonNullable<typeof profile> => Boolean(profile));
   const corporate = matched.filter((profile) => profile.status === "corporate_owned" || profile.status === "public_company");
   const parentCounts = new Map<string, number>();
   for (const profile of matched) {
@@ -42,7 +46,7 @@ export function ownershipScore(items: Array<{ brand: string | null }>) {
   return {
     score,
     matchedItems: matched.length,
-    unmatchedItems: items.length - matched.length,
+    unmatchedItems: profiles.length - matched.length,
     corporateOwnedItems: corporate.length,
     largestParent: largestParent ? { name: largestParent[0], itemCount: largestParent[1] } : null,
     formula: "70% of the score is the share of matched active pantry items owned by corporate/public companies; 30% is the share held by the single largest documented parent. It is an ownership-concentration snapshot, not a health, quality, ethical, or spending score.",
