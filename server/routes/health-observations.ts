@@ -58,7 +58,7 @@ const validateObservation = (input: z.infer<typeof observationInput>, context: z
 const observationSchema = observationInput.superRefine(validateObservation);
 const observationUpdateSchema = observationInput.omit({ observedAt: true }).superRefine(validateObservation);
 const calculationInclusionInput = z.object({ included: z.boolean(), confirmed: z.literal(true) });
-const csvImportInput = z.object({ csvText: z.string().max(250_000), importHash: z.string().regex(/^[a-f0-9]{64}$/).optional(), confirmed: z.literal(true).optional() });
+const csvImportInput = z.object({ csvText: z.string().max(250_000), defaultCategory: z.enum(categories).optional(), importHash: z.string().regex(/^[a-f0-9]{64}$/).optional(), confirmed: z.literal(true).optional() });
 
 async function ownedDefinition(userId: number, id: number | null | undefined) {
   if (!id) return null;
@@ -90,13 +90,13 @@ function observationAggregationKind(metricKey: string, unit: string) {
 
 export function registerHealthObservationRoutes(app: Express): void {
   app.post("/api/health-observations/imports/preview", isAuthenticated, async (req: Request, res: Response) => {
-    const parsed = csvImportInput.pick({ csvText: true }).safeParse(req.body);
+    const parsed = csvImportInput.pick({ csvText: true, defaultCategory: true }).safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: "Paste a valid health CSV." });
-    try { return res.json(previewHealthObservationCsv(parsed.data.csvText)); } catch (error) { return res.status(400).json({ error: error instanceof Error ? error.message : "Could not parse that CSV." }); }
+    try { return res.json(previewHealthObservationCsv(parsed.data.csvText, { defaultCategory: parsed.data.defaultCategory })); } catch (error) { return res.status(400).json({ error: error instanceof Error ? error.message : "Could not parse that CSV." }); }
   });
   app.post("/api/health-observations/imports/commit", isAuthenticated, async (req: Request, res: Response) => {
     const parsed = csvImportInput.safeParse(req.body); if (!parsed.success || !parsed.data.confirmed || !parsed.data.importHash) return res.status(400).json({ error: "Review this CSV and explicitly confirm the import." });
-    let preview; try { preview = previewHealthObservationCsv(parsed.data.csvText); } catch (error) { return res.status(400).json({ error: error instanceof Error ? error.message : "Could not parse that CSV." }); }
+    let preview; try { preview = previewHealthObservationCsv(parsed.data.csvText, { defaultCategory: parsed.data.defaultCategory }); } catch (error) { return res.status(400).json({ error: error instanceof Error ? error.message : "Could not parse that CSV." }); }
     if (preview.importHash !== parsed.data.importHash || preview.invalidCount || !preview.validCount) return res.status(409).json({ error: "The CSV changed or contains invalid rows. Preview it again before importing." });
     const entries = preview.rows.map((row) => row.entry!); const sourceRecordIds = entries.map((entry) => entry.sourceRecordId);
     if (new Set(sourceRecordIds).size !== sourceRecordIds.length) return res.status(409).json({ error: "Each source_record_id must be unique within this CSV." });
