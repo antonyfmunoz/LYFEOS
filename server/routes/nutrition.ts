@@ -192,7 +192,7 @@ export function registerNutritionRoutes(app: Express): void {
         catalogProviderId: receipt.provider.id, catalogExternalId: receipt.item.externalId,
         catalogDatasetVersion: receipt.provider.datasetVersion, catalogItemVersion: receipt.item.itemVersion,
         catalogAttributionText: receipt.provider.attributionText, catalogAttributionUrl: receipt.provider.attributionUrl || null,
-        catalogTerritory: receipt.item.territory, catalogImportedAt: new Date(), catalogSourceModified: false,
+        catalogTerritory: receipt.item.territory, catalogEvidence: receipt.item.evidence, catalogImportedAt: new Date(), catalogSourceModified: false,
       }).onConflictDoNothing().returning();
       if (!created) {
         const [existing] = await tx.select().from(nutritionFoods).where(and(

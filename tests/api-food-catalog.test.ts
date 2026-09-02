@@ -50,7 +50,7 @@ describeApi("food catalog authenticated import contract", () => {
     expect(otherImport.status).toBe(201); expect(otherImport.data.food.id).not.toBe(foodId);
     const ownerFoods = await request("GET", "/api/nutrition/foods", undefined, ownerCookie);
     expect(ownerFoods.data.foods).toHaveLength(2);
-    expect(ownerFoods.data.foods).toEqual(expect.arrayContaining([expect.objectContaining({ source: "catalog", catalogProviderId: "licensed_fixture", catalogDatasetVersion: "2026-08-24", catalogSourceModified: false })]));
+    expect(ownerFoods.data.foods).toEqual(expect.arrayContaining([expect.objectContaining({ source: "catalog", catalogProviderId: "licensed_fixture", catalogDatasetVersion: "2026-08-24", catalogEvidence: expect.objectContaining({ sourceKind: "government_branded_database", reportedCoreNutrientKeys: ["energy_kcal", "protein_g"] }), catalogSourceModified: false })]));
   });
 
   it("imports source-attributed portions and preserves their original values after private correction", async () => {

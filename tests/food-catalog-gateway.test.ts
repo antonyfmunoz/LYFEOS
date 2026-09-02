@@ -169,5 +169,6 @@ describe("food catalog gateway", () => {
     expect(portionMigration).toContain('"catalog_grams_per_unit"');
     expect(release).toContain('id: "0104_food_catalog_gateway"');
     expect(release).toContain('id: "0105_food_catalog_portions"');
+    expect(release).toContain('id: "0150_nutrition_food_catalog_evidence"');
   });
 });

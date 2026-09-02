@@ -3267,6 +3267,7 @@ export const nutritionFoods = pgTable("nutrition_foods", {
   catalogAttributionText: text("catalog_attribution_text"),
   catalogAttributionUrl: text("catalog_attribution_url"),
   catalogTerritory: text("catalog_territory"),
+  catalogEvidence: jsonb("catalog_evidence"),
   catalogImportedAt: timestamp("catalog_imported_at"),
   catalogSourceModified: boolean("catalog_source_modified").notNull().default(false),
   servingSizeGrams: real("serving_size_grams").notNull().default(100),

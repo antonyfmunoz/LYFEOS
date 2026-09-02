@@ -3513,6 +3513,13 @@ const migrations = [
       CREATE INDEX IF NOT EXISTS "food_package_confirmations_user_barcode_confirmed_idx" ON "food_package_confirmations" ("user_id", "barcode", "confirmed_at");
     `,
   },
+  {
+    id: "0150_nutrition_food_catalog_evidence",
+    sql: `
+      ALTER TABLE "nutrition_foods"
+        ADD COLUMN IF NOT EXISTS "catalog_evidence" jsonb;
+    `,
+  },
 ];
 
 async function run(): Promise<void> {
