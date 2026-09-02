@@ -299,6 +299,14 @@ describe("health and fitness foundation", () => {
     expect(scanner).toContain("item.preference?.note");
   });
 
+  it("requires an explicit nutrition import after a source-attributed barcode lookup", () => {
+    const scanner = readFileSync(resolve(process.cwd(), "client/src/components/health/IngredientScanner.tsx"), "utf8");
+    expect(scanner).toContain("Save scanned food as private copy");
+    expect(scanner).toContain('"/api/nutrition/foods/catalog-import"');
+    expect(scanner).toContain("catalogImportCandidate.hasEnergy");
+    expect(scanner).toContain("setCatalogImportCandidate(null)");
+  });
+
   it("keeps structured workouts and exercise details in the release and private-account paths", () => {
     const migration = readFileSync(resolve(process.cwd(), "migrations/0031_workout_ledger.sql"), "utf8");
     const releaseRunner = readFileSync(resolve(process.cwd(), "server/release-migrate.ts"), "utf8");

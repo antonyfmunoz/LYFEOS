@@ -11,7 +11,8 @@ type IngredientPreference = { id: number; displayName: string; preferenceType: "
 type ScanItem = { id: number; rawName: string; classification: string; evidenceStrength: string; preference: IngredientPreference | null };
 type IngredientScan = { id: number; captureMethod: "manual_label" | "photo_ocr" | "barcode"; productName: string | null; barcode: string | null; rawIngredientsText: string; revision: number; createdAt: string; items: ScanItem[]; catalogProviderId: string | null; catalogDatasetVersion: string | null; catalogAttributionText: string | null; catalogAttributionUrl: string | null; catalogSourceModified: boolean };
 type CatalogStatus = { available: boolean; reason: string | null; providers?: Array<{ id: string; name: string }>; defaultProviderId?: string | null };
-type CatalogLookup = { provider: { name: string; datasetVersion: string; attributionText: string; attributionUrl?: string | null }; item: { name: string; barcode?: string | null; ingredientsText?: string | null; lookupToken: string } | null; found: boolean; disclosure: string };
+type CatalogLookup = { provider: { name: string; datasetVersion: string; attributionText: string; attributionUrl?: string | null }; item: { name: string; barcode?: string | null; ingredientsText?: string | null; nutrients: Array<{ nutrientKey: string; amountPer100g: number; unit: string }>; lookupToken: string } | null; found: boolean; disclosure: string };
+type CatalogImportCandidate = { name: string; hasEnergy: boolean; nutrientCount: number };
 
 export default function IngredientScanner() {
   const [productName, setProductName] = useState("");
@@ -24,6 +25,7 @@ export default function IngredientScanner() {
   const [editingScanId, setEditingScanId] = useState<number | null>(null);
   const [editingRevision, setEditingRevision] = useState<number | null>(null);
   const [catalogLookupToken, setCatalogLookupToken] = useState<string | null>(null);
+  const [catalogImportCandidate, setCatalogImportCandidate] = useState<CatalogImportCandidate | null>(null);
   const [catalogProviderId, setCatalogProviderId] = useState("");
   const [captureMethod, setCaptureMethod] = useState<"manual_label" | "photo_ocr">("manual_label");
   const cameraInput = useRef<HTMLInputElement>(null);
@@ -41,7 +43,7 @@ export default function IngredientScanner() {
       body: JSON.stringify({ captureMethod, productName: productName || null, barcode: barcode || null, rawIngredientsText: ingredients, catalogLookupToken: editingScanId ? undefined : catalogLookupToken || undefined }),
     }),
     onSuccess: () => {
-      setProductName(""); setBarcode(""); setIngredients(""); setEditingScanId(null); setEditingRevision(null); setCatalogLookupToken(null); setCaptureMethod("manual_label");
+      setProductName(""); setBarcode(""); setIngredients(""); setEditingScanId(null); setEditingRevision(null); setCatalogLookupToken(null); setCatalogImportCandidate(null); setCaptureMethod("manual_label");
       void queryClient.invalidateQueries({ queryKey: ["/api/ingredient-scans"] });
     },
   });
@@ -52,10 +54,21 @@ export default function IngredientScanner() {
   const catalogLookup = useMutation({
     mutationFn: () => apiRequest<CatalogLookup>(`/api/food-catalog/barcodes/${encodeURIComponent(barcode)}${catalogProviderId || catalogStatus.data?.defaultProviderId ? `?providerId=${encodeURIComponent(catalogProviderId || catalogStatus.data?.defaultProviderId || "")}` : ""}`),
     onSuccess: ({ item, provider, disclosure }) => {
-      if (!item) { setCatalogLookupToken(null); setCameraStatus(disclosure); return; }
+      if (!item) { setCatalogLookupToken(null); setCatalogImportCandidate(null); setCameraStatus(disclosure); return; }
       setProductName(item.name); setBarcode(item.barcode || barcode); setIngredients(item.ingredientsText || ""); setCatalogLookupToken(item.lookupToken);
+      setCatalogImportCandidate({ name: item.name, hasEnergy: item.nutrients.some((nutrient) => nutrient.nutrientKey === "energy_kcal"), nutrientCount: item.nutrients.length });
       setEditingScanId(null); setEditingRevision(null);
       setCameraStatus(`${provider.name} dataset ${provider.datasetVersion}: ${disclosure}${item.ingredientsText ? "" : " The product has no ingredient label, so enter it manually."}`);
+    },
+  });
+  const importCatalogFood = useMutation({
+    mutationFn: () => {
+      if (!catalogLookupToken) throw new Error("Search the catalog again before saving a private food.");
+      return apiRequest<{ food: { id: number }; replayed: boolean }>("/api/nutrition/foods/catalog-import", { method: "POST", body: JSON.stringify({ lookupToken: catalogLookupToken }) });
+    },
+    onSuccess: ({ replayed }) => {
+      setCatalogLookupToken(null); setCatalogImportCandidate(null);
+      setCameraStatus(replayed ? "That catalog food was already saved privately. You can select it in Nutrition Diary." : "Saved a private food copy. You can now select it in Nutrition Diary.");
     },
   });
   const remove = useMutation({
@@ -93,7 +106,7 @@ export default function IngredientScanner() {
         const detector = new BarcodeDetectorApi({ formats: ["ean_13", "ean_8", "upc_a", "upc_e", "code_128"] });
         const results = await detector.detect(bitmap);
         const value = results[0]?.rawValue?.trim();
-        if (value) { setBarcode(value); setCatalogLookupToken(null); setCameraStatus(`Barcode ${value} read. Search the configured catalog or your saved private labels.`); }
+        if (value) { setBarcode(value); setCatalogLookupToken(null); setCatalogImportCandidate(null); setCameraStatus(`Barcode ${value} read. Search the configured catalog or your saved private labels.`); }
         else setCameraStatus("No barcode was found in that image. Try again in good light or enter the number manually.");
       } finally { bitmap.close(); }
     } catch {
@@ -116,7 +129,7 @@ export default function IngredientScanner() {
       try {
         const detected = normalizeDetectedLabelText(await new TextDetectorApi().detect(bitmap));
         if (!detected.text) { setCameraStatus("No readable label text was found. Try a close, well-lit photo of the ingredient panel or enter it manually."); return; }
-        setIngredients(detected.text); setCatalogLookupToken(null); setCaptureMethod("photo_ocr");
+        setIngredients(detected.text); setCatalogLookupToken(null); setCatalogImportCandidate(null); setCaptureMethod("photo_ocr");
         setCameraStatus(`Label text was read on-device${detected.truncated ? " and limited to 20,000 characters" : ""}. Review and correct it before saving; LyfeOS has not treated it as accurate yet.`);
       } finally { bitmap.close(); }
     } catch {
@@ -125,8 +138,8 @@ export default function IngredientScanner() {
       if (labelInput.current) labelInput.current.value = "";
     }
   };
-  const editScan = (scan: IngredientScan) => { setCatalogLookupToken(null); setEditingScanId(scan.id); setEditingRevision(scan.revision); setCaptureMethod(scan.captureMethod === "photo_ocr" ? "photo_ocr" : "manual_label"); setProductName(scan.productName || ""); setBarcode(scan.barcode || ""); setIngredients(scan.rawIngredientsText); };
-  const cancelEdit = () => { setEditingScanId(null); setEditingRevision(null); setCatalogLookupToken(null); setCaptureMethod("manual_label"); setProductName(""); setBarcode(""); setIngredients(""); };
+  const editScan = (scan: IngredientScan) => { setCatalogLookupToken(null); setCatalogImportCandidate(null); setEditingScanId(scan.id); setEditingRevision(scan.revision); setCaptureMethod(scan.captureMethod === "photo_ocr" ? "photo_ocr" : "manual_label"); setProductName(scan.productName || ""); setBarcode(scan.barcode || ""); setIngredients(scan.rawIngredientsText); };
+  const cancelEdit = () => { setEditingScanId(null); setEditingRevision(null); setCatalogLookupToken(null); setCatalogImportCandidate(null); setCaptureMethod("manual_label"); setProductName(""); setBarcode(""); setIngredients(""); };
 
   return <section className="glassmorphic rounded-2xl p-6 mb-8 border border-primary/30" aria-labelledby="ingredient-review-heading">
     <div>
@@ -134,14 +147,15 @@ export default function IngredientScanner() {
       <p className="text-sm text-muted-foreground mt-1">Paste a package label to keep an exact, private ingredient record. Each item is shown as unclassified until LyfeOS has an evidence policy or a preference rule to apply.</p>
     </div>
     <div className="grid gap-2 mt-4 sm:grid-cols-2">
-      <Input aria-label="Product name" placeholder="Product name (optional)" value={productName} onChange={(event) => { setProductName(event.target.value); setCatalogLookupToken(null); }} />
-      <Input aria-label="Product barcode" placeholder="Barcode (optional)" value={barcode} onChange={(event) => { setBarcode(event.target.value); setCatalogLookupToken(null); }} />
+      <Input aria-label="Product name" placeholder="Product name (optional)" value={productName} onChange={(event) => { setProductName(event.target.value); setCatalogLookupToken(null); setCatalogImportCandidate(null); }} />
+      <Input aria-label="Product barcode" placeholder="Barcode (optional)" value={barcode} onChange={(event) => { setBarcode(event.target.value); setCatalogLookupToken(null); setCatalogImportCandidate(null); }} />
     </div>
     <input ref={cameraInput} className="sr-only" type="file" accept="image/*" capture="environment" aria-label="Take a barcode photo" onChange={(event) => void decodeBarcodeImage(event.target.files?.[0])} />
     <input ref={labelInput} className="sr-only" type="file" accept="image/*" capture="environment" aria-label="Take an ingredient label photo" onChange={(event) => void readLabelImage(event.target.files?.[0])} />
-    <div className="mt-2 flex flex-wrap items-center gap-3"><Button type="button" size="sm" variant="outline" onClick={() => cameraInput.current?.click()}><Camera />Scan barcode with camera</Button><Button type="button" size="sm" variant="outline" onClick={() => labelInput.current?.click()}><ScanLine />Read label text on-device</Button><Button type="button" size="sm" variant="outline" disabled={!barcode.trim() || lookup.isPending} onClick={() => lookup.mutate()}><Search />Search my saved labels</Button><Button type="button" size="sm" variant="outline" disabled={!catalogStatus.data?.available || !/^\d{8,14}$/.test(barcode.trim()) || catalogLookup.isPending} onClick={() => catalogLookup.mutate()}><Database />Search product catalog</Button>{(catalogStatus.data?.providers?.length || 0) > 1 ? <label className="flex items-center gap-1 text-xs text-muted-foreground">Source<select aria-label="Ingredient scanner catalog source" className="h-8 rounded-md border border-input bg-background px-2 text-foreground" value={catalogProviderId || catalogStatus.data?.defaultProviderId || ""} onChange={(event) => { setCatalogProviderId(event.target.value); setCatalogLookupToken(null); }}><option value="">Default source</option>{catalogStatus.data?.providers?.map((provider) => <option key={provider.id} value={provider.id}>{provider.name}</option>)}</select></label> : null}{cameraStatus ? <p className="text-xs text-muted-foreground" role="status">{cameraStatus}</p> : null}</div>
+    <div className="mt-2 flex flex-wrap items-center gap-3"><Button type="button" size="sm" variant="outline" onClick={() => cameraInput.current?.click()}><Camera />Scan barcode with camera</Button><Button type="button" size="sm" variant="outline" onClick={() => labelInput.current?.click()}><ScanLine />Read label text on-device</Button><Button type="button" size="sm" variant="outline" disabled={!barcode.trim() || lookup.isPending} onClick={() => lookup.mutate()}><Search />Search my saved labels</Button><Button type="button" size="sm" variant="outline" disabled={!catalogStatus.data?.available || !/^\d{8,14}$/.test(barcode.trim()) || catalogLookup.isPending} onClick={() => catalogLookup.mutate()}><Database />Search product catalog</Button>{catalogImportCandidate ? <Button type="button" size="sm" disabled={!catalogImportCandidate.hasEnergy || importCatalogFood.isPending} onClick={() => importCatalogFood.mutate()}><Database />Save scanned food as private copy</Button> : null}{(catalogStatus.data?.providers?.length || 0) > 1 ? <label className="flex items-center gap-1 text-xs text-muted-foreground">Source<select aria-label="Ingredient scanner catalog source" className="h-8 rounded-md border border-input bg-background px-2 text-foreground" value={catalogProviderId || catalogStatus.data?.defaultProviderId || ""} onChange={(event) => { setCatalogProviderId(event.target.value); setCatalogLookupToken(null); setCatalogImportCandidate(null); }}><option value="">Default source</option>{catalogStatus.data?.providers?.map((provider) => <option key={provider.id} value={provider.id}>{provider.name}</option>)}</select></label> : null}{cameraStatus ? <p className="text-xs text-muted-foreground" role="status">{cameraStatus}</p> : null}</div>
+    {catalogImportCandidate ? <p className="mt-2 text-xs text-muted-foreground">{catalogImportCandidate.name} has {catalogImportCandidate.nutrientCount} source-attributed nutrient value{catalogImportCandidate.nutrientCount === 1 ? "" : "s"}. {catalogImportCandidate.hasEnergy ? "Save only if you want a private Nutrition Diary food copy." : "It cannot be saved as a diary food because the source did not provide energy."}</p> : null}
     {!catalogStatus.data?.available ? <p className="mt-2 text-xs text-muted-foreground">{catalogStatus.data?.reason || "Checking catalog availability…"}</p> : null}
-    <Textarea aria-label="Ingredient label" className="mt-2" placeholder="Ingredients: water, oats, cane sugar, natural flavor (vanilla extract, salt)" value={ingredients} onChange={(event) => { setIngredients(event.target.value); if (catalogLookupToken) setCaptureMethod("manual_label"); setCatalogLookupToken(null); }} />
+    <Textarea aria-label="Ingredient label" className="mt-2" placeholder="Ingredients: water, oats, cane sugar, natural flavor (vanilla extract, salt)" value={ingredients} onChange={(event) => { setIngredients(event.target.value); if (catalogLookupToken) setCaptureMethod("manual_label"); setCatalogLookupToken(null); setCatalogImportCandidate(null); }} />
     <div className="mt-2 flex flex-wrap items-center gap-3">
       <Button size="sm" disabled={!ingredients.trim() || create.isPending} onClick={() => create.mutate()}>{editingScanId ? <Pencil /> : <Plus />}{editingScanId ? "Save label correction" : "Review label"}</Button>{editingScanId ? <Button size="sm" variant="ghost" onClick={cancelEdit}>Cancel correction</Button> : null}
       <p className="text-xs text-muted-foreground">Barcode and supported-browser text detection run on-device; photos are not uploaded. OCR text is only an editable draft until you review and save it. Catalog labels stay external until explicit save.</p>
