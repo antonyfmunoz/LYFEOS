@@ -62,6 +62,8 @@ describe("health tracking provenance", () => {
     expect(routes).toContain('app.post("/api/health-observations/imports/preview", isAuthenticated');
     expect(routes).toContain('app.post("/api/health-observations/imports/commit", isAuthenticated');
     expect(client).toContain('aria-label="Health CSV import"');
+    expect(client).toContain('aria-label="Choose health CSV file"');
+    expect(client).toContain("Download template");
     expect(profile).toContain('"health_metric_definitions"');
     expect(profile).toContain('"recovery_routines"');
   });
