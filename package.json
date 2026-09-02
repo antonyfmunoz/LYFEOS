@@ -11,6 +11,8 @@
     "test": "vitest run",
     "budget": "node scripts/check-bundle-budget.mjs",
     "acceptance:browser": "tsx scripts/production-browser-acceptance.ts",
+    "acceptance:browser-disposable-session": "tsx scripts/production-browser-disposable-session.ts",
+    "acceptance:browser-disposable-cleanup": "tsx scripts/production-browser-disposable-cleanup.ts",
     "acceptance:core-loop": "tsx scripts/production-core-loop-acceptance.ts",
     "acceptance:onboarding": "tsx scripts/production-onboarding-browser-acceptance.ts",
     "acceptance:production-mission-sources": "tsx scripts/production-mission-source-acceptance.ts",

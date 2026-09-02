@@ -11,6 +11,20 @@ import {
 
 type RouteKind = "public" | "authenticated";
 
+type LayoutShiftSource = {
+  tag: string | null;
+  id: string | null;
+  className: string | null;
+  ancestors: string[];
+  previousRect: { x: number; y: number; width: number; height: number } | null;
+  currentRect: { x: number; y: number; width: number; height: number } | null;
+};
+
+type LayoutShiftDiagnostic = {
+  value: number;
+  sources: LayoutShiftSource[];
+};
+
 type RouteResult = {
   kind: RouteKind;
   route: string;
@@ -25,6 +39,7 @@ type RouteResult = {
     largestContentfulPaintMs: number | null;
     cumulativeLayoutShift: number | null;
   };
+  layoutShiftSources: LayoutShiftDiagnostic[];
   accessibility: {
     duplicateIds: string[];
     unlabeledControls: string[];
@@ -67,6 +82,7 @@ const BASE_URL = new URL(process.env.LYFEOS_ACCEPTANCE_BASE_URL || "https://lyfe
 const REQUIRE_AUTHENTICATED = process.env.LYFEOS_ACCEPTANCE_REQUIRE_AUTHENTICATED === "true";
 const EMAIL = process.env.LYFEOS_ACCEPTANCE_EMAIL?.trim() || "";
 const PASSWORD = process.env.LYFEOS_ACCEPTANCE_PASSWORD || "";
+const SESSION_FILE = process.env.LYFEOS_ACCEPTANCE_SESSION_FILE?.trim() || "";
 const SOURCE = process.env.LYFEOS_ACCEPTANCE_SOURCE?.trim() || null;
 const HARNESS_SOURCE = process.env.LYFEOS_ACCEPTANCE_HARNESS_SOURCE?.trim() || null;
 const OUTPUT_DIR = path.resolve(process.env.LYFEOS_ACCEPTANCE_OUTPUT_DIR || path.join(os.tmpdir(), "lyfeos-browser-acceptance"));
@@ -182,12 +198,50 @@ async function findChromium(): Promise<string> {
 
 async function installPerformanceObservers(page: Page): Promise<void> {
   await page.evaluateOnNewDocument(() => {
-    const state = { cls: 0, lcp: null as number | null };
+    const state = { cls: 0, lcp: null as number | null, shifts: [] as LayoutShiftDiagnostic[] };
     Object.defineProperty(window, "__lyfeosAcceptanceVitals", { value: state, configurable: true });
     try {
       new PerformanceObserver((list) => {
-        for (const entry of list.getEntries() as Array<PerformanceEntry & { hadRecentInput?: boolean; value?: number }>) {
-          if (!entry.hadRecentInput && typeof entry.value === "number") state.cls += entry.value;
+        for (const entry of list.getEntries() as Array<PerformanceEntry & { hadRecentInput?: boolean; value?: number; sources?: Array<{ node?: Element | null }> }>) {
+          if (!entry.hadRecentInput && typeof entry.value === "number") {
+            state.cls += entry.value;
+            if (state.shifts.length < 12) {
+              state.shifts.push({
+                value: entry.value,
+                sources: (entry.sources || []).slice(0, 6).map((source) => {
+                  const node = source.node;
+                  const nodeElement = node instanceof HTMLElement ? node : null;
+                  const ancestors: string[] = [];
+                  let ancestor = nodeElement?.parentElement || null;
+                  while (ancestor && ancestors.length < 4) {
+                    const identity = [
+                      ancestor.tagName.toLowerCase(),
+                      ancestor.id ? `#${ancestor.id.slice(0, 48)}` : "",
+                      typeof ancestor.className === "string" && ancestor.className
+                        ? `.${ancestor.className.split(/\s+/).slice(0, 2).join(".").slice(0, 120)}`
+                        : "",
+                    ].join("");
+                    ancestors.push(identity);
+                    ancestor = ancestor.parentElement;
+                  }
+                  return {
+                    tag: node?.tagName?.toLowerCase() || null,
+                    id: nodeElement?.id ? nodeElement.id.slice(0, 80) : null,
+                    className: nodeElement && typeof nodeElement.className === "string"
+                      ? nodeElement.className.split(/\s+/).slice(0, 4).join(" ").slice(0, 160)
+                      : null,
+                    ancestors,
+                    previousRect: source.previousRect
+                      ? { x: Math.round(source.previousRect.x), y: Math.round(source.previousRect.y), width: Math.round(source.previousRect.width), height: Math.round(source.previousRect.height) }
+                      : null,
+                    currentRect: source.currentRect
+                      ? { x: Math.round(source.currentRect.x), y: Math.round(source.currentRect.y), width: Math.round(source.currentRect.width), height: Math.round(source.currentRect.height) }
+                      : null,
+                  };
+                }),
+              });
+            }
+          }
         }
       }).observe({ type: "layout-shift", buffered: true });
     } catch {
@@ -222,6 +276,10 @@ async function login(page: Page): Promise<void> {
     ),
   ]);
 
+  await verifyAuthenticatedProfile(page);
+}
+
+async function verifyAuthenticatedProfile(page: Page): Promise<void> {
   const accountState = await page.evaluate(async () => {
     const [sessionResponse, profileResponse] = await Promise.all([
       fetch("/api/auth/me", { credentials: "include", cache: "no-store" }),
@@ -249,6 +307,17 @@ async function login(page: Page): Promise<void> {
   if (pathName.startsWith("/login-success") || pathName.startsWith("/ceremony")) {
     await page.goto(new URL("/dashboard", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
   }
+}
+
+async function restoreDisposableSession(page: Page): Promise<void> {
+  const stored = await fs.readFile(SESSION_FILE, "utf8");
+  const parsed = JSON.parse(stored) as { cookie?: unknown };
+  const cookie = typeof parsed.cookie === "string" ? parsed.cookie : "";
+  const separator = cookie.indexOf("=");
+  if (separator <= 0) throw new Error("Disposable browser session is invalid.");
+  await page.setCookie({ name: cookie.slice(0, separator), value: cookie.slice(separator + 1), url: BASE_URL.origin, path: "/" });
+  await page.goto(new URL("/dashboard", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
+  await verifyAuthenticatedProfile(page);
 }
 
 function sanitizedFailureMessage(error: unknown): string {
@@ -373,7 +442,7 @@ async function auditRoute(page: Page, route: string, kind: RouteKind, viewportNa
 
       const navigation = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
       const fcp = performance.getEntriesByName("first-contentful-paint")[0];
-      const vitals = (window as typeof window & { __lyfeosAcceptanceVitals?: { cls: number; lcp: number | null } }).__lyfeosAcceptanceVitals;
+      const vitals = (window as typeof window & { __lyfeosAcceptanceVitals?: { cls: number; lcp: number | null; shifts: LayoutShiftDiagnostic[] } }).__lyfeosAcceptanceVitals;
       const documentWidth = Math.max(document.documentElement.scrollWidth, document.body?.scrollWidth || 0);
 
       return {
@@ -395,6 +464,7 @@ async function auditRoute(page: Page, route: string, kind: RouteKind, viewportNa
           largestContentfulPaintMs: vitals?.lcp ?? null,
           cumulativeLayoutShift: vitals?.cls ?? null,
         },
+        layoutShiftSources: vitals?.shifts ?? [],
       };
     });
 
@@ -466,6 +536,7 @@ async function auditRoute(page: Page, route: string, kind: RouteKind, viewportNa
       finalPath,
       title: dom.title,
       timings: metrics,
+      layoutShiftSources: dom.layoutShiftSources,
       accessibility: {
         duplicateIds: dom.duplicateIds,
         unlabeledControls: dom.unlabeledControls,
@@ -531,6 +602,7 @@ async function auditRouteWithEvidence(page: Page, route: string, kind: RouteKind
           largestContentfulPaintMs: null,
           cumulativeLayoutShift: null,
         },
+        layoutShiftSources: [],
         accessibility: {
           duplicateIds: [],
           unlabeledControls: [],
@@ -642,7 +714,8 @@ async function main(): Promise<void> {
   if (BASE_URL.protocol !== "https:" && BASE_URL.hostname !== "127.0.0.1" && BASE_URL.hostname !== "localhost") {
     throw new Error("Acceptance base URL must use HTTPS except for an explicit localhost qualification target.");
   }
-  if (REQUIRE_AUTHENTICATED && (!EMAIL || !PASSWORD)) {
+  const hasDisposableSession = Boolean(SESSION_FILE) && await fs.access(SESSION_FILE).then(() => true).catch(() => false);
+  if (REQUIRE_AUTHENTICATED && !hasDisposableSession && (!EMAIL || !PASSWORD)) {
     throw new Error("Authenticated acceptance was required but its email/password secrets were not configured.");
   }
 
@@ -664,7 +737,7 @@ async function main(): Promise<void> {
       await publicPage.close();
     }
 
-    if (EMAIL && PASSWORD) {
+    if (hasDisposableSession || (EMAIL && PASSWORD)) {
       const desktop = VIEWPORTS[0];
       const authenticatedPage = await newPage(browser, desktop.value, desktop.mobile);
       try {
@@ -672,7 +745,8 @@ async function main(): Promise<void> {
         // viewports avoids a second artificial login and exercises the same
         // session continuity expected when a real user resizes or rotates a device.
         try {
-          await login(authenticatedPage);
+          if (hasDisposableSession) await restoreDisposableSession(authenticatedPage);
+          else await login(authenticatedPage);
         } catch (error) {
           throw new Error(`authenticated login (${desktop.name}) failed: ${sanitizedFailureMessage(error)}`);
         }

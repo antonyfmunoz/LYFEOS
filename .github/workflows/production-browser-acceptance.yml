@@ -71,13 +71,24 @@ jobs:
           test -n "$reported"
           test "$harness" = "$EXPECTED_HARNESS_SOURCE"
           test "$reported" = "$EXPECTED_SOURCE"
+      - name: Create disposable browser-acceptance session
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.require_authenticated }}
+        env:
+          LYFEOS_ACCEPTANCE_SESSION_FILE: ${{ runner.temp }}/lyfeos-browser-acceptance/disposable-session.json
+        run: npm run acceptance:browser-disposable-session
       - name: Run production browser acceptance
         env:
           LYFEOS_CHROMIUM_PATH: ${{ steps.chrome.outputs.chrome-path }}
           LYFEOS_ACCEPTANCE_SOURCE: ${{ steps.release.outputs.source }}
           LYFEOS_ACCEPTANCE_HARNESS_SOURCE: ${{ github.sha }}
           LYFEOS_ACCEPTANCE_OUTPUT_DIR: ${{ runner.temp }}/lyfeos-browser-acceptance
+          LYFEOS_ACCEPTANCE_SESSION_FILE: ${{ runner.temp }}/lyfeos-browser-acceptance/disposable-session.json
         run: npm run acceptance:browser
+      - name: Erase disposable browser-acceptance session
+        if: ${{ always() && github.event_name == 'workflow_dispatch' && inputs.require_authenticated }}
+        env:
+          LYFEOS_ACCEPTANCE_SESSION_FILE: ${{ runner.temp }}/lyfeos-browser-acceptance/disposable-session.json
+        run: npm run acceptance:browser-disposable-cleanup
       - name: Run truthful Mission core-loop acceptance
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.require_authenticated }}
         env:

@@ -106,7 +106,13 @@
             var el = document.getElementById('app-preloader');
             if (el) el.style.display = 'flex';
             var root = document.getElementById('root');
-            if (root) root.style.visibility = 'hidden';
+            // Keep the application in layout while the fixed preloader covers
+            // it. Revealing a visibility-hidden root registers the whole
+            // dashboard as a late layout shift in browsers.
+            if (root) {
+              root.style.opacity = '0';
+              root.style.pointerEvents = 'none';
+            }
           });
         }
       })();

@@ -18,6 +18,8 @@ describe("production browser acceptance custody", () => {
     expect(script).toContain("LYFEOS_ACCEPTANCE_EMAIL");
     expect(script).toContain("LYFEOS_ACCEPTANCE_PASSWORD");
     expect(script).toContain("Authenticated acceptance was required but its email/password secrets were not configured.");
+    expect(script).toContain("LYFEOS_ACCEPTANCE_SESSION_FILE");
+    expect(script).toContain("restoreDisposableSession");
     expect(script).toContain("if (REQUIRE_AUTHENTICATED && !authenticatedExecuted)");
   });
 
@@ -159,6 +161,10 @@ describe("production browser acceptance custody", () => {
     expect(onboardingScript).toContain("harnessSource: HARNESS_SOURCE");
     expect(workflow).toContain("LYFEOS_ACCEPTANCE_EMAIL: ${{ secrets.LYFEOS_ACCEPTANCE_EMAIL }}");
     expect(workflow).toContain("LYFEOS_ACCEPTANCE_PASSWORD: ${{ secrets.LYFEOS_ACCEPTANCE_PASSWORD }}");
+    expect(workflow).toContain("Create disposable browser-acceptance session");
+    expect(workflow).toContain("Erase disposable browser-acceptance session");
+    expect(workflow).toContain("acceptance:browser-disposable-session");
+    expect(workflow).toContain("acceptance:browser-disposable-cleanup");
     expect(workflow).toContain("if: always()");
     expect(workflow).toContain("retention-days: 30");
   });

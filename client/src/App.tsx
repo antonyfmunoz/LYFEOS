@@ -95,7 +95,10 @@ function hideAppPreloader() {
     setTimeout(() => { el.style.display = 'none'; }, 300);
   }
   const root = document.getElementById('root');
-  if (root) root.style.visibility = 'visible';
+  if (root) {
+    root.style.opacity = '1';
+    root.style.pointerEvents = '';
+  }
 }
 
 function OAuthCallbackRoute() {
