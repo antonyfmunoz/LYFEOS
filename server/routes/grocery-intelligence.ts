@@ -1,11 +1,13 @@
 import type { Express, Request, Response } from "express";
 import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
-import { brandOwnershipResearchReports, groceryPantryItems, groceryReceiptDrafts, groceryShoppingItems } from "@shared/schema";
+import { brandOwnershipResearchReports, groceryPantryItems, groceryReceiptDrafts, groceryShoppingItems, ingredientPreferenceRules } from "@shared/schema";
 import { db } from "../db";
 import { listBrandSpotlights, lookupBrandOwnership } from "../brand-ownership";
+import { FoodCatalogError, searchFoodCatalog } from "../food-catalog";
 import { FoodRecallError, lookupFoodRecalls } from "../food-recalls";
 import { ownershipScore, parseReceiptText } from "../grocery-intelligence";
+import { parseIngredientLabel } from "../ingredient-scanner";
 import { isAuthenticated } from "./middleware";
 
 const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -100,6 +102,15 @@ async function reviewPantryRecalls(items: Array<{ id: number; name: string; bran
   return results;
 }
 
+function preferenceReview(ingredientsText: string | null | undefined, preferences: Array<{ displayName: string; normalizedKey: string; preferenceType: string; note: string | null }>) {
+  if (!ingredientsText) return { labelAvailable: false, matches: [] as Array<{ displayName: string; preferenceType: string; note: string | null }> };
+  const ingredientKeys = new Set(parseIngredientLabel(ingredientsText).map((ingredient) => ingredient.normalizedKey));
+  return {
+    labelAvailable: true,
+    matches: preferences.filter((preference) => ingredientKeys.has(preference.normalizedKey)).map((preference) => ({ displayName: preference.displayName, preferenceType: preference.preferenceType, note: preference.note })),
+  };
+}
+
 async function createPendingShoppingItem(userId: number, pantry: { id: number; name: string; brand: string | null; unit: string }) {
   const [existing] = await db.select().from(groceryShoppingItems).where(and(eq(groceryShoppingItems.userId, userId), eq(groceryShoppingItems.pantryItemId, pantry.id), eq(groceryShoppingItems.status, "pending"))).limit(1);
   if (existing) return existing;
@@ -172,6 +183,39 @@ export function registerGroceryIntelligenceRoutes(app: Express): void {
       reviews,
       disclosure: "This is a live FDA enforcement-report text review requested by you. A possible match does not establish that your package is recalled; compare lot or package codes, dates, distribution, and the official recall notice. Results are not stored by LyfeOS.",
     });
+  });
+
+  app.post("/api/grocery-intelligence/pantry/:id/replacements", isAuthenticated, async (req: Request, res: Response) => {
+    const id = itemId(req.params.id);
+    if (!id.success) return res.status(400).json({ error: "Invalid pantry item." });
+    const userId = req.session.userId!;
+    const [itemRows, preferences] = await Promise.all([
+      db.select().from(groceryPantryItems).where(and(eq(groceryPantryItems.id, id.data), eq(groceryPantryItems.userId, userId), eq(groceryPantryItems.status, "active"))).limit(1),
+      db.select().from(ingredientPreferenceRules).where(eq(ingredientPreferenceRules.userId, userId)),
+    ]);
+    const item = itemRows[0];
+    if (!item) return res.status(404).json({ error: "Pantry item not found." });
+    try {
+      const page = await searchFoodCatalog({ query: item.name.slice(0, 80), territory: "US", locale: "en-US", limit: 10 });
+      const candidates = page.items.filter((candidate) => candidate.externalId !== item.catalogExternalId).slice(0, 8).map((candidate) => ({
+        externalId: candidate.externalId,
+        name: candidate.name,
+        brand: candidate.brand || null,
+        barcode: candidate.barcode || null,
+        ownership: candidate.brand ? lookupBrandOwnership(candidate.brand).profile : null,
+        preferenceReview: preferenceReview(candidate.ingredientsText, preferences),
+      }));
+      return res.json({
+        pantryItemId: item.id,
+        query: item.name,
+        provider: page.provider,
+        candidates,
+        disclosure: "These are catalog search candidates, not endorsements or guaranteed substitutes. LyfeOS only reports exact matches to your saved ingredient preferences when the provider supplied a label; missing labels and unmatched brands stay unknown. Review price, package size, availability, nutrition, ownership evidence, and the actual package before choosing.",
+      });
+    } catch (error) {
+      if (error instanceof FoodCatalogError) return res.status(error.code === "unavailable" ? 503 : 502).json({ error: error.message, code: error.code });
+      return res.status(502).json({ error: "The catalog could not find replacement candidates." });
+    }
   });
 
   app.delete("/api/grocery-intelligence/pantry/:id", isAuthenticated, async (req: Request, res: Response) => {
