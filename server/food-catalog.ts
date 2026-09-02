@@ -25,23 +25,23 @@ type CatalogConfig = GatewayCatalogConfig | OpenFoodFactsCatalogConfig | UsdaFoo
 
 const openFoodFactsBaseUrl = "https://world.openfoodfacts.org";
 const openFoodFactsSearchBaseUrl = "https://search.openfoodfacts.org";
-const openFoodFactsProvider = {
+const openFoodFactsProvider: FoodCatalogProvider = {
   id: "open_food_facts",
   name: "Open Food Facts",
   datasetVersion: "api-v3.6",
   territories: ["US", "CA", "MX", "BR", "GB", "IE", "FR", "DE", "ES", "IT", "PT", "NL", "BE", "CH", "AT", "SE", "NO", "DK", "FI", "PL", "AU", "NZ", "JP", "KR", "IN"],
   attributionText: "Product data from Open Food Facts, available under the Open Database License (ODbL). Product information is community-contributed and may be incomplete or inaccurate.",
   attributionUrl: "https://world.openfoodfacts.org/data",
-} as const;
+};
 
-const usdaFoodDataProvider = {
+const usdaFoodDataProvider: FoodCatalogProvider = {
   id: "usda_fooddata_central",
   name: "USDA FoodData Central",
   datasetVersion: "live-api",
   territories: ["US"],
   attributionText: "Nutrient data from USDA FoodData Central. Data are public domain (CC0); source attribution retained.",
   attributionUrl: "https://fdc.nal.usda.gov/",
-} as const;
+};
 
 const usdaFoodDataBaseUrl = "https://api.nal.usda.gov/fdc/v1";
 
@@ -122,7 +122,7 @@ export function getFoodCatalogConfig(env: NodeJS.ProcessEnv = process.env): Cata
 
 export function foodCatalogAvailability(env: NodeJS.ProcessEnv = process.env) {
   const configs = getFoodCatalogConfigs(env);
-  const providers = configs.flatMap((config) => config.kind === "open_food_facts" ? [openFoodFactsProvider] : config.kind === "usda_fooddata_central" ? [usdaFoodDataProvider] : []);
+  const providers: FoodCatalogProvider[] = configs.flatMap((config) => config.kind === "open_food_facts" ? [openFoodFactsProvider] : config.kind === "usda_fooddata_central" ? [usdaFoodDataProvider] : []);
   const configured = configs.length > 0;
   return {
     available: configured,
@@ -314,7 +314,7 @@ function normalizedUsdaFoodDataItem(raw: unknown, territory: string, locale: str
     servingSizeGrams,
     ingredientsText: null,
     portions: householdServing && serving && servingUnit === "g" ? [{ label: householdServing, gramsPerUnit: serving }] : [],
-    nutrients: [...nutrientsByKey.values()],
+    nutrients: Array.from(nutrientsByKey.values()),
   };
 }
 

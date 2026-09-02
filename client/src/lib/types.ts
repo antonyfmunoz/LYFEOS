@@ -81,6 +81,9 @@ export interface Quest {
   allDay?: boolean | null;
   timezone?: string | null;
   url?: string | null;
+  /** External calendar provider linkage, when the mission has been explicitly shared. */
+  externalId?: string | null;
+  externalSource?: string | null;
   attendees?: unknown[];
   missionStatus?: string | null;
   viewId?: number | null;

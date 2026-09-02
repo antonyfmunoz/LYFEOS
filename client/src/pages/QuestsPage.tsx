@@ -352,6 +352,7 @@ export default function QuestsPage() {
   const canSyncGoogleTasks = Boolean(googleStatus?.capabilities?.tasks && googleStatus.services?.tasks?.permissions.capabilities.import);
 
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isPushingCalendar, setIsPushingCalendar] = useState(false);
   const syncGoogle = async (mode: 'calendar' | 'tasks') => {
     if (isSyncing) return;
     setIsSyncing(true);
@@ -398,6 +399,32 @@ export default function QuestsPage() {
       toast({ title: "Sync failed", description: `Could not sync ${mode === 'calendar' ? 'calendar' : 'tasks'}.`, variant: "destructive" });
     } finally {
       setIsSyncing(false);
+    }
+  };
+
+  const pushMissionToGoogleCalendar = async (mission: Quest) => {
+    if (!mission.startDate || isPushingCalendar) return;
+    setIsPushingCalendar(true);
+    try {
+      const result = await runWithApproval((approvalId) => apiRequest<{ action: "created" | "updated" }>("/api/google/calendar/push", {
+        method: "POST",
+        body: JSON.stringify({ missionId: mission.id, ...(approvalId ? { approvalId } : {}) }),
+      }));
+      await refetchQuests();
+      toast({
+        title: result.action === "created" ? "Added to Google Calendar" : "Google Calendar updated",
+        description: result.action === "created"
+          ? "This saved mission is now linked to an event in your primary Google Calendar."
+          : "The linked Google Calendar event now matches this saved mission.",
+      });
+    } catch (error) {
+      if (error instanceof IntegrationActionDeniedError) {
+        toast({ title: "Calendar change cancelled", description: "Google Calendar was not changed." });
+      } else {
+        toast({ title: "Calendar change failed", description: "Check your Google Calendar connection and its Change Google Calendar permission.", variant: "destructive" });
+      }
+    } finally {
+      setIsPushingCalendar(false);
     }
   };
 
@@ -3047,6 +3074,21 @@ export default function QuestsPage() {
             >
               {isSubmitting ? "Updating..." : "Update Mission"}
             </button>
+            {editingQuest?.startDate && (
+              <button
+                type="button"
+                data-testid={`mission-edit-sync-google-calendar-${editingQuest.id}`}
+                onClick={() => void pushMissionToGoogleCalendar(editingQuest)}
+                disabled={isSubmitting || isPushingCalendar}
+                className="w-full mt-2 text-sm font-mono px-4 py-2.5 rounded border bg-background/50 border-primary/30 text-primary hover:bg-primary/10 transition-colors disabled:opacity-40 inline-flex items-center justify-center"
+              >
+                {isPushingCalendar
+                  ? "Syncing Calendar..."
+                  : editingQuest.externalSource === "google_calendar"
+                    ? "Update Google Calendar"
+                    : "Add to Google Calendar"}
+              </button>
+            )}
           </div>
         </DialogContent>
       </Dialog>
