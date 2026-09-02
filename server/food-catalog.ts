@@ -469,8 +469,15 @@ function configForRequest(input: FoodCatalogSearchInput, env: NodeJS.ProcessEnv)
 export async function searchFoodCatalog(input: FoodCatalogSearchInput, env: NodeJS.ProcessEnv = process.env, fetchImpl: typeof fetch = fetch) {
   const config = configForRequest(input, env);
   if (!config) throw new FoodCatalogError("unavailable", foodCatalogAvailability(env).reason!);
-  if (config.kind === "open_food_facts") return searchOpenFoodFacts(input, config, fetchImpl);
-  if (config.kind === "usda_fooddata_central") return searchUsdaFoodData(input, config, fetchImpl);
+  if (config.kind === "open_food_facts" || config.kind === "usda_fooddata_central") {
+    const page = config.kind === "open_food_facts"
+      ? await searchOpenFoodFacts(input, config, fetchImpl)
+      : await searchUsdaFoodData(input, config, fetchImpl);
+    return {
+      ...page,
+      items: page.items.map((item) => ({ ...item, lookupToken: createFoodCatalogLookupToken(page.provider, item, config.signingSecret) })),
+    };
+  }
   const continuation = "cursor" in input ? verifyFoodCatalogCursorToken(input.cursor, config.signingSecret) : null;
   if ("cursor" in input && !continuation) throw new FoodCatalogError("invalid_cursor", "This catalog result page expired or is invalid. Start the search again.");
   const request = "cursor" in input ? continuation! : input;
@@ -499,8 +506,15 @@ export async function lookupFoodCatalogBarcode(barcode: string, providerOrEnv?: 
   const fetchImpl = (typeof envOrFetch === "function" ? envOrFetch : suppliedFetch || fetch) as typeof fetch;
   const config = providerId ? getFoodCatalogConfigs(env).find((candidate) => candidate.kind === providerId) || null : getFoodCatalogConfig(env);
   if (!config) throw new FoodCatalogError("unavailable", foodCatalogAvailability(env).reason!);
-  if (config.kind === "open_food_facts") return lookupOpenFoodFactsBarcode(barcode, config, fetchImpl);
-  if (config.kind === "usda_fooddata_central") return lookupUsdaFoodDataBarcode(barcode, config, fetchImpl);
+  if (config.kind === "open_food_facts" || config.kind === "usda_fooddata_central") {
+    const result = config.kind === "open_food_facts"
+      ? await lookupOpenFoodFactsBarcode(barcode, config, fetchImpl)
+      : await lookupUsdaFoodDataBarcode(barcode, config, fetchImpl);
+    return {
+      ...result,
+      item: result.item ? { ...result.item, lookupToken: createFoodCatalogLookupToken(result.provider, result.item, config.signingSecret) } : null,
+    };
+  }
   const parsed = foodCatalogBarcodeResponseSchema.safeParse(await gatewayRequest(`/v1/foods/barcodes/${encodeURIComponent(barcode)}`, config, fetchImpl));
   if (!parsed.success) throw new FoodCatalogError("invalid_response", "The food catalog response did not satisfy the LyfeOS attribution contract.");
   return {

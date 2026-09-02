@@ -117,10 +117,12 @@ describe("food catalog gateway", () => {
     expect(search.provider.id).toBe("open_food_facts");
     expect(search.provider.attributionText).toContain("Open Database License");
     expect(search.nextCursor).toBeTruthy();
+    expect(verifyFoodCatalogLookupToken(search.items[0].lookupToken, openFoodFactsEnv.FOOD_CATALOG_LOOKUP_SIGNING_SECRET!)?.item.externalId).toBe("3017620422003");
     expect(search.items[0].nutrients).toEqual(expect.arrayContaining([{ nutrientKey: "energy_kcal", amountPer100g: 539, unit: "kcal" }, { nutrientKey: "sodium_mg", amountPer100g: 42.8, unit: "mg" }]));
     expect(search.items[0].evidence).toMatchObject({ sourceKind: "community_catalog", measurementBasis: "catalog_or_label_reported", recordUpdatedAt: "2023-11-14T22:13:20.000Z" });
     const barcode = await (await import("../server/food-catalog")).lookupFoodCatalogBarcode("3017620422003", openFoodFactsEnv, fetchMock as typeof fetch);
     expect(barcode.item?.ingredientsText).toBe("Sugar, hazelnuts");
+    expect(verifyFoodCatalogLookupToken(barcode.item?.lookupToken || "", openFoodFactsEnv.FOOD_CATALOG_LOOKUP_SIGNING_SECRET!)?.item.externalId).toBe("3017620422003");
     expect(barcode.item?.certifications).toEqual([{ kind: "kosher", status: "catalog_label_reported", label: "Kosher label reported by catalog" }]);
     expect(JSON.stringify(search)).not.toContain("FOOD_CATALOG_GATEWAY_TOKEN");
   });
@@ -138,10 +140,12 @@ describe("food catalog gateway", () => {
     });
     const search = await searchFoodCatalog({ query: "oats", territory: "US", locale: "en-US", limit: 10, providerId: "usda_fooddata_central" }, usdaFoodDataEnv, fetchMock as typeof fetch);
     expect(search.provider.id).toBe("usda_fooddata_central");
+    expect(verifyFoodCatalogLookupToken(search.items[0].lookupToken, usdaFoodDataEnv.FOOD_CATALOG_LOOKUP_SIGNING_SECRET!)?.item.externalId).toBe("12345");
     expect(search.items[0].nutrients).toEqual(expect.arrayContaining([{ nutrientKey: "energy_kcal", amountPer100g: 379, unit: "kcal" }, { nutrientKey: "protein_g", amountPer100g: 13.15, unit: "g" }]));
     expect(search.items[0].evidence).toMatchObject({ sourceKind: "government_reference_database", measurementBasis: "government_reference", recordUpdatedAt: "2026-08-01T00:00:00.000Z" });
     const barcode = await (await import("../server/food-catalog")).lookupFoodCatalogBarcode("012345678905", "usda_fooddata_central", usdaFoodDataEnv, fetchMock as typeof fetch);
     expect(barcode.item?.barcode).toBe("012345678905");
+    expect(verifyFoodCatalogLookupToken(barcode.item?.lookupToken || "", usdaFoodDataEnv.FOOD_CATALOG_LOOKUP_SIGNING_SECRET!)?.item.externalId).toBe("12345");
     expect(JSON.stringify(search)).not.toContain(usdaFoodDataEnv.USDA_FOODDATA_API_KEY!);
   });
 
