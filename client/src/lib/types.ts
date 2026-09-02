@@ -84,6 +84,8 @@ export interface Quest {
   /** External calendar provider linkage, when the mission has been explicitly shared. */
   externalId?: string | null;
   externalSource?: string | null;
+  /** Independent provider links. A Mission can be shared with multiple connected apps. */
+  externalLinks?: { provider: string; externalId: string }[];
   attendees?: unknown[];
   missionStatus?: string | null;
   viewId?: number | null;

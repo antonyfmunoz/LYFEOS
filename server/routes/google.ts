@@ -7,7 +7,9 @@ import { storage } from "../storage";
 import { logger } from "../utils";
 import { createMissionLifecycleResult, MissionLifecycleError, updateMissionLifecycle } from "../mission-lifecycle";
 import { shiftCalendarDate } from "@shared/calendar";
-import { pool } from "../db";
+import { db, pool } from "../db";
+import { missionExternalLinks } from "@shared/schema";
+import { and, eq } from "drizzle-orm";
 import { fetchGoogleCalendarSyncBatch, parseGoogleCalendarDateTime, readGoogleCalendarSyncState, writeGoogleCalendarSyncState } from "../google-calendar-sync";
 import { configuredIntegrationCredentialKey, deleteIntegrationCredential, readIntegrationCredential, writeIntegrationCredential } from "../integration-provider-credentials";
 import {
@@ -348,6 +350,34 @@ async function findGoogleTaskAddress(oauth2Client: ReturnType<typeof getOAuth2Cl
   return task?.listId ? { listId: task.listId, taskId: task.id } : null;
 }
 
+type MissionExternalLink = { provider: "google_calendar" | "google_tasks" | "google_drive"; externalId: string };
+
+async function getMissionExternalLink(userId: number, questId: number, provider: MissionExternalLink["provider"]): Promise<MissionExternalLink | null> {
+  const [link] = await db.select({ provider: missionExternalLinks.provider, externalId: missionExternalLinks.externalId })
+    .from(missionExternalLinks)
+    .where(and(eq(missionExternalLinks.userId, userId), eq(missionExternalLinks.questId, questId), eq(missionExternalLinks.provider, provider)))
+    .limit(1);
+  return link ? { provider: link.provider as MissionExternalLink["provider"], externalId: link.externalId } : null;
+}
+
+async function listMissionExternalLinks(userId: number, provider: MissionExternalLink["provider"]): Promise<Array<MissionExternalLink & { questId: number }>> {
+  const links = await db.select({ questId: missionExternalLinks.questId, provider: missionExternalLinks.provider, externalId: missionExternalLinks.externalId })
+    .from(missionExternalLinks)
+    .where(and(eq(missionExternalLinks.userId, userId), eq(missionExternalLinks.provider, provider)));
+  return links.map((link) => ({ questId: link.questId, provider: link.provider as MissionExternalLink["provider"], externalId: link.externalId }));
+}
+
+async function saveMissionExternalLink(input: { userId: number; questId: number; provider: MissionExternalLink["provider"]; externalId: string }): Promise<void> {
+  await db.insert(missionExternalLinks).values(input).onConflictDoUpdate({
+    target: [missionExternalLinks.questId, missionExternalLinks.provider],
+    set: { externalId: input.externalId, updatedAt: new Date() },
+  });
+}
+
+async function removeMissionExternalLink(userId: number, questId: number, provider: MissionExternalLink["provider"]): Promise<void> {
+  await db.delete(missionExternalLinks).where(and(eq(missionExternalLinks.userId, userId), eq(missionExternalLinks.questId, questId), eq(missionExternalLinks.provider, provider)));
+}
+
 function googleTaskRequestBody(mission: { title: string; description?: string | null; startDate?: string | null; completed?: boolean | null }) {
   return {
     title: mission.title,
@@ -544,9 +574,11 @@ export function registerGoogleRoutes(app: Express): void {
       });
       const googleEvents = syncBatch.events;
       const existingQuests = await storage.getQuests(userId);
+      const calendarLinks = await listMissionExternalLinks(userId, "google_calendar");
 
       const externalIdMap = new Map<string, number>();
       const questFingerprints = new Map<string, number>();
+      for (const link of calendarLinks) externalIdMap.set(link.externalId, link.questId);
       for (const q of existingQuests) {
         if (q.externalId && q.externalSource === "google_calendar") {
           externalIdMap.set(q.externalId, q.id);
@@ -647,6 +679,7 @@ export function registerGoogleRoutes(app: Express): void {
             },
             source: "google",
           });
+          await saveMissionExternalLink({ userId, questId, provider: "google_calendar", externalId: gEvent.id });
           linkedExisting++;
           continue;
         }
@@ -663,6 +696,7 @@ export function registerGoogleRoutes(app: Express): void {
           lifecycleKey: `google-calendar:${gEvent.id}`,
           source: "google",
         });
+        await saveMissionExternalLink({ userId, questId: creation.quest.id, provider: "google_calendar", externalId: gEvent.id });
         if (creation.replayed) skipped++;
         else imported++;
       }
@@ -731,10 +765,6 @@ export function registerGoogleRoutes(app: Express): void {
         return res.status(404).json({ error: "Mission not found" });
       }
 
-      if (mission.externalSource && mission.externalSource !== "google_calendar") {
-        return res.status(409).json({ error: "This mission is linked to another app. Remove that app link before linking it to Google Calendar." });
-      }
-
       if (!mission.startDate) {
         return res.status(400).json({ error: "Mission has no date — cannot push to Google Calendar" });
       }
@@ -771,28 +801,21 @@ export function registerGoogleRoutes(app: Express): void {
         }));
       }
 
-      if (mission.externalId && mission.externalSource === "google_calendar") {
+      const calendarLink = await getMissionExternalLink(userId, mission.id, "google_calendar");
+      if (calendarLink) {
         await calendar.events.update({
           calendarId: "primary",
-          eventId: mission.externalId,
+          eventId: calendarLink.externalId,
           requestBody: eventBody,
         });
-        return res.json({ success: true, action: "updated", externalId: mission.externalId, externalSource: "google_calendar" });
+        return res.json({ success: true, action: "updated", externalId: calendarLink.externalId, externalSource: "google_calendar" });
       } else {
         const created = await calendar.events.insert({
           calendarId: "primary",
           requestBody: eventBody,
         });
         if (created.data.id) {
-          await updateMissionLifecycle({
-            questId: mission.id,
-            userId,
-            updates: {
-              externalId: created.data.id,
-              externalSource: "google_calendar",
-            },
-            source: "google",
-          });
+          await saveMissionExternalLink({ userId, questId: mission.id, provider: "google_calendar", externalId: created.data.id });
         }
         return res.json({ success: true, action: "created", googleEventId: created.data.id, externalId: created.data.id, externalSource: "google_calendar" });
       }
@@ -820,25 +843,24 @@ export function registerGoogleRoutes(app: Express): void {
 
       const mission = await storage.getQuest(missionId);
       if (!mission || mission.userId !== userId) return res.status(404).json({ error: "Mission not found" });
-      if (mission.externalSource !== "google_calendar" || !mission.externalId) {
+      const calendarLink = await getMissionExternalLink(userId, mission.id, "google_calendar");
+      if (!calendarLink) {
         return res.status(409).json({ error: "This mission is not linked to a Google Calendar event." });
       }
 
       const calendar = google.calendar({ version: "v3", auth: client.oauth2Client });
       let action: "removed" | "already_removed" = "removed";
       try {
-        await calendar.events.delete({ calendarId: "primary", eventId: mission.externalId });
+        await calendar.events.delete({ calendarId: "primary", eventId: calendarLink.externalId });
       } catch (error: any) {
         if (error?.code === 404 || error?.response?.status === 404) action = "already_removed";
         else throw error;
       }
 
-      await updateMissionLifecycle({
-        questId: mission.id,
-        userId,
-        updates: { externalId: null, externalSource: null },
-        source: "google",
-      });
+      await removeMissionExternalLink(userId, mission.id, "google_calendar");
+      if (mission.externalSource === "google_calendar" && mission.externalId === calendarLink.externalId) {
+        await updateMissionLifecycle({ questId: mission.id, userId, updates: { externalId: null, externalSource: null }, source: "google" });
+      }
       return res.json({ success: true, action });
     } catch (error: any) {
       if (error?.code === 401 || error?.response?.status === 401) {
@@ -885,12 +907,9 @@ export function registerGoogleRoutes(app: Express): void {
       if (tasksToImport.length === 0) return res.json({ imported: 0, skipped: 0, total: 0 });
 
       const existingQuests = await storage.getQuests(userId);
-
-      const externalIdSet = new Set(
-        existingQuests
-          .filter((q: any) => q.externalSource === "google_tasks")
-          .map((q: any) => q.externalId)
-      );
+      const taskLinks = await listMissionExternalLinks(userId, "google_tasks");
+      const externalIdSet = new Set(taskLinks.map((link) => link.externalId));
+      const externalTaskIdSet = new Set(taskLinks.map((link) => decodeGoogleTaskExternalId(link.externalId)?.taskId || link.externalId));
 
       const missionFingerprints = new Set<string>();
       for (const q of existingQuests) {
@@ -905,7 +924,7 @@ export function registerGoogleRoutes(app: Express): void {
       let skipped = 0;
 
       for (const task of tasksToImport) {
-        if (externalIdSet.has(task.id)) {
+        if (externalIdSet.has(task.id) || externalTaskIdSet.has(task.id)) {
           skipped++;
           continue;
         }
@@ -933,11 +952,10 @@ export function registerGoogleRoutes(app: Express): void {
           energyCost: 1,
           experienceReward: 25,
           startDate,
-          externalId: encodeGoogleTaskExternalId({ listId: task.listId, taskId: task.id }),
-          externalSource: "google_tasks",
           lifecycleKey: `google-task:${task.id}`,
           source: "google",
         });
+        await saveMissionExternalLink({ userId, questId: creation.quest.id, provider: "google_tasks", externalId: encodeGoogleTaskExternalId({ listId: task.listId, taskId: task.id }) });
 
         if (creation.replayed) skipped++;
         else imported++;
@@ -964,19 +982,14 @@ export function registerGoogleRoutes(app: Express): void {
       if (!Number.isInteger(missionId) || missionId <= 0) return res.status(400).json({ error: "missionId is required" });
       const mission = await storage.getQuest(missionId);
       if (!mission || mission.userId !== userId) return res.status(404).json({ error: "Mission not found" });
-      if (mission.externalSource && mission.externalSource !== "google_tasks") {
-        return res.status(409).json({ error: "This mission is linked to another app. Remove that app link before linking it to Google Tasks." });
-      }
-
       const tasks = google.tasks({ version: "v1", auth: client.oauth2Client });
       const requestBody = googleTaskRequestBody(mission);
-      const existingAddress = mission.externalSource === "google_tasks"
-        ? await findGoogleTaskAddress(client.oauth2Client, mission.externalId || "")
-        : null;
+      const taskLink = await getMissionExternalLink(userId, mission.id, "google_tasks");
+      const existingAddress = taskLink ? await findGoogleTaskAddress(client.oauth2Client, taskLink.externalId) : null;
       if (existingAddress) {
         try {
           await tasks.tasks.patch({ tasklist: existingAddress.listId, task: existingAddress.taskId, requestBody });
-          return res.json({ success: true, action: "updated", externalId: mission.externalId, externalSource: "google_tasks" });
+          return res.json({ success: true, action: "updated", externalId: taskLink!.externalId, externalSource: "google_tasks" });
         } catch (error: any) {
           if (error?.code !== 404 && error?.response?.status !== 404) throw error;
         }
@@ -985,12 +998,7 @@ export function registerGoogleRoutes(app: Express): void {
       const created = await tasks.tasks.insert({ tasklist: "@default", requestBody });
       if (!created.data.id) throw new Error("Google Tasks did not return a task ID.");
       const externalId = encodeGoogleTaskExternalId({ listId: "@default", taskId: created.data.id });
-      await updateMissionLifecycle({
-        questId: mission.id,
-        userId,
-        updates: { externalId, externalSource: "google_tasks" },
-        source: "google",
-      });
+      await saveMissionExternalLink({ userId, questId: mission.id, provider: "google_tasks", externalId });
       return res.json({ success: true, action: "created", googleTaskId: created.data.id, externalId, externalSource: "google_tasks" });
     } catch (error: any) {
       if (error?.code === 401 || error?.response?.status === 401) return res.status(401).json({ error: "Google token expired. Please reconnect." });
@@ -1012,9 +1020,10 @@ export function registerGoogleRoutes(app: Express): void {
       if (!Number.isInteger(missionId) || missionId <= 0) return res.status(400).json({ error: "missionId is required" });
       const mission = await storage.getQuest(missionId);
       if (!mission || mission.userId !== userId) return res.status(404).json({ error: "Mission not found" });
-      if (mission.externalSource !== "google_tasks" || !mission.externalId) return res.status(409).json({ error: "This mission is not linked to a Google Task." });
+      const taskLink = await getMissionExternalLink(userId, mission.id, "google_tasks");
+      if (!taskLink) return res.status(409).json({ error: "This mission is not linked to a Google Task." });
 
-      const address = await findGoogleTaskAddress(client.oauth2Client, mission.externalId);
+      const address = await findGoogleTaskAddress(client.oauth2Client, taskLink.externalId);
       let action: "removed" | "already_removed" = "removed";
       if (address) {
         try {
@@ -1026,7 +1035,10 @@ export function registerGoogleRoutes(app: Express): void {
       } else {
         action = "already_removed";
       }
-      await updateMissionLifecycle({ questId: mission.id, userId, updates: { externalId: null, externalSource: null }, source: "google" });
+      await removeMissionExternalLink(userId, mission.id, "google_tasks");
+      if (mission.externalSource === "google_tasks" && mission.externalId === taskLink.externalId) {
+        await updateMissionLifecycle({ questId: mission.id, userId, updates: { externalId: null, externalSource: null }, source: "google" });
+      }
       return res.json({ success: true, action });
     } catch (error: any) {
       if (error?.code === 401 || error?.response?.status === 401) return res.status(401).json({ error: "Google token expired. Please reconnect." });
@@ -1124,9 +1136,7 @@ export function registerGoogleRoutes(app: Express): void {
       const integrations = await storage.getUserIntegrations(userId);
       const config = GOOGLE_SERVICE_CONFIG[service];
       const googleIntegration = integrations.find((i) => i.provider === config.provider);
-      const retainedMissionCount = (await storage.getQuests(userId)).filter(
-        (quest) => quest.externalSource === `google_${service}`,
-      ).length;
+      const retainedMissionCount = (await listMissionExternalLinks(userId, `google_${service}` as MissionExternalLink["provider"])).length;
       let providerRevocation: "confirmed" | "unconfirmed" | "not_needed" = "not_needed";
 
       if (googleIntegration) {

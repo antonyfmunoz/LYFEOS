@@ -40,6 +40,8 @@ describe("independent Google productivity integrations", () => {
     const permissions = source("shared/google-integration-permissions.ts");
     const profile = source("client/src/pages/ProfilePage.tsx");
     const quests = source("client/src/pages/QuestsPage.tsx");
+    const schema = source("shared/schema.ts");
+    const migration = source("migrations/0145_mission_external_links.sql");
 
     expect(google).toContain('const GOOGLE_TASKS_SCOPE = "https://www.googleapis.com/auth/tasks"');
     expect(google).toContain('app.post("/api/google/tasks/push"');
@@ -54,8 +56,13 @@ describe("independent Google productivity integrations", () => {
     expect(profile).toContain("read only — reconnect to permit task changes");
     expect(quests).toContain('data-testid={`mission-edit-sync-google-tasks-${editingQuest.id}`}');
     expect(quests).toContain('data-testid={`mission-edit-remove-google-tasks-${editingQuest.id}`}');
-    expect(quests).toContain('externalSource: result.externalSource');
+    expect(quests).toContain('withGoogleMissionLink(current, result.externalSource, result.externalId)');
     expect(google).toContain('externalSource: "google_tasks"');
+    expect(schema).toContain('pgTable("mission_external_links"');
+    expect(migration).toContain('UNIQUE ("quest_id", "provider")');
+    expect(quests).toContain('function googleMissionLink');
+    expect(google).not.toContain('Remove that app link before linking it to Google Tasks.');
+    expect(google).not.toContain('Remove that app link before linking it to Google Calendar.');
   });
 
   it("renders three independently controlled profile integrations", () => {

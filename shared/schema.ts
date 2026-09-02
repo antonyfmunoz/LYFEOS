@@ -660,6 +660,23 @@ export const quests = pgTable("quests", {
   index("quests_user_calendar_window_idx").on(table.userId, table.startDate, table.id).where(sql`${table.deletedAt} IS NULL AND ${table.startDate} IS NOT NULL`),
 ]);
 
+// A Mission may be shared with more than one connected app. This replaces the
+// legacy single external_id/external_source slot for provider synchronization
+// while keeping that slot available for older, non-provider integrations.
+export const missionExternalLinks = pgTable("mission_external_links", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  questId: integer("quest_id").notNull().references(() => quests.id, { onDelete: "cascade" }),
+  provider: text("provider").notNull(),
+  externalId: text("external_id").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("mission_external_links_quest_provider_unique").on(table.questId, table.provider),
+  uniqueIndex("mission_external_links_user_provider_external_unique").on(table.userId, table.provider, table.externalId),
+  index("mission_external_links_user_quest_idx").on(table.userId, table.questId),
+]);
+
 // A compact server receipt makes retrying an offline Calendar mutation safe.
 // It contains no mission payload: only the canonical payload hash and the
 // resulting mission version needed to distinguish an exact retry from reuse.
@@ -1431,6 +1448,7 @@ export type InsertUserIntegration = z.infer<typeof insertUserIntegrationsSchema>
 
 export type Quest = typeof quests.$inferSelect;
 export type InsertQuest = z.infer<typeof insertQuestSchema>;
+export type MissionExternalLink = typeof missionExternalLinks.$inferSelect;
 
 export type AIMessage = typeof aiMessages.$inferSelect;
 export type InsertAIMessage = z.infer<typeof insertAIMessageSchema>;

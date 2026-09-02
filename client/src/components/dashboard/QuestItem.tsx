@@ -215,7 +215,8 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
 
   const hasSchedule = startDate || startTime || endDate || endTime;
   const hasBeenStarted = elapsedSeconds !== undefined || isTimerActive;
-  const canSyncToGoogleCalendar = category !== "onboarding" && Boolean(startDate) && (!quest.externalSource || quest.externalSource === "google_calendar");
+  const googleCalendarLink = quest.externalLinks?.find((link) => link.provider === "google_calendar") || null;
+  const canSyncToGoogleCalendar = category !== "onboarding" && Boolean(startDate);
   const syncToGoogleCalendar = async () => {
     if (!startDate || isSyncingToGoogle) return;
     setIsSyncingToGoogle(true);
@@ -461,7 +462,7 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
                     void syncToGoogleCalendar();
                   }}
                 >
-                  {isSyncingToGoogle ? "Syncing…" : quest.externalSource === "google_calendar" ? "Update Calendar" : "Add to Calendar"}
+                  {isSyncingToGoogle ? "Syncing…" : googleCalendarLink ? "Update Calendar" : "Add to Calendar"}
                 </button>
               )}
               {!hasBeenStarted && onStart && (

@@ -5,7 +5,7 @@ import { storage } from "../storage";
 import { db } from "../db";
 import { logger, formatLocalDate, classifyMission } from "../utils";
 import { isAuthenticated, isOwner, calculateMissionCosts } from "./middleware";
-import { insertQuestSchema, insertMissionViewSchema, missionContracts, missionDeferrals, missionMutationReceipts, personalCapabilities, Quest, questSkillContributions, skillNodes, transformationThreadEvidence, transformationThreads, userDailyLogs, quests as questsTable } from "@shared/schema";
+import { insertQuestSchema, insertMissionViewSchema, missionContracts, missionDeferrals, missionExternalLinks, missionMutationReceipts, personalCapabilities, Quest, questSkillContributions, skillNodes, transformationThreadEvidence, transformationThreads, userDailyLogs, quests as questsTable } from "@shared/schema";
 import { allocateSkillExperience, buildSkillGraph } from "../skill-graph";
 import { missionExperience } from "@shared/progression";
 import { createMissionLifecycleResult, deferMissionLifecycle, MissionLifecycleError, setMissionCompletionLifecycle, toggleMissionLifecycle, updateMissionLifecycle } from "../mission-lifecycle";
@@ -73,6 +73,20 @@ export function registerQuestRoutes(app: Express): void {
   const publicMission = (quest: Quest) => {
     const { lifecycleKey: _lifecycleKey, lifecyclePayloadHash: _lifecyclePayloadHash, ...publicFields } = quest;
     return publicFields;
+  };
+
+  const publicMissionsWithExternalLinks = async (userId: number, missions: Quest[]) => {
+    if (missions.length === 0) return [];
+    const links = await db.select({ questId: missionExternalLinks.questId, provider: missionExternalLinks.provider, externalId: missionExternalLinks.externalId })
+      .from(missionExternalLinks)
+      .where(and(eq(missionExternalLinks.userId, userId), inArray(missionExternalLinks.questId, missions.map((mission) => mission.id))));
+    const linksByMission = new Map<number, Array<{ provider: string; externalId: string }>>();
+    for (const link of links) {
+      const items = linksByMission.get(link.questId) || [];
+      items.push({ provider: link.provider, externalId: link.externalId });
+      linksByMission.set(link.questId, items);
+    }
+    return missions.map((mission) => ({ ...publicMission(mission), externalLinks: linksByMission.get(mission.id) || [] }));
   };
 
   const conflictMission = (quest: Quest | undefined) => quest ? {
@@ -244,7 +258,7 @@ export function registerQuestRoutes(app: Express): void {
       const last = page.at(-1);
       res.setHeader("Cache-Control", "private, no-store");
       return res.json({
-        quests: page.map(publicMission),
+        quests: await publicMissionsWithExternalLinks(userId, page),
         range: { from: parsed.data.from, to: parsed.data.to },
         nextCursor: hasMore && last?.startDate ? encodeCalendarCursor({ startDate: last.startDate, id: last.id }) : null,
       });
@@ -336,7 +350,7 @@ export function registerQuestRoutes(app: Express): void {
       }
       
       const quests = await storage.getQuests(userId);
-      return res.status(200).json({ quests: quests.map(publicMission) });
+      return res.status(200).json({ quests: await publicMissionsWithExternalLinks(userId, quests) });
     } catch (error) {
       return res.status(500).json({ error: "Internal server error" });
     }

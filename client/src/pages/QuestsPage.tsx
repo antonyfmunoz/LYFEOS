@@ -103,6 +103,20 @@ interface MissionFormData {
   skillNodeIds: number[];
 }
 
+type GoogleMissionProvider = "google_calendar" | "google_tasks";
+
+function googleMissionLink(mission: Quest | null | undefined, provider: GoogleMissionProvider) {
+  return mission?.externalLinks?.find((link) => link.provider === provider) || null;
+}
+
+function withGoogleMissionLink(mission: Quest, provider: GoogleMissionProvider, externalId: string): Quest {
+  return { ...mission, externalLinks: [...(mission.externalLinks || []).filter((link) => link.provider !== provider), { provider, externalId }] };
+}
+
+function withoutGoogleMissionLink(mission: Quest, provider: GoogleMissionProvider): Quest {
+  return { ...mission, externalLinks: (mission.externalLinks || []).filter((link) => link.provider !== provider) };
+}
+
 const defaultFormData: MissionFormData = {
   title: "",
   description: "",
@@ -416,8 +430,9 @@ export default function QuestsPage() {
         body: JSON.stringify({ missionId: mission.id, ...(approvalId ? { approvalId } : {}) }),
       }));
       await refetchQuests(undefined, true);
+      await queryClient.invalidateQueries({ queryKey: ["calendar-missions"] });
       setEditingQuest((current) => current?.id === mission.id
-        ? { ...current, externalId: result.externalId, externalSource: result.externalSource }
+        ? withGoogleMissionLink(current, result.externalSource, result.externalId)
         : current);
       toast({
         title: result.action === "created" ? "Added to Google Calendar" : "Google Calendar updated",
@@ -437,16 +452,17 @@ export default function QuestsPage() {
   };
 
   const removeMissionFromGoogleCalendar = async (mission: Quest) => {
-    if (mission.externalSource !== "google_calendar" || !mission.externalId || isRemovingFromGoogleCalendar) return;
+    if (!googleMissionLink(mission, "google_calendar") || isRemovingFromGoogleCalendar) return;
     setIsRemovingFromGoogleCalendar(true);
     try {
       const result = await runWithApproval((approvalId) => apiRequest<{ action: "removed" | "already_removed" }>("/api/google/calendar/push", {
         method: "DELETE",
         body: JSON.stringify({ missionId: mission.id, ...(approvalId ? { approvalId } : {}) }),
       }));
-      await refetchQuests();
+      await refetchQuests(undefined, true);
+      await queryClient.invalidateQueries({ queryKey: ["calendar-missions"] });
       setEditingQuest((current) => current?.id === mission.id
-        ? { ...current, externalId: null, externalSource: null }
+        ? withoutGoogleMissionLink(current, "google_calendar")
         : current);
       toast({
         title: result.action === "removed" ? "Removed from Google Calendar" : "Google event already removed",
@@ -464,7 +480,7 @@ export default function QuestsPage() {
   };
 
   const pushMissionToGoogleTasks = async (mission: Quest) => {
-    if (isPushingGoogleTasks || (mission.externalSource && mission.externalSource !== "google_tasks")) return;
+    if (isPushingGoogleTasks) return;
     setIsPushingGoogleTasks(true);
     try {
       const result = await runWithApproval((approvalId) => apiRequest<{ action: "created" | "updated"; externalId: string; externalSource: "google_tasks" }>("/api/google/tasks/push", {
@@ -472,8 +488,9 @@ export default function QuestsPage() {
         body: JSON.stringify({ missionId: mission.id, ...(approvalId ? { approvalId } : {}) }),
       }));
       await refetchQuests(undefined, true);
+      await queryClient.invalidateQueries({ queryKey: ["calendar-missions"] });
       setEditingQuest((current) => current?.id === mission.id
-        ? { ...current, externalId: result.externalId, externalSource: result.externalSource }
+        ? withGoogleMissionLink(current, result.externalSource, result.externalId)
         : current);
       toast({
         title: result.action === "created" ? "Added to Google Tasks" : "Google Task updated",
@@ -493,16 +510,17 @@ export default function QuestsPage() {
   };
 
   const removeMissionFromGoogleTasks = async (mission: Quest) => {
-    if (mission.externalSource !== "google_tasks" || !mission.externalId || isRemovingFromGoogleTasks) return;
+    if (!googleMissionLink(mission, "google_tasks") || isRemovingFromGoogleTasks) return;
     setIsRemovingFromGoogleTasks(true);
     try {
       const result = await runWithApproval((approvalId) => apiRequest<{ action: "removed" | "already_removed" }>("/api/google/tasks/push", {
         method: "DELETE",
         body: JSON.stringify({ missionId: mission.id, ...(approvalId ? { approvalId } : {}) }),
       }));
-      await refetchQuests();
+      await refetchQuests(undefined, true);
+      await queryClient.invalidateQueries({ queryKey: ["calendar-missions"] });
       setEditingQuest((current) => current?.id === mission.id
-        ? { ...current, externalId: null, externalSource: null }
+        ? withoutGoogleMissionLink(current, "google_tasks")
         : current);
       toast({
         title: result.action === "removed" ? "Removed from Google Tasks" : "Google Task already removed",
@@ -3194,7 +3212,7 @@ export default function QuestsPage() {
             >
               {isSubmitting ? "Updating..." : "Update Mission"}
             </button>
-            {editingQuest?.startDate && canWriteGoogleCalendar && (!editingQuest.externalSource || editingQuest.externalSource === "google_calendar") && (
+            {editingQuest?.startDate && canWriteGoogleCalendar && (
               <button
                 type="button"
                 data-testid={`mission-edit-sync-google-calendar-${editingQuest.id}`}
@@ -3204,12 +3222,12 @@ export default function QuestsPage() {
               >
                 {isPushingCalendar
                   ? "Syncing Calendar..."
-                  : editingQuest.externalSource === "google_calendar"
+                  : googleMissionLink(editingQuest, "google_calendar")
                     ? "Update Google Calendar"
                     : "Add to Google Calendar"}
               </button>
             )}
-            {editingQuest?.externalSource === "google_calendar" && editingQuest.externalId && (
+            {googleMissionLink(editingQuest, "google_calendar") && (
               <button
                 type="button"
                 data-testid={`mission-edit-remove-google-calendar-${editingQuest.id}`}
@@ -3220,7 +3238,7 @@ export default function QuestsPage() {
                 {isRemovingFromGoogleCalendar ? "Removing from Google Calendar..." : "Remove from Google Calendar"}
               </button>
             )}
-            {editingQuest && canWriteGoogleTasks && (!editingQuest.externalSource || editingQuest.externalSource === "google_tasks") && (
+            {editingQuest && canWriteGoogleTasks && (
               <button
                 type="button"
                 data-testid={`mission-edit-sync-google-tasks-${editingQuest.id}`}
@@ -3230,12 +3248,12 @@ export default function QuestsPage() {
               >
                 {isPushingGoogleTasks
                   ? "Syncing Google Tasks..."
-                  : editingQuest.externalSource === "google_tasks"
+                  : googleMissionLink(editingQuest, "google_tasks")
                     ? "Update Google Task"
                     : "Add to Google Tasks"}
               </button>
             )}
-            {editingQuest?.externalSource === "google_tasks" && editingQuest.externalId && (
+            {googleMissionLink(editingQuest, "google_tasks") && (
               <button
                 type="button"
                 data-testid={`mission-edit-remove-google-tasks-${editingQuest.id}`}

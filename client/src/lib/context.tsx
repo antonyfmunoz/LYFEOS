@@ -745,6 +745,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
             linkedItems: quest.linkedItems || [],
             externalId: quest.externalId || null,
             externalSource: quest.externalSource || null,
+            externalLinks: Array.isArray(quest.externalLinks) ? quest.externalLinks : [],
             location: quest.location || null,
             allDay: quest.allDay || false,
             timezone: quest.timezone || null,
