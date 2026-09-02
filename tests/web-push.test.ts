@@ -24,15 +24,19 @@ describe("standards-based Web Push", () => {
 
   it("release-migrates owner devices and keeps browser permission explicit", () => {
     const migration = source("migrations/0134_web_push.sql");
+    const compatibilityMigration = source("migrations/0152_web_push_fcm_token_nullable.sql");
     const release = source("server/release-migrate.ts");
     const routes = source("server/routes/push-notifications.ts");
     const client = source("client/src/components/profile/PushNotificationSettings.tsx");
     expect(release).toContain('id: "0134_web_push"');
+    expect(release).toContain('id: "0152_web_push_fcm_token_nullable"');
+    expect(compatibilityMigration).toContain('ALTER COLUMN "fcm_token" DROP NOT NULL');
     expect(migration).toContain('ON DELETE CASCADE');
     expect(migration).toContain(`SET "status" = 'revoked'`);
     expect(migration).toContain('push_subscriptions_endpoint_unique_idx');
     expect(routes).toContain('existing.userId !== userId');
     expect(routes).toContain('Web Push is not configured.');
+    expect(routes).toContain('Web Push subscription write failed');
     expect(client).toContain('Notification.requestPermission()');
     expect(client).toContain('subscription.unsubscribe()');
   });

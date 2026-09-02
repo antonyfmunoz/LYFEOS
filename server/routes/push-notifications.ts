@@ -5,6 +5,7 @@ import { pushSubscriptions } from "@shared/schema";
 import { db } from "../db";
 import { sendPushToUser } from "../notificationScheduler";
 import { webPushConfiguration } from "../web-push";
+import { logger } from "../utils";
 import { isAuthenticated } from "./middleware";
 
 const subscriptionSchema = z.object({
@@ -34,14 +35,19 @@ export function registerPushNotificationRoutes(app: Express): void {
     if (!webPushConfiguration().configured) return res.status(503).json({ error: "Web Push is not configured." });
     const parsed = subscriptionSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: "Invalid push subscription." });
-    const userId = req.session.userId!;
-    const [existing] = await db.select().from(pushSubscriptions).where(eq(pushSubscriptions.endpoint, parsed.data.endpoint)).limit(1);
-    if (existing && existing.userId !== userId) return res.status(409).json({ error: "This browser subscription belongs to another account. Revoke browser permission before switching accounts." });
-    const values = { userId, endpoint: parsed.data.endpoint, p256dh: parsed.data.keys.p256dh, auth: parsed.data.keys.auth, expirationTime: parsed.data.expirationTime ? new Date(parsed.data.expirationTime) : null, fcmToken: null, status: "active", userAgent: req.get("user-agent")?.slice(0, 300) || null, failureCount: 0, lastFailureAt: null, updatedAt: new Date() } as const;
-    const [subscription] = existing
-      ? await db.update(pushSubscriptions).set(values).where(and(eq(pushSubscriptions.id, existing.id), eq(pushSubscriptions.userId, userId))).returning()
-      : await db.insert(pushSubscriptions).values(values).returning();
-    return res.status(existing ? 200 : 201).json({ subscription: { id: subscription.id, endpoint: subscription.endpoint, status: subscription.status, createdAt: subscription.createdAt } });
+    try {
+      const userId = req.session.userId!;
+      const [existing] = await db.select().from(pushSubscriptions).where(eq(pushSubscriptions.endpoint, parsed.data.endpoint)).limit(1);
+      if (existing && existing.userId !== userId) return res.status(409).json({ error: "This browser subscription belongs to another account. Revoke browser permission before switching accounts." });
+      const values = { userId, endpoint: parsed.data.endpoint, p256dh: parsed.data.keys.p256dh, auth: parsed.data.keys.auth, expirationTime: parsed.data.expirationTime ? new Date(parsed.data.expirationTime) : null, fcmToken: null, status: "active", userAgent: req.get("user-agent")?.slice(0, 300) || null, failureCount: 0, lastFailureAt: null, updatedAt: new Date() } as const;
+      const [subscription] = existing
+        ? await db.update(pushSubscriptions).set(values).where(and(eq(pushSubscriptions.id, existing.id), eq(pushSubscriptions.userId, userId))).returning()
+        : await db.insert(pushSubscriptions).values(values).returning();
+      return res.status(existing ? 200 : 201).json({ subscription: { id: subscription.id, endpoint: subscription.endpoint, status: subscription.status, createdAt: subscription.createdAt } });
+    } catch (error) {
+      logger.error("Web Push subscription write failed", { userId: req.session.userId, errorType: error instanceof Error ? error.name : "unknown" });
+      return res.status(503).json({ error: "This browser subscription could not be saved. Try again." });
+    }
   });
 
   app.delete("/api/push/subscriptions", isAuthenticated, async (req: Request, res: Response) => {

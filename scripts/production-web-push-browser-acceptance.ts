@@ -81,12 +81,14 @@ async function eraseAccount(account: Account): Promise<boolean> {
 async function runBrowserLifecycle(account: Account): Promise<{ endpointHost: string; provider: string | null }> {
   let browser: Browser | null = null;
   try {
+    console.error("web-push acceptance: launching isolated browser");
     browser = await puppeteer.launch({ headless: true, executablePath: await findChromium(), args: ["--no-first-run", "--no-default-browser-check"] });
     await within("Browser notification permission", browser.defaultBrowserContext().overridePermissions(BASE_URL.origin, ["notifications"]));
     const page = await browser.newPage();
     const session = cookieParts(account.cookie);
     await page.setCookie({ name: session.name, value: session.value, domain: BASE_URL.hostname, path: "/" });
     await within("Profile load", page.goto(new URL("/profile", BASE_URL), { waitUntil: "domcontentloaded", timeout: 30_000 }));
+    console.error("web-push acceptance: browser session and service worker ready");
     const result = await within("Browser push subscription lifecycle", page.evaluate(async () => {
       const config = await fetch("/api/push/config").then(async (response) => ({ status: response.status, body: await response.json() }));
       if (config.status !== 200 || !config.body.configured || !config.body.publicKey) throw new Error("Web Push is not configured in this release.");
@@ -98,14 +100,15 @@ async function runBrowserLifecycle(account: Account): Promise<{ endpointHost: st
       const payload = subscription.toJSON();
       if (!payload.endpoint || !payload.keys?.p256dh || !payload.keys.auth) throw new Error("The browser returned an incomplete push subscription.");
       const saved = await fetch("/api/push/subscriptions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ endpoint: payload.endpoint, expirationTime: payload.expirationTime ?? null, keys: payload.keys }) });
+      const savedBody = await saved.json().catch(() => ({}));
       const test = await fetch("/api/push/test", { method: "POST" });
       const testBody = await test.json().catch(() => ({}));
       const revoked = await fetch("/api/push/subscriptions", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ endpoint: payload.endpoint }) });
       const revokedBody = await revoked.json().catch(() => ({}));
       const unsubscribed = await subscription.unsubscribe();
-      return { savedStatus: saved.status, testStatus: test.status, delivered: Boolean(testBody.delivered), revokedStatus: revoked.status, revoked: Boolean(revokedBody.revoked), unsubscribed, endpointHost: new URL(payload.endpoint).host, provider: config.body.provider as string | null };
+      return { savedStatus: saved.status, savedError: typeof savedBody.error === "string" ? savedBody.error : null, testStatus: test.status, delivered: Boolean(testBody.delivered), revokedStatus: revoked.status, revoked: Boolean(revokedBody.revoked), unsubscribed, endpointHost: new URL(payload.endpoint).host, provider: config.body.provider as string | null };
     }));
-    assert(result.savedStatus === 201, `Push subscription returned ${result.savedStatus}.`);
+    assert(result.savedStatus === 201, `Push subscription returned ${result.savedStatus}${result.savedError ? `: ${result.savedError}` : ""}.`);
     assert(result.testStatus === 200 && result.delivered, `Push test delivery returned ${result.testStatus}.`);
     assert(result.revokedStatus === 200 && result.revoked && result.unsubscribed, "Push revocation did not complete in both LyfeOS and the browser.");
     return { endpointHost: result.endpointHost, provider: result.provider };
@@ -120,6 +123,7 @@ async function main(): Promise<void> {
   let erased = false;
   try {
     await registerDisposableAccount(account);
+    console.error("web-push acceptance: disposable account registered");
     const result = await runBrowserLifecycle(account);
     console.log(JSON.stringify({ contract: "lyfeos.production-web-push-browser.v1", passed: true, provider: result.provider, endpointHost: result.endpointHost }));
   } finally {

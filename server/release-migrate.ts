@@ -3527,6 +3527,12 @@ const migrations = [
           ADD COLUMN IF NOT EXISTS "food_evidence_snapshot" jsonb;
       `,
     },
+  {
+      id: "0152_web_push_fcm_token_nullable",
+      sql: `
+        ALTER TABLE "push_subscriptions" ALTER COLUMN "fcm_token" DROP NOT NULL;
+      `,
+    },
 ];
 
 async function run(): Promise<void> {
