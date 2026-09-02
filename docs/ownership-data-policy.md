@@ -2,12 +2,10 @@
 
 ## Decision
 
-LyfeOS will keep its consumer-brand ownership registry available as open data
-under the Open Database License 1.0 (ODbL), with source attribution and
-share-alike obligations preserved for any OpenCorporates-derived data.
-
-LyfeOS application source code is licensed separately. Choosing ODbL for the
-ownership dataset does not by itself select a source-code license.
+LyfeOS is a closed-source product. It must not integrate OpenCorporates data
+under a free/open-data plan unless the product owner and legal review confirm
+that the exact product and database distribution model satisfies its current
+licence terms. Until then, OpenCorporates is excluded from LyfeOS production.
 
 ## Evidence standard
 
@@ -33,19 +31,17 @@ Every published profile must retain:
 | USDA FoodData Central | U.S. nutrition and branded-food candidates | free data.gov-key access |
 | openFDA | recall research | free API access, rate limited |
 | SEC EDGAR | public-parent and filing research | public API, fair-access limits |
-| OpenCorporates | legal-entity research candidates | free only for compatible open-data use; API token required |
+| OpenCorporates | excluded pending a compatible commercial agreement or legal confirmation | do not use the free plan for the closed-source product |
 
-## OpenCorporates activation checklist
+## Closed-source operating path
 
-1. Create a free API account under the organization that will operate LyfeOS.
-2. Read and accept the current OpenCorporates attribution and share-alike
-   requirements.
-3. Store the token only in the production secret manager as
-   `OPEN_CORPORATES_API_TOKEN`; never place it in source control or chat.
-4. Enable the research adapter only after the public ownership-data notice and
-   attribution view are available.
-5. Treat every lookup as candidate research until a human reviewer publishes
-   cited evidence.
+1. Use official company portfolios, acquisition announcements, and SEC EDGAR
+   sources for ownership research.
+2. Preserve the source URL, access date, and reviewer decision for every
+   published brand profile.
+3. Do not scrape retailer sites or company registries contrary to their terms.
+4. Reconsider OpenCorporates only if LyfeOS obtains a compatible paid licence
+   or qualified legal advice confirms a compliant distribution arrangement.
 
 This document is product policy, not legal advice. Obtain legal review before
 shipping a public ownership-data export or making a source-code license choice.
