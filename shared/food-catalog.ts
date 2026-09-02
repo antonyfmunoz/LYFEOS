@@ -29,6 +29,17 @@ export const foodCatalogCertificationSchema = z.object({
   label: z.string().trim().min(1).max(120),
 }).strict();
 
+// Evidence describes what the provider record is, not whether its values are
+// correct for the package in a user's hand. It makes catalog limits visible
+// instead of turning missing fields into an implied all-clear.
+export const foodCatalogEvidenceSchema = z.object({
+  sourceKind: z.enum(["community_catalog", "government_branded_database", "government_reference_database", "provider_classification_unavailable"]),
+  measurementBasis: z.enum(["catalog_or_label_reported", "government_reference", "provider_basis_unavailable"]),
+  recordUpdatedAt: z.string().datetime().nullable(),
+  reportedNutrientCount: z.number().int().min(0).max(100),
+  reportedCoreNutrientKeys: z.array(z.enum(["energy_kcal", "protein_g", "carbohydrate_g", "fat_g", "saturated_fat_g", "fiber_g", "sugar_g", "sodium_mg"])).max(8),
+}).strict();
+
 export const foodCatalogItemSchema = z.object({
   externalId: z.string().trim().min(1).max(200),
   itemVersion: z.string().trim().min(1).max(120),
@@ -42,11 +53,15 @@ export const foodCatalogItemSchema = z.object({
   certifications: z.array(foodCatalogCertificationSchema).max(10).default([]),
   portions: z.array(foodCatalogPortionSchema).max(25).default([]),
   nutrients: z.array(foodCatalogNutrientSchema).max(100),
+  evidence: foodCatalogEvidenceSchema,
 }).strict().superRefine((value, context) => {
   const keys = value.nutrients.map((nutrient) => nutrient.nutrientKey);
   if (new Set(keys).size !== keys.length) context.addIssue({ code: z.ZodIssueCode.custom, message: "Catalog nutrients must be unique." });
   const portionLabels = value.portions.map((portion) => portion.label.toLocaleLowerCase());
   if (new Set(portionLabels).size !== portionLabels.length) context.addIssue({ code: z.ZodIssueCode.custom, message: "Catalog portion labels must be unique." });
+  if (value.evidence.reportedNutrientCount !== value.nutrients.length) context.addIssue({ code: z.ZodIssueCode.custom, path: ["evidence", "reportedNutrientCount"], message: "Catalog evidence must report the actual nutrient count." });
+  const reportedCore = value.nutrients.filter((nutrient) => ["energy_kcal", "protein_g", "carbohydrate_g", "fat_g", "saturated_fat_g", "fiber_g", "sugar_g", "sodium_mg"].includes(nutrient.nutrientKey)).map((nutrient) => nutrient.nutrientKey).sort();
+  if (JSON.stringify([...value.evidence.reportedCoreNutrientKeys].sort()) !== JSON.stringify(reportedCore)) context.addIssue({ code: z.ZodIssueCode.custom, path: ["evidence", "reportedCoreNutrientKeys"], message: "Catalog evidence must list exactly the reported core nutrients." });
 });
 
 export const foodCatalogSearchResponseSchema = z.object({

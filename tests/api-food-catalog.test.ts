@@ -10,7 +10,7 @@ async function request(method: string, path: string, body?: unknown, cookie = ""
 }
 
 const provider = { id: "licensed_fixture", name: "Licensed Fixture", datasetVersion: "2026-08-24", territories: ["US"], attributionText: "Fixture attribution", attributionUrl: "https://catalog.example/terms" };
-const item = { externalId: "catalog-food-1", itemVersion: "rev-1", name: "Catalog oats", brand: "Fixture", barcode: "12345678", locale: "en-US", territory: "US", servingSizeGrams: 40, ingredientsText: "Whole grain oats, salt", portions: [{ label: "1 cup", gramsPerUnit: 80 }, { label: "1 packet", gramsPerUnit: 40 }], nutrients: [{ nutrientKey: "energy_kcal", amountPer100g: 375, unit: "kcal" }, { nutrientKey: "protein_g", amountPer100g: 12.5, unit: "g" }] };
+const item = { externalId: "catalog-food-1", itemVersion: "rev-1", name: "Catalog oats", brand: "Fixture", barcode: "12345678", locale: "en-US", territory: "US", servingSizeGrams: 40, ingredientsText: "Whole grain oats, salt", portions: [{ label: "1 cup", gramsPerUnit: 80 }, { label: "1 packet", gramsPerUnit: 40 }], nutrients: [{ nutrientKey: "energy_kcal", amountPer100g: 375, unit: "kcal" }, { nutrientKey: "protein_g", amountPer100g: 12.5, unit: "g" }], evidence: { sourceKind: "government_branded_database", measurementBasis: "catalog_or_label_reported", recordUpdatedAt: "2026-08-24T00:00:00.000Z", reportedNutrientCount: 2, reportedCoreNutrientKeys: ["energy_kcal", "protein_g"] } };
 
 describeApi("food catalog authenticated import contract", () => {
   const stamp = `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;

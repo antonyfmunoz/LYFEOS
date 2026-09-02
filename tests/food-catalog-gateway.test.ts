@@ -22,6 +22,7 @@ const item = {
   locale: "en-US", territory: "US", servingSizeGrams: 42, ingredientsText: "Oats, water",
   portions: [{ label: "1 cup", gramsPerUnit: 84 }, { label: "1 package", gramsPerUnit: 42 }],
   nutrients: [{ nutrientKey: "energy_kcal", amountPer100g: 120, unit: "kcal" }],
+  evidence: { sourceKind: "government_branded_database", measurementBasis: "catalog_or_label_reported", recordUpdatedAt: "2026-08-24T00:00:00.000Z", reportedNutrientCount: 1, reportedCoreNutrientKeys: ["energy_kcal"] },
 };
 const env = {
   FOOD_CATALOG_GATEWAY_URL: "https://catalog.example",
@@ -117,6 +118,7 @@ describe("food catalog gateway", () => {
     expect(search.provider.attributionText).toContain("Open Database License");
     expect(search.nextCursor).toBeTruthy();
     expect(search.items[0].nutrients).toEqual(expect.arrayContaining([{ nutrientKey: "energy_kcal", amountPer100g: 539, unit: "kcal" }, { nutrientKey: "sodium_mg", amountPer100g: 42.8, unit: "mg" }]));
+    expect(search.items[0].evidence).toMatchObject({ sourceKind: "community_catalog", measurementBasis: "catalog_or_label_reported", recordUpdatedAt: "2023-11-14T22:13:20.000Z" });
     const barcode = await (await import("../server/food-catalog")).lookupFoodCatalogBarcode("3017620422003", openFoodFactsEnv, fetchMock as typeof fetch);
     expect(barcode.item?.ingredientsText).toBe("Sugar, hazelnuts");
     expect(barcode.item?.certifications).toEqual([{ kind: "kosher", status: "catalog_label_reported", label: "Kosher label reported by catalog" }]);
@@ -126,7 +128,7 @@ describe("food catalog gateway", () => {
   it("supports a separately selected USDA FoodData Central nutrient source and preserves its provenance", async () => {
     expect(getFoodCatalogConfigs({ ...openFoodFactsEnv, ...usdaFoodDataEnv })).toEqual(expect.arrayContaining([expect.objectContaining({ kind: "open_food_facts" }), expect.objectContaining({ kind: "usda_fooddata_central" })]));
     const food = {
-      fdcId: 12345, description: "Oats, raw", brandOwner: "USDA", gtinUpc: "012345678905", publishedDate: "2026-08-01", servingSize: 40, servingSizeUnit: "g", householdServingFullText: "1/2 cup",
+      fdcId: 12345, dataType: "Foundation", description: "Oats, raw", brandOwner: "USDA", gtinUpc: "012345678905", publishedDate: "2026-08-01", servingSize: 40, servingSizeUnit: "g", householdServingFullText: "1/2 cup",
       foodNutrients: [{ nutrientId: 1008, nutrientName: "Energy", unitName: "KCAL", value: 379 }, { nutrientId: 1003, nutrientName: "Protein", unitName: "G", value: 13.15 }, { nutrientId: 1093, nutrientName: "Sodium, Na", unitName: "MG", value: 6 }],
     };
     const fetchMock = vi.fn(async (url: string | URL | Request) => {
@@ -137,6 +139,7 @@ describe("food catalog gateway", () => {
     const search = await searchFoodCatalog({ query: "oats", territory: "US", locale: "en-US", limit: 10, providerId: "usda_fooddata_central" }, usdaFoodDataEnv, fetchMock as typeof fetch);
     expect(search.provider.id).toBe("usda_fooddata_central");
     expect(search.items[0].nutrients).toEqual(expect.arrayContaining([{ nutrientKey: "energy_kcal", amountPer100g: 379, unit: "kcal" }, { nutrientKey: "protein_g", amountPer100g: 13.15, unit: "g" }]));
+    expect(search.items[0].evidence).toMatchObject({ sourceKind: "government_reference_database", measurementBasis: "government_reference", recordUpdatedAt: "2026-08-01T00:00:00.000Z" });
     const barcode = await (await import("../server/food-catalog")).lookupFoodCatalogBarcode("012345678905", "usda_fooddata_central", usdaFoodDataEnv, fetchMock as typeof fetch);
     expect(barcode.item?.barcode).toBe("012345678905");
     expect(JSON.stringify(search)).not.toContain(usdaFoodDataEnv.USDA_FOODDATA_API_KEY!);

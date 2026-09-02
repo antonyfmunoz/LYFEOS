@@ -258,6 +258,33 @@ function openFoodFactsCertifications(product: Record<string, unknown>) {
   return kosher ? [{ kind: "kosher" as const, status: "catalog_label_reported" as const, label: "Kosher label reported by catalog" }] : [];
 }
 
+const reportedCoreNutrientKeys = new Set(["energy_kcal", "protein_g", "carbohydrate_g", "fat_g", "saturated_fat_g", "fiber_g", "sugar_g", "sodium_mg"]);
+
+function evidenceForCatalogRecord(
+  nutrients: FoodCatalogItem["nutrients"],
+  sourceKind: FoodCatalogItem["evidence"]["sourceKind"],
+  measurementBasis: FoodCatalogItem["evidence"]["measurementBasis"],
+  recordUpdatedAt: string | null,
+): FoodCatalogItem["evidence"] {
+  return {
+    sourceKind,
+    measurementBasis,
+    recordUpdatedAt,
+    reportedNutrientCount: nutrients.length,
+    reportedCoreNutrientKeys: nutrients.filter((nutrient) => reportedCoreNutrientKeys.has(nutrient.nutrientKey)).map((nutrient) => nutrient.nutrientKey).sort() as FoodCatalogItem["evidence"]["reportedCoreNutrientKeys"],
+  };
+}
+
+function isoFromEpochSeconds(value: unknown): string | null {
+  return typeof value === "number" && Number.isInteger(value) && value > 0 ? new Date(value * 1_000).toISOString() : null;
+}
+
+function isoFromPublishedDate(value: unknown): string | null {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value.trim())) return null;
+  const parsed = new Date(`${value.trim()}T00:00:00.000Z`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+}
+
 function normalizedOpenFoodFactsItem(raw: unknown, territory: string, locale: string): FoodCatalogItem | null {
   if (!raw || typeof raw !== "object") return null;
   const product = raw as Record<string, unknown>;
@@ -287,6 +314,7 @@ function normalizedOpenFoodFactsItem(raw: unknown, territory: string, locale: st
     certifications: openFoodFactsCertifications(product),
     portions,
     nutrients,
+    evidence: evidenceForCatalogRecord(nutrients, "community_catalog", "catalog_or_label_reported", isoFromEpochSeconds(product.last_modified_t)),
   };
 }
 
@@ -321,6 +349,14 @@ function normalizedUsdaFoodDataItem(raw: unknown, territory: string, locale: str
   const servingSizeGrams = serving && servingUnit === "g" ? serving : 100;
   const householdServing = typeof food.householdServingFullText === "string" ? food.householdServingFullText.trim().slice(0, 80) : "";
   const gtin = typeof food.gtinUpc === "string" ? food.gtinUpc.trim() : "";
+  const dataType = typeof food.dataType === "string" ? food.dataType.trim().toLowerCase() : "";
+  const referenceRecord = ["foundation", "sr legacy", "survey (fndds)"].includes(dataType);
+  const evidence = evidenceForCatalogRecord(
+    Array.from(nutrientsByKey.values()),
+    referenceRecord ? "government_reference_database" : dataType === "branded" ? "government_branded_database" : "provider_classification_unavailable",
+    referenceRecord ? "government_reference" : dataType === "branded" ? "catalog_or_label_reported" : "provider_basis_unavailable",
+    isoFromPublishedDate(food.publishedDate),
+  );
   return {
     externalId: fdcId,
     itemVersion: typeof food.publishedDate === "string" && food.publishedDate.trim() ? food.publishedDate.trim().slice(0, 120) : "live-api",
@@ -334,6 +370,7 @@ function normalizedUsdaFoodDataItem(raw: unknown, territory: string, locale: str
     certifications: [],
     portions: householdServing && serving && servingUnit === "g" ? [{ label: householdServing, gramsPerUnit: serving }] : [],
     nutrients: Array.from(nutrientsByKey.values()),
+    evidence,
   };
 }
 
