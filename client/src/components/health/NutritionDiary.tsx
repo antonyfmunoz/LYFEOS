@@ -1,4 +1,4 @@
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Apple, ChevronDown, ChevronLeft, ChevronRight, Pencil, Plus, Settings2, Star, Trash2, Utensils } from "lucide-react";
 import { apiRequest, queryClient, timeContextHeaders } from "@/lib/queryClient";
@@ -36,7 +36,7 @@ function today(): string { return getLocalDateString(); }
 function previousDay(date: string): string { const value = new Date(`${date}T00:00:00.000Z`); value.setUTCDate(value.getUTCDate() - 1); return value.toISOString().slice(0, 10); }
 function nextDay(date: string): string { const value = new Date(`${date}T00:00:00.000Z`); value.setUTCDate(value.getUTCDate() + 1); return value.toISOString().slice(0, 10); }
 function invalidNumber(value: string): boolean { return !Number.isFinite(Number(value)) || Number(value) <= 0; }
-export default function NutritionDiary() {
+export default function NutritionDiary({ importedFoodId, onImportedFoodHandled }: { importedFoodId?: number | null; onImportedFoodHandled?: () => void }) {
   const { attempt: foodCatalogAttempt, Component: FoodCatalogSearch, retry: retryFoodCatalog } = useDeferredFeature(loadFoodCatalogSearch);
   const { attempt: nutritionReportsAttempt, Component: NutritionReportsPanel, retry: retryNutritionReports } = useDeferredFeature(loadNutritionReportsPanel);
   const { user } = useAuth();
@@ -94,6 +94,12 @@ export default function NutritionDiary() {
   const nutritionTargetUnit = (kind: string) => (kind === "energy" || kind === "energy_kcal") ? energyUnit : nutrientRegistry.data?.nutrients.find((nutrient) => nutrient.nutrientKey === kind)?.unit || (kind === "sodium" ? "mg" : "g");
   const isNutritionTarget = (kind: string) => ["energy", "protein", "carbohydrate", "fat", "fiber", "sugar", "sodium"].includes(kind) || Boolean(nutrientRegistry.data?.nutrients.some((nutrient) => nutrient.nutrientKey === kind));
   const selectedFood = useMemo(() => foods.data?.foods.find((food) => food.id === Number(selectedFoodId)), [foods.data, selectedFoodId]);
+  useEffect(() => {
+    if (!importedFoodId) return;
+    const importedFood = foods.data?.foods.find((food) => food.id === importedFoodId);
+    setEditingEntryId(null); setSelectedFoodId(String(importedFoodId)); setInputUnit("g"); setInputPortionId(""); setServingGrams(importedFood ? String(importedFood.servingSizeGrams) : "100"); setExpanded(true);
+    onImportedFoodHandled?.();
+  }, [foods.data?.foods, importedFoodId, onImportedFoodHandled]);
   const mealSummaries = useMemo(() => {
     const summaries = new Map<string, { entries: number; recordedEnergyEntries: number; energyKcal: number }>();
     for (const entry of diary.data?.entries || []) {

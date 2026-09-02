@@ -14,7 +14,7 @@ type CatalogStatus = { available: boolean; reason: string | null; providers?: Ar
 type CatalogLookup = { provider: { name: string; datasetVersion: string; attributionText: string; attributionUrl?: string | null }; item: { name: string; barcode?: string | null; ingredientsText?: string | null; nutrients: Array<{ nutrientKey: string; amountPer100g: number; unit: string }>; lookupToken: string } | null; found: boolean; disclosure: string };
 type CatalogImportCandidate = { name: string; hasEnergy: boolean; nutrientCount: number };
 
-export default function IngredientScanner() {
+export default function IngredientScanner({ onCatalogFoodImported }: { onCatalogFoodImported?: (foodId: number) => void }) {
   const [productName, setProductName] = useState("");
   const [barcode, setBarcode] = useState("");
   const [ingredients, setIngredients] = useState("");
@@ -66,9 +66,10 @@ export default function IngredientScanner() {
       if (!catalogLookupToken) throw new Error("Search the catalog again before saving a private food.");
       return apiRequest<{ food: { id: number }; replayed: boolean }>("/api/nutrition/foods/catalog-import", { method: "POST", body: JSON.stringify({ lookupToken: catalogLookupToken }) });
     },
-    onSuccess: ({ replayed }) => {
+    onSuccess: ({ food, replayed }) => {
       setCatalogLookupToken(null); setCatalogImportCandidate(null);
-      setCameraStatus(replayed ? "That catalog food was already saved privately. You can select it in Nutrition Diary." : "Saved a private food copy. You can now select it in Nutrition Diary.");
+      onCatalogFoodImported?.(food.id);
+      setCameraStatus(replayed ? "That catalog food was already saved privately and is ready in Nutrition Diary." : "Saved a private food copy and opened it in Nutrition Diary.");
     },
   });
   const remove = useMutation({

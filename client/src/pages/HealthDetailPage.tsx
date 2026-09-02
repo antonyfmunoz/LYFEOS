@@ -89,7 +89,13 @@ export default function HealthDetailPage() {
   const { user } = useAuth();
   const { stats, computedStats } = useLYFEOS();
   const [days, setDays] = useState(30);
+  const [importedNutritionFoodId, setImportedNutritionFoodId] = useState<number | null>(null);
   const healthProfile = useQuery<{ profile: { trackedDomains?: HealthTrackingDomain[] } | null }>({ queryKey: ["/api/health-fitness/profile"], queryFn: () => apiRequest("/api/health-fitness/profile"), enabled: !!user });
+
+  useEffect(() => {
+    if (!importedNutritionFoodId) return;
+    document.getElementById("health-section-nutrition")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [importedNutritionFoodId]);
 
   const { data, isLoading } = useQuery<any>({
     queryKey: ['/api/stat-analytics', { days }],
@@ -189,11 +195,11 @@ export default function HealthDetailPage() {
 
       <DeferredHealthSection label="capability evidence"><CapabilityEvidencePanel /></DeferredHealthSection>
 
-      <DeferredHealthSection label="nutrition diary" targetId="health-section-nutrition"><NutritionDiary /></DeferredHealthSection>
+      <DeferredHealthSection label="nutrition diary" targetId="health-section-nutrition"><NutritionDiary importedFoodId={importedNutritionFoodId} onImportedFoodHandled={() => setImportedNutritionFoodId(null)} /></DeferredHealthSection>
 
       <DeferredHealthSection label="meal planning" targetId="health-section-planning"><MealPlanner /></DeferredHealthSection>
 
-      <DeferredHealthSection label="ingredient scanner"><IngredientScanner /></DeferredHealthSection>
+      <DeferredHealthSection label="ingredient scanner"><IngredientScanner onCatalogFoodImported={setImportedNutritionFoodId} /></DeferredHealthSection>
 
       <DeferredHealthSection label="exercise library"><ExerciseLibrary /></DeferredHealthSection>
 

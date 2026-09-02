@@ -301,10 +301,16 @@ describe("health and fitness foundation", () => {
 
   it("requires an explicit nutrition import after a source-attributed barcode lookup", () => {
     const scanner = readFileSync(resolve(process.cwd(), "client/src/components/health/IngredientScanner.tsx"), "utf8");
+    const diary = readFileSync(resolve(process.cwd(), "client/src/components/health/NutritionDiary.tsx"), "utf8");
+    const healthPage = readFileSync(resolve(process.cwd(), "client/src/pages/HealthDetailPage.tsx"), "utf8");
     expect(scanner).toContain("Save scanned food as private copy");
     expect(scanner).toContain('"/api/nutrition/foods/catalog-import"');
     expect(scanner).toContain("catalogImportCandidate.hasEnergy");
     expect(scanner).toContain("setCatalogImportCandidate(null)");
+    expect(scanner).toContain("onCatalogFoodImported?.(food.id)");
+    expect(diary).toContain("importedFoodId");
+    expect(diary).toContain("setExpanded(true)");
+    expect(healthPage).toContain('"health-section-nutrition"');
   });
 
   it("keeps structured workouts and exercise details in the release and private-account paths", () => {
