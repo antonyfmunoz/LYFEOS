@@ -28,6 +28,12 @@ const env = {
   FOOD_CATALOG_LOOKUP_SIGNING_SECRET: "a-signing-secret-that-is-at-least-32-characters",
 } as NodeJS.ProcessEnv;
 
+const openFoodFactsEnv = {
+  OPEN_FOOD_FACTS_ENABLED: "true",
+  OPEN_FOOD_FACTS_USER_AGENT: "LyfeOS/1.0 (https://lyfeos.net; support@lyfeos.net)",
+  FOOD_CATALOG_LOOKUP_SIGNING_SECRET: env.FOOD_CATALOG_LOOKUP_SIGNING_SECRET,
+} as NodeJS.ProcessEnv;
+
 describe("food catalog gateway", () => {
   it("fails closed for partial, insecure, or short-secret configuration", () => {
     expect(getFoodCatalogConfig({})).toBeNull();
@@ -85,6 +91,27 @@ describe("food catalog gateway", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it("supports an explicit Open Food Facts barcode and search adapter with attribution and no client provider secret", async () => {
+    expect(getFoodCatalogConfig(openFoodFactsEnv)).toMatchObject({ kind: "open_food_facts" });
+    expect(getFoodCatalogConfig({ ...openFoodFactsEnv, OPEN_FOOD_FACTS_USER_AGENT: "short" })).toBeNull();
+    const product = {
+      code: "3017620422003", product_name: "Nutella", brands: "Ferrero", ingredients_text: "Sugar, hazelnuts", serving_size: "15 g", last_modified_t: 1_700_000_000,
+      nutriments: { "energy-kcal_100g": 539, "energy-kcal_unit": "kcal", proteins_100g: 6.3, proteins_unit: "g", sodium_100g: 0.0428, sodium_unit: "g" },
+    };
+    const fetchMock = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      expect(init?.headers).toEqual(expect.objectContaining({ "User-Agent": openFoodFactsEnv.OPEN_FOOD_FACTS_USER_AGENT }));
+      if (String(url).includes("/api/v3/product/")) return new Response(JSON.stringify({ status: 1, product }), { status: 200 });
+      return new Response(JSON.stringify({ products: [product], page_count: 1 }), { status: 200 });
+    });
+    const search = await searchFoodCatalog({ query: "nutella", territory: "US", locale: "en-US", limit: 10 }, openFoodFactsEnv, fetchMock as typeof fetch);
+    expect(search.provider.id).toBe("open_food_facts");
+    expect(search.provider.attributionText).toContain("Open Database License");
+    expect(search.items[0].nutrients).toEqual(expect.arrayContaining([{ nutrientKey: "energy_kcal", amountPer100g: 539, unit: "kcal" }, { nutrientKey: "sodium_mg", amountPer100g: 42.8, unit: "mg" }]));
+    const barcode = await (await import("../server/food-catalog")).lookupFoodCatalogBarcode("3017620422003", openFoodFactsEnv, fetchMock as typeof fetch);
+    expect(barcode.item?.ingredientsText).toBe("Sugar, hazelnuts");
+    expect(JSON.stringify(search)).not.toContain("FOOD_CATALOG_GATEWAY_TOKEN");
+  });
+
   it("wires private routes, explicit import, provenance columns, and fail-closed UI", () => {
     const routes = readFileSync(resolve(process.cwd(), "server/routes/food-catalog.ts"), "utf8");
     const nutrition = readFileSync(resolve(process.cwd(), "server/routes/nutrition.ts"), "utf8");
@@ -98,6 +125,7 @@ describe("food catalog gateway", () => {
     expect(nutrition).toContain("verifyConfiguredFoodCatalogToken");
     expect(scanner).toContain("catalogLookupToken");
     expect(ui).toContain("Save private copy");
+    expect(ui).toContain("configured data provider");
     expect(ui).toContain("Manual foods remain available");
     expect(ui).toContain("Load more results");
     expect(migration).toContain('"catalog_attribution_text"');

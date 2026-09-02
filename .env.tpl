@@ -39,3 +39,7 @@ POSTHOG_ADMIN_HOST=https://us.posthog.com
 # FOOD_CATALOG_GATEWAY_URL=https://catalog-gateway.example.com
 # FOOD_CATALOG_GATEWAY_TOKEN=replace-with-server-token
 # FOOD_CATALOG_LOOKUP_SIGNING_SECRET=generate-a-random-32-byte-or-longer-value
+# Or explicitly activate the built-in read-only Open Food Facts adapter. It
+# requires a contactable User-Agent and preserves visible ODbL attribution.
+# OPEN_FOOD_FACTS_ENABLED=true
+# OPEN_FOOD_FACTS_USER_AGENT=LyfeOS/1.0 (https://lyfeos.net; support@lyfeos.net)
