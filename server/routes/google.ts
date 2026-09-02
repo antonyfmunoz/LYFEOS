@@ -60,6 +60,7 @@ const GOOGLE_ACTIONS = {
   calendarRead: { key: "google.calendar.read_events", title: "Read Google Calendar", summary: "View Google Calendar event details for LyfeOS planning.", capability: "read", risk: "low", futureAction: false },
   calendarSync: { key: "google.calendar.sync", title: "Sync Google Calendar", summary: "Import Google Calendar changes into your LyfeOS missions.", capability: "import", risk: "medium", futureAction: false },
   calendarPush: { key: "google.calendar.push", title: "Change Google Calendar", summary: "Create or update a Google Calendar event from a LyfeOS mission.", capability: "write", risk: "important", futureAction: false },
+  calendarDelete: { key: "google.calendar.delete_event", title: "Remove Google Calendar event", summary: "Delete the Google Calendar event linked to this LyfeOS mission. The LyfeOS mission will be kept.", capability: "write", risk: "important", futureAction: false },
   tasksRead: { key: "google.tasks.read", title: "Read Google Tasks", summary: "View active tasks from your connected Google Tasks account.", capability: "read", risk: "low", futureAction: false },
   tasksImport: { key: "google.tasks.import", title: "Import Google Tasks", summary: "Create LyfeOS missions from active Google Tasks.", capability: "import", risk: "medium", futureAction: false },
   driveFolders: { key: "google.drive.list_folders", title: "Browse Google Drive folders", summary: "View folder names and structure from your connected Google Drive.", capability: "read", risk: "low", futureAction: false },
@@ -758,6 +759,50 @@ export function registerGoogleRoutes(app: Express): void {
       }
       logGoogleFailure("Google Calendar push failed", error, req.session.userId);
       return res.status(500).json({ error: "Failed to push mission to Google" });
+    }
+  });
+
+  app.delete("/api/google/calendar/push", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId as number;
+      const client = await getAuthenticatedClient(userId, "calendar");
+
+      if (!client) return res.status(401).json({ error: "Google not connected" });
+      if (!hasGoogleScope(client, GOOGLE_CALENDAR_SCOPE)) return res.status(403).json({ error: "Google Calendar permission was not granted. Reconnect Google to enable this feature." });
+      if (!requireGoogleCapability(res, client, "calendar", "write")) return;
+      if (!await requireGoogleActionApproval(req, res, client, "calendar", GOOGLE_ACTIONS.calendarDelete)) return;
+
+      const { missionId } = req.body;
+      if (!missionId) return res.status(400).json({ error: "missionId is required" });
+
+      const mission = await storage.getQuest(missionId);
+      if (!mission || mission.userId !== userId) return res.status(404).json({ error: "Mission not found" });
+      if (mission.externalSource !== "google_calendar" || !mission.externalId) {
+        return res.status(409).json({ error: "This mission is not linked to a Google Calendar event." });
+      }
+
+      const calendar = google.calendar({ version: "v3", auth: client.oauth2Client });
+      let action: "removed" | "already_removed" = "removed";
+      try {
+        await calendar.events.delete({ calendarId: "primary", eventId: mission.externalId });
+      } catch (error: any) {
+        if (error?.code === 404 || error?.response?.status === 404) action = "already_removed";
+        else throw error;
+      }
+
+      await updateMissionLifecycle({
+        questId: mission.id,
+        userId,
+        updates: { externalId: null, externalSource: null },
+        source: "google",
+      });
+      return res.json({ success: true, action });
+    } catch (error: any) {
+      if (error?.code === 401 || error?.response?.status === 401) {
+        return res.status(401).json({ error: "Google token expired. Please reconnect." });
+      }
+      logGoogleFailure("Google Calendar event removal failed", error, req.session.userId);
+      return res.status(500).json({ error: "Failed to remove the Google Calendar event" });
     }
   });
 

@@ -353,6 +353,7 @@ export default function QuestsPage() {
 
   const [isSyncing, setIsSyncing] = useState(false);
   const [isPushingCalendar, setIsPushingCalendar] = useState(false);
+  const [isRemovingFromGoogleCalendar, setIsRemovingFromGoogleCalendar] = useState(false);
   const syncGoogle = async (mode: 'calendar' | 'tasks') => {
     if (isSyncing) return;
     setIsSyncing(true);
@@ -425,6 +426,33 @@ export default function QuestsPage() {
       }
     } finally {
       setIsPushingCalendar(false);
+    }
+  };
+
+  const removeMissionFromGoogleCalendar = async (mission: Quest) => {
+    if (mission.externalSource !== "google_calendar" || !mission.externalId || isRemovingFromGoogleCalendar) return;
+    setIsRemovingFromGoogleCalendar(true);
+    try {
+      const result = await runWithApproval((approvalId) => apiRequest<{ action: "removed" | "already_removed" }>("/api/google/calendar/push", {
+        method: "DELETE",
+        body: JSON.stringify({ missionId: mission.id, ...(approvalId ? { approvalId } : {}) }),
+      }));
+      await refetchQuests();
+      setEditingQuest((current) => current?.id === mission.id
+        ? { ...current, externalId: null, externalSource: null }
+        : current);
+      toast({
+        title: result.action === "removed" ? "Removed from Google Calendar" : "Google event already removed",
+        description: "Your LyfeOS mission was kept and is no longer linked to Google Calendar.",
+      });
+    } catch (error) {
+      if (error instanceof IntegrationActionDeniedError) {
+        toast({ title: "Calendar removal cancelled", description: "Google Calendar was not changed." });
+      } else {
+        toast({ title: "Calendar removal failed", description: "Check your Google Calendar connection and its Change Google Calendar permission.", variant: "destructive" });
+      }
+    } finally {
+      setIsRemovingFromGoogleCalendar(false);
     }
   };
 
@@ -1413,6 +1441,19 @@ export default function QuestsPage() {
     await deleteQuest(quest.id);
     setArchivedQuests(prev => [...prev, { ...questCopy, id: questCopy.id as any, deletedAt: new Date().toISOString() } as any]);
   }, [deleteQuest]);
+
+  const handleDeleteMissionFromEditor = async () => {
+    if (!editingQuest || isSubmitting) return;
+    try {
+      await handleDeleteMission(editingQuest);
+      setEditFormData(defaultFormData);
+      setEditingQuest(null);
+      setIsEditOpen(false);
+      toast({ title: "Mission archived", description: "It can be restored from Archived Missions for 24 hours." });
+    } catch {
+      toast({ title: "Mission archive failed", description: "The mission was not changed.", variant: "destructive" });
+    }
+  };
 
   const handleCrossSectionDrop = useCallback(async (item: DragItem, targetSection: string) => {
     const quest = item.quest;
@@ -3089,6 +3130,26 @@ export default function QuestsPage() {
                     : "Add to Google Calendar"}
               </button>
             )}
+            {editingQuest?.externalSource === "google_calendar" && editingQuest.externalId && (
+              <button
+                type="button"
+                data-testid={`mission-edit-remove-google-calendar-${editingQuest.id}`}
+                onClick={() => void removeMissionFromGoogleCalendar(editingQuest)}
+                disabled={isSubmitting || isRemovingFromGoogleCalendar}
+                className="w-full mt-2 text-sm font-mono px-4 py-2.5 rounded border bg-background/50 border-destructive/40 text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-40 inline-flex items-center justify-center"
+              >
+                {isRemovingFromGoogleCalendar ? "Removing from Google Calendar..." : "Remove from Google Calendar"}
+              </button>
+            )}
+            <button
+              type="button"
+              data-testid="mission-edit-delete"
+              onClick={() => void handleDeleteMissionFromEditor()}
+              disabled={isSubmitting || isRemovingFromGoogleCalendar}
+              className="w-full mt-2 text-sm font-mono px-4 py-2.5 rounded border bg-background/50 border-destructive/40 text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-40 inline-flex items-center justify-center"
+            >
+              Delete Mission
+            </button>
           </div>
         </DialogContent>
       </Dialog>

@@ -60,6 +60,17 @@ describe("canonical mission Calendar", () => {
     expect(google).toContain("shiftCalendarDate(endDate, 1)");
   });
 
+  it("keeps local archive and Google Calendar event removal as separate explicit actions", () => {
+    const google = source("server/routes/google.ts");
+    const quests = source("client/src/pages/QuestsPage.tsx");
+    expect(google).toContain('app.delete("/api/google/calendar/push"');
+    expect(google).toContain("calendar.events.delete");
+    expect(google).toContain('updates: { externalId: null, externalSource: null }');
+    expect(quests).toContain('data-testid={`mission-edit-remove-google-calendar-${editingQuest.id}`}');
+    expect(quests).toContain('data-testid="mission-edit-delete"');
+    expect(quests).toContain("Your LyfeOS mission was kept and is no longer linked to Google Calendar.");
+  });
+
   it("derives bounded visible ranges for every Calendar zoom", () => {
     expect(calendarVisibleRange("day", "2026-08-25")).toEqual({ from: "2026-08-25", to: "2026-08-25", days: 1 });
     expect(calendarVisibleRange("week", "2026-08-23")).toEqual({ from: "2026-08-23", to: "2026-08-29", days: 7 });
