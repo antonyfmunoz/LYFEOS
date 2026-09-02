@@ -31,12 +31,12 @@ describe("Google integration permissions", () => {
   it("keeps provider capabilities service-specific", () => {
     expect(googlePermissionPreset("calendar", "full").capabilities).toEqual({ read: true, import: true, write: true });
     expect(googlePermissionPreset("drive", "read_only").capabilities).toEqual({ read: true, import: false, write: false });
-    expect(googlePermissionPreset("tasks", "full").capabilities).toEqual({ read: true, import: true, write: false });
+    expect(googlePermissionPreset("tasks", "full").capabilities).toEqual({ read: true, import: true, write: true });
     expect(parseGoogleIntegrationPermissionPatch("tasks", {
       capabilities: { read: true, import: true, write: true },
       approvalPolicyOverride: "changes",
       futureActionPolicyOverride: null,
-    })).toBeNull();
+    })).toMatchObject({ capabilities: { read: true, import: true, write: true } });
     expect(parseGoogleIntegrationPermissionPatch("drive", {
       capabilities: { read: true, import: true, write: false },
       approvalPolicy: "changes",

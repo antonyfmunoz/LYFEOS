@@ -1390,8 +1390,9 @@ export function registerGoogleRoutes(app: Express): void {
     let integrationId: number | null = null;
     let userId: number | null = null;
     try {
-      userId = req.session.userId as number;
-      const client = await getAuthenticatedClient(userId, "drive");
+      const ownerId = req.session.userId as number;
+      userId = ownerId;
+      const client = await getAuthenticatedClient(ownerId, "drive");
       if (!client) {
         return res.status(401).json({ error: "Google not connected" });
       }
@@ -1399,10 +1400,12 @@ export function registerGoogleRoutes(app: Express): void {
       if (!requireGoogleCapability(res, client, "drive", "read") || !requireGoogleCapability(res, client, "drive", "import")) return;
       if (!await requireGoogleActionApproval(req, res, client, "drive", GOOGLE_ACTIONS.driveSync)) return;
 
-      integrationId = client.integration.id;
+      const connectionId = client.integration.id;
+      integrationId = connectionId;
       const now = new Date().toISOString();
-      driveSyncState = { version: 1, state: "running", startedAt: now, updatedAt: now, imported: 0, updated: 0, skipped: 0, folders: 0 };
-      await saveGoogleDriveSyncState(userId, integrationId, driveSyncState);
+      let syncState: GoogleDriveSyncState = { version: 1, state: "running", startedAt: now, updatedAt: now, imported: 0, updated: 0, skipped: 0, folders: 0 };
+      driveSyncState = syncState;
+      await saveGoogleDriveSyncState(ownerId, connectionId, syncState);
       backgroundStarted = true;
       // The approved action continues after this acknowledgement. The browser
       // is free to navigate away while LyfeOS imports the connected Drive.
@@ -1410,10 +1413,10 @@ export function registerGoogleRoutes(app: Express): void {
 
       const drive = google.drive({ version: "v3", auth: client.oauth2Client });
 
-      let rootFolder = await storage.getFolderByExternalId(userId, "google_drive", "root");
+      let rootFolder = await storage.getFolderByExternalId(ownerId, "google_drive", "root");
       if (!rootFolder) {
         rootFolder = await storage.createFolder({
-          userId,
+          userId: ownerId,
           name: "Google Drive",
           source: "google_drive",
           externalId: "root",
@@ -1438,7 +1441,7 @@ export function registerGoogleRoutes(app: Express): void {
 
           for (const driveFolder of folderRes.data.files || []) {
             if (!driveFolder.id || !driveFolder.name) continue;
-            const existingFolder = await storage.getFolderByExternalId(userId, "google_drive", driveFolder.id);
+            const existingFolder = await storage.getFolderByExternalId(ownerId, "google_drive", driveFolder.id);
             const vaultFolder = existingFolder
               ? await storage.updateFolder(existingFolder.id, {
                 name: driveFolder.name,
@@ -1446,7 +1449,7 @@ export function registerGoogleRoutes(app: Express): void {
                 externalUrl: driveFolder.webViewLink || undefined,
               })
               : await storage.createFolder({
-                userId,
+                userId: ownerId,
                 name: driveFolder.name,
                 parentId: parentVaultId,
                 source: "google_drive",
@@ -1459,8 +1462,9 @@ export function registerGoogleRoutes(app: Express): void {
           }
 
           folderPageToken = folderRes.data.nextPageToken || undefined;
-          driveSyncState = { ...driveSyncState, updatedAt: new Date().toISOString(), imported, updated, skipped, folders };
-          await saveGoogleDriveSyncState(userId, integrationId, driveSyncState);
+          syncState = { ...syncState, updatedAt: new Date().toISOString(), imported, updated, skipped, folders };
+          driveSyncState = syncState;
+          await saveGoogleDriveSyncState(ownerId, connectionId, syncState);
         } while (folderPageToken);
       };
 
@@ -1483,11 +1487,11 @@ export function registerGoogleRoutes(app: Express): void {
           const driveParentId = file.parents?.[0] || "root";
           const parentVaultFolder = driveParentId === "root"
             ? rootFolder
-            : await storage.getFolderByExternalId(userId, "google_drive", driveParentId);
+            : await storage.getFolderByExternalId(ownerId, "google_drive", driveParentId);
           const vaultFolderId = parentVaultFolder?.id || rootFolder.id;
           const mimeType = file.mimeType || "";
 
-          const existingDoc = await storage.getDocumentByExternalId(userId, "google_drive", file.id);
+          const existingDoc = await storage.getDocumentByExternalId(ownerId, "google_drive", file.id);
 
           if (mimeType === "application/vnd.google-apps.document") {
             let markdownContent = "";
@@ -1513,7 +1517,7 @@ export function registerGoogleRoutes(app: Express): void {
               updated++;
             } else {
               await storage.createDocument({
-                userId,
+                userId: ownerId,
                 folderId: vaultFolderId,
                 title: file.name,
                 content: markdownContent,
@@ -1548,7 +1552,7 @@ export function registerGoogleRoutes(app: Express): void {
               updated++;
             } else {
               await storage.createDocument({
-                userId,
+                userId: ownerId,
                 folderId: vaultFolderId,
                 title: file.name,
                 content: "",
@@ -1577,7 +1581,7 @@ export function registerGoogleRoutes(app: Express): void {
               updated++;
             } else {
               await storage.createDocument({
-                userId,
+                userId: ownerId,
                 folderId: vaultFolderId,
                 title: file.name,
                 content: "",
@@ -1596,12 +1600,14 @@ export function registerGoogleRoutes(app: Express): void {
         }
 
         filePageToken = fileRes.data.nextPageToken || undefined;
-        driveSyncState = { ...driveSyncState, updatedAt: new Date().toISOString(), imported, updated, skipped, folders };
-        await saveGoogleDriveSyncState(userId, integrationId, driveSyncState);
+        syncState = { ...syncState, updatedAt: new Date().toISOString(), imported, updated, skipped, folders };
+        driveSyncState = syncState;
+        await saveGoogleDriveSyncState(ownerId, connectionId, syncState);
       } while (filePageToken);
 
-      driveSyncState = { ...driveSyncState, state: "succeeded", updatedAt: new Date().toISOString(), imported, updated, skipped, folders };
-      await saveGoogleDriveSyncState(userId, integrationId, driveSyncState);
+      syncState = { ...syncState, state: "succeeded", updatedAt: new Date().toISOString(), imported, updated, skipped, folders };
+      driveSyncState = syncState;
+      await saveGoogleDriveSyncState(ownerId, connectionId, syncState);
       return;
     } catch (error: any) {
       if (backgroundStarted && driveSyncState && integrationId && userId) {

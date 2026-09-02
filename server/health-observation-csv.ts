@@ -49,13 +49,27 @@ export function previewHealthObservationCsv(csvText: string, options: HealthCsvI
   const sourceIdIsPanelAccession = sourceHeaders.includes("accession_number") || sourceHeaders.includes("accession_id");
   const previewRows = rows.slice(1, 201).map((row, offset) => {
     const errors: string[] = []; if (row.length > headers.length) errors.push("More values than headers.");
-    const suppliedSourceRecordId = text(at(row, "source_record_id"), 200); const testName = text(rawAt(row, "test_name"), 120); const rawMetricKey = text(at(row, "metric_key"), 80) || testName; const metricKey = normalizedKey(rawMetricKey); const sourceRecordId = sourceIdIsPanelAccession && suppliedSourceRecordId && metricKey ? `${suppliedSourceRecordId}::${metricKey}` : suppliedSourceRecordId; const displayName = text(at(row, "display_name"), 120) || testName || text(at(row, "metric_key"), 120); const category = text(at(row, "category"), 40) || options.defaultCategory || null; const value = number(at(row, "value")); const unit = text(at(row, "unit"), 32); const observedAt = date(at(row, "observed_at"));
+    const suppliedSourceRecordId = text(at(row, "source_record_id"), 200);
+    const testName = text(rawAt(row, "test_name"), 120);
+    const rawMetricKey = text(at(row, "metric_key"), 80) || testName;
+    const metricKey = normalizedKey(rawMetricKey || undefined);
+    const sourceRecordId = sourceIdIsPanelAccession && suppliedSourceRecordId && metricKey ? `${suppliedSourceRecordId}::${metricKey}` : suppliedSourceRecordId;
+    const displayName = text(at(row, "display_name"), 120) || testName || text(at(row, "metric_key"), 120);
+    const category = text(at(row, "category"), 40) || options.defaultCategory || null;
+    const value = number(at(row, "value"));
+    const unit = text(at(row, "unit"), 32);
+    const observedAt = date(at(row, "observed_at"));
     if (!sourceRecordId) errors.push("source_record_id is required."); if (!metricKey || !/^[a-z0-9_]{2,80}$/.test(metricKey)) errors.push("metric_key must use lowercase letters, numbers, and underscores."); if (!displayName) errors.push("display_name is required."); if (!category || !categories.has(category)) errors.push("category is not supported."); if (value === null || value < -1_000_000 || value > 1_000_000) errors.push("value must be a finite supported number."); if (!unit) errors.push("unit is required."); if (!observedAt) errors.push("observed_at must be an ISO date-time with timezone.");
     const collectedAt = at(row, "collected_at")?.trim() ? date(at(row, "collected_at")) : null; if (at(row, "collected_at")?.trim() && !collectedAt) errors.push("collected_at must be an ISO date-time with timezone.");
     const referenceLow = at(row, "reference_low")?.trim() ? number(at(row, "reference_low")) : null; const referenceHigh = at(row, "reference_high")?.trim() ? number(at(row, "reference_high")) : null; const referenceUnit = text(at(row, "reference_unit"), 32);
     if ((referenceLow !== null || referenceHigh !== null) && !referenceUnit) errors.push("reference_unit is required with a reference range."); if (referenceLow !== null && referenceHigh !== null && referenceLow > referenceHigh) errors.push("reference_low cannot exceed reference_high.");
     const labName = text(at(row, "lab_name"), 160); if (category === "lab" && !labName) errors.push("lab_name is required for a lab row.");
-    const entry = errors.length ? null : { source: category === "lab" ? "lab" : "imported", sourceRecordId: sourceRecordId!, metricKey: metricKey!, displayName: displayName!, category: category!, value: value!, unit: unit!, observedAt: observedAt!, method: text(at(row, "method"), 160), methodVersion: text(at(row, "method_version"), 80), deviceName: text(at(row, "device_name"), 160), labName, specimenType: text(at(row, "specimen_type"), 120), collectedAt, referenceLow, referenceHigh, referenceUnit, note: text(at(row, "note"), 1_000) };
+    const entry: ImportedObservation | null = errors.length ? null : {
+      source: category === "lab" ? "lab" : "imported",
+      sourceRecordId: sourceRecordId!, metricKey: metricKey!, displayName: displayName!, category: category!, value: value!, unit: unit!, observedAt: observedAt!,
+      method: text(at(row, "method"), 160), methodVersion: text(at(row, "method_version"), 80), deviceName: text(at(row, "device_name"), 160),
+      labName, specimenType: text(at(row, "specimen_type"), 120), collectedAt, referenceLow, referenceHigh, referenceUnit, note: text(at(row, "note"), 1_000),
+    };
     return { rowNumber: offset + 2, entry, errors };
   });
   if (rows.length - 1 > 200) throw new Error("A reviewed health import can contain at most 200 data rows.");

@@ -3227,7 +3227,7 @@ export default function QuestsPage() {
                     : "Add to Google Calendar"}
               </button>
             )}
-            {googleMissionLink(editingQuest, "google_calendar") && (
+            {editingQuest && googleMissionLink(editingQuest, "google_calendar") && (
               <button
                 type="button"
                 data-testid={`mission-edit-remove-google-calendar-${editingQuest.id}`}
@@ -3253,7 +3253,7 @@ export default function QuestsPage() {
                     : "Add to Google Tasks"}
               </button>
             )}
-            {googleMissionLink(editingQuest, "google_tasks") && (
+            {editingQuest && googleMissionLink(editingQuest, "google_tasks") && (
               <button
                 type="button"
                 data-testid={`mission-edit-remove-google-tasks-${editingQuest.id}`}
