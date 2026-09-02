@@ -54,6 +54,8 @@ describe("independent Google productivity integrations", () => {
     expect(profile).toContain("read only — reconnect to permit task changes");
     expect(quests).toContain('data-testid={`mission-edit-sync-google-tasks-${editingQuest.id}`}');
     expect(quests).toContain('data-testid={`mission-edit-remove-google-tasks-${editingQuest.id}`}');
+    expect(quests).toContain('externalSource: result.externalSource');
+    expect(google).toContain('externalSource: "google_tasks"');
   });
 
   it("renders three independently controlled profile integrations", () => {

@@ -777,7 +777,7 @@ export function registerGoogleRoutes(app: Express): void {
           eventId: mission.externalId,
           requestBody: eventBody,
         });
-        return res.json({ success: true, action: "updated" });
+        return res.json({ success: true, action: "updated", externalId: mission.externalId, externalSource: "google_calendar" });
       } else {
         const created = await calendar.events.insert({
           calendarId: "primary",
@@ -794,7 +794,7 @@ export function registerGoogleRoutes(app: Express): void {
             source: "google",
           });
         }
-        return res.json({ success: true, action: "created", googleEventId: created.data.id });
+        return res.json({ success: true, action: "created", googleEventId: created.data.id, externalId: created.data.id, externalSource: "google_calendar" });
       }
     } catch (error: any) {
       if (error?.code === 401 || error?.response?.status === 401) {
@@ -976,7 +976,7 @@ export function registerGoogleRoutes(app: Express): void {
       if (existingAddress) {
         try {
           await tasks.tasks.patch({ tasklist: existingAddress.listId, task: existingAddress.taskId, requestBody });
-          return res.json({ success: true, action: "updated" });
+          return res.json({ success: true, action: "updated", externalId: mission.externalId, externalSource: "google_tasks" });
         } catch (error: any) {
           if (error?.code !== 404 && error?.response?.status !== 404) throw error;
         }
@@ -984,13 +984,14 @@ export function registerGoogleRoutes(app: Express): void {
 
       const created = await tasks.tasks.insert({ tasklist: "@default", requestBody });
       if (!created.data.id) throw new Error("Google Tasks did not return a task ID.");
+      const externalId = encodeGoogleTaskExternalId({ listId: "@default", taskId: created.data.id });
       await updateMissionLifecycle({
         questId: mission.id,
         userId,
-        updates: { externalId: encodeGoogleTaskExternalId({ listId: "@default", taskId: created.data.id }), externalSource: "google_tasks" },
+        updates: { externalId, externalSource: "google_tasks" },
         source: "google",
       });
-      return res.json({ success: true, action: "created", googleTaskId: created.data.id });
+      return res.json({ success: true, action: "created", googleTaskId: created.data.id, externalId, externalSource: "google_tasks" });
     } catch (error: any) {
       if (error?.code === 401 || error?.response?.status === 401) return res.status(401).json({ error: "Google token expired. Please reconnect." });
       logGoogleFailure("Google Tasks push failed", error, req.session.userId);

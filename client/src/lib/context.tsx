@@ -743,6 +743,16 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
             transformationThreadId: quest.transformationThreadId ?? null,
             ritualGroup: quest.ritualGroup || null,
             linkedItems: quest.linkedItems || [],
+            externalId: quest.externalId || null,
+            externalSource: quest.externalSource || null,
+            location: quest.location || null,
+            allDay: quest.allDay || false,
+            timezone: quest.timezone || null,
+            url: quest.url || null,
+            attendees: quest.attendees || [],
+            missionStatus: quest.missionStatus || null,
+            viewId: quest.viewId ?? null,
+            viewColumn: quest.viewColumn || null,
           }));
           setQuests(transformedQuests);
         }

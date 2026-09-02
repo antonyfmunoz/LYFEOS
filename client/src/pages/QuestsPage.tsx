@@ -411,11 +411,14 @@ export default function QuestsPage() {
     if (!mission.startDate || isPushingCalendar) return;
     setIsPushingCalendar(true);
     try {
-      const result = await runWithApproval((approvalId) => apiRequest<{ action: "created" | "updated" }>("/api/google/calendar/push", {
+      const result = await runWithApproval((approvalId) => apiRequest<{ action: "created" | "updated"; externalId: string; externalSource: "google_calendar" }>("/api/google/calendar/push", {
         method: "POST",
         body: JSON.stringify({ missionId: mission.id, ...(approvalId ? { approvalId } : {}) }),
       }));
-      await refetchQuests();
+      await refetchQuests(undefined, true);
+      setEditingQuest((current) => current?.id === mission.id
+        ? { ...current, externalId: result.externalId, externalSource: result.externalSource }
+        : current);
       toast({
         title: result.action === "created" ? "Added to Google Calendar" : "Google Calendar updated",
         description: result.action === "created"
@@ -464,11 +467,14 @@ export default function QuestsPage() {
     if (isPushingGoogleTasks || (mission.externalSource && mission.externalSource !== "google_tasks")) return;
     setIsPushingGoogleTasks(true);
     try {
-      const result = await runWithApproval((approvalId) => apiRequest<{ action: "created" | "updated" }>("/api/google/tasks/push", {
+      const result = await runWithApproval((approvalId) => apiRequest<{ action: "created" | "updated"; externalId: string; externalSource: "google_tasks" }>("/api/google/tasks/push", {
         method: "POST",
         body: JSON.stringify({ missionId: mission.id, ...(approvalId ? { approvalId } : {}) }),
       }));
-      await refetchQuests();
+      await refetchQuests(undefined, true);
+      setEditingQuest((current) => current?.id === mission.id
+        ? { ...current, externalId: result.externalId, externalSource: result.externalSource }
+        : current);
       toast({
         title: result.action === "created" ? "Added to Google Tasks" : "Google Task updated",
         description: result.action === "created"
