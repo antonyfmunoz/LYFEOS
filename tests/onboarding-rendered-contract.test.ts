@@ -45,8 +45,7 @@ describe("rendered onboarding acceptance contract", () => {
   });
 
   it("reveals auth-aware routes after a cached-session reload", () => {
-    expect(app).toMatch(/function RoutePreloaderReady[\s\S]*?useEffect\(\(\) => \{\s*hideAppPreloader\(\);\s*}, \[\]\);/);
-    expect(app).toContain('<RoutePreloaderReady>');
+    expect(app).toMatch(/function lazyRoute[\s\S]*?const module = await withRouteChunkRecovery\(loader\);[\s\S]*?useEffect\(\(\) => \{\s*hideAppPreloader\(\);\s*}, \[\]\);/);
     expect(app).toContain('<Route path="/onboarding" component={OnboardingPage} />');
   });
 

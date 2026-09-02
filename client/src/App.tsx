@@ -21,7 +21,19 @@ import { AuthenticateWithRedirectCallback } from "@clerk/clerk-react";
 import { IntegrationActionApprovalProvider } from "./components/IntegrationActionApprovalProvider";
 
 function lazyRoute<T extends React.ComponentType<any>>(loader: () => Promise<{ default: T }>) {
-  return React.lazy(() => withRouteChunkRecovery(loader));
+  return React.lazy(async () => {
+    const module = await withRouteChunkRecovery(loader);
+    const ResolvedRoute = (props: React.ComponentProps<T>) => {
+      // This only runs once the lazy route module has resolved and committed.
+      // Keeping the static cover until this point prevents an empty shell from
+      // being visible between auth recovery and cold-route rendering.
+      useEffect(() => {
+        hideAppPreloader();
+      }, []);
+      return <module.default {...props} />;
+    };
+    return { default: ResolvedRoute };
+  });
 }
 
 const DashboardPage = lazyRoute(() => import("./pages/DashboardPage"));
@@ -139,16 +151,6 @@ function RouteLoadingScreen() {
       </div>
     </div>
   );
-}
-
-function RoutePreloaderReady({ children }: { children: React.ReactNode }) {
-  // This component only commits after the active lazy route has resolved.
-  // Keeping the static cover until then prevents a cold authenticated route
-  // from flashing an empty application shell before its content is ready.
-  useEffect(() => {
-    hideAppPreloader();
-  }, []);
-  return <>{children}</>;
 }
 
 function HapticInit() {
@@ -350,7 +352,6 @@ function Router() {
 
   return (
     <Suspense fallback={<RouteLoadingScreen />}>
-    <RoutePreloaderReady>
     <Switch>
       {/* Public routes */}
       <Route path="/sso-callback">
@@ -706,7 +707,6 @@ function Router() {
       {/* Fallback to 404 */}
       <Route component={NotFound} />
     </Switch>
-    </RoutePreloaderReady>
     </Suspense>
   );
 }
