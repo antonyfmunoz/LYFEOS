@@ -4,6 +4,7 @@ import { z } from "zod";
 import { brandOwnershipResearchReports, groceryPantryItems, groceryReceiptDrafts, groceryShoppingItems } from "@shared/schema";
 import { db } from "../db";
 import { listBrandSpotlights, lookupBrandOwnership } from "../brand-ownership";
+import { FoodRecallError, lookupFoodRecalls } from "../food-recalls";
 import { ownershipScore, parseReceiptText } from "../grocery-intelligence";
 import { isAuthenticated } from "./middleware";
 
@@ -56,6 +57,48 @@ const reportSchema = z.object({
   note: optionalText(2_000),
   evidenceUrl: z.string().url().max(1_000).nullable().optional(),
 }).strict();
+
+type PantryRecallReview = {
+  pantryItemId: number;
+  name: string;
+  brand: string | null;
+  checkedAt: string | null;
+  matches: Array<{ recallNumber: string; classification: string | null; status: string | null; productDescription: string; reasonForRecall: string | null; codeInfo: string | null; sourceUrl: string }>;
+  error: string | null;
+};
+
+async function reviewPantryRecalls(items: Array<{ id: number; name: string; brand: string | null }>): Promise<PantryRecallReview[]> {
+  const results: PantryRecallReview[] = [];
+  // The public FDA feed is requested only after an explicit user action. Keep
+  // concurrency small so a pantry review does not become a burst against the
+  // provider or retain external results in LyfeOS.
+  for (let index = 0; index < items.length; index += 3) {
+    const batch = await Promise.all(items.slice(index, index + 3).map(async (item): Promise<PantryRecallReview> => {
+      try {
+        const result = await lookupFoodRecalls({ productName: item.name, brand: item.brand });
+        return {
+          pantryItemId: item.id,
+          name: item.name,
+          brand: item.brand,
+          checkedAt: result.checkedAt,
+          matches: result.matches.slice(0, 3).map((match) => ({ recallNumber: match.recallNumber, classification: match.classification, status: match.status, productDescription: match.productDescription, reasonForRecall: match.reasonForRecall, codeInfo: match.codeInfo, sourceUrl: match.sourceUrl })),
+          error: null,
+        };
+      } catch (error) {
+        return {
+          pantryItemId: item.id,
+          name: item.name,
+          brand: item.brand,
+          checkedAt: null,
+          matches: [],
+          error: error instanceof FoodRecallError ? error.message : "The FDA recall service could not complete this item review.",
+        };
+      }
+    }));
+    results.push(...batch);
+  }
+  return results;
+}
 
 async function createPendingShoppingItem(userId: number, pantry: { id: number; name: string; brand: string | null; unit: string }) {
   const [existing] = await db.select().from(groceryShoppingItems).where(and(eq(groceryShoppingItems.userId, userId), eq(groceryShoppingItems.pantryItemId, pantry.id), eq(groceryShoppingItems.status, "pending"))).limit(1);
@@ -119,6 +162,16 @@ export function registerGroceryIntelligenceRoutes(app: Express): void {
     const [item] = await db.update(groceryPantryItems).set({ quantity, updatedAt: new Date() }).where(eq(groceryPantryItems.id, current.id)).returning();
     const automaticallyAdded = item.reorderAt !== null && item.quantity <= item.reorderAt ? await createPendingShoppingItem(userId, item) : null;
     return res.json({ item, automaticallyAdded });
+  });
+
+  app.post("/api/grocery-intelligence/pantry-recall-review", isAuthenticated, async (req: Request, res: Response) => {
+    const userId = req.session.userId!;
+    const pantry = await db.select({ id: groceryPantryItems.id, name: groceryPantryItems.name, brand: groceryPantryItems.brand }).from(groceryPantryItems).where(and(eq(groceryPantryItems.userId, userId), eq(groceryPantryItems.status, "active"))).orderBy(desc(groceryPantryItems.updatedAt)).limit(25);
+    const reviews = await reviewPantryRecalls(pantry);
+    return res.json({
+      reviews,
+      disclosure: "This is a live FDA enforcement-report text review requested by you. A possible match does not establish that your package is recalled; compare lot or package codes, dates, distribution, and the official recall notice. Results are not stored by LyfeOS.",
+    });
   });
 
   app.delete("/api/grocery-intelligence/pantry/:id", isAuthenticated, async (req: Request, res: Response) => {

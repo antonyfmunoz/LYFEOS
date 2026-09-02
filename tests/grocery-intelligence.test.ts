@@ -25,9 +25,13 @@ describe("grocery intelligence", () => {
     const component = readFileSync(resolve(process.cwd(), "client/src/components/health/GroceryIntelligence.tsx"), "utf8");
     expect(routes).toContain('app.get("/api/grocery-intelligence/overview", isAuthenticated');
     expect(routes).toContain('receipt-drafts/:id/apply');
+    expect(routes).toContain('app.post("/api/grocery-intelligence/pantry-recall-review", isAuthenticated');
+    expect(routes).toContain("Results are not stored by LyfeOS");
     expect(appRoutes).toContain('"/api/grocery-intelligence"');
     expect(healthPage).toContain("<GroceryIntelligence />");
     expect(component).toContain("Corporate concentration");
     expect(component).toContain("Add reviewed items to pantry");
+    expect(component).toContain("Check FDA recalls");
+    expect(component).toContain("No product-description text match. This is not a safety finding.");
   });
 });
