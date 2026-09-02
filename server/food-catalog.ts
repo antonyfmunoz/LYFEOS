@@ -20,7 +20,8 @@ export class FoodCatalogError extends Error {
 
 type GatewayCatalogConfig = { kind: "gateway"; baseUrl: string; token: string; signingSecret: string };
 type OpenFoodFactsCatalogConfig = { kind: "open_food_facts"; signingSecret: string; userAgent: string };
-type CatalogConfig = GatewayCatalogConfig | OpenFoodFactsCatalogConfig;
+type UsdaFoodDataCatalogConfig = { kind: "usda_fooddata_central"; signingSecret: string; apiKey: string };
+type CatalogConfig = GatewayCatalogConfig | OpenFoodFactsCatalogConfig | UsdaFoodDataCatalogConfig;
 
 const openFoodFactsBaseUrl = "https://world.openfoodfacts.org";
 const openFoodFactsSearchBaseUrl = "https://search.openfoodfacts.org";
@@ -32,6 +33,17 @@ const openFoodFactsProvider = {
   attributionText: "Product data from Open Food Facts, available under the Open Database License (ODbL). Product information is community-contributed and may be incomplete or inaccurate.",
   attributionUrl: "https://world.openfoodfacts.org/data",
 } as const;
+
+const usdaFoodDataProvider = {
+  id: "usda_fooddata_central",
+  name: "USDA FoodData Central",
+  datasetVersion: "live-api",
+  territories: ["US"],
+  attributionText: "Nutrient data from USDA FoodData Central. Data are public domain (CC0); source attribution retained.",
+  attributionUrl: "https://fdc.nal.usda.gov/",
+} as const;
+
+const usdaFoodDataBaseUrl = "https://api.nal.usda.gov/fdc/v1";
 
 const openFoodFactsNutrients: Array<{ sourceKey: string; nutrientKey: string; unit: string }> = [
   { sourceKey: "energy-kcal", nutrientKey: "energy_kcal", unit: "kcal" },
@@ -83,26 +95,41 @@ function validGatewayUrl(value: string): boolean {
   }
 }
 
-export function getFoodCatalogConfig(env: NodeJS.ProcessEnv = process.env): CatalogConfig | null {
+function catalogSigningSecret(env: NodeJS.ProcessEnv): string | null {
+  const signingSecret = env.FOOD_CATALOG_LOOKUP_SIGNING_SECRET?.trim() || env.SESSION_SECRET?.trim();
+  return signingSecret && signingSecret.length >= 32 ? signingSecret : null;
+}
+
+export function getFoodCatalogConfigs(env: NodeJS.ProcessEnv = process.env): CatalogConfig[] {
   const baseUrl = env.FOOD_CATALOG_GATEWAY_URL?.trim().replace(/\/$/, "");
   const token = env.FOOD_CATALOG_GATEWAY_TOKEN?.trim();
-  const signingSecret = env.FOOD_CATALOG_LOOKUP_SIGNING_SECRET?.trim() || env.SESSION_SECRET?.trim();
-  if (!signingSecret || signingSecret.length < 32) return null;
-  if (baseUrl && token && validGatewayUrl(baseUrl)) return { kind: "gateway", baseUrl, token, signingSecret };
+  const signingSecret = catalogSigningSecret(env);
+  if (!signingSecret) return [];
+  const configs: CatalogConfig[] = [];
+  if (baseUrl && token && validGatewayUrl(baseUrl)) configs.push({ kind: "gateway", baseUrl, token, signingSecret });
   if (env.OPEN_FOOD_FACTS_ENABLED === "true") {
     const userAgent = env.OPEN_FOOD_FACTS_USER_AGENT?.trim();
-    if (!userAgent || userAgent.length < 12 || userAgent.length > 300) return null;
-    return { kind: "open_food_facts", signingSecret, userAgent };
+    if (userAgent && userAgent.length >= 12 && userAgent.length <= 300) configs.push({ kind: "open_food_facts", signingSecret, userAgent });
   }
-  return null;
+  const usdaApiKey = env.USDA_FOODDATA_API_KEY?.trim();
+  if (usdaApiKey && usdaApiKey.length >= 20 && usdaApiKey.length <= 300) configs.push({ kind: "usda_fooddata_central", signingSecret, apiKey: usdaApiKey });
+  return configs;
+}
+
+export function getFoodCatalogConfig(env: NodeJS.ProcessEnv = process.env): CatalogConfig | null {
+  return getFoodCatalogConfigs(env)[0] || null;
 }
 
 export function foodCatalogAvailability(env: NodeJS.ProcessEnv = process.env) {
-  const configured = Boolean(getFoodCatalogConfig(env));
+  const configs = getFoodCatalogConfigs(env);
+  const providers = configs.flatMap((config) => config.kind === "open_food_facts" ? [openFoodFactsProvider] : config.kind === "usda_fooddata_central" ? [usdaFoodDataProvider] : []);
+  const configured = configs.length > 0;
   return {
     available: configured,
     reason: configured ? null : "A food-catalog provider and lookup signing secret are not configured for this release.",
     behavior: "Catalog results are source-attributed and never enter the private food diary until the user explicitly saves a copy.",
+    providers,
+    defaultProviderId: providers[0]?.id || null,
   };
 }
 
@@ -245,6 +272,52 @@ function normalizedOpenFoodFactsItem(raw: unknown, territory: string, locale: st
   };
 }
 
+const usdaNutrientKeys: Record<string, { nutrientKey: string; unit: string }> = {
+  "1008": { nutrientKey: "energy_kcal", unit: "kcal" }, "1003": { nutrientKey: "protein_g", unit: "g" }, "1005": { nutrientKey: "carbohydrate_g", unit: "g" }, "1004": { nutrientKey: "fat_g", unit: "g" },
+  "1079": { nutrientKey: "fiber_g", unit: "g" }, "2000": { nutrientKey: "sugar_g", unit: "g" }, "1235": { nutrientKey: "added_sugar_g", unit: "g" }, "1093": { nutrientKey: "sodium_mg", unit: "mg" },
+  "1258": { nutrientKey: "saturated_fat_g", unit: "g" }, "1257": { nutrientKey: "trans_fat_g", unit: "g" }, "1253": { nutrientKey: "cholesterol_mg", unit: "mg" }, "1087": { nutrientKey: "calcium_mg", unit: "mg" },
+  "1089": { nutrientKey: "iron_mg", unit: "mg" }, "1090": { nutrientKey: "magnesium_mg", unit: "mg" }, "1092": { nutrientKey: "potassium_mg", unit: "mg" }, "1095": { nutrientKey: "zinc_mg", unit: "mg" },
+  "1162": { nutrientKey: "vitamin_c_mg", unit: "mg" }, "1114": { nutrientKey: "vitamin_d_ug", unit: "µg" }, "1104": { nutrientKey: "vitamin_a_rae_ug", unit: "µg RAE" }, "1178": { nutrientKey: "vitamin_b12_ug", unit: "µg" },
+};
+
+function normalizedUsdaFoodDataItem(raw: unknown, territory: string, locale: string): FoodCatalogItem | null {
+  if (!raw || typeof raw !== "object") return null;
+  const food = raw as Record<string, unknown>;
+  const fdcId = typeof food.fdcId === "number" || typeof food.fdcId === "string" ? String(food.fdcId).trim() : "";
+  const name = typeof food.description === "string" ? food.description.trim() : "";
+  if (!/^\d{1,20}$/.test(fdcId) || !name) return null;
+  const nutrientsByKey = new Map<string, { nutrientKey: string; amountPer100g: number; unit: string }>();
+  const rawNutrients = Array.isArray(food.foodNutrients) ? food.foodNutrients : [];
+  for (const rawNutrient of rawNutrients) {
+    if (!rawNutrient || typeof rawNutrient !== "object") continue;
+    const nutrient = rawNutrient as Record<string, unknown>;
+    const source = usdaNutrientKeys[String(nutrient.nutrientId ?? nutrient.nutrientNumber ?? "")];
+    const value = openFoodFactsNumber(nutrient.value ?? nutrient.amount);
+    const sourceUnit = typeof nutrient.unitName === "string" ? nutrient.unitName.toLowerCase().replace("ug", "µg") : nutrient.unitName;
+    if (!source || value === null) continue;
+    const converted = convertOpenFoodFactsUnit(value, sourceUnit, source.unit);
+    if (converted !== null) nutrientsByKey.set(source.nutrientKey, { nutrientKey: source.nutrientKey, amountPer100g: Number(converted.toFixed(6)), unit: source.unit });
+  }
+  const serving = openFoodFactsNumber(food.servingSize);
+  const servingUnit = typeof food.servingSizeUnit === "string" ? food.servingSizeUnit.toLowerCase() : "";
+  const servingSizeGrams = serving && servingUnit === "g" ? serving : 100;
+  const householdServing = typeof food.householdServingFullText === "string" ? food.householdServingFullText.trim().slice(0, 80) : "";
+  const gtin = typeof food.gtinUpc === "string" ? food.gtinUpc.trim() : "";
+  return {
+    externalId: fdcId,
+    itemVersion: typeof food.publishedDate === "string" && food.publishedDate.trim() ? food.publishedDate.trim().slice(0, 120) : "live-api",
+    name: name.slice(0, 160),
+    brand: typeof food.brandOwner === "string" && food.brandOwner.trim() ? food.brandOwner.trim().slice(0, 120) : null,
+    barcode: /^\d{8,14}$/.test(gtin) ? gtin : null,
+    locale,
+    territory,
+    servingSizeGrams,
+    ingredientsText: null,
+    portions: householdServing && serving && servingUnit === "g" ? [{ label: householdServing, gramsPerUnit: serving }] : [],
+    nutrients: [...nutrientsByKey.values()],
+  };
+}
+
 async function openFoodFactsRequest(path: string, config: OpenFoodFactsCatalogConfig, fetchImpl: typeof fetch): Promise<unknown> {
   let response: Response | null = null;
   for (let attempt = 0; attempt < 2; attempt += 1) {
@@ -262,6 +335,21 @@ async function openFoodFactsRequest(path: string, config: OpenFoodFactsCatalogCo
   if (!response) throw new FoodCatalogError("provider_failure", "The food catalog did not respond.");
   if (!response.ok) throw new FoodCatalogError("provider_failure", "The food catalog could not complete this lookup.");
   try { return await response.json(); } catch { throw new FoodCatalogError("invalid_response", "The food catalog returned an invalid response."); }
+}
+
+async function usdaFoodDataRequest(path: string, config: UsdaFoodDataCatalogConfig, fetchImpl: typeof fetch): Promise<unknown> {
+  let response: Response | null = null;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      response = await fetchImpl(`${usdaFoodDataBaseUrl}${path}`, { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(5_000) });
+    } catch {
+      if (attempt === 0) continue;
+      throw new FoodCatalogError("provider_failure", "USDA FoodData Central did not respond.");
+    }
+    if (response.ok || ![429, 502, 503, 504].includes(response.status) || attempt === 1) break;
+  }
+  if (!response || !response.ok) throw new FoodCatalogError("provider_failure", "USDA FoodData Central could not complete this lookup.");
+  try { return await response.json(); } catch { throw new FoodCatalogError("invalid_response", "USDA FoodData Central returned an invalid response."); }
 }
 
 async function searchOpenFoodFacts(input: FoodCatalogSearchInput, config: OpenFoodFactsCatalogConfig, fetchImpl: typeof fetch) {
@@ -288,12 +376,45 @@ async function lookupOpenFoodFactsBarcode(barcode: string, config: OpenFoodFacts
   return { provider: openFoodFactsProvider, item: found ? normalizedOpenFoodFactsItem(response.product, "US", "en-US") : null };
 }
 
-type FoodCatalogSearchInput = { query: string; territory: string; locale: string; limit: number } | { cursor: string };
+async function searchUsdaFoodData(input: FoodCatalogSearchInput, config: UsdaFoodDataCatalogConfig, fetchImpl: typeof fetch) {
+  const continuation = "cursor" in input ? verifyFoodCatalogCursorToken(input.cursor, config.signingSecret) : null;
+  if ("cursor" in input && (!continuation || continuation.providerId !== usdaFoodDataProvider.id || continuation.datasetVersion !== usdaFoodDataProvider.datasetVersion)) throw new FoodCatalogError("invalid_cursor", "This catalog result page expired or is invalid. Start the search again.");
+  const request = "cursor" in input ? continuation! : input;
+  if (request.territory !== "US") throw new FoodCatalogError("unavailable", "USDA FoodData Central is currently available in LyfeOS for the US territory.");
+  const page = continuation ? Number(continuation.providerCursor) : 1;
+  if (!Number.isInteger(page) || page < 1 || page > 500) throw new FoodCatalogError("invalid_cursor", "This catalog result page expired or is invalid. Start the search again.");
+  const params = new URLSearchParams({ query: request.query, pageNumber: String(page), pageSize: String(request.limit), api_key: config.apiKey });
+  const response = await usdaFoodDataRequest(`/foods/search?${params}`, config, fetchImpl) as { foods?: unknown[]; totalPages?: number | string };
+  const items = Array.isArray(response.foods) ? response.foods.map((food) => normalizedUsdaFoodDataItem(food, request.territory, request.locale)).filter((item): item is FoodCatalogItem => Boolean(item)) : [];
+  const totalPages = typeof response.totalPages === "string" ? Number(response.totalPages) : response.totalPages;
+  const nextCursor = Number.isFinite(totalPages) && page < totalPages!
+    ? createFoodCatalogCursorToken({ query: request.query, territory: request.territory, locale: request.locale, limit: request.limit, providerId: usdaFoodDataProvider.id, datasetVersion: usdaFoodDataProvider.datasetVersion, providerCursor: String(page + 1) }, config.signingSecret)
+    : null;
+  return { provider: usdaFoodDataProvider, items, nextCursor };
+}
+
+async function lookupUsdaFoodDataBarcode(barcode: string, config: UsdaFoodDataCatalogConfig, fetchImpl: typeof fetch) {
+  const params = new URLSearchParams({ query: barcode, pageNumber: "1", pageSize: "20", api_key: config.apiKey });
+  const response = await usdaFoodDataRequest(`/foods/search?${params}`, config, fetchImpl) as { foods?: unknown[] };
+  const match = Array.isArray(response.foods) ? response.foods.find((raw) => raw && typeof raw === "object" && String((raw as Record<string, unknown>).gtinUpc || "").trim() === barcode) : null;
+  return { provider: usdaFoodDataProvider, item: normalizedUsdaFoodDataItem(match, "US", "en-US") };
+}
+
+type FoodCatalogSearchInput = { query: string; territory: string; locale: string; limit: number; providerId?: string } | { cursor: string };
+
+function configForRequest(input: FoodCatalogSearchInput, env: NodeJS.ProcessEnv): CatalogConfig | null {
+  const configs = getFoodCatalogConfigs(env);
+  const continuation = "cursor" in input ? configs.map((config) => ({ config, receipt: verifyFoodCatalogCursorToken(input.cursor, config.signingSecret) })).find((candidate) => candidate.receipt)?.receipt : null;
+  const requestedProviderId = continuation?.providerId || ("cursor" in input ? undefined : input.providerId);
+  if (!requestedProviderId) return configs[0] || null;
+  return configs.find((config) => config.kind === requestedProviderId || (config.kind === "gateway" && continuation)) || null;
+}
 
 export async function searchFoodCatalog(input: FoodCatalogSearchInput, env: NodeJS.ProcessEnv = process.env, fetchImpl: typeof fetch = fetch) {
-  const config = getFoodCatalogConfig(env);
+  const config = configForRequest(input, env);
   if (!config) throw new FoodCatalogError("unavailable", foodCatalogAvailability(env).reason!);
   if (config.kind === "open_food_facts") return searchOpenFoodFacts(input, config, fetchImpl);
+  if (config.kind === "usda_fooddata_central") return searchUsdaFoodData(input, config, fetchImpl);
   const continuation = "cursor" in input ? verifyFoodCatalogCursorToken(input.cursor, config.signingSecret) : null;
   if ("cursor" in input && !continuation) throw new FoodCatalogError("invalid_cursor", "This catalog result page expired or is invalid. Start the search again.");
   const request = "cursor" in input ? continuation! : input;
@@ -314,10 +435,16 @@ export async function searchFoodCatalog(input: FoodCatalogSearchInput, env: Node
   };
 }
 
-export async function lookupFoodCatalogBarcode(barcode: string, env: NodeJS.ProcessEnv = process.env, fetchImpl: typeof fetch = fetch) {
-  const config = getFoodCatalogConfig(env);
+export function lookupFoodCatalogBarcode(barcode: string, env?: NodeJS.ProcessEnv, fetchImpl?: typeof fetch): Promise<{ provider: FoodCatalogProvider; item: (FoodCatalogItem & { lookupToken: string }) | null }>;
+export function lookupFoodCatalogBarcode(barcode: string, providerId: string | undefined, env?: NodeJS.ProcessEnv, fetchImpl?: typeof fetch): Promise<{ provider: FoodCatalogProvider; item: (FoodCatalogItem & { lookupToken: string }) | null }>;
+export async function lookupFoodCatalogBarcode(barcode: string, providerOrEnv?: string | NodeJS.ProcessEnv, envOrFetch?: NodeJS.ProcessEnv | typeof fetch, suppliedFetch?: typeof fetch) {
+  const providerId = typeof providerOrEnv === "string" ? providerOrEnv : undefined;
+  const env = (typeof providerOrEnv === "object" ? providerOrEnv : typeof envOrFetch === "object" ? envOrFetch : process.env) as NodeJS.ProcessEnv;
+  const fetchImpl = (typeof envOrFetch === "function" ? envOrFetch : suppliedFetch || fetch) as typeof fetch;
+  const config = providerId ? getFoodCatalogConfigs(env).find((candidate) => candidate.kind === providerId) || null : getFoodCatalogConfig(env);
   if (!config) throw new FoodCatalogError("unavailable", foodCatalogAvailability(env).reason!);
   if (config.kind === "open_food_facts") return lookupOpenFoodFactsBarcode(barcode, config, fetchImpl);
+  if (config.kind === "usda_fooddata_central") return lookupUsdaFoodDataBarcode(barcode, config, fetchImpl);
   const parsed = foodCatalogBarcodeResponseSchema.safeParse(await gatewayRequest(`/v1/foods/barcodes/${encodeURIComponent(barcode)}`, config, fetchImpl));
   if (!parsed.success) throw new FoodCatalogError("invalid_response", "The food catalog response did not satisfy the LyfeOS attribution contract.");
   return {

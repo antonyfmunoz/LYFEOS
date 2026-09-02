@@ -7,6 +7,7 @@ import {
   createFoodCatalogLookupToken,
   foodCatalogAvailability,
   getFoodCatalogConfig,
+  getFoodCatalogConfigs,
   searchFoodCatalog,
   verifyFoodCatalogCursorToken,
   verifyFoodCatalogLookupToken,
@@ -31,6 +32,11 @@ const env = {
 const openFoodFactsEnv = {
   OPEN_FOOD_FACTS_ENABLED: "true",
   OPEN_FOOD_FACTS_USER_AGENT: "LyfeOS/1.0 (https://lyfeos.net; support@lyfeos.net)",
+  FOOD_CATALOG_LOOKUP_SIGNING_SECRET: env.FOOD_CATALOG_LOOKUP_SIGNING_SECRET,
+} as NodeJS.ProcessEnv;
+
+const usdaFoodDataEnv = {
+  USDA_FOODDATA_API_KEY: "dedicated-data-gov-key-not-for-client-use",
   FOOD_CATALOG_LOOKUP_SIGNING_SECRET: env.FOOD_CATALOG_LOOKUP_SIGNING_SECRET,
 } as NodeJS.ProcessEnv;
 
@@ -116,6 +122,25 @@ describe("food catalog gateway", () => {
     expect(JSON.stringify(search)).not.toContain("FOOD_CATALOG_GATEWAY_TOKEN");
   });
 
+  it("supports a separately selected USDA FoodData Central nutrient source and preserves its provenance", async () => {
+    expect(getFoodCatalogConfigs({ ...openFoodFactsEnv, ...usdaFoodDataEnv })).toEqual(expect.arrayContaining([expect.objectContaining({ kind: "open_food_facts" }), expect.objectContaining({ kind: "usda_fooddata_central" })]));
+    const food = {
+      fdcId: 12345, description: "Oats, raw", brandOwner: "USDA", gtinUpc: "012345678905", publishedDate: "2026-08-01", servingSize: 40, servingSizeUnit: "g", householdServingFullText: "1/2 cup",
+      foodNutrients: [{ nutrientId: 1008, nutrientName: "Energy", unitName: "KCAL", value: 379 }, { nutrientId: 1003, nutrientName: "Protein", unitName: "G", value: 13.15 }, { nutrientId: 1093, nutrientName: "Sodium, Na", unitName: "MG", value: 6 }],
+    };
+    const fetchMock = vi.fn(async (url: string | URL | Request) => {
+      expect(String(url)).toContain("https://api.nal.usda.gov/fdc/v1/foods/search?");
+      expect(String(url)).toContain("api_key=dedicated-data-gov-key-not-for-client-use");
+      return new Response(JSON.stringify({ foods: [food], totalPages: 1 }), { status: 200, headers: { "content-type": "application/json" } });
+    });
+    const search = await searchFoodCatalog({ query: "oats", territory: "US", locale: "en-US", limit: 10, providerId: "usda_fooddata_central" }, usdaFoodDataEnv, fetchMock as typeof fetch);
+    expect(search.provider.id).toBe("usda_fooddata_central");
+    expect(search.items[0].nutrients).toEqual(expect.arrayContaining([{ nutrientKey: "energy_kcal", amountPer100g: 379, unit: "kcal" }, { nutrientKey: "protein_g", amountPer100g: 13.15, unit: "g" }]));
+    const barcode = await (await import("../server/food-catalog")).lookupFoodCatalogBarcode("012345678905", "usda_fooddata_central", usdaFoodDataEnv, fetchMock as typeof fetch);
+    expect(barcode.item?.barcode).toBe("012345678905");
+    expect(JSON.stringify(search)).not.toContain(usdaFoodDataEnv.USDA_FOODDATA_API_KEY!);
+  });
+
   it("wires private routes, explicit import, provenance columns, and fail-closed UI", () => {
     const routes = readFileSync(resolve(process.cwd(), "server/routes/food-catalog.ts"), "utf8");
     const nutrition = readFileSync(resolve(process.cwd(), "server/routes/nutrition.ts"), "utf8");
@@ -132,6 +157,7 @@ describe("food catalog gateway", () => {
     expect(ui).toContain("configured data provider");
     expect(ui).toContain("Manual foods remain available");
     expect(ui).toContain("Load more results");
+    expect(ui).toContain("Food catalog data source");
     expect(migration).toContain('"catalog_attribution_text"');
     expect(portionMigration).toContain('"catalog_grams_per_unit"');
     expect(release).toContain('id: "0104_food_catalog_gateway"');

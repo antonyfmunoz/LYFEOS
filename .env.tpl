@@ -43,3 +43,7 @@ POSTHOG_ADMIN_HOST=https://us.posthog.com
 # requires a contactable User-Agent and preserves visible ODbL attribution.
 # OPEN_FOOD_FACTS_ENABLED=true
 # OPEN_FOOD_FACTS_USER_AGENT=LyfeOS/1.0 (https://lyfeos.net; support@lyfeos.net)
+# Optional complementary US nutrient source. Create a dedicated data.gov key;
+# never use the shared DEMO_KEY in a deployed application. The key remains
+# server-side and the interface keeps USDA source attribution on every import.
+# USDA_FOODDATA_API_KEY=replace-with-data-gov-api-key

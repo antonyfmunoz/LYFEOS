@@ -8,9 +8,11 @@ const initialSearchSchema = z.object({
   territory: z.string().trim().min(2).max(16).default("US"),
   locale: z.string().trim().min(2).max(35).default("en-US"),
   limit: z.coerce.number().int().min(1).max(20).default(10),
+  providerId: z.string().trim().min(1).max(80).regex(/^[a-z0-9][a-z0-9_-]*$/).optional(),
 }).strict();
 const searchSchema = z.union([initialSearchSchema, z.object({ cursor: z.string().min(80).max(4_000) }).strict()]);
 const barcodeSchema = z.string().trim().regex(/^\d{8,14}$/);
+const barcodeProviderSchema = z.string().trim().min(1).max(80).regex(/^[a-z0-9][a-z0-9_-]*$/).optional();
 
 function catalogFailure(error: unknown, res: Response) {
   if (error instanceof FoodCatalogError) {
@@ -38,8 +40,10 @@ export function registerFoodCatalogRoutes(app: Express): void {
   app.get("/api/food-catalog/barcodes/:barcode", isAuthenticated, async (req: Request, res: Response) => {
     const parsed = barcodeSchema.safeParse(req.params.barcode);
     if (!parsed.success) return res.status(400).json({ error: "Enter a valid 8–14 digit product barcode." });
+    const provider = barcodeProviderSchema.safeParse(req.query.providerId);
+    if (!provider.success) return res.status(400).json({ error: "Choose a valid food catalog provider." });
     try {
-      const result = await lookupFoodCatalogBarcode(parsed.data);
+      const result = await lookupFoodCatalogBarcode(parsed.data, provider.data);
       return res.json({ ...result, found: Boolean(result.item), disclosure: result.item ? "Review the provider, dataset version, label, and nutrient coverage before saving a private copy." : "The configured catalog did not identify this barcode. Manual label entry remains available." });
     } catch (error) {
       return catalogFailure(error, res);

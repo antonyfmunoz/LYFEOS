@@ -5,7 +5,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-type CatalogStatus = { available: boolean; reason: string | null; behavior: string };
+type CatalogStatus = { available: boolean; reason: string | null; behavior: string; providers?: Array<{ id: string; name: string; territories: string[] }>; defaultProviderId?: string | null };
 type CatalogProvider = { id: string; name: string; datasetVersion: string; territories: string[]; attributionText: string; attributionUrl?: string | null };
 type CatalogPortion = { label: string; gramsPerUnit: number };
 type CatalogItem = { externalId: string; itemVersion: string; name: string; brand?: string | null; barcode?: string | null; territory: string; servingSizeGrams?: number | null; portions: CatalogPortion[]; nutrients: Array<{ nutrientKey: string; amountPer100g: number; unit: string }>; lookupToken: string };
@@ -15,12 +15,13 @@ type SelectedFood = { name: string; catalogProviderId: string | null; catalogDat
 export default function FoodCatalogSearch({ onImported, selectedFood }: { onImported: (foodId: number) => void; selectedFood?: SelectedFood }) {
   const [query, setQuery] = useState("");
   const [territory, setTerritory] = useState("US");
+  const [providerId, setProviderId] = useState("");
   const [results, setResults] = useState<CatalogResults | null>(null);
   const status = useQuery<CatalogStatus>({ queryKey: ["/api/food-catalog/status"], queryFn: () => apiRequest("/api/food-catalog/status") });
   const search = useMutation({
     mutationFn: ({ cursor }: { cursor?: string }) => apiRequest<CatalogResults>(cursor
       ? `/api/food-catalog/search?cursor=${encodeURIComponent(cursor)}`
-      : `/api/food-catalog/search?query=${encodeURIComponent(query)}&territory=${encodeURIComponent(territory)}&locale=en-US&limit=10`),
+      : `/api/food-catalog/search?query=${encodeURIComponent(query)}&territory=${encodeURIComponent(territory)}&locale=en-US&limit=10${providerId || status.data?.defaultProviderId ? `&providerId=${encodeURIComponent(providerId || status.data?.defaultProviderId || "")}` : ""}`),
     onSuccess: (page, { cursor }) => setResults((current) => cursor && current ? {
       ...page,
       items: Array.from(new Map([...current.items, ...page.items].map((item) => [`${item.externalId}:${item.itemVersion}`, item])).values()),
@@ -40,6 +41,7 @@ export default function FoodCatalogSearch({ onImported, selectedFood }: { onImpo
       <Input aria-label="Catalog territory" maxLength={16} value={territory} onChange={(event) => setTerritory(event.target.value.toUpperCase())} />
       <Button size="sm" disabled={query.trim().length < 2 || search.isPending} onClick={() => search.mutate({})}><Search />Search</Button>
     </div> : <p className="mt-3 rounded-md border border-muted/20 p-2 text-xs text-muted-foreground">{status.data?.reason || "Checking catalog availability…"} Manual foods remain available.</p>}
+    {(status.data?.providers?.length || 0) > 1 ? <label className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">Data source<select aria-label="Food catalog data source" className="h-8 rounded-md border border-input bg-background px-2 text-foreground" value={providerId || status.data?.defaultProviderId || ""} onChange={(event) => { setProviderId(event.target.value); setResults(null); }}><option value="">Default source</option>{status.data?.providers?.map((provider) => <option key={provider.id} value={provider.id}>{provider.name}</option>)}</select></label> : null}
     {search.error ? <p className="mt-2 text-xs text-destructive" role="alert">The catalog search could not be completed. No food was saved.</p> : null}
     {results ? <div className="mt-3 space-y-2" aria-live="polite">
       <p className="text-[11px] text-muted-foreground">{results.provider.name} · dataset {results.provider.datasetVersion} · {results.provider.attributionText}</p>

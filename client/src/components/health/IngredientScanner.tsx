@@ -10,7 +10,7 @@ import { normalizeDetectedLabelText } from "@/lib/on-device-label-ocr";
 type IngredientPreference = { id: number; displayName: string; preferenceType: "avoid" | "limit" | "watch"; note: string | null };
 type ScanItem = { id: number; rawName: string; classification: string; evidenceStrength: string; preference: IngredientPreference | null };
 type IngredientScan = { id: number; captureMethod: "manual_label" | "photo_ocr" | "barcode"; productName: string | null; barcode: string | null; rawIngredientsText: string; revision: number; createdAt: string; items: ScanItem[]; catalogProviderId: string | null; catalogDatasetVersion: string | null; catalogAttributionText: string | null; catalogAttributionUrl: string | null; catalogSourceModified: boolean };
-type CatalogStatus = { available: boolean; reason: string | null };
+type CatalogStatus = { available: boolean; reason: string | null; providers?: Array<{ id: string; name: string }>; defaultProviderId?: string | null };
 type CatalogLookup = { provider: { name: string; datasetVersion: string; attributionText: string; attributionUrl?: string | null }; item: { name: string; barcode?: string | null; ingredientsText?: string | null; lookupToken: string } | null; found: boolean; disclosure: string };
 
 export default function IngredientScanner() {
@@ -23,6 +23,7 @@ export default function IngredientScanner() {
   const [editingScanId, setEditingScanId] = useState<number | null>(null);
   const [editingRevision, setEditingRevision] = useState<number | null>(null);
   const [catalogLookupToken, setCatalogLookupToken] = useState<string | null>(null);
+  const [catalogProviderId, setCatalogProviderId] = useState("");
   const [captureMethod, setCaptureMethod] = useState<"manual_label" | "photo_ocr">("manual_label");
   const cameraInput = useRef<HTMLInputElement>(null);
   const labelInput = useRef<HTMLInputElement>(null);
@@ -48,7 +49,7 @@ export default function IngredientScanner() {
     onSuccess: ({ scan }) => { if (scan) { setProductName(scan.productName || ""); setIngredients(scan.rawIngredientsText); setCaptureMethod(scan.captureMethod === "photo_ocr" ? "photo_ocr" : "manual_label"); setEditingScanId(scan.id); setEditingRevision(scan.revision); setCameraStatus("Loaded your most recently saved label for this barcode. Review it before using or correcting it."); } else setCameraStatus("This barcode is not in your private saved-label history."); },
   });
   const catalogLookup = useMutation({
-    mutationFn: () => apiRequest<CatalogLookup>(`/api/food-catalog/barcodes/${encodeURIComponent(barcode)}`),
+    mutationFn: () => apiRequest<CatalogLookup>(`/api/food-catalog/barcodes/${encodeURIComponent(barcode)}${catalogProviderId || catalogStatus.data?.defaultProviderId ? `?providerId=${encodeURIComponent(catalogProviderId || catalogStatus.data?.defaultProviderId || "")}` : ""}`),
     onSuccess: ({ item, provider, disclosure }) => {
       if (!item) { setCatalogLookupToken(null); setCameraStatus(disclosure); return; }
       setProductName(item.name); setBarcode(item.barcode || barcode); setIngredients(item.ingredientsText || ""); setCatalogLookupToken(item.lookupToken);
@@ -136,7 +137,7 @@ export default function IngredientScanner() {
     </div>
     <input ref={cameraInput} className="sr-only" type="file" accept="image/*" capture="environment" aria-label="Take a barcode photo" onChange={(event) => void decodeBarcodeImage(event.target.files?.[0])} />
     <input ref={labelInput} className="sr-only" type="file" accept="image/*" capture="environment" aria-label="Take an ingredient label photo" onChange={(event) => void readLabelImage(event.target.files?.[0])} />
-    <div className="mt-2 flex flex-wrap items-center gap-3"><Button type="button" size="sm" variant="outline" onClick={() => cameraInput.current?.click()}><Camera />Scan barcode with camera</Button><Button type="button" size="sm" variant="outline" onClick={() => labelInput.current?.click()}><ScanLine />Read label text on-device</Button><Button type="button" size="sm" variant="outline" disabled={!barcode.trim() || lookup.isPending} onClick={() => lookup.mutate()}><Search />Search my saved labels</Button><Button type="button" size="sm" variant="outline" disabled={!catalogStatus.data?.available || !/^\d{8,14}$/.test(barcode.trim()) || catalogLookup.isPending} onClick={() => catalogLookup.mutate()}><Database />Search product catalog</Button>{cameraStatus ? <p className="text-xs text-muted-foreground" role="status">{cameraStatus}</p> : null}</div>
+    <div className="mt-2 flex flex-wrap items-center gap-3"><Button type="button" size="sm" variant="outline" onClick={() => cameraInput.current?.click()}><Camera />Scan barcode with camera</Button><Button type="button" size="sm" variant="outline" onClick={() => labelInput.current?.click()}><ScanLine />Read label text on-device</Button><Button type="button" size="sm" variant="outline" disabled={!barcode.trim() || lookup.isPending} onClick={() => lookup.mutate()}><Search />Search my saved labels</Button><Button type="button" size="sm" variant="outline" disabled={!catalogStatus.data?.available || !/^\d{8,14}$/.test(barcode.trim()) || catalogLookup.isPending} onClick={() => catalogLookup.mutate()}><Database />Search product catalog</Button>{(catalogStatus.data?.providers?.length || 0) > 1 ? <label className="flex items-center gap-1 text-xs text-muted-foreground">Source<select aria-label="Ingredient scanner catalog source" className="h-8 rounded-md border border-input bg-background px-2 text-foreground" value={catalogProviderId || catalogStatus.data?.defaultProviderId || ""} onChange={(event) => { setCatalogProviderId(event.target.value); setCatalogLookupToken(null); }}><option value="">Default source</option>{catalogStatus.data?.providers?.map((provider) => <option key={provider.id} value={provider.id}>{provider.name}</option>)}</select></label> : null}{cameraStatus ? <p className="text-xs text-muted-foreground" role="status">{cameraStatus}</p> : null}</div>
     {!catalogStatus.data?.available ? <p className="mt-2 text-xs text-muted-foreground">{catalogStatus.data?.reason || "Checking catalog availability…"}</p> : null}
     <Textarea aria-label="Ingredient label" className="mt-2" placeholder="Ingredients: water, oats, cane sugar, natural flavor (vanilla extract, salt)" value={ingredients} onChange={(event) => { setIngredients(event.target.value); if (catalogLookupToken) setCaptureMethod("manual_label"); setCatalogLookupToken(null); }} />
     <div className="mt-2 flex flex-wrap items-center gap-3">
