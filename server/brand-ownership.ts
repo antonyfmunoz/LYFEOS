@@ -1,7 +1,6 @@
 import { brandOwnershipLookupSchema, brandOwnershipProfileSchema, type BrandOwnershipLookup, type BrandOwnershipProfile } from "@shared/brand-ownership";
 import { brandOwnershipRegistryEntries, brandOwnershipRegistryLookupKeys } from "@shared/schema";
 import { and, eq } from "drizzle-orm";
-import { db } from "./db";
 
 const accessedAt = "2026-09-02";
 const provider = {
@@ -171,6 +170,10 @@ export async function lookupReviewedBrandOwnership(requestedBrand: string, now =
   const key = normalized(cleanBrand);
   if (!key) return lookupBrandOwnership(requestedBrand, now);
   try {
+    // Keep the cited built-in registry usable in the browser-free test suite and
+    // during database initialization failures. The database is only needed for
+    // the optional reviewer-maintained overlay.
+    const { db } = await import("./db");
     const [row] = await db.select({ profile: brandOwnershipRegistryEntries.profile })
       .from(brandOwnershipRegistryLookupKeys)
       .innerJoin(brandOwnershipRegistryEntries, eq(brandOwnershipRegistryLookupKeys.entryId, brandOwnershipRegistryEntries.id))
@@ -186,6 +189,7 @@ export async function lookupReviewedBrandOwnership(requestedBrand: string, now =
 
 export async function listReviewedBrandSpotlights(): Promise<BrandOwnershipProfile[]> {
   try {
+    const { db } = await import("./db");
     const rows = await db.select({ profile: brandOwnershipRegistryEntries.profile })
       .from(brandOwnershipRegistryEntries)
       .where(eq(brandOwnershipRegistryEntries.status, "active"))

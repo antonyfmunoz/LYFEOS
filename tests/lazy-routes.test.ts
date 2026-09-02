@@ -28,7 +28,7 @@ describe("route loading boundary", () => {
     expect(health).toContain("Other Health workspaces remain available.");
     expect(health).toContain('lazyHealthFeature(() => import("@/components/health/HealthTrendWorkbench"))');
     expect(health).toContain('rootMargin: "600px 0px"');
-    expect(health).toContain('<DeferredHealthSection label="nutrition diary" targetId="health-section-nutrition"><NutritionDiary /></DeferredHealthSection>');
+    expect(health).toContain('<DeferredHealthSection label="nutrition diary" targetId="health-section-nutrition"><NutritionDiary importedFoodId={importedNutritionFoodId}');
     expect(health).toContain('id={targetId} className="scroll-mt-6"');
     expect(health).not.toContain('import NutritionDiary from "@/components/health/NutritionDiary"');
     expect(nutrition).toContain('const loadNutritionReportsPanel = () => import("./NutritionReportsPanel")');
