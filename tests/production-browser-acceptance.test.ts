@@ -20,6 +20,9 @@ describe("production browser acceptance custody", () => {
     expect(script).toContain("Authenticated acceptance was required but its email/password secrets were not configured.");
     expect(script).toContain("LYFEOS_ACCEPTANCE_SESSION_FILE");
     expect(script).toContain("restoreDisposableSession");
+    expect(script).toContain('localStorage.setItem("lyfeos_user", "acceptance-session")');
+    expect(script).toContain("The fixed preload screen intentionally covers the first route render.");
+    expect(script).toContain("app-preloader");
     expect(script).toContain("if (REQUIRE_AUTHENTICATED && !authenticatedExecuted)");
   });
 
