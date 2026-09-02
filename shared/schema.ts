@@ -3440,6 +3440,14 @@ export const ingredientPreferenceRules = pgTable("ingredient_preference_rules", 
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => [uniqueIndex("ingredient_preference_rules_user_key_unique_idx").on(table.userId, table.normalizedKey)]);
 
+// A food-review standard changes how LyfeOS presents evidence; it never turns
+// a catalog label or an OCR hint into a dietary or religious determination.
+export const foodReviewPreferences = pgTable("food_review_preferences", {
+  userId: integer("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+  kosherPackageConfirmation: boolean("kosher_package_confirmation").notNull().default(false),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 // Private household inventory. Product catalog provenance is preserved when a
 // barcode lookup creates the item, while ownership is resolved afresh from the
 // cited registry so a changed corporate relationship is never silently frozen.

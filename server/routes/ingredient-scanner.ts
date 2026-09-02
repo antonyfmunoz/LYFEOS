@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
-import { ingredientPreferenceRules, ingredientScanItems, ingredientScans } from "@shared/schema";
+import { foodReviewPreferences, ingredientPreferenceRules, ingredientScanItems, ingredientScans } from "@shared/schema";
 import { db } from "../db";
 import { normalizeIngredientKey, parseIngredientLabel } from "../ingredient-scanner";
 import { isAuthenticated } from "./middleware";
@@ -19,6 +19,9 @@ const preferenceSchema = z.object({
   displayName: z.string().trim().min(1).max(160),
   preferenceType: z.enum(["avoid", "limit", "watch"]),
   note: z.string().trim().max(500).nullable().optional(),
+});
+const foodReviewPreferencesSchema = z.object({
+  kosherPackageConfirmation: z.boolean(),
 });
 
 export function registerIngredientScannerRoutes(app: Express): void {
@@ -48,6 +51,27 @@ export function registerIngredientScannerRoutes(app: Express): void {
       .where(eq(ingredientPreferenceRules.userId, req.session.userId!))
       .orderBy(desc(ingredientPreferenceRules.createdAt));
     return res.json({ preferences, disclosure: "These are your label-review preferences. A match is not a medical, allergy, treatment, or universal safety claim." });
+  });
+
+  app.get("/api/food-review-preferences", isAuthenticated, async (req: Request, res: Response) => {
+    const [preferences] = await db.select().from(foodReviewPreferences)
+      .where(eq(foodReviewPreferences.userId, req.session.userId!)).limit(1);
+    return res.json({
+      preferences: { kosherPackageConfirmation: preferences?.kosherPackageConfirmation ?? false },
+      disclosure: "This setting requires your confirmation of the printed mark on the exact package. It does not certify a product or replace an observance authority.",
+    });
+  });
+
+  app.put("/api/food-review-preferences", isAuthenticated, async (req: Request, res: Response) => {
+    const parsed = foodReviewPreferencesSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: "Enter valid food-review preferences." });
+    const [preferences] = await db.insert(foodReviewPreferences).values({
+      userId: req.session.userId!, kosherPackageConfirmation: parsed.data.kosherPackageConfirmation, updatedAt: new Date(),
+    }).onConflictDoUpdate({
+      target: foodReviewPreferences.userId,
+      set: { kosherPackageConfirmation: parsed.data.kosherPackageConfirmation, updatedAt: new Date() },
+    }).returning();
+    return res.json({ preferences: { kosherPackageConfirmation: preferences.kosherPackageConfirmation } });
   });
 
   app.get("/api/ingredient-scans/lookup", isAuthenticated, async (req: Request, res: Response) => {

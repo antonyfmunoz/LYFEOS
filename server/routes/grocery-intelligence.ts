@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
-import { brandOwnershipResearchReports, groceryPantryItems, groceryReceiptDrafts, groceryShoppingItems, ingredientPreferenceRules } from "@shared/schema";
+import { brandOwnershipResearchReports, foodReviewPreferences, groceryPantryItems, groceryReceiptDrafts, groceryShoppingItems, ingredientPreferenceRules } from "@shared/schema";
 import { db } from "../db";
 import { listReviewedBrandSpotlights, lookupReviewedBrandOwnership } from "../brand-ownership";
 import { FoodCatalogError, searchFoodCatalog } from "../food-catalog";
@@ -191,9 +191,10 @@ export function registerGroceryIntelligenceRoutes(app: Express): void {
     const id = itemId(req.params.id);
     if (!id.success) return res.status(400).json({ error: "Invalid pantry item." });
     const userId = req.session.userId!;
-    const [itemRows, preferences] = await Promise.all([
+    const [itemRows, preferences, foodReviewPreferenceRows] = await Promise.all([
       db.select().from(groceryPantryItems).where(and(eq(groceryPantryItems.id, id.data), eq(groceryPantryItems.userId, userId), eq(groceryPantryItems.status, "active"))).limit(1),
       db.select().from(ingredientPreferenceRules).where(eq(ingredientPreferenceRules.userId, userId)),
+      db.select().from(foodReviewPreferences).where(eq(foodReviewPreferences.userId, userId)).limit(1),
     ]);
     const item = itemRows[0];
     if (!item) return res.status(404).json({ error: "Pantry item not found." });
@@ -206,6 +207,10 @@ export function registerGroceryIntelligenceRoutes(app: Express): void {
         barcode: candidate.barcode || null,
         ownership: candidate.brand ? (await lookupReviewedBrandOwnership(candidate.brand)).profile : null,
         preferenceReview: preferenceReview(candidate.ingredientsText, preferences),
+        kosherReview: {
+          packageConfirmationRequired: foodReviewPreferenceRows[0]?.kosherPackageConfirmation ?? false,
+          catalogLabelReported: candidate.certifications.some((certification) => certification.kind === "kosher"),
+        },
       })));
       return res.json({
         pantryItemId: item.id,
