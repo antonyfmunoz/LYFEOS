@@ -72,6 +72,44 @@ const profiles: BrandOwnershipProfile[] = [
       { title: "General Mills acquisition of Blue Buffalo", publisher: "General Mills", sourceType: "acquisition_announcement", sourceUrl: "https://investors.generalmills.com/press-releases/press-release-details/2018/General-Mills-Accelerates-Portfolio-Reshaping-With-Acquisition-of-Blue-Buffalo-Pet-Products/", publishedAt: "2018-02-23", accessedAt, claim: "General Mills announced its acquisition of Blue Buffalo." },
     ],
   },
+  {
+    brand: "Seventh Generation",
+    aliases: [],
+    status: "corporate_owned",
+    statusLabel: "Corporate-owned",
+    ownershipChain: [{ name: "Seventh Generation", role: "brand" }, { name: "Unilever", role: "ultimate_parent" }],
+    acquisition: { announcedOn: null, summary: "Unilever identifies Seventh Generation as a Home Care brand and records its acquisition in the company's 2016 history." },
+    verifiedAsOf: accessedAt,
+    evidence: [
+      { title: "Unilever 2021 information memorandum", publisher: "Unilever", sourceType: "company_portfolio", sourceUrl: "https://www.unilever.com/files/origin/d5af07469eda9fbda99d222a2ad168f50a281b48.pdf/unilever-2021-information-memorandum.pdf", publishedAt: "2021-05-11", accessedAt, claim: "Unilever identifies Seventh Generation among its Home Care brands." },
+      { title: "Unilever 2017 information memorandum", publisher: "Unilever", sourceType: "acquisition_announcement", sourceUrl: "https://www.unilever.com/files/2017-information-memorandum.pdf", publishedAt: "2017-05-09", accessedAt, claim: "Unilever records that it acquired Seventh Generation, Inc. in 2016." },
+    ],
+  },
+  {
+    brand: "Tom's of Maine",
+    aliases: ["Toms of Maine"],
+    status: "corporate_owned",
+    statusLabel: "Corporate-owned",
+    ownershipChain: [{ name: "Tom's of Maine", role: "brand" }, { name: "Colgate-Palmolive Company", role: "ultimate_parent" }],
+    acquisition: { announcedOn: "2006-05-01", summary: "Colgate-Palmolive announced the completed purchase of Tom's of Maine in 2006 and currently lists the brand in its portfolio." },
+    verifiedAsOf: accessedAt,
+    evidence: [
+      { title: "Colgate-Palmolive brands", publisher: "Colgate-Palmolive", sourceType: "company_portfolio", sourceUrl: "https://www.colgatepalmolive.com/en-us/brands", publishedAt: null, accessedAt, claim: "Colgate-Palmolive lists Tom's of Maine in its Oral Health brand portfolio." },
+      { title: "Colgate completes purchase of Tom's of Maine", publisher: "Colgate-Palmolive", sourceType: "acquisition_announcement", sourceUrl: "https://investor.colgatepalmolive.com/news-releases/news-release-details/colgate-completes-purchase-toms-maine/", publishedAt: "2006-05-01", accessedAt, claim: "Colgate-Palmolive announced the completion of its purchase of Tom's of Maine." },
+    ],
+  },
+  {
+    brand: "Newman's Own",
+    aliases: ["Newmans Own"],
+    status: "nonprofit_owned_claim",
+    statusLabel: "Nonprofit-owned (foundation statement)",
+    ownershipChain: [{ name: "Newman's Own", role: "brand" }, { name: "Newman's Own Foundation", role: "nonprofit_owner" }],
+    acquisition: null,
+    verifiedAsOf: accessedAt,
+    evidence: [
+      { title: "The Newman's Own Model", publisher: "Newman's Own Foundation", sourceType: "company_statement", sourceUrl: "https://newmansown.org/the-newmans-own-model/", publishedAt: null, accessedAt, claim: "Newman's Own Foundation states that it owns the food company and that 100% of profits and royalties from Newman’s Own products support its mission." },
+    ],
+  },
 ].map((profile) => brandOwnershipProfileSchema.parse(profile));
 
 function normalized(value: string): string {

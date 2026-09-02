@@ -6,6 +6,7 @@ export const brandOwnershipStatusSchema = z.enum([
   "family_owned_claim",
   "employee_owned_claim",
   "farmer_owned_cooperative_claim",
+  "nonprofit_owned_claim",
   "private_independent_claim",
 ]);
 
@@ -26,7 +27,7 @@ export const brandOwnershipProfileSchema = z.object({
   statusLabel: z.string().trim().min(1).max(120),
   ownershipChain: z.array(z.object({
     name: z.string().trim().min(1).max(200),
-    role: z.enum(["brand", "operating_company", "parent_company", "ultimate_parent", "cooperative"]),
+    role: z.enum(["brand", "operating_company", "parent_company", "ultimate_parent", "cooperative", "nonprofit_owner"]),
   }).strict()).min(1).max(8),
   acquisition: z.object({
     announcedOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),

@@ -15,6 +15,19 @@ describe("verified brand ownership registry", () => {
   it("preserves distinct ownership forms without calling a cooperative or employee-owned company family-owned", () => {
     expect(lookupBrandOwnership("Bob's Red Mill").profile?.status).toBe("employee_owned_claim");
     expect(lookupBrandOwnership("Organic Valley").profile?.status).toBe("farmer_owned_cooperative_claim");
+    expect(lookupBrandOwnership("Newman's Own").profile).toMatchObject({
+      status: "nonprofit_owned_claim",
+      ownershipChain: [{ name: "Newman's Own", role: "brand" }, { name: "Newman's Own Foundation", role: "nonprofit_owner" }],
+    });
+  });
+
+  it("adds corporate matches only when the brand has linked portfolio and acquisition evidence", () => {
+    for (const brand of ["Seventh Generation", "Tom's of Maine"]) {
+      const profile = lookupBrandOwnership(brand).profile;
+      expect(profile).toMatchObject({ status: "corporate_owned" });
+      expect(profile?.evidence.map((entry) => entry.sourceType)).toContain("company_portfolio");
+      expect(profile?.evidence.map((entry) => entry.sourceType)).toContain("acquisition_announcement");
+    }
   });
 
   it("fails closed to unknown rather than inferring ownership from an unmatched name", () => {
