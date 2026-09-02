@@ -292,6 +292,13 @@ describe("health and fitness foundation", () => {
     expect(scanner).toContain("Catalog labels stay external until explicit save");
   });
 
+  it("keeps ingredient-rule context personal and visible in scan matches", () => {
+    const scanner = readFileSync(resolve(process.cwd(), "client/src/components/health/IngredientScanner.tsx"), "utf8");
+    expect(scanner).toContain('aria-label="Ingredient preference note"');
+    expect(scanner).toContain("note: preferenceNote.trim() || undefined");
+    expect(scanner).toContain("item.preference?.note");
+  });
+
   it("keeps structured workouts and exercise details in the release and private-account paths", () => {
     const migration = readFileSync(resolve(process.cwd(), "migrations/0031_workout_ledger.sql"), "utf8");
     const releaseRunner = readFileSync(resolve(process.cwd(), "server/release-migrate.ts"), "utf8");

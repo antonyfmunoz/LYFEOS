@@ -19,6 +19,7 @@ export default function IngredientScanner() {
   const [ingredients, setIngredients] = useState("");
   const [preferenceName, setPreferenceName] = useState("");
   const [preferenceType, setPreferenceType] = useState<IngredientPreference["preferenceType"]>("avoid");
+  const [preferenceNote, setPreferenceNote] = useState("");
   const [cameraStatus, setCameraStatus] = useState("");
   const [editingScanId, setEditingScanId] = useState<number | null>(null);
   const [editingRevision, setEditingRevision] = useState<number | null>(null);
@@ -62,9 +63,10 @@ export default function IngredientScanner() {
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["/api/ingredient-scans"] }),
   });
   const savePreference = useMutation({
-    mutationFn: () => apiRequest("/api/ingredient-preferences", { method: "POST", body: JSON.stringify({ displayName: preferenceName, preferenceType }) }),
+    mutationFn: () => apiRequest("/api/ingredient-preferences", { method: "POST", body: JSON.stringify({ displayName: preferenceName, preferenceType, note: preferenceNote.trim() || undefined }) }),
     onSuccess: () => {
       setPreferenceName("");
+      setPreferenceNote("");
       void queryClient.invalidateQueries({ queryKey: ["/api/ingredient-preferences"] });
       void queryClient.invalidateQueries({ queryKey: ["/api/ingredient-scans"] });
     },
@@ -147,15 +149,16 @@ export default function IngredientScanner() {
     {create.error && <p className="text-xs text-destructive mt-2">Could not review that label. Check the label text and barcode, then try again.</p>}
     <div className="mt-5 rounded-lg border border-primary/15 bg-background/20 p-3">
       <h3 className="text-sm font-semibold">Your ingredient preferences</h3>
-      <p className="mt-1 text-xs text-muted-foreground">Choose what you personally want to avoid, limit, or watch. Matches label terms only; it is not allergy or medical guidance.</p>
+      <p className="mt-1 text-xs text-muted-foreground">Choose what you personally want to avoid, limit, or watch, and optionally preserve why. Matches label terms only; it is not allergy or medical guidance.</p>
       <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_7rem_auto]"><Input aria-label="Ingredient preference" placeholder="e.g. artificial color" value={preferenceName} onChange={(event) => setPreferenceName(event.target.value)} /><select aria-label="Ingredient preference type" className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={preferenceType} onChange={(event) => setPreferenceType(event.target.value as IngredientPreference["preferenceType"])}><option value="avoid">Avoid</option><option value="limit">Limit</option><option value="watch">Watch</option></select><Button size="sm" disabled={!preferenceName.trim() || savePreference.isPending} onClick={() => savePreference.mutate()}><Plus />Save rule</Button></div>
+      <Input className="mt-2" aria-label="Ingredient preference note" placeholder="Optional reason or context for this personal rule" maxLength={500} value={preferenceNote} onChange={(event) => setPreferenceNote(event.target.value)} />
       {savePreference.error && <p className="text-xs text-destructive mt-2">Could not save that preference.</p>}
-      {preferences.data?.preferences.length ? <div className="mt-3 flex flex-wrap gap-2">{preferences.data.preferences.map((preference) => <span key={preference.id} className="inline-flex items-center gap-1 rounded-md border border-muted/30 px-2 py-1 text-xs"><span className="text-primary">{preference.preferenceType}</span> {preference.displayName}<Button variant="ghost" size="icon" className="h-5 w-5" aria-label={`Delete ${preference.displayName} preference`} disabled={removePreference.isPending} onClick={() => removePreference.mutate(preference.id)}><Trash2 className="h-3 w-3" /></Button></span>)}</div> : null}
+      {preferences.data?.preferences.length ? <div className="mt-3 flex flex-wrap gap-2">{preferences.data.preferences.map((preference) => <span key={preference.id} className="inline-flex items-center gap-1 rounded-md border border-muted/30 px-2 py-1 text-xs"><span className="text-primary">{preference.preferenceType}</span> {preference.displayName}{preference.note ? <span className="text-muted-foreground"> · {preference.note}</span> : null}<Button variant="ghost" size="icon" className="h-5 w-5" aria-label={`Delete ${preference.displayName} preference`} disabled={removePreference.isPending} onClick={() => removePreference.mutate(preference.id)}><Trash2 className="h-3 w-3" /></Button></span>)}</div> : null}
     </div>
     {scans.data?.scans.length ? <div className="mt-5 space-y-3">
       {scans.data.scans.map((scan) => <article key={scan.id} className="rounded-lg border border-muted/30 bg-background/20 p-3">
         <div className="flex items-start justify-between gap-3"><div><p className="text-sm font-medium">{scan.productName || "Unnamed product"}</p><p className="text-xs text-muted-foreground">{new Date(scan.createdAt).toLocaleDateString()}{scan.barcode ? ` · barcode ${scan.barcode}` : ""} · {scan.items.length} parsed ingredients · revision {scan.revision}</p>{scan.catalogProviderId ? <p className="mt-1 text-[11px] text-muted-foreground">Source: {scan.catalogProviderId} dataset {scan.catalogDatasetVersion}{scan.catalogSourceModified ? " · privately corrected after import" : ""}{scan.catalogAttributionUrl ? <> · <a className="text-primary underline" href={scan.catalogAttributionUrl} target="_blank" rel="noreferrer">attribution</a></> : scan.catalogAttributionText ? ` · ${scan.catalogAttributionText}` : ""}</p> : null}</div><div className="flex"><Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`Correct ingredient review for ${scan.productName || "unnamed product"}`} onClick={() => editScan(scan)}><Pencil className="h-4 w-4" /></Button><Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`Delete ingredient review for ${scan.productName || "unnamed product"}`} disabled={remove.isPending} onClick={() => remove.mutate(scan.id)}><Trash2 className="h-4 w-4" /></Button></div></div>
-        <div className="mt-3 flex flex-wrap gap-1.5">{scan.items.map((item) => <span key={item.id} title={item.preference ? `Matches your ${item.preference.preferenceType} preference` : "No universal harmfulness or safety conclusion has been assigned"} className="rounded-md border border-muted/30 px-2 py-1 text-xs text-muted-foreground">{item.rawName} <span className="text-primary/80">· {item.preference ? `your ${item.preference.preferenceType} rule` : "unclassified"}</span></span>)}</div>
+        <div className="mt-3 flex flex-wrap gap-1.5">{scan.items.map((item) => <span key={item.id} title={item.preference ? `Matches your ${item.preference.preferenceType} preference${item.preference.note ? `: ${item.preference.note}` : ""}` : "No universal harmfulness or safety conclusion has been assigned"} className="rounded-md border border-muted/30 px-2 py-1 text-xs text-muted-foreground">{item.rawName} <span className="text-primary/80">· {item.preference ? `your ${item.preference.preferenceType} rule` : "unclassified"}</span>{item.preference?.note ? <span> · {item.preference.note}</span> : null}</span>)}</div>
       </article>)}
     </div> : null}
     {scans.data?.disclosure && <p className="mt-4 text-xs text-muted-foreground">{scans.data.disclosure}</p>}
