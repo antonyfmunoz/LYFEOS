@@ -71,6 +71,15 @@ describe("canonical mission Calendar", () => {
     expect(quests).toContain("Your LyfeOS mission was kept and is no longer linked to Google Calendar.");
   });
 
+  it("schedules missions created from Calendar so successful creation is immediately visible", () => {
+    const quests = source("client/src/pages/QuestsPage.tsx");
+    expect(quests).toContain('if (viewMode === "calendar" && !createFormData.startDate)');
+    expect(quests).toContain('title: "Choose a calendar date"');
+    expect(quests).toContain('if (viewMode === "calendar" && !activeCustomView)');
+    expect(quests).toContain('startDate: current.startDate || scheduledDate');
+    expect(quests).toContain('endDate: current.endDate || scheduledDate');
+  });
+
   it("derives bounded visible ranges for every Calendar zoom", () => {
     expect(calendarVisibleRange("day", "2026-08-25")).toEqual({ from: "2026-08-25", to: "2026-08-25", days: 1 });
     expect(calendarVisibleRange("week", "2026-08-23")).toEqual({ from: "2026-08-23", to: "2026-08-29", days: 7 });

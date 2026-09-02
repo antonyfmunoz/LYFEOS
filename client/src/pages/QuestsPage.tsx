@@ -1646,6 +1646,10 @@ export default function QuestsPage() {
 
   const handleCreateMission = async () => {
     if (!createFormData.title.trim()) return;
+    if (viewMode === "calendar" && !createFormData.startDate) {
+      toast({ title: "Choose a calendar date", description: "Calendar missions need a date so LyfeOS can place them on your schedule.", variant: "destructive" });
+      return;
+    }
     
     setIsSubmitting(true);
     try {
@@ -1793,7 +1797,19 @@ export default function QuestsPage() {
           
         <Dialog open={isCreateOpen} onOpenChange={(open) => {
           setIsCreateOpen(open);
-          if (!open) setCreateFormData(defaultFormData);
+          if (!open) {
+            setCreateFormData(defaultFormData);
+            return;
+          }
+          if (viewMode === "calendar" && !activeCustomView) {
+            const scheduledDate = selectedDate
+              || (calendarZoom === "day" ? formatDateStr(calendarDay) : formatDateStr(new Date()));
+            setCreateFormData((current) => ({
+              ...current,
+              startDate: current.startDate || scheduledDate,
+              endDate: current.endDate || scheduledDate,
+            }));
+          }
         }}>
           <DialogTrigger asChild>
             <Button data-tour="create-mission" className="bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30 font-mono text-xs" size="sm">
