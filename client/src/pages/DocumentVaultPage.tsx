@@ -1855,7 +1855,7 @@ function DocumentCard({ doc, onOpen, onDelete, onToggleFavorite, onMove, onRenam
   );
 }
 
-type SyncResult = { imported?: number; updated?: number; skipped?: number; total?: number; pushed?: number; created?: number; folders?: number; moreAvailable?: boolean; nextPageToken?: string | null; error?: string };
+type SyncResult = { status?: 'started' | 'running' | 'succeeded' | 'failed'; imported?: number; updated?: number; skipped?: number; total?: number; pushed?: number; created?: number; folders?: number; startedAt?: string | null; updatedAt?: string | null; error?: string };
 type SyncStatus = 'idle' | 'syncing' | 'success' | 'error';
 
 function SyncImportDialog({ open, onOpenChange, obsidianInputRef, evernoteInputRef, currentFolderId, onSyncComplete }: {
@@ -1874,7 +1874,6 @@ function SyncImportDialog({ open, onOpenChange, obsidianInputRef, evernoteInputR
   } | null>(null);
   const [gdSyncStatus, setGdSyncStatus] = useState<SyncStatus>('idle');
   const [gdResult, setGdResult] = useState<SyncResult | null>(null);
-  const [gdNextPageToken, setGdNextPageToken] = useState<string | null>(null);
   const [gdPushStatus, setGdPushStatus] = useState<SyncStatus>('idle');
   const [gdPushResult, setGdPushResult] = useState<SyncResult | null>(null);
   const driveConnected = Boolean(gdStatus?.capabilities?.drive);
@@ -1898,18 +1897,15 @@ function SyncImportDialog({ open, onOpenChange, obsidianInputRef, evernoteInputR
     }
   }, [open]);
 
-  const handleGoogleDriveSync = async (pageToken: string | null = null) => {
+  const handleGoogleDriveSync = async () => {
     setGdSyncStatus('syncing');
-    if (!pageToken) setGdResult(null);
+    setGdResult(null);
     try {
       const data = await runWithApproval((approvalId) => apiRequest<SyncResult>('/api/google/drive/sync', {
         method: 'POST',
-        body: JSON.stringify({ ...(pageToken ? { pageToken } : {}), ...(approvalId ? { approvalId } : {}) }),
+        body: JSON.stringify(approvalId ? { approvalId } : {}),
       }));
       setGdResult(data);
-      setGdNextPageToken(data.nextPageToken || null);
-      setGdSyncStatus('success');
-      await onSyncComplete();
     } catch (err: any) {
       if (err instanceof IntegrationActionDeniedError) {
         setGdSyncStatus('idle');
@@ -1919,6 +1915,32 @@ function SyncImportDialog({ open, onOpenChange, obsidianInputRef, evernoteInputR
       setGdSyncStatus('error');
     }
   };
+
+  useEffect(() => {
+    if (gdSyncStatus !== 'syncing') return;
+    let cancelled = false;
+    const refresh = async () => {
+      try {
+        const data = await apiRequest<SyncResult>('/api/google/drive/sync-status');
+        if (cancelled) return;
+        setGdResult(data);
+        if (data.status === 'succeeded') {
+          setGdSyncStatus('success');
+          await onSyncComplete();
+        } else if (data.status === 'failed') {
+          setGdSyncStatus('error');
+        }
+      } catch (error: any) {
+        if (!cancelled) {
+          setGdResult({ error: error.message });
+          setGdSyncStatus('error');
+        }
+      }
+    };
+    void refresh();
+    const interval = window.setInterval(() => void refresh(), 2_000);
+    return () => { cancelled = true; window.clearInterval(interval); };
+  }, [gdSyncStatus, onSyncComplete]);
 
   const handleGoogleDrivePush = async () => {
     setGdPushStatus('syncing');
@@ -2026,6 +2048,10 @@ function SyncImportDialog({ open, onOpenChange, obsidianInputRef, evernoteInputR
         </div>
       );
     }
+    if (result.status === 'started' || result.status === 'running') {
+      const progress = [result.imported ? `${result.imported} imported` : null, result.updated ? `${result.updated} updated` : null, result.skipped ? `${result.skipped} skipped` : null].filter(Boolean);
+      return <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10 border border-primary/20 text-primary text-xs"><Loader2 className="h-4 w-4 shrink-0 animate-spin" /><span>Syncing safely in the background{progress.length ? ` · ${progress.join(', ')}` : ''}. You can leave this page.</span></div>;
+    }
     const parts: string[] = [];
     if (result.imported !== undefined && result.imported > 0) parts.push(`${result.imported} imported`);
     if (result.updated !== undefined && result.updated > 0) parts.push(`${result.updated} updated`);
@@ -2097,13 +2123,6 @@ function SyncImportDialog({ open, onOpenChange, obsidianInputRef, evernoteInputR
                   </Button>
                   {gdSyncStatus === 'syncing' && <Progress value={undefined} className="h-1" />}
                   {renderSyncResult(gdResult)}
-                  {gdNextPageToken && gdSyncStatus !== 'syncing' ? <Button
-                    variant="outline"
-                    className="w-full border-primary/30 text-foreground hover:bg-primary/10 font-mono text-xs"
-                    onClick={() => void handleGoogleDriveSync(gdNextPageToken)}
-                  >
-                    <RefreshCw className="h-4 w-4 mr-2" /> Continue Drive sync
-                  </Button> : null}
                 </> : null}
 
                 {driveCanWrite ? <>

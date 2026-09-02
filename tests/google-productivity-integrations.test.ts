@@ -109,15 +109,17 @@ describe("independent Google productivity integrations", () => {
     expect(release).toContain('id: "0144_integration_action_governance"');
   });
 
-  it("keeps Drive imports resumable instead of processing an entire Drive in one request", () => {
+  it("runs Drive imports in the background after one approved start", () => {
     const google = source("server/routes/google.ts");
     const vault = source("client/src/pages/DocumentVaultPage.tsx");
 
-    expect(google).toContain('pageSize: 10');
-    expect(google).toContain('moreAvailable: Boolean(nextPageToken)');
-    expect(google).toContain('nextPageToken');
-    expect(vault).toContain('Continue Drive sync');
-    expect(vault).toContain('handleGoogleDriveSync(gdNextPageToken)');
+    expect(google).toContain('res.status(202).json({ status: "started", ...driveSyncState })');
+    expect(google).toContain('app.get("/api/google/drive/sync-status"');
+    expect(google).toContain('status: state.state');
+    expect(google).toContain('state: "succeeded"');
+    expect(vault).toContain('/api/google/drive/sync-status');
+    expect(vault).toContain('Syncing safely in the background');
+    expect(vault).not.toContain('Continue Drive sync');
   });
 
   it("documents distinct production credentials and callbacks", () => {

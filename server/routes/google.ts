@@ -74,6 +74,54 @@ const GOOGLE_ACTIONS = {
   drivePushDocument: { key: "google.drive.push_document", title: "Change a Google Drive document", summary: "Create or update one Google Drive document from your LyfeOS vault.", capability: "write", risk: "important", futureAction: false },
 } as const satisfies Record<string, IntegrationActionDescriptor>;
 const googleOAuthStateLifetimeMs = 10 * 60 * 1_000;
+const googleDriveSyncStateKey = "googleDriveSyncV1";
+
+type GoogleDriveSyncState = {
+  version: 1;
+  state: "running" | "succeeded" | "failed";
+  startedAt: string;
+  updatedAt: string;
+  imported: number;
+  updated: number;
+  skipped: number;
+  folders: number;
+  error?: "provider_unavailable" | "connection_revoked";
+};
+
+function record(value: unknown): Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function readGoogleDriveSyncState(settings: unknown): GoogleDriveSyncState | null {
+  const value = record(record(settings)[googleDriveSyncStateKey]);
+  const state = value.state;
+  if (value.version !== 1 || !["running", "succeeded", "failed"].includes(String(state)) || typeof value.startedAt !== "string" || typeof value.updatedAt !== "string") return null;
+  const number = (key: "imported" | "updated" | "skipped" | "folders") => Number.isSafeInteger(value[key]) && Number(value[key]) >= 0 ? Number(value[key]) : 0;
+  return {
+    version: 1,
+    state: state as GoogleDriveSyncState["state"],
+    startedAt: value.startedAt,
+    updatedAt: value.updatedAt,
+    imported: number("imported"),
+    updated: number("updated"),
+    skipped: number("skipped"),
+    folders: number("folders"),
+    ...(value.error === "provider_unavailable" || value.error === "connection_revoked" ? { error: value.error } : {}),
+  };
+}
+
+function writeGoogleDriveSyncState(settings: unknown, state: GoogleDriveSyncState): Record<string, unknown> {
+  return { ...record(settings), [googleDriveSyncStateKey]: state };
+}
+
+async function saveGoogleDriveSyncState(userId: number, integrationId: number, state: GoogleDriveSyncState): Promise<void> {
+  const latest = await storage.getIntegration(integrationId);
+  if (!latest || latest.userId !== userId || latest.status !== "active") throw new Error("GOOGLE_DRIVE_CONNECTION_REVOKED");
+  await storage.updateIntegration(integrationId, {
+    settings: writeGoogleDriveSyncState(latest.settings, state),
+    ...(state.state === "succeeded" ? { lastSyncedAt: new Date() } : {}),
+  });
+}
 
 function parseGoogleService(value: unknown): GoogleIntegrationService | null {
   return typeof value === "string" && (GOOGLE_SERVICES as readonly string[]).includes(value) ? value as GoogleIntegrationService : null;
@@ -1304,8 +1352,12 @@ export function registerGoogleRoutes(app: Express): void {
   });
 
   app.post("/api/google/drive/sync", isAuthenticated, async (req: Request, res: Response) => {
+    let backgroundStarted = false;
+    let driveSyncState: GoogleDriveSyncState | null = null;
+    let integrationId: number | null = null;
+    let userId: number | null = null;
     try {
-      const userId = req.session.userId as number;
+      userId = req.session.userId as number;
       const client = await getAuthenticatedClient(userId, "drive");
       if (!client) {
         return res.status(401).json({ error: "Google not connected" });
@@ -1313,6 +1365,15 @@ export function registerGoogleRoutes(app: Express): void {
       if (!hasGoogleScope(client, GOOGLE_DRIVE_SCOPE)) return res.status(403).json({ error: "Google Drive permission was not granted. Reconnect Google to enable this feature." });
       if (!requireGoogleCapability(res, client, "drive", "read") || !requireGoogleCapability(res, client, "drive", "import")) return;
       if (!await requireGoogleActionApproval(req, res, client, "drive", GOOGLE_ACTIONS.driveSync)) return;
+
+      integrationId = client.integration.id;
+      const now = new Date().toISOString();
+      driveSyncState = { version: 1, state: "running", startedAt: now, updatedAt: now, imported: 0, updated: 0, skipped: 0, folders: 0 };
+      await saveGoogleDriveSyncState(userId, integrationId, driveSyncState);
+      backgroundStarted = true;
+      // The approved action continues after this acknowledgement. The browser
+      // is free to navigate away while LyfeOS imports the connected Drive.
+      res.status(202).json({ status: "started", ...driveSyncState });
 
       const drive = google.drive({ version: "v3", auth: client.oauth2Client });
 
@@ -1392,22 +1453,18 @@ export function registerGoogleRoutes(app: Express): void {
 
       await processFolderBatch(allDriveFolders);
 
-      // A Drive can contain thousands of records and each supported file may need
-      // an additional export/download. Keep a user-visible sync request bounded
-      // rather than holding one browser request open until it appears frozen.
-      const requestedPageToken = typeof req.body?.pageToken === "string" && req.body.pageToken.length <= 512
-        ? req.body.pageToken
-        : undefined;
-      const fileRes = await drive.files.list({
-        q: "mimeType != 'application/vnd.google-apps.folder' and trashed = false",
-        fields: "nextPageToken, files(id, name, mimeType, parents, webViewLink, modifiedTime, size)",
-        pageSize: 10,
-        pageToken: requestedPageToken,
-      });
+      let filePageToken: string | undefined;
+      do {
+        const fileRes = await drive.files.list({
+          q: "mimeType != 'application/vnd.google-apps.folder' and trashed = false",
+          fields: "nextPageToken, files(id, name, mimeType, parents, webViewLink, modifiedTime, size)",
+          pageSize: 25,
+          pageToken: filePageToken,
+        });
 
-      const files = fileRes.data.files || [];
+        const files = fileRes.data.files || [];
 
-      for (const file of files) {
+        for (const file of files) {
           if (!file.id || !file.name) continue;
 
           const driveParentId = file.parents?.[0] || "root";
@@ -1537,24 +1594,44 @@ export function registerGoogleRoutes(app: Express): void {
           } else {
             skipped++;
           }
-      }
+        }
 
-      const nextPageToken = fileRes.data.nextPageToken || null;
-      return res.json({
-        imported,
-        updated,
-        skipped,
-        folders: allDriveFolders.length,
-        moreAvailable: Boolean(nextPageToken),
-        nextPageToken,
-      });
+        filePageToken = fileRes.data.nextPageToken || undefined;
+        driveSyncState = { ...driveSyncState, updatedAt: new Date().toISOString(), imported, updated, skipped, folders: allDriveFolders.length };
+        await saveGoogleDriveSyncState(userId, integrationId, driveSyncState);
+      } while (filePageToken);
+
+      driveSyncState = { ...driveSyncState, state: "succeeded", updatedAt: new Date().toISOString(), imported, updated, skipped, folders: allDriveFolders.length };
+      await saveGoogleDriveSyncState(userId, integrationId, driveSyncState);
+      return;
     } catch (error: any) {
+      if (backgroundStarted && driveSyncState && integrationId && userId) {
+        const failureState: GoogleDriveSyncState = {
+          ...driveSyncState,
+          state: "failed",
+          updatedAt: new Date().toISOString(),
+          error: error?.code === 401 || error?.response?.status === 401 || error?.message === "GOOGLE_DRIVE_CONNECTION_REVOKED" ? "connection_revoked" : "provider_unavailable",
+        };
+        try { await saveGoogleDriveSyncState(userId, integrationId, failureState); } catch { /* A revoked connection cannot retain a sync state. */ }
+        logGoogleFailure("Google Drive background sync failed", error, userId);
+        return;
+      }
       if (error?.code === 401 || error?.response?.status === 401) {
         return res.status(401).json({ error: "Google token expired. Please reconnect." });
       }
       logGoogleFailure("Google Drive sync failed", error, req.session.userId);
       return res.status(500).json({ error: "Failed to sync Google Drive" });
     }
+  });
+
+  app.get("/api/google/drive/sync-status", isAuthenticated, async (req: Request, res: Response) => {
+    const userId = req.session.userId as number;
+    const client = await getAuthenticatedClient(userId, "drive");
+    if (!client) return res.status(401).json({ error: "Google Drive is not connected" });
+    const state = readGoogleDriveSyncState(client.integration.settings);
+    return res.json(state
+      ? { status: state.state, ...state }
+      : { version: 1, status: "succeeded", imported: 0, updated: 0, skipped: 0, folders: 0, startedAt: null, updatedAt: null });
   });
 
   app.post("/api/google/drive/push", isAuthenticated, async (req: Request, res: Response) => {
