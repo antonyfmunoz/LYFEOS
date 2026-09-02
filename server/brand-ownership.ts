@@ -86,6 +86,10 @@ export function brandOwnershipAvailability() {
   };
 }
 
+export function listBrandSpotlights(): BrandOwnershipProfile[] {
+  return profiles.map((profile) => ({ ...profile, aliases: [...profile.aliases], ownershipChain: profile.ownershipChain.map((entry) => ({ ...entry })), evidence: profile.evidence.map((entry) => ({ ...entry })), acquisition: profile.acquisition ? { ...profile.acquisition } : null }));
+}
+
 export function lookupBrandOwnership(requestedBrand: string, now = new Date()): BrandOwnershipLookup {
   const cleanBrand = requestedBrand.trim().slice(0, 160);
   const candidate = normalized(cleanBrand);

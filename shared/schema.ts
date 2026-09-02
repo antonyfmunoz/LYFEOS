@@ -3440,6 +3440,81 @@ export const ingredientPreferenceRules = pgTable("ingredient_preference_rules", 
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => [uniqueIndex("ingredient_preference_rules_user_key_unique_idx").on(table.userId, table.normalizedKey)]);
 
+// Private household inventory. Product catalog provenance is preserved when a
+// barcode lookup creates the item, while ownership is resolved afresh from the
+// cited registry so a changed corporate relationship is never silently frozen.
+export const groceryPantryItems = pgTable("grocery_pantry_items", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  brand: text("brand"),
+  barcode: text("barcode"),
+  quantity: real("quantity").notNull().default(1),
+  unit: text("unit").notNull().default("item"),
+  reorderAt: real("reorder_at"),
+  location: text("location"),
+  expiresOn: date("expires_on"),
+  purchasedOn: date("purchased_on"),
+  source: text("source").notNull().default("manual"),
+  catalogProviderId: text("catalog_provider_id"),
+  catalogExternalId: text("catalog_external_id"),
+  catalogDatasetVersion: text("catalog_dataset_version"),
+  catalogAttributionText: text("catalog_attribution_text"),
+  catalogAttributionUrl: text("catalog_attribution_url"),
+  status: text("status").notNull().default("active"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("grocery_pantry_items_user_status_idx").on(table.userId, table.status, table.updatedAt),
+  index("grocery_pantry_items_user_barcode_idx").on(table.userId, table.barcode),
+]);
+
+export const groceryShoppingItems = pgTable("grocery_shopping_items", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  pantryItemId: integer("pantry_item_id").references(() => groceryPantryItems.id, { onDelete: "set null" }),
+  name: text("name").notNull(),
+  brand: text("brand"),
+  quantity: real("quantity").notNull().default(1),
+  unit: text("unit").notNull().default("item"),
+  note: text("note"),
+  status: text("status").notNull().default("pending"),
+  generatedBy: text("generated_by").notNull().default("manual"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("grocery_shopping_items_user_status_idx").on(table.userId, table.status, table.updatedAt),
+  index("grocery_shopping_items_user_pantry_idx").on(table.userId, table.pantryItemId),
+]);
+
+// Receipt drafts retain the exact text supplied by the owner until they either
+// apply reviewed rows or the owner deletes the draft. They are not training
+// data, public reviews, or an assertion that parsed rows are accurate.
+export const groceryReceiptDrafts = pgTable("grocery_receipt_drafts", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  sourceText: text("source_text").notNull(),
+  parsedItems: jsonb("parsed_items").notNull().default([]),
+  status: text("status").notNull().default("draft"),
+  appliedAt: timestamp("applied_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [index("grocery_receipt_drafts_user_created_idx").on(table.userId, table.createdAt)]);
+
+// Reports are an intake queue for cited ownership research. They never modify
+// the shared registry automatically and are deliberately separate from a
+// public product-rating system.
+export const brandOwnershipResearchReports = pgTable("brand_ownership_research_reports", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  brand: text("brand").notNull(),
+  barcode: text("barcode"),
+  reportType: text("report_type").notNull(),
+  note: text("note"),
+  evidenceUrl: text("evidence_url"),
+  status: text("status").notNull().default("received"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [index("brand_ownership_research_reports_user_created_idx").on(table.userId, table.createdAt)]);
+
 export const workouts = pgTable("workouts", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),

@@ -27,6 +27,7 @@ const RecoveryLog = lazyHealthFeature(() => import("@/components/health/Recovery
 const RecoveryRoutines = lazyHealthFeature(() => import("@/components/health/RecoveryRoutines"));
 const HealthMetricsLedger = lazyHealthFeature(() => import("@/components/health/HealthMetricsLedger"));
 const IngredientScanner = lazyHealthFeature(() => import("@/components/health/IngredientScanner"));
+const GroceryIntelligence = lazyHealthFeature(() => import("@/components/health/GroceryIntelligence"));
 const CapabilityEvidencePanel = lazyHealthFeature(() => import("@/components/health/CapabilityEvidencePanel"));
 const SleepLog = lazyHealthFeature(() => import("@/components/health/SleepLog"));
 const HealthTimeline = lazyHealthFeature(() => import("@/components/health/HealthTimeline"));
@@ -201,6 +202,8 @@ export default function HealthDetailPage() {
       <DeferredHealthSection label="meal planning" targetId="health-section-planning"><MealPlanner /></DeferredHealthSection>
 
       <DeferredHealthSection label="ingredient scanner"><IngredientScanner onCatalogFoodImported={setImportedNutritionFoodId} onManualFoodRequested={(name) => setManualNutritionFoodRequest({ name })} /></DeferredHealthSection>
+
+      <DeferredHealthSection label="grocery intelligence"><GroceryIntelligence /></DeferredHealthSection>
 
       <DeferredHealthSection label="exercise library"><ExerciseLibrary /></DeferredHealthSection>
 
