@@ -82,7 +82,13 @@ async function runBrowserLifecycle(account: Account): Promise<{ endpointHost: st
   let browser: Browser | null = null;
   try {
     console.error("web-push acceptance: launching isolated browser");
-    browser = await puppeteer.launch({ headless: true, executablePath: await findChromium(), args: ["--no-first-run", "--no-default-browser-check"] });
+    browser = await puppeteer.launch({
+      headless: true,
+      executablePath: await findChromium(),
+      // GitHub-hosted Linux runners restrict Chrome's user namespaces. These
+      // are an isolated disposable acceptance browser, not the application.
+      args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--no-first-run", "--no-default-browser-check"],
+    });
     await within("Browser notification permission", browser.defaultBrowserContext().overridePermissions(BASE_URL.origin, ["notifications"]));
     const page = await browser.newPage();
     const session = cookieParts(account.cookie);

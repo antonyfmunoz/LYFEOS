@@ -18,5 +18,6 @@ describe("production Web Push browser acceptance harness", () => {
     expect(script).toContain('subscription.unsubscribe()');
     expect(script).toContain('confirmation: "DELETE MY ACCOUNT"');
     expect(script).toContain('Push test delivery returned');
+    expect(script).toContain('"--no-sandbox"');
   });
 });
