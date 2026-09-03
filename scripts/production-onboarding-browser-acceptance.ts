@@ -310,6 +310,8 @@ async function waitForMissionReceipt(page: Page, mission: number): Promise<void>
 
 async function advanceRenderedOnboardingStep(page: Page, mission: number, step: number): Promise<void> {
   const selector = '[data-testid="onboarding-next"]';
+  await page.$eval(selector, (element) => element.scrollIntoView({ block: "center", inline: "nearest" }));
+  await delay(50);
   const box = await page.$eval(selector, (element) => {
     const rect = element.getBoundingClientRect();
     const point = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
