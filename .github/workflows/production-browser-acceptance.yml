@@ -89,6 +89,12 @@ jobs:
         env:
           LYFEOS_ACCEPTANCE_SESSION_FILE: ${{ runner.temp }}/lyfeos-browser-acceptance/disposable-session.json
         run: npm run acceptance:browser-disposable-cleanup
+      - name: Create disposable Mission core-loop session
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.require_authenticated }}
+        env:
+          LYFEOS_ACCEPTANCE_SESSION_FILE: ${{ runner.temp }}/lyfeos-browser-acceptance/core-loop-session.json
+          LYFEOS_ACCEPTANCE_COMPLETE_ONBOARDING_LEDGER: "true"
+        run: npm run acceptance:browser-disposable-session
       - name: Run truthful Mission core-loop acceptance
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.require_authenticated }}
         env:
@@ -96,7 +102,13 @@ jobs:
           LYFEOS_ACCEPTANCE_SOURCE: ${{ steps.release.outputs.source }}
           LYFEOS_ACCEPTANCE_HARNESS_SOURCE: ${{ github.sha }}
           LYFEOS_ACCEPTANCE_OUTPUT_DIR: ${{ runner.temp }}/lyfeos-browser-acceptance
+          LYFEOS_ACCEPTANCE_SESSION_FILE: ${{ runner.temp }}/lyfeos-browser-acceptance/core-loop-session.json
         run: npm run acceptance:core-loop
+      - name: Erase disposable Mission core-loop session
+        if: ${{ always() && github.event_name == 'workflow_dispatch' && inputs.require_authenticated }}
+        env:
+          LYFEOS_ACCEPTANCE_SESSION_FILE: ${{ runner.temp }}/lyfeos-browser-acceptance/core-loop-session.json
+        run: npm run acceptance:browser-disposable-cleanup
       - name: Run disposable production onboarding acceptance
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.require_authenticated }}
         env:

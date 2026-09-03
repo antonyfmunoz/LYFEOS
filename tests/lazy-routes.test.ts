@@ -9,7 +9,9 @@ describe("route loading boundary", () => {
     expect(app).toContain('lazyRoute(() => import("./pages/ProfilePage"))');
     expect(app).toContain('lazyRoute(() => import("./pages/AnalyticsPage"))');
     expect(app).toContain('lazyRoute(() => import("./pages/DocumentVaultPage"))');
-    expect(app).toContain("React.lazy(() => withRouteChunkRecovery(loader))");
+    expect(app).toContain("React.lazy(async () => {");
+    expect(app).toContain("const module = await withRouteChunkRecovery(loader);");
+    expect(app).toContain("return { default: ResolvedRoute };");
     expect(app).toContain('<Suspense fallback={<RouteLoadingScreen />}>');
     expect(app).not.toContain('import DashboardPage from "./pages/DashboardPage"');
   });

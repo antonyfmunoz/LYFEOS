@@ -102,6 +102,7 @@ type MutationTransportReconciliation = {
 const BASE_URL = new URL(process.env.LYFEOS_ACCEPTANCE_BASE_URL || "https://lyfeos.net");
 const EMAIL = process.env.LYFEOS_ACCEPTANCE_EMAIL?.trim() || "";
 const PASSWORD = process.env.LYFEOS_ACCEPTANCE_PASSWORD || "";
+const SESSION_FILE = process.env.LYFEOS_ACCEPTANCE_SESSION_FILE?.trim() || "";
 const SOURCE = process.env.LYFEOS_ACCEPTANCE_SOURCE?.trim() || "";
 const HARNESS_SOURCE = process.env.LYFEOS_ACCEPTANCE_HARNESS_SOURCE?.trim() || "";
 const OUTPUT_DIR = path.resolve(process.env.LYFEOS_ACCEPTANCE_OUTPUT_DIR || path.join(os.tmpdir(), "lyfeos-browser-acceptance"));
@@ -297,10 +298,16 @@ async function findChromium(): Promise<string> {
 }
 
 async function login(page: Page): Promise<void> {
+  const storedSession = SESSION_FILE
+    ? await fs.readFile(SESSION_FILE, "utf8").then((value) => JSON.parse(value) as { email?: unknown }).catch(() => null)
+    : null;
+  const identifier = typeof storedSession?.email === "string" ? storedSession.email : EMAIL;
+  const password = storedSession ? "TestPass123!" : PASSWORD;
+  assert(identifier && password, "Core-loop acceptance requires a disposable session or dedicated acceptance credentials.");
   await page.goto(new URL("/login", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
   await page.waitForSelector("#identifier", { visible: true, timeout: 30_000 });
-  await page.type("#identifier", EMAIL);
-  await page.type("#password", PASSWORD);
+  await page.type("#identifier", identifier);
+  await page.type("#password", password);
   await Promise.all([
     page.click('button[type="submit"]'),
     page.waitForFunction(
@@ -1208,7 +1215,8 @@ async function writeReport(): Promise<void> {
 
 async function main(): Promise<void> {
   if (BASE_URL.protocol !== "https:" && !["127.0.0.1", "localhost"].includes(BASE_URL.hostname)) throw new Error("Core-loop base URL must use HTTPS except for explicit localhost qualification.");
-  if (!EMAIL || !PASSWORD) throw new Error("Core-loop acceptance requires the dedicated LYFEOS_ACCEPTANCE_EMAIL and LYFEOS_ACCEPTANCE_PASSWORD secrets.");
+  const hasDisposableSession = Boolean(SESSION_FILE) && await fs.access(SESSION_FILE).then(() => true).catch(() => false);
+  if (!hasDisposableSession && (!EMAIL || !PASSWORD)) throw new Error("Core-loop acceptance requires a disposable session or dedicated acceptance credentials.");
   if (!/^[0-9a-f]{40}$/.test(SOURCE)) throw new Error("Core-loop acceptance requires the exact 40-character deployed source revision.");
   await fs.mkdir(OUTPUT_DIR, { recursive: true });
 

@@ -166,6 +166,8 @@ describe("production browser acceptance custody", () => {
     expect(workflow).toContain("LYFEOS_ACCEPTANCE_PASSWORD: ${{ secrets.LYFEOS_ACCEPTANCE_PASSWORD }}");
     expect(workflow).toContain("Create disposable browser-acceptance session");
     expect(workflow).toContain("Erase disposable browser-acceptance session");
+    expect(workflow).toContain("Create disposable Mission core-loop session");
+    expect(workflow).toContain('LYFEOS_ACCEPTANCE_COMPLETE_ONBOARDING_LEDGER: "true"');
     expect(workflow).toContain("acceptance:browser-disposable-session");
     expect(workflow).toContain("acceptance:browser-disposable-cleanup");
     expect(workflow).toContain("if: always()");
