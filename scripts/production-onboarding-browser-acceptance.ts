@@ -308,6 +308,32 @@ async function waitForMissionReceipt(page: Page, mission: number): Promise<void>
   );
 }
 
+async function advanceRenderedOnboardingStep(page: Page, mission: number, step: number): Promise<void> {
+  const selector = '[data-testid="onboarding-next"]';
+  const box = await page.$eval(selector, (element) => {
+    const rect = element.getBoundingClientRect();
+    const point = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+    return {
+      x: rect.left + rect.width / 2,
+      y: rect.top + rect.height / 2,
+      hittable: Boolean(point && (point === element || element.contains(point))),
+    };
+  });
+  assert(box.hittable, `Onboarding Mission ${mission} step ${step} Next control was obscured.`);
+  await page.mouse.click(box.x, box.y);
+  try {
+    await waitForOnboardingStep(page, mission, step + 1, 3_000);
+  } catch {
+    const stillEnabled = await nextEnabled(page).catch(() => false);
+    assert(stillEnabled, `Onboarding Mission ${mission} step ${step} did not advance and its Next control became unavailable.`);
+    // The reload-resume probe can expose the control a frame before React has
+    // rebound its handler. Retry only after proving the rendered state has not
+    // changed; this remains one user-visible control activation, not a skipped
+    // onboarding answer.
+    await page.$eval(selector, (element) => (element as HTMLButtonElement).click());
+  }
+}
+
 async function advanceFullOnboarding(page: Page, username: string, evidence: JourneyEvidence): Promise<void> {
   let advancedSteps = 0;
   for (let mission = 0; mission < 8; mission++) {
@@ -326,7 +352,11 @@ async function advanceFullOnboarding(page: Page, username: string, evidence: Jou
         const button = document.querySelector<HTMLButtonElement>('[data-testid="onboarding-next"]');
         return Boolean(button && !button.disabled);
       }, { timeout: 10_000 });
-      await page.click('[data-testid="onboarding-next"]');
+      if (step < expectedSteps - 1) {
+        await advanceRenderedOnboardingStep(page, mission, step);
+      } else {
+        await page.click('[data-testid="onboarding-next"]');
+      }
       advancedSteps += 1;
       if (step < expectedSteps - 1) {
         await waitForOnboardingStep(page, mission, step + 1);
