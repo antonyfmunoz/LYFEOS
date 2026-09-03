@@ -92,6 +92,12 @@ describe("AI and memory governance", () => {
     expect(profilePage).toContain('new Event("lyfeos:ai-memory-chat-retention-complete")');
     expect(profilePage).toContain('new Event("lyfeos:ai-memory-chat-retention-failed")');
     expect(appContext).toContain("let activeController = new AbortController()");
+    expect(appContext).toContain("async function fetchBackgroundRead");
+    expect(appContext).toContain("Background reads hydrate supporting dashboard state");
+    expect(appContext).toContain('fetchBackgroundRead(`/api/users/${user.id}/stats`');
+    expect(appContext).toContain('fetchBackgroundRead("/api/computed-stats"');
+    expect(appContext).toContain('fetchBackgroundRead(`/api/users/${user.id}/mission-pages`');
+    expect(appContext).toContain('fetchBackgroundRead(`/api/users/${uid}/quests?tz=${encodeURIComponent(tz)}`');
     expect(appContext).toContain('credentials: "include", signal');
     expect(appContext).toContain("for (let attempt = 0; attempt < 3; attempt += 1)");
     expect(appContext).toContain("lastTransportError");

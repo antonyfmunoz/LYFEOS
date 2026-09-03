@@ -49,6 +49,29 @@ function writeSessionStatTips(userId: number, tips: Record<string, string[]>): v
   }
 }
 
+/**
+ * Background reads hydrate supporting dashboard state. A short-lived edge
+ * transport reset must not make an otherwise healthy workspace look broken.
+ * Keep retries bounded, preserve normal 4xx responses, and leave mutations
+ * on their explicit action-specific paths.
+ */
+async function fetchBackgroundRead(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  let lastTransportError: unknown = null;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const response = await fetch(input, init);
+      if (response.ok || response.status < 500 || attempt === 2) return response;
+    } catch (error) {
+      if (init?.signal?.aborted) throw error;
+      lastTransportError = error;
+      if (attempt === 2) throw error;
+    }
+    await new Promise<void>((resolve) => window.setTimeout(resolve, 250 * (attempt + 1)));
+    if (init?.signal?.aborted) throw lastTransportError || new Error("Background read was cancelled.");
+  }
+  throw lastTransportError || new Error("Background read did not return a response.");
+}
+
 // Initial stats data
 const initialStats: UserStats = {
   attentionTokens: {
@@ -548,7 +571,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       const fetchStats = async () => {
         try {
           console.log("Fetching stats for user:", user.id);
-          const response = await fetch(`/api/users/${user.id}/stats`, { credentials: "include" });
+          const response = await fetchBackgroundRead(`/api/users/${user.id}/stats`, { credentials: "include" });
           if (response.ok) {
             const data = await response.json();
             let dbStats = data.stats;
@@ -612,7 +635,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
 
       const fetchComputedStats = async () => {
         try {
-          const response = await fetch("/api/computed-stats", { credentials: "include" });
+          const response = await fetchBackgroundRead("/api/computed-stats", { credentials: "include" });
           if (response.ok) {
             const data = await response.json();
             setComputedStats(data);
@@ -660,7 +683,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       const fetchMissionPages = async () => {
         try {
           console.log("Fetching mission pages for user:", user.id);
-          const response = await fetch(`/api/users/${user.id}/mission-pages`, { credentials: "include" });
+          const response = await fetchBackgroundRead(`/api/users/${user.id}/mission-pages`, { credentials: "include" });
           if (response.ok) {
             const data = await response.json();
             if (data.missionPages && Array.isArray(data.missionPages)) {
@@ -707,7 +730,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
     try {
       console.log("Refetching quests for user:", uid);
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      const response = await fetch(`/api/users/${uid}/quests?tz=${encodeURIComponent(tz)}`, { credentials: "include" });
+      const response = await fetchBackgroundRead(`/api/users/${uid}/quests?tz=${encodeURIComponent(tz)}`, { credentials: "include" });
       if (response.ok) {
         const data = await response.json();
         if (data.quests && Array.isArray(data.quests)) {
