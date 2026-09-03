@@ -1,5 +1,8 @@
-const CACHE_NAME = 'lyfeos-v27';
-const MAX_APP_SHELL_URLS = 200;
+const CACHE_NAME = 'lyfeos-v28';
+// This is a recovery cache, not a crawl of every route resource. Keeping its
+// bounded warm-up small lets a newly activated worker confirm readiness before
+// a foreground recovery deadline expires on slower devices and networks.
+const MAX_APP_SHELL_URLS = 64;
 const APP_SHELL_CACHE_CONCURRENCY = 8;
 const pendingAppShellUrls = new Set();
 let appShellCacheInFlight = null;

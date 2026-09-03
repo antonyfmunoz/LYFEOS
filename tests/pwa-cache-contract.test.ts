@@ -18,7 +18,7 @@ describe("PWA cache contract", () => {
     const worker = readFileSync(resolve(process.cwd(), "client/public/sw.js"), "utf8");
     const main = readFileSync(resolve(process.cwd(), "client/src/main.tsx"), "utf8");
 
-    expect(worker).toContain("const MAX_APP_SHELL_URLS = 200");
+    expect(worker).toContain("const MAX_APP_SHELL_URLS = 64");
     expect(worker).toContain("const APP_SHELL_CACHE_CONCURRENCY = 8");
     expect(worker).toContain("pendingAppShellUrls.size >= MAX_APP_SHELL_URLS");
     expect(worker).toContain("appShellCacheInFlight = drainAppShellCacheQueue()");
