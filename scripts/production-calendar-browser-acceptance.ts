@@ -366,6 +366,11 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
   try {
     const registration = await registerDisposableAccount(account);
     assert(registration.status === 201, `Disposable owner registration returned ${registration.status}.`);
+    // Calendar is an authenticated post-onboarding surface. Keep this fixture
+    // truthful to that lifecycle instead of relying on an accidental route
+    // bypass for a newly registered account.
+    const onboarding = await request("PATCH", "/api/profile", { onboardingCompleted: true }, account.cookie);
+    assert(onboarding.status === 200 && onboarding.body?.onboardingCompleted === true, `Calendar onboarding fixture setup returned ${onboarding.status}.`);
     const seeded = await request("POST", "/api/quests", { userId: account.id, title: conflictTitle, description: "Production conflict fixture", category: "general", completed: false, startDate: date, endDate: date, startTime: "10:00", endTime: "10:30" }, account.cookie, { "x-lyfeos-mutation-id": `calendar-seed-${stamp}` });
     assert(seeded.status === 201 && seeded.body.quest?.revision === 1, `Conflict fixture creation returned ${seeded.status}.`);
     const missionId = Number(seeded.body.quest.id);

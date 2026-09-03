@@ -45,6 +45,8 @@ describe("production Calendar evidence custody", () => {
     expect(acceptance).toContain('window.dispatchEvent(new Event("offline"))');
     expect(acceptance).toContain('window.dispatchEvent(new Event("online"))');
     expect(acceptance).toContain("registerDisposableAccount");
+    expect(acceptance).toContain('request("PATCH", "/api/profile", { onboardingCompleted: true }, account.cookie)');
+    expect(acceptance).toContain("Calendar onboarding fixture setup returned");
     expect(acceptance).toContain('response.headers.get("retry-after")');
     expect(acceptance).toContain('CALENDAR_TIME_ZONE = "America/Los_Angeles"');
     expect(acceptance).toContain("page.emulateTimezone(CALENDAR_TIME_ZONE)");
