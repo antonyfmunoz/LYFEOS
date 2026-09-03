@@ -153,6 +153,8 @@ async function registerDisposableAccount(account: Account): Promise<ApiResult> {
     result = await request("POST", "/api/auth/complete-registration", { email: account.email, password: PASSWORD, displayName: account.displayName, termsAccepted: true });
     if (result.status === 201) {
       Object.assign(account, { id: Number(result.body.user?.id), cookie: result.cookie });
+      const onboarding = await request("PATCH", "/api/profile", { onboardingCompleted: true }, account.cookie);
+      assert(onboarding.status === 200 && onboarding.body?.onboardingCompleted === true, `Sheets onboarding fixture setup returned ${onboarding.status}.`);
       return result;
     }
     if (result.status !== 429 || attempt === 1) return result;
