@@ -102,6 +102,9 @@ function hideOAuthPreloader() {
 function hideAppPreloader() {
   const el = document.getElementById('app-preloader');
   if (el) {
+    // The cover may remain visible while it fades, but the route below has
+    // already committed. Stop it intercepting a real tap/click immediately.
+    el.style.pointerEvents = 'none';
     el.style.transition = 'opacity 0.3s ease';
     el.style.opacity = '0';
     setTimeout(() => { el.style.display = 'none'; }, 300);
