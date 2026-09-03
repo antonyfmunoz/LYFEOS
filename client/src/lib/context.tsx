@@ -795,7 +795,24 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       const fetchConversations = async (signal: AbortSignal) => {
         try {
           console.log("Fetching conversations for user:", user.id);
-          const response = await fetch('/api/conversations', { credentials: "include", signal });
+          let response: Response | null = null;
+          let lastTransportError: unknown = null;
+          // A background conversation refresh must not turn a momentary edge
+          // transport reset into a visible application failure on an unrelated
+          // workspace. Keep the retry short and preserve cancellation.
+          for (let attempt = 0; attempt < 3; attempt += 1) {
+            try {
+              response = await fetch('/api/conversations', { credentials: "include", signal });
+              if (response.ok || response.status < 500 || attempt === 2) break;
+            } catch (error) {
+              if (signal.aborted) throw error;
+              lastTransportError = error;
+              if (attempt === 2) throw error;
+            }
+            await new Promise<void>((resolve) => window.setTimeout(resolve, 250 * (attempt + 1)));
+            if (signal.aborted) return;
+          }
+          if (!response) throw lastTransportError || new Error("Conversation refresh did not return a response.");
           if (response.ok) {
             const conversations = await response.json();
             if (signal.aborted) return;

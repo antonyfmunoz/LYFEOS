@@ -93,6 +93,8 @@ describe("AI and memory governance", () => {
     expect(profilePage).toContain('new Event("lyfeos:ai-memory-chat-retention-failed")');
     expect(appContext).toContain("let activeController = new AbortController()");
     expect(appContext).toContain('credentials: "include", signal');
+    expect(appContext).toContain("for (let attempt = 0; attempt < 3; attempt += 1)");
+    expect(appContext).toContain("lastTransportError");
     expect(appContext).toContain("fetchConversations(activeController.signal)");
     expect(appContext).toContain('error.name === "AbortError"');
     expect(appContext).toContain('window.addEventListener("lyfeos:ai-memory-chat-erasure-start"');
