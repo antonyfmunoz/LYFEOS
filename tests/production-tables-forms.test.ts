@@ -54,6 +54,8 @@ describe("production Tables and Forms evidence custody", () => {
     expect(catalog).toContain("table-card-${table.id}");
     expect(editor).toContain('data-testid="table-editor"');
     expect(editor).toContain('data-testid="table-title"');
+    expect(acceptance).toContain('userDataDir: path.join(OUTPUT_DIR, "chromium-profile")');
+    expect(acceptance).toContain("pipe: true");
     expect(packageJson).toContain('"acceptance:production-tables-forms"');
     expect(workflow).toContain("npm run acceptance:production-tables-forms");
     expect(workflow).toContain("LYFEOS_TABLES_FORMS_OUTPUT_DIR");

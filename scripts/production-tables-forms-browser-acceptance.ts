@@ -495,7 +495,15 @@ async function main(): Promise<void> {
   const cleanups: Cleanup[] = [];
   let failure: string | null = null;
   try {
-    browser = await puppeteer.launch({ executablePath: await findChromium(), headless: true, args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--no-proxy-server"] });
+    browser = await puppeteer.launch({
+      executablePath: await findChromium(),
+      headless: true,
+      // Keep local qualification isolated from any interactive Chrome session
+      // and avoid relying on a debug WebSocket appearing on process stdout.
+      userDataDir: path.join(OUTPUT_DIR, "chromium-profile"),
+      pipe: true,
+      args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--no-proxy-server"],
+    });
     for (const [index, viewport] of VIEWPORTS.entries()) {
       const result = await runViewport(browser, viewport, index + 1);
       views.push(result.view);
