@@ -9,6 +9,7 @@ import { nutrientDefinitions, nutrientKeys, nutritionContributions, nutritionDai
 import { parseExpectedResourceRevision } from "../revision-concurrency";
 import { isAuthenticated } from "./middleware";
 import { verifyConfiguredFoodCatalogToken } from "../food-catalog";
+import { importStructuredRecipe } from "../recipe-import";
 
 const daySchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const nutritionReportDays = (value: unknown, fallback = 14) => {
@@ -74,6 +75,7 @@ const recipeSchema = z.object({
 const recipeRevisionIngredientsSchema = z.array(z.object({
   foodId: z.number().int().positive(), grams: z.number().positive().max(100_000), sortOrder: z.number().int().min(0).max(1000).default(0),
 })).min(1).max(60);
+const recipeImportSchema = z.object({ url: z.string().trim().min(1).max(2_048) }).strict();
 const logRecipeSchema = z.object({ servings: z.number().positive().max(1000).default(1), mealSlot: z.enum(["breakfast", "lunch", "dinner", "snack", "other"]).default("other"), occurredAt: z.string().datetime().optional(), note: z.string().trim().max(500).nullable().optional() });
 type NutrientSnapshot = { nutrientKey: string; amountPer100g: number; unit: string };
 type FoodEvidenceSnapshot = {
@@ -331,6 +333,21 @@ export function registerNutritionRoutes(app: Express): void {
     const foods = await db.select({ id: nutritionFoods.id, name: nutritionFoods.name, brand: nutritionFoods.brand }).from(nutritionFoods).where(eq(nutritionFoods.userId, userId));
     const revisions = await db.select().from(nutritionRecipeRevisions).where(and(eq(nutritionRecipeRevisions.userId, userId), inArray(nutritionRecipeRevisions.recipeId, recipes.map((recipe) => recipe.id))));
     return res.json({ recipes: recipes.map((recipe) => { const recipeRevisions = revisions.filter((revision) => revision.recipeId === recipe.id); return { ...recipe, revisionCount: recipeRevisions.length, currentRevision: Math.max(0, ...recipeRevisions.map((revision) => revision.revisionNumber)), ingredients: ingredients.filter((ingredient) => ingredient.recipeId === recipe.id).map((ingredient) => ({ ...ingredient, food: foods.find((food) => food.id === ingredient.foodId) || null })) }; }) });
+  });
+
+  app.post("/api/nutrition/recipes/import-preview", isAuthenticated, async (req: Request, res: Response) => {
+    const parsed = recipeImportSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: "Enter a valid recipe webpage URL." });
+    try {
+      const draft = await importStructuredRecipe(parsed.data.url);
+      return res.json({
+        draft,
+        disclosure: "This creates no food, recipe, or diary record. Ingredient lines come only from publisher-provided structured recipe data. Match every line to a saved, source-reviewed food and enter the measured grams yourself; recipe pages and their stated yield are not a nutrition or portion verification.",
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "The recipe could not be imported.";
+      return res.status(400).json({ error: message });
+    }
   });
 
   app.post("/api/nutrition/recipes", isAuthenticated, async (req: Request, res: Response) => {
