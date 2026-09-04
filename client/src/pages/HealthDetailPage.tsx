@@ -138,15 +138,22 @@ export default function HealthDetailPage() {
   const consistencyScore = Math.min(Math.round((currentStreak / 30) * 100), 100);
   const missionBalanceScore = Math.min(Math.round((Object.keys(categoryStats).length / 5) * 100), 100);
   const avgMoodPct = Math.min(Math.round((avgMoodScore / 10) * 100), 100);
+  const moodTrend = data?.moodTrend ?? [];
 
   const healthMetrics = [
     { name: "Health-category missions", score: activityScore, icon: Target, desc: "Game progress from completed missions" },
     { name: "Mission consistency", score: consistencyScore, icon: Flame, desc: "Game progress from the current streak" },
     { name: "Mission category breadth", score: missionBalanceScore, icon: Activity, desc: "Distribution of recorded mission categories" },
-    { name: "Self-reported mood", score: avgMoodPct, icon: Smile, desc: "Average of the mood check-ins you recorded" },
+    {
+      name: "Self-reported mood",
+      score: avgMoodPct,
+      icon: Smile,
+      desc: moodTrend.length > 0 ? "Average of the mood check-ins you recorded" : "No mood check-ins recorded for this period",
+      valueLabel: moodTrend.length > 0 ? `${avgMoodPct}%` : "Not recorded",
+      unavailable: moodTrend.length === 0,
+    },
   ];
 
-  const moodTrend = data?.moodTrend ?? [];
   const recentMoods = moodTrend.slice(-7);
   const categoryEntries = Object.entries(categoryStats) as [string, any][];
   const maxCategoryCount = categoryEntries.length > 0
@@ -422,16 +429,16 @@ export default function HealthDetailPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className={`text-lg font-mono font-bold text-primary`}>
-                          {metric.score}%
+                        <span className={`text-lg font-mono font-bold ${metric.unavailable ? "text-muted-foreground" : "text-primary"}`}>
+                          {metric.valueLabel ?? `${metric.score}%`}
                         </span>
                       </div>
                     </div>
                     <div className="w-full bg-muted/20 h-2 rounded-full overflow-hidden">
-                      <div
+                      {!metric.unavailable && <div
                         className="h-full rounded-full transition-all duration-700 bg-primary"
                         style={{ width: `${metric.score}%` }}
-                      />
+                      />}
                     </div>
                   </div>
                 );
