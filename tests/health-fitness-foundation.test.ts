@@ -275,11 +275,13 @@ describe("health and fitness foundation", () => {
     const diary = readFileSync(resolve(process.cwd(), "client/src/components/health/NutritionDiary.tsx"), "utf8");
     expect(migration).toContain('ADD COLUMN IF NOT EXISTS "food_evidence_snapshot"');
     expect(releaseRunner).toContain('id: "0151_nutrition_diary_food_evidence"');
-    expect(routes).toContain("foodEvidenceSnapshot: foodEvidenceSnapshot(food)");
+    expect(routes).toContain('foodEvidenceSnapshot: foodEvidenceSnapshot(food, parsed.data.reviewMethod || "manual")');
     expect(routes).toContain("foodEvidenceSnapshot: evidenceByFood.get(ingredient.foodId) || null");
     expect(routes).toContain("foodEvidenceSnapshot: entry.foodEvidenceSnapshot");
     expect(routes).toContain("foodEvidenceSnapshot: snapshot.foodEvidenceSnapshot");
     expect(diary).toContain("legacy source context unavailable");
+    expect(diary).toContain('aria-label="Private meal photo reference"');
+    expect(diary).toContain('photoReferenceReviewed');
   });
 
   it("lets users correct and favorite saved foods without rewriting diary snapshots", () => {

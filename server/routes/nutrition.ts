@@ -37,6 +37,9 @@ const diarySchema = z.object({
   foodId: z.number().int().positive(), servingGrams: z.number().positive().max(100_000).optional(),
   quantity: z.number().positive().max(100_000).optional(), inputUnit: z.enum(["g", "serving", "ml", "portion"]).optional(),
   portionId: z.number().int().positive().nullable().optional(),
+  // A photo reference is never accepted or stored by this endpoint. This
+  // declaration records only the owner's reviewed capture method.
+  reviewMethod: z.enum(["manual", "private_photo_reference"]).optional(),
   mealSlot: z.enum(["breakfast", "lunch", "dinner", "snack", "other"]).default("other"),
   occurredAt: z.string().datetime().optional(), note: z.string().trim().max(500).nullable().optional(),
 }).superRefine((value, context) => {
@@ -80,9 +83,10 @@ type FoodEvidenceSnapshot = {
   catalogItemVersion: string | null;
   catalogEvidence: unknown | null;
   catalogSourceModified: boolean;
+  recordingMethod: "manual" | "private_photo_reference";
 };
 
-function foodEvidenceSnapshot(food: FoodEvidenceSnapshot): FoodEvidenceSnapshot {
+function foodEvidenceSnapshot(food: Omit<FoodEvidenceSnapshot, "recordingMethod">, recordingMethod: FoodEvidenceSnapshot["recordingMethod"] = "manual"): FoodEvidenceSnapshot {
   return {
     source: food.source,
     catalogProviderId: food.catalogProviderId,
@@ -90,6 +94,7 @@ function foodEvidenceSnapshot(food: FoodEvidenceSnapshot): FoodEvidenceSnapshot 
     catalogItemVersion: food.catalogItemVersion,
     catalogEvidence: food.catalogEvidence,
     catalogSourceModified: food.catalogSourceModified,
+    recordingMethod,
   };
 }
 
@@ -620,7 +625,7 @@ export function registerNutritionRoutes(app: Express): void {
     const snapshot = (await nutrientSnapshots([food.id])).get(food.id) || [];
     try {
       const timeContext = requestTimeContext(req, occurredAt);
-      const [entry] = await db.insert(nutritionDiaryEntries).values({ userId, foodId: food.id, servingGrams, inputQuantity, inputUnit, inputPortionId: parsed.data.portionId || null, inputUnitLabel: conversion.label, inputGramsPerUnit: conversion.gramsPerUnit, clientMutationId, mutationPayloadHash, nutrientSnapshot: snapshot, foodEvidenceSnapshot: foodEvidenceSnapshot(food), mealSlot: parsed.data.mealSlot, occurredAt, note: parsed.data.note || null, recordedTimeZone: timeContext.timeZone, recordedUtcOffsetMinutes: timeContext.utcOffsetMinutes }).returning();
+      const [entry] = await db.insert(nutritionDiaryEntries).values({ userId, foodId: food.id, servingGrams, inputQuantity, inputUnit, inputPortionId: parsed.data.portionId || null, inputUnitLabel: conversion.label, inputGramsPerUnit: conversion.gramsPerUnit, clientMutationId, mutationPayloadHash, nutrientSnapshot: snapshot, foodEvidenceSnapshot: foodEvidenceSnapshot(food, parsed.data.reviewMethod || "manual"), mealSlot: parsed.data.mealSlot, occurredAt, note: parsed.data.note || null, recordedTimeZone: timeContext.timeZone, recordedUtcOffsetMinutes: timeContext.utcOffsetMinutes }).returning();
       return res.status(201).json({ entry, replayed: false });
     } catch (error) {
       if (!clientMutationId) throw error;
