@@ -11,7 +11,7 @@ import { useHealthOfflineSync } from "@/hooks/useHealthOfflineSync";
 import HealthPreferences from "@/components/health/HealthPreferences";
 import { healthTrackingDomains, type HealthTrackingDomain } from "@/components/health/HealthPreferences";
 import OfflineHealthQueueStatus from "@/components/health/OfflineHealthQueueStatus";
-import { ArrowLeft, Heart, Activity, Target, Flame, Loader2, TrendingUp, Brain, Zap, Smile } from "lucide-react";
+import { ArrowLeft, Award, Heart, Activity, Target, Flame, Loader2, TrendingUp, Brain, Zap, Smile } from "lucide-react";
 import { LineChart, Line, ScatterChart, Scatter, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { DeferredFeatureChunkBoundary } from "@/components/DeferredFeature";
 import { withChunkLoadTimeout } from "@/lib/runtimeRecovery";
@@ -84,15 +84,29 @@ function getGradientColors(pct: number): string {
   return "bg-primary";
 }
 
+type HealthPracticeProgression = {
+  practiceXp: number;
+  rank: { level: number; name: string; minimumXp: number };
+  nextRank: { level: number; name: string; minimumXp: number } | null;
+  badges: Array<{ key: string }>;
+  disclosure: string;
+};
+
 export default function HealthDetailPage() {
   useHealthOfflineSync();
-  usePageTitle("Health Points - LYFEOS");
+  usePageTitle("Health - LYFEOS");
   const { user } = useAuth();
   const { stats, computedStats } = useLYFEOS();
   const [days, setDays] = useState(30);
   const [importedNutritionFoodId, setImportedNutritionFoodId] = useState<number | null>(null);
   const [manualNutritionFoodRequest, setManualNutritionFoodRequest] = useState<{ name: string } | null>(null);
   const healthProfile = useQuery<{ profile: { trackedDomains?: HealthTrackingDomain[] } | null }>({ queryKey: ["/api/health-fitness/profile"], queryFn: () => apiRequest("/api/health-fitness/profile"), enabled: !!user });
+  const healthProgression = useQuery<{ progression: HealthPracticeProgression }>({
+    queryKey: ["/api/health-progression"],
+    queryFn: () => apiRequest("/api/health-progression/reconcile", { method: "POST" }),
+    enabled: !!user,
+    refetchOnMount: "always",
+  });
 
   useEffect(() => {
     if (!importedNutritionFoodId && !manualNutritionFoodRequest) return;
@@ -106,10 +120,10 @@ export default function HealthDetailPage() {
     refetchOnMount: 'always',
   });
 
-  const healthPct = stats.healthPoints.max > 0
-    ? Math.round((stats.healthPoints.current / stats.healthPoints.max) * 100)
-    : 0;
-  const status = getStatusBadge(healthPct);
+  const recordedPractice = healthProgression.data?.progression;
+  const healthPct = recordedPractice?.nextRank
+    ? Math.max(0, Math.min(100, Math.round(((recordedPractice.practiceXp - recordedPractice.rank.minimumXp) / (recordedPractice.nextRank.minimumXp - recordedPractice.rank.minimumXp)) * 100)))
+    : recordedPractice ? 100 : 0;
   const healthGlow = getHealthGlow(healthPct);
   const gradientColors = getGradientColors(healthPct);
 
@@ -156,7 +170,7 @@ export default function HealthDetailPage() {
           <Heart className="h-9 w-9 text-primary/50 absolute top-0 left-0 opacity-40 animate-pulse" style={{ animationDelay: "0.3s" }} />
         </div>
         <h1 className="text-3xl font-orbitron text-primary">
-          Health Points
+          Health
         </h1>
       </div>
 
@@ -239,34 +253,34 @@ export default function HealthDetailPage() {
             <div className="text-center md:text-left">
               <h2 className="font-orbitron text-lg mb-3 text-primary flex items-center gap-2">
                 <Heart className="h-5 w-5" />
-                Health-point game progress
+                Recorded practice progression
               </h2>
               <div className="flex items-baseline gap-2">
                 <span className="text-7xl font-orbitron font-bold text-primary leading-none">
-                  {healthPct}
+                  {recordedPractice?.practiceXp ?? 0}
                 </span>
-                <span className="text-2xl text-muted-foreground font-mono">%</span>
+                <span className="text-2xl text-muted-foreground font-mono">XP</span>
               </div>
               <p className="text-sm text-muted-foreground mt-2">
-                {stats.healthPoints.current} / {stats.healthPoints.max} HP
+                {recordedPractice ? `Level ${recordedPractice.rank.level} · ${recordedPractice.rank.name}` : "Reconciling your recorded practice…"}
               </p>
-              <p className="max-w-md text-xs text-muted-foreground mt-2">HP rewards participation in your LyfeOS system. It is not a measurement, score, diagnosis, or prediction of your health.</p>
+              <p className="max-w-md text-xs text-muted-foreground mt-2">{recordedPractice?.disclosure || "Only factual or self-reported records you choose to save can earn practice XP. This is not a measurement, score, diagnosis, or prediction of your health."}</p>
             </div>
 
             <div className="flex flex-col items-center gap-3">
-              <div className={`px-4 py-2 rounded-full border font-mono text-sm font-semibold tracking-wider ${status.bg} ${status.color}`}>
-                {status.label}
+              <div className="px-4 py-2 rounded-full border border-primary/30 bg-primary/20 font-mono text-sm font-semibold tracking-wider text-primary">
+                {recordedPractice?.rank.name || "OBSERVER"}
               </div>
               <div className="flex gap-3">
                 <div className="flex items-center gap-2 bg-background/40 rounded-lg px-3 py-2 border border-muted/20">
-                  <Flame className="h-4 w-4 text-primary" />
-                  <span className="text-muted-foreground text-xs">Streak:</span>
-                  <span className="font-mono text-primary text-sm">{currentStreak}d</span>
+                  <Award className="h-4 w-4 text-primary" />
+                  <span className="text-muted-foreground text-xs">Badges:</span>
+                  <span className="font-mono text-primary text-sm">{recordedPractice?.badges.length ?? 0}</span>
                 </div>
                 <div className="flex items-center gap-2 bg-background/40 rounded-lg px-3 py-2 border border-muted/20">
                   <Target className="h-4 w-4 text-primary" />
-                  <span className="text-muted-foreground text-xs">Done:</span>
-                  <span className="font-mono text-primary text-sm">{completedMissions}</span>
+                  <span className="text-muted-foreground text-xs">Next:</span>
+                  <span className="font-mono text-primary text-sm">{recordedPractice?.nextRank ? `${recordedPractice.nextRank.minimumXp - recordedPractice.practiceXp} XP` : "—"}</span>
                 </div>
               </div>
             </div>
@@ -280,9 +294,9 @@ export default function HealthDetailPage() {
             </div>
           </div>
           <div className="flex justify-between mt-2">
-            <span className="text-xs text-muted-foreground font-mono">0 HP</span>
+            <span className="text-xs text-muted-foreground font-mono">{recordedPractice?.rank.minimumXp ?? 0} XP</span>
             <span className="text-xs text-primary font-mono">{healthPct}%</span>
-            <span className="text-xs text-muted-foreground font-mono">{stats.healthPoints.max} HP</span>
+            <span className="text-xs text-muted-foreground font-mono">{recordedPractice?.nextRank ? `${recordedPractice.nextRank.minimumXp} XP` : "highest rank"}</span>
           </div>
         </div>
       </div>

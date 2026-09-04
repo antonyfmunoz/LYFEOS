@@ -34,7 +34,9 @@ describe("observed-pattern data quality", () => {
     expect(expanded).not.toContain("prevents illness");
     expect(expanded).not.toContain("typically correlate with improved productivity and wellbeing");
     expect(healthDetail).toContain("not a medical conclusion");
-    expect(healthDetail).toContain("Health-point game progress");
+    expect(healthDetail).toContain("Recorded practice progression");
+    expect(healthDetail).toContain("/api/health-progression/reconcile");
+    expect(healthDetail).not.toContain("stats.healthPoints.current");
     expect(healthDetail).toContain("not a measurement, score, diagnosis, or prediction of your health");
     expect(healthDetail).not.toContain("Current Health Status");
     expect(healthDetail).not.toContain("contributes to health");
