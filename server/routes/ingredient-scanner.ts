@@ -3,7 +3,7 @@ import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { foodPackageConfirmations, foodReviewPreferences, ingredientPreferenceRules, ingredientScanItems, ingredientScans } from "@shared/schema";
 import { db } from "../db";
-import { normalizeIngredientKey, parseIngredientLabel } from "../ingredient-scanner";
+import { classifyIngredientEvidence, normalizeIngredientKey, parseIngredientLabel } from "../ingredient-scanner";
 import { isAuthenticated } from "./middleware";
 import { parseExpectedResourceRevision } from "../revision-concurrency";
 import { verifyConfiguredFoodCatalogToken } from "../food-catalog";
@@ -187,10 +187,13 @@ export function registerIngredientScannerRoutes(app: Express): void {
         catalogTerritory: receipt?.item.territory || null, catalogSourceModified: false,
         parseVersion: "v1", status: "reviewed",
       }).returning();
-      const createdItems = await tx.insert(ingredientScanItems).values(ingredients.map((ingredient) => ({
-        userId, scanId: created.id, rawName: ingredient.rawName, normalizedKey: ingredient.normalizedKey,
-        sourceOrder: ingredient.sourceOrder, classification: "unknown", evidenceStrength: "unverified",
-      }))).returning();
+      const createdItems = await tx.insert(ingredientScanItems).values(ingredients.map((ingredient) => {
+        const evidence = classifyIngredientEvidence(ingredient.normalizedKey);
+        return {
+          userId, scanId: created.id, rawName: ingredient.rawName, normalizedKey: ingredient.normalizedKey,
+          sourceOrder: ingredient.sourceOrder, ...evidence,
+        };
+      })).returning();
       return { ...created, items: createdItems };
     });
     return res.status(201).json({ scan });
@@ -215,10 +218,13 @@ export function registerIngredientScannerRoutes(app: Express): void {
         parseVersion: "v1", catalogSourceModified: Boolean(current.catalogProviderId), revision: current.revision + 1, updatedAt: new Date(),
       }).where(and(eq(ingredientScans.id, id), eq(ingredientScans.userId, userId))).returning();
       await tx.delete(ingredientScanItems).where(and(eq(ingredientScanItems.scanId, id), eq(ingredientScanItems.userId, userId)));
-      const items = await tx.insert(ingredientScanItems).values(ingredients.map((ingredient) => ({
-        userId, scanId: id, rawName: ingredient.rawName, normalizedKey: ingredient.normalizedKey,
-        sourceOrder: ingredient.sourceOrder, classification: "unknown", evidenceStrength: "unverified",
-      }))).returning();
+      const items = await tx.insert(ingredientScanItems).values(ingredients.map((ingredient) => {
+        const evidence = classifyIngredientEvidence(ingredient.normalizedKey);
+        return {
+          userId, scanId: id, rawName: ingredient.rawName, normalizedKey: ingredient.normalizedKey,
+          sourceOrder: ingredient.sourceOrder, ...evidence,
+        };
+      })).returning();
       return { status: 200 as const, scan: { ...scan, items } };
     });
     if (result.status === 404) return res.status(404).json({ error: "Ingredient scan not found." });

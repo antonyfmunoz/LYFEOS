@@ -4,6 +4,70 @@ export type ParsedIngredient = {
   sourceOrder: number;
 };
 
+export type IngredientEvidenceClassification = {
+  classification: "unknown" | "declared_color_additive" | "declared_sulfiting_agent" | "declared_non_nutritive_sweetener" | "declared_caffeine_source" | "declared_partially_hydrogenated_oil";
+  reason: string | null;
+  evidenceTitle: string | null;
+  evidenceUrl: string | null;
+  evidenceStrength: "unverified" | "regulatory_identity";
+};
+
+type IngredientEvidenceRule = IngredientEvidenceClassification & { matches: (normalizedKey: string) => boolean };
+
+// This catalog deliberately classifies only the identity of explicitly named
+// ingredients. It is not a universal safety or health ranking: formulation,
+// amount, jurisdiction, dietary context and a user's own needs matter. The
+// linked first-party sources let a person inspect why an item was surfaced.
+const ingredientEvidenceRules: IngredientEvidenceRule[] = [
+  {
+    classification: "declared_color_additive",
+    reason: "This label names a color additive. It is surfaced for transparent label review, not as a health or safety verdict.",
+    evidenceTitle: "FDA: Color Additives Information for Consumers",
+    evidenceUrl: "https://www.fda.gov/food/food-ingredients-packaging/color-additives-information-consumers",
+    evidenceStrength: "regulatory_identity",
+    matches: (key) => /^(?:fd_c_)?(?:red|yellow|blue|green)_(?:no_)?\d+(?:_lake)?$/.test(key) || /^(?:tartrazine|allura_red|sunset_yellow|brilliant_blue|erythrosine)$/.test(key),
+  },
+  {
+    classification: "declared_sulfiting_agent",
+    reason: "This label names a sulfiting agent. Review the exact package and your own dietary or clinician guidance; this is not an allergy determination.",
+    evidenceTitle: "FDA: Food Allergies",
+    evidenceUrl: "https://www.fda.gov/food/nutrition-food-labeling-and-critical-foods/food-allergies",
+    evidenceStrength: "regulatory_identity",
+    matches: (key) => /^(?:sulfur_dioxide|sodium_sulfite|sodium_bisulfite|sodium_metabisulfite|potassium_bisulfite|potassium_metabisulfite)$/.test(key),
+  },
+  {
+    classification: "declared_non_nutritive_sweetener",
+    reason: "This label names a non-nutritive sweetener. It is surfaced for your own preference review, not scored as universally good or bad.",
+    evidenceTitle: "FDA: Aspartame and Other Sweeteners in Food",
+    evidenceUrl: "https://www.fda.gov/food/food-additives-petitions/aspartame-and-other-sweeteners-food",
+    evidenceStrength: "regulatory_identity",
+    matches: (key) => /^(?:aspartame|sucralose|saccharin|acesulfame(?:_potassium|_k)?|neotame|advantame|steviol_glycosides|stevia_extract|monk_fruit_extract|mogrosides)$/.test(key),
+  },
+  {
+    classification: "declared_caffeine_source",
+    reason: "This label names caffeine or a caffeine source. LyfeOS does not infer the amount from an ingredient list; consult the package for a stated amount.",
+    evidenceTitle: "FDA: Spilling the Beans: How Much Caffeine is Too Much?",
+    evidenceUrl: "https://www.fda.gov/consumers/consumer-updates/spilling-beans-how-much-caffeine-too-much",
+    evidenceStrength: "regulatory_identity",
+    matches: (key) => /^(?:caffeine|guarana|guarana_extract|yerba_mate|green_tea_extract|coffee_extract)$/.test(key),
+  },
+  {
+    classification: "declared_partially_hydrogenated_oil",
+    reason: "This label names partially hydrogenated oil. It is surfaced as a factual label-review flag, not a diagnosis or dietary prescription.",
+    evidenceTitle: "FDA: Partially Hydrogenated Oils in Foods",
+    evidenceUrl: "https://www.fda.gov/food/hfp-constituent-updates/fda-completes-final-administrative-actions-partially-hydrogenated-oils-foods",
+    evidenceStrength: "regulatory_identity",
+    matches: (key) => /\bpartially_hydrogenated(?:_[a-z]+)*_oil\b/.test(key),
+  },
+];
+
+export function classifyIngredientEvidence(normalizedKey: string): IngredientEvidenceClassification {
+  const matched = ingredientEvidenceRules.find((rule) => rule.matches(normalizedKey));
+  if (!matched) return { classification: "unknown", reason: null, evidenceTitle: null, evidenceUrl: null, evidenceStrength: "unverified" };
+  const { matches: _matches, ...classification } = matched;
+  return classification;
+}
+
 function stripIngredientHeading(value: string): string {
   return value.trim().replace(/^ingredients?\s*:\s*/i, "");
 }

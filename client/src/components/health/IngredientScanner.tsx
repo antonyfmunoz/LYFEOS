@@ -10,7 +10,7 @@ import { normalizeDetectedLabelText } from "@/lib/on-device-label-ocr";
 import { inspectKosherPackageText, type KosherPackageCheck } from "@/lib/kosher-package-check";
 
 type IngredientPreference = { id: number; displayName: string; preferenceType: "avoid" | "limit" | "watch"; note: string | null };
-type ScanItem = { id: number; rawName: string; classification: string; evidenceStrength: string; preference: IngredientPreference | null };
+type ScanItem = { id: number; rawName: string; classification: string; reason: string | null; evidenceTitle: string | null; evidenceUrl: string | null; evidenceStrength: string; preference: IngredientPreference | null };
 type IngredientScan = { id: number; captureMethod: "manual_label" | "photo_ocr" | "barcode"; productName: string | null; barcode: string | null; rawIngredientsText: string; revision: number; createdAt: string; items: ScanItem[]; catalogProviderId: string | null; catalogDatasetVersion: string | null; catalogAttributionText: string | null; catalogAttributionUrl: string | null; catalogSourceModified: boolean };
 type CatalogStatus = { available: boolean; reason: string | null; providers?: Array<{ id: string; name: string }>; defaultProviderId?: string | null };
 type CatalogCertification = { kind: "kosher"; status: "catalog_label_reported"; label: string };
@@ -33,6 +33,17 @@ function catalogEvidenceLabel(evidence: CatalogEvidence): string {
   if (evidence.sourceKind === "government_branded_database") return "Government branded-food record";
   if (evidence.sourceKind === "government_reference_database") return "Government reference-food record";
   return "Provider classification unavailable";
+}
+
+function ingredientClassificationLabel(classification: string): string {
+  const labels: Record<string, string> = {
+    declared_color_additive: "declared color additive",
+    declared_sulfiting_agent: "declared sulfiting agent",
+    declared_non_nutritive_sweetener: "declared non-nutritive sweetener",
+    declared_caffeine_source: "declared caffeine source",
+    declared_partially_hydrogenated_oil: "declared partially hydrogenated oil",
+  };
+  return labels[classification] || "unclassified";
 }
 
 export default function IngredientScanner({ onCatalogFoodImported, onManualFoodRequested }: { onCatalogFoodImported?: (foodId: number) => void; onManualFoodRequested?: (name: string) => void }) {
@@ -274,7 +285,7 @@ export default function IngredientScanner({ onCatalogFoodImported, onManualFoodR
     {scans.data?.scans.length ? <div className="mt-5 space-y-3">
       {scans.data.scans.map((scan) => <article key={scan.id} className="rounded-lg border border-muted/30 bg-background/20 p-3">
         <div className="flex items-start justify-between gap-3"><div><p className="text-sm font-medium">{scan.productName || "Unnamed product"}</p><p className="text-xs text-muted-foreground">{new Date(scan.createdAt).toLocaleDateString()}{scan.barcode ? ` · barcode ${scan.barcode}` : ""} · {scan.items.length} parsed ingredients · revision {scan.revision}</p>{scan.catalogProviderId ? <p className="mt-1 text-[11px] text-muted-foreground">Source: {scan.catalogProviderId} dataset {scan.catalogDatasetVersion}{scan.catalogSourceModified ? " · privately corrected after import" : ""}{scan.catalogAttributionUrl ? <> · <a className="text-primary underline" href={scan.catalogAttributionUrl} target="_blank" rel="noreferrer">attribution</a></> : scan.catalogAttributionText ? ` · ${scan.catalogAttributionText}` : ""}</p> : null}</div><div className="flex"><Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`Correct ingredient review for ${scan.productName || "unnamed product"}`} onClick={() => editScan(scan)}><Pencil className="h-4 w-4" /></Button><Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`Delete ingredient review for ${scan.productName || "unnamed product"}`} disabled={remove.isPending} onClick={() => remove.mutate(scan.id)}><Trash2 className="h-4 w-4" /></Button></div></div>
-        <div className="mt-3 flex flex-wrap gap-1.5">{scan.items.map((item) => <span key={item.id} title={item.preference ? `Matches your ${item.preference.preferenceType} preference${item.preference.note ? `: ${item.preference.note}` : ""}` : "No universal harmfulness or safety conclusion has been assigned"} className="rounded-md border border-muted/30 px-2 py-1 text-xs text-muted-foreground">{item.rawName} <span className="text-primary/80">· {item.preference ? `your ${item.preference.preferenceType} rule` : "unclassified"}</span>{item.preference?.note ? <span> · {item.preference.note}</span> : null}</span>)}</div>
+        <div className="mt-3 flex flex-wrap gap-1.5">{scan.items.map((item) => <span key={item.id} title={item.preference ? `Matches your ${item.preference.preferenceType} preference${item.preference.note ? `: ${item.preference.note}` : ""}` : item.reason || "No universal harmfulness or safety conclusion has been assigned"} className="rounded-md border border-muted/30 px-2 py-1 text-xs text-muted-foreground">{item.rawName} <span className="text-primary/80">· {item.preference ? `your ${item.preference.preferenceType} rule` : ingredientClassificationLabel(item.classification)}</span>{item.preference?.note ? <span> · {item.preference.note}</span> : null}{!item.preference && item.evidenceUrl && item.evidenceTitle ? <a className="ml-1 text-primary underline" href={item.evidenceUrl} target="_blank" rel="noreferrer">source</a> : null}</span>)}</div>
       </article>)}
     </div> : null}
     {scans.data?.disclosure && <p className="mt-4 text-xs text-muted-foreground">{scans.data.disclosure}</p>}
