@@ -5,7 +5,7 @@ export type ParsedIngredient = {
 };
 
 export type IngredientEvidenceClassification = {
-  classification: "unknown" | "declared_color_additive" | "declared_sulfiting_agent" | "declared_non_nutritive_sweetener" | "declared_caffeine_source" | "declared_partially_hydrogenated_oil";
+  classification: "unknown" | "declared_major_allergen_label_term" | "declared_color_additive" | "declared_sulfiting_agent" | "declared_non_nutritive_sweetener" | "declared_caffeine_source" | "declared_partially_hydrogenated_oil";
   reason: string | null;
   evidenceTitle: string | null;
   evidenceUrl: string | null;
@@ -19,6 +19,14 @@ type IngredientEvidenceRule = IngredientEvidenceClassification & { matches: (nor
 // amount, jurisdiction, dietary context and a user's own needs matter. The
 // linked first-party sources let a person inspect why an item was surfaced.
 const ingredientEvidenceRules: IngredientEvidenceRule[] = [
+  {
+    classification: "declared_major_allergen_label_term",
+    reason: "This exact major-allergen term appears in the ingredient list. It does not replace reading the complete package, including any Contains or advisory statement, and it is not an allergy determination.",
+    evidenceTitle: "FDA: Food Allergies",
+    evidenceUrl: "https://www.fda.gov/food/nutrition-food-labeling-and-critical-foods/food-allergies",
+    evidenceStrength: "regulatory_identity",
+    matches: (key) => /^(?:milk|egg|eggs|fish|crustacean_shellfish|tree_nuts|peanut|peanuts|wheat|soy|soybean|soybeans|sesame)$/.test(key),
+  },
   {
     classification: "declared_color_additive",
     reason: "This label names a color additive. It is surfaced for transparent label review, not as a health or safety verdict.",

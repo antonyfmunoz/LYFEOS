@@ -37,6 +37,7 @@ function catalogEvidenceLabel(evidence: CatalogEvidence): string {
 
 function ingredientClassificationLabel(classification: string): string {
   const labels: Record<string, string> = {
+    declared_major_allergen_label_term: "declared major-allergen term",
     declared_color_additive: "declared color additive",
     declared_sulfiting_agent: "declared sulfiting agent",
     declared_non_nutritive_sweetener: "declared non-nutritive sweetener",
