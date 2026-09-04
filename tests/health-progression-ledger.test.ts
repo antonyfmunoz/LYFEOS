@@ -68,6 +68,7 @@ describe("reversible health practice progression", () => {
     expect(progression).toContain("onConflictDoNothing");
     expect(progression).toContain("pg_advisory_xact_lock");
     expect(progression).toContain("getHealthProgressionSummary(userId, tx)");
+    expect(progression).toContain("row.sleepReportedAt !== null");
     expect(profile).toContain('"health_progression_events"');
     expect(profile).toContain('"health_badge_events"');
     expect(rights).toContain('"health_progression_events", "health_badge_events"');

@@ -58,7 +58,6 @@ export interface IStorage {
   updateUserStats(userId: number, stats: Partial<InsertUserStats>): Promise<UserStats>;
   processLoginStreak(userId: number): Promise<{ streakDays: number; isNewDay: boolean }>;
   calculateEfficiency(userId: number): Promise<number>;
-  processDailyHealthUpdate(userId: number): Promise<number>;
   
   // User Profile methods
   getUserProfile(userId: number): Promise<UserProfile | undefined>;
@@ -499,19 +498,6 @@ export class DatabaseStorage implements IStorage {
     return { streakDays: newStreak, isNewDay };
   }
   
-  async recalculateHealthPoints(userId: number, mentalState: number, physicalState: number, emotionalState: number): Promise<void> {
-    const stats = await this.getUserStats(userId);
-    if (!stats) return;
-    
-    // Average the three ratings (each 1-10), scale to max HP (percentage of max)
-    const avgRating = (mentalState + physicalState + emotionalState) / 3;
-    const newHP = Math.round((avgRating / 10) * stats.healthPointsMax);
-    
-    await this.updateUserStats(userId, {
-      healthPointsCurrent: Math.max(0, Math.min(stats.healthPointsMax, newHP))
-    });
-  }
-  
   async calculateEfficiency(userId: number): Promise<number> {
     const stats = await this.getUserStats(userId);
     if (!stats) return 0;
@@ -590,73 +576,6 @@ export class DatabaseStorage implements IStorage {
     return { level, experienceCurrent: remaining, experienceMax, totalXP };
   }
 
-  async processDailyHealthUpdate(userId: number): Promise<number> {
-    const stats = await this.getUserStats(userId);
-    if (!stats) {
-      return 10;
-    }
-    
-    // Get yesterday's date to fetch energy log scores (use local date formatting for consistency with processLoginStreak)
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayDateStr = formatLocalDate(yesterday);
-    
-    // Fetch yesterday's energy log
-    const [yesterdayLog] = await db.select()
-      .from(userDailyLogs)
-      .where(and(
-        eq(userDailyLogs.userId, userId),
-        eq(userDailyLogs.date, yesterdayDateStr)
-      ))
-      .limit(1);
-    
-    // Calculate energy log score (average of mental, physical, emotional states)
-    let energyLogScore = 5; // Default middle score if no log exists
-    if (yesterdayLog) {
-      const mental = yesterdayLog.mentalState ?? 5;
-      const physical = yesterdayLog.physicalState ?? 5;
-      const emotional = yesterdayLog.emotionalState ?? 5;
-      energyLogScore = (mental + physical + emotional) / 3;
-    }
-    
-    // Also factor in energy usage from missions
-    const previousDayEnergyUsed = stats.previousDayEnergyUsed || 0;
-    const energyMax = stats.energyPointsMax;
-    const energyUsageRatio = energyMax > 0 ? previousDayEnergyUsed / energyMax : 0;
-    
-    // Calculate health adjustment based on both energy log scores and mission energy usage
-    let healthAdjustment = 0;
-    
-    // Energy log score impact (1-10 scale): high = gain health, low = lose health
-    if (energyLogScore >= 8) {
-      healthAdjustment += 2; // Feeling great = +2 health
-    } else if (energyLogScore >= 6) {
-      healthAdjustment += 1; // Feeling good = +1 health
-    } else if (energyLogScore <= 3) {
-      healthAdjustment -= 2; // Feeling poor = -2 health
-    } else if (energyLogScore <= 4) {
-      healthAdjustment -= 1; // Feeling below average = -1 health
-    }
-    
-    // Mission energy usage impact: high usage = lose health (overworked)
-    if (energyUsageRatio >= 0.8) {
-      healthAdjustment -= 1; // Overworked
-    } else if (energyUsageRatio <= 0.2 && previousDayEnergyUsed > 0) {
-      healthAdjustment += 1; // Well-rested but productive
-    }
-    
-    const currentHealth = stats.healthPointsCurrent;
-    const maxHealth = stats.healthPointsMax;
-    const newHealth = Math.max(1, Math.min(maxHealth, currentHealth + healthAdjustment));
-    
-    await this.updateUserStats(userId, {
-      healthPointsCurrent: newHealth,
-      previousDayEnergyUsed: 0
-    });
-    
-    return newHealth;
-  }
-  
   // User Profile methods
   async getUserProfile(userId: number): Promise<UserProfile | undefined> {
     const [profile] = await db.select().from(userProfile)

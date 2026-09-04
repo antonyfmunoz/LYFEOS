@@ -28,6 +28,7 @@ describe("observed-pattern data quality", () => {
     const healthDetail = readFileSync(resolve(process.cwd(), "client/src/pages/HealthDetailPage.tsx"), "utf8");
     const wealthDetail = readFileSync(resolve(process.cwd(), "client/src/pages/WealthDetailPage.tsx"), "utf8");
     const statDetail = readFileSync(resolve(process.cwd(), "client/src/pages/StatDetailPage.tsx"), "utf8");
+    const profileRoutes = readFileSync(resolve(process.cwd(), "server/routes/profile.ts"), "utf8");
     expect(compact).toContain("not a medical metric, diagnosis, or prediction");
     expect(compact).toContain("not an account balance, financial advice, or a measure of wealth");
     expect(expanded).toContain("not a measure of productivity, wellbeing, or personal worth");
@@ -39,10 +40,10 @@ describe("observed-pattern data quality", () => {
     expect(healthDetail).toContain("No mood check-ins recorded for this period");
     expect(healthDetail).toContain(".filter(([, value]) => categoryCount(value) > 0)");
     expect(healthDetail).not.toContain("stats.healthPoints.current");
+    expect(profileRoutes).not.toContain("healthPoints:");
     expect(healthDetail).toContain("not a measurement, score, diagnosis, or prediction of your health");
     expect(healthDetail).not.toContain("Current Health Status");
     expect(healthDetail).not.toContain("contributes to health");
-    const profileRoutes = readFileSync(resolve(process.cwd(), "server/routes/profile.ts"), "utf8");
     expect(profileRoutes).toContain("wellnessReportedAt !== null");
     expect(profileRoutes).toContain("wellnessReported === true");
     expect(profileRoutes).toContain("sleepReportedAt !== null");

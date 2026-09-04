@@ -186,10 +186,6 @@ export function registerGoalRoutes(app: Express): void {
           current: dbStats.energyPointsCurrent,
           max: dbStats.energyPointsMax,
         },
-        healthPoints: {
-          current: dbStats.healthPointsCurrent,
-          max: dbStats.healthPointsMax,
-        },
         experience: {
           current: xpData?.experienceCurrent ?? dbStats.experienceCurrent,
           max: xpData?.experienceMax ?? dbStats.experienceMax,

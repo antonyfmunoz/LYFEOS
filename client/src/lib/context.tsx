@@ -86,10 +86,6 @@ const initialStats: UserStats = {
     current: 100,
     max: 100,
   },
-  healthPoints: {
-    current: 100,
-    max: 100,
-  },
   wealthTokens: {
     current: 100,
     max: 100,

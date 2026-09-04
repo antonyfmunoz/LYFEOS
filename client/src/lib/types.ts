@@ -11,10 +11,6 @@ export interface UserStats {
     current: number;
     max: number;
   };
-  healthPoints: {
-    current: number;
-    max: number;
-  };
   wealthTokens: {
     current: number;
     max: number;

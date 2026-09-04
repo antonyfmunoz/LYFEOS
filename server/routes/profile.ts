@@ -53,10 +53,6 @@ async function loadFreshUserStats(userId: number) {
         current: dbStats.energyPointsCurrent,
         max: dbStats.energyPointsMax,
       },
-      healthPoints: {
-        current: dbStats.healthPointsCurrent,
-        max: dbStats.healthPointsMax,
-      },
       wealthTokens: {
         current: dbStats.wealthTokensCurrent ?? 100,
         max: dbStats.wealthTokensMax ?? 100,
@@ -1027,14 +1023,6 @@ Generate the complete affirmation now:`;
         }
       }
       
-      if (frontendStats.healthPoints) {
-        if (frontendStats.healthPoints.current !== undefined) {
-          dbStatsUpdate.healthPointsCurrent = frontendStats.healthPoints.current;
-        }
-        if (frontendStats.healthPoints.max !== undefined) {
-          dbStatsUpdate.healthPointsMax = frontendStats.healthPoints.max;
-        }
-      }
       
       if (frontendStats.wealthTokens) {
         if (frontendStats.wealthTokens.current !== undefined) {
@@ -1098,10 +1086,6 @@ Generate the complete affirmation now:`;
         energyPoints: {
           current: dbUpdatedStats.energyPointsCurrent,
           max: dbUpdatedStats.energyPointsMax,
-        },
-        healthPoints: {
-          current: dbUpdatedStats.healthPointsCurrent,
-          max: dbUpdatedStats.healthPointsMax,
         },
         wealthTokens: {
           current: dbUpdatedStats.wealthTokensCurrent ?? 100,
@@ -1899,7 +1883,6 @@ Generate the complete affirmation now:`;
           maxXp: stats?.experienceMax ?? 1000,
           currentStreak: stats?.streakDays ?? 0,
           energyMax: stats?.energyPointsMax ?? 100,
-          healthMax: stats?.healthPointsMax ?? 100,
           wealthMax: stats?.wealthTokensMax ?? 100,
           timeMax: stats?.timeTokensMax ?? 100,
           attentionMax: stats?.attentionTokensMax ?? 100,

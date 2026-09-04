@@ -47,7 +47,7 @@ async function initializeUserRecords(userId: number) {
     await storage.createUserStats({
       userId, experienceCurrent: 0, experienceMax: 1000, level: 1,
       timeTokensCurrent: 100, timeTokensMax: 100, energyPointsCurrent: 100,
-      energyPointsMax: 100, healthPointsCurrent: 100, healthPointsMax: 100,
+      energyPointsMax: 100,
       attentionTokensCurrent: 100, attentionTokensMax: 100, streakDays: 0,
       efficiencyScore: 0, aiAssistantName: "NOVA", primaryColor: "#ffffff",
     });
