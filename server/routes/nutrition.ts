@@ -67,7 +67,7 @@ const copyDiaryMealSchema = copyDiaryDaySchema.extend({
   targetMealSlot: z.enum(["breakfast", "lunch", "dinner", "snack", "other"]),
 });
 const recipeSchema = z.object({
-  name: z.string().trim().min(1).max(160), servings: z.number().positive().max(1000).default(1), folder: z.string().trim().max(80).nullable().optional(), note: z.string().trim().max(500).nullable().optional(),
+  name: z.string().trim().min(1).max(160), servings: z.number().positive().max(1000).default(1), folder: z.string().trim().max(80).nullable().optional(), note: z.string().trim().max(500).nullable().optional(), sourceUrl: z.string().trim().url().max(2048).refine((value) => /^https?:\/\//i.test(value), "Recipe sources must use HTTP or HTTPS.").nullable().optional(),
   ingredients: z.array(z.object({ foodId: z.number().int().positive(), grams: z.number().positive().max(100_000) })).min(1).max(60),
 }).superRefine((value, context) => {
   if (new Set(value.ingredients.map((ingredient) => ingredient.foodId)).size !== value.ingredients.length) context.addIssue({ code: z.ZodIssueCode.custom, message: "Each food can appear only once in a recipe." });
@@ -357,9 +357,9 @@ export function registerNutritionRoutes(app: Express): void {
     const ownedFoods = await db.select({ id: nutritionFoods.id }).from(nutritionFoods).where(and(eq(nutritionFoods.userId, userId), inArray(nutritionFoods.id, parsed.data.ingredients.map((ingredient) => ingredient.foodId))));
     if (ownedFoods.length !== parsed.data.ingredients.length) return res.status(400).json({ error: "A recipe ingredient is unavailable." });
     const recipe = await db.transaction(async (tx) => {
-      const [created] = await tx.insert(nutritionRecipes).values({ userId, name: parsed.data.name, servings: parsed.data.servings, folder: parsed.data.folder || null, note: parsed.data.note || null }).returning();
+      const [created] = await tx.insert(nutritionRecipes).values({ userId, name: parsed.data.name, servings: parsed.data.servings, folder: parsed.data.folder || null, note: parsed.data.note || null, sourceUrl: parsed.data.sourceUrl || null }).returning();
       const ingredients = await tx.insert(nutritionRecipeIngredients).values(parsed.data.ingredients.map((ingredient, sortOrder) => ({ ...ingredient, recipeId: created.id, sortOrder }))).returning();
-      await tx.insert(nutritionRecipeRevisions).values({ userId, recipeId: created.id, revisionNumber: 1, name: created.name, servings: created.servings, folder: created.folder, note: created.note, ingredientsSnapshot: ingredients.map(({ foodId, grams, sortOrder }) => ({ foodId, grams, sortOrder })) });
+      await tx.insert(nutritionRecipeRevisions).values({ userId, recipeId: created.id, revisionNumber: 1, name: created.name, servings: created.servings, folder: created.folder, note: created.note, sourceUrl: created.sourceUrl, ingredientsSnapshot: ingredients.map(({ foodId, grams, sortOrder }) => ({ foodId, grams, sortOrder })) });
       return { ...created, ingredients };
     });
     return res.status(201).json({ recipe });
@@ -380,13 +380,13 @@ export function registerNutritionRoutes(app: Express): void {
       const [latest] = await tx.select({ revisionNumber: nutritionRecipeRevisions.revisionNumber }).from(nutritionRecipeRevisions).where(and(eq(nutritionRecipeRevisions.recipeId, id), eq(nutritionRecipeRevisions.userId, userId))).orderBy(desc(nutritionRecipeRevisions.revisionNumber)).limit(1);
       const currentRevision = latest?.revisionNumber || 0;
       if (expectedRevision.revision !== currentRevision) return { kind: "conflict", currentRevision } as const;
-      const [updated] = await tx.update(nutritionRecipes).set({ name: parsed.data.name, servings: parsed.data.servings, folder: parsed.data.folder || null, note: parsed.data.note || null, updatedAt: new Date() })
+      const [updated] = await tx.update(nutritionRecipes).set({ name: parsed.data.name, servings: parsed.data.servings, folder: parsed.data.folder || null, note: parsed.data.note || null, sourceUrl: parsed.data.sourceUrl || null, updatedAt: new Date() })
         .where(and(eq(nutritionRecipes.id, id), eq(nutritionRecipes.userId, userId))).returning();
       if (!updated) return { kind: "missing" } as const;
       await tx.delete(nutritionRecipeIngredients).where(eq(nutritionRecipeIngredients.recipeId, updated.id));
       const ingredients = await tx.insert(nutritionRecipeIngredients).values(parsed.data.ingredients.map((ingredient, sortOrder) => ({ ...ingredient, recipeId: updated.id, sortOrder }))).returning();
       const nextRevision = currentRevision + 1;
-      await tx.insert(nutritionRecipeRevisions).values({ userId, recipeId: updated.id, revisionNumber: nextRevision, name: updated.name, servings: updated.servings, folder: updated.folder, note: updated.note, ingredientsSnapshot: ingredients.map(({ foodId, grams, sortOrder }) => ({ foodId, grams, sortOrder })) });
+      await tx.insert(nutritionRecipeRevisions).values({ userId, recipeId: updated.id, revisionNumber: nextRevision, name: updated.name, servings: updated.servings, folder: updated.folder, note: updated.note, sourceUrl: updated.sourceUrl, ingredientsSnapshot: ingredients.map(({ foodId, grams, sortOrder }) => ({ foodId, grams, sortOrder })) });
       return { kind: "updated", recipe: { ...updated, currentRevision: nextRevision, ingredients } } as const;
     });
     if (outcome.kind === "missing") return res.status(404).json({ error: "Recipe not found." });
@@ -431,14 +431,14 @@ export function registerNutritionRoutes(app: Express): void {
       const ownedFoods = await tx.select({ id: nutritionFoods.id }).from(nutritionFoods).where(and(eq(nutritionFoods.userId, userId), inArray(nutritionFoods.id, foodIds)));
       if (new Set(ownedFoods.map((food) => food.id)).size !== new Set(foodIds).size) return { state: "unavailable" as const };
       const [updated] = await tx.update(nutritionRecipes).set({
-        name: revision.name, servings: revision.servings, folder: revision.folder, note: revision.note, updatedAt: new Date(),
+        name: revision.name, servings: revision.servings, folder: revision.folder, note: revision.note, sourceUrl: revision.sourceUrl, updatedAt: new Date(),
       }).where(and(eq(nutritionRecipes.id, id), eq(nutritionRecipes.userId, userId))).returning();
       await tx.delete(nutritionRecipeIngredients).where(eq(nutritionRecipeIngredients.recipeId, id));
       await tx.insert(nutritionRecipeIngredients).values(snapshot.data.map((ingredient) => ({ recipeId: id, ...ingredient })));
       const nextRevision = currentRevision + 1;
       const [restoredRevision] = await tx.insert(nutritionRecipeRevisions).values({
         userId, recipeId: id, revisionNumber: nextRevision, name: updated.name, servings: updated.servings,
-        folder: updated.folder, note: updated.note, ingredientsSnapshot: snapshot.data,
+        folder: updated.folder, note: updated.note, sourceUrl: updated.sourceUrl, ingredientsSnapshot: snapshot.data,
       }).returning();
       return { state: "restored" as const, recipe: updated, restoredRevision };
     });

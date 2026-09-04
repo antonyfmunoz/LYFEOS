@@ -3606,6 +3606,13 @@ const migrations = [
           ON "grocery_recall_alerts" ("user_id", "status", "last_seen_at");
       `,
     },
+  {
+    id: "0157_nutrition_recipe_sources",
+    sql: `
+      ALTER TABLE "nutrition_recipes" ADD COLUMN IF NOT EXISTS "source_url" text;
+      ALTER TABLE "nutrition_recipe_revisions" ADD COLUMN IF NOT EXISTS "source_url" text;
+    `,
+  },
 ];
 
 async function run(): Promise<void> {

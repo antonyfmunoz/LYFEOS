@@ -551,6 +551,23 @@ describe("health and fitness foundation", () => {
     expect(client).toContain("Restore as new version");
   });
 
+  it("retains recipe-source provenance separately from nutrition values", () => {
+    const migration = readFileSync(resolve(process.cwd(), "migrations/0157_nutrition_recipe_sources.sql"), "utf8");
+    const releaseRunner = readFileSync(resolve(process.cwd(), "server/release-migrate.ts"), "utf8");
+    const routes = readFileSync(resolve(process.cwd(), "server/routes/nutrition.ts"), "utf8");
+    const client = readFileSync(resolve(process.cwd(), "client/src/components/health/NutritionDiary.tsx"), "utf8");
+    const importer = readFileSync(resolve(process.cwd(), "client/src/components/health/RecipeImportDraft.tsx"), "utf8");
+    expect(migration).toContain('ADD COLUMN IF NOT EXISTS "source_url" text');
+    expect(releaseRunner).toContain('id: "0157_nutrition_recipe_sources"');
+    expect(routes).toContain('Recipe sources must use HTTP or HTTPS.');
+    expect(routes).toContain('sourceUrl: created.sourceUrl');
+    expect(routes).toContain('sourceUrl: revision.sourceUrl');
+    expect(client).toContain('aria-label="Recipe source URL"');
+    expect(client).toContain(">Source</a>");
+    expect(importer).toContain("structured recipe lines");
+    expect(importer).toContain("never estimates portions or imports nutrition");
+  });
+
   it("reports food nutrient contributions from immutable diary evidence without treating missing values as zero", () => {
     const report = nutritionContributions([
       { entryId: 1, foodId: 10, foodName: "Oats", servingGrams: 50, nutrients: [{ nutrientKey: "energy_kcal", amountPer100g: 380, unit: "kcal" }, { nutrientKey: "fiber_g", amountPer100g: 10, unit: "g" }] },

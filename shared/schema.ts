@@ -3344,6 +3344,7 @@ export const nutritionRecipes = pgTable("nutrition_recipes", {
   name: text("name").notNull(),
   servings: real("servings").notNull().default(1),
   note: text("note"),
+  sourceUrl: text("source_url"),
   folder: text("folder"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -3366,6 +3367,7 @@ export const nutritionRecipeRevisions = pgTable("nutrition_recipe_revisions", {
   servings: real("servings").notNull(),
   folder: text("folder"),
   note: text("note"),
+  sourceUrl: text("source_url"),
   ingredientsSnapshot: jsonb("ingredients_snapshot").notNull().default([]),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => [uniqueIndex("nutrition_recipe_revisions_number_unique_idx").on(table.recipeId, table.revisionNumber), index("nutrition_recipe_revisions_user_idx").on(table.userId, table.recipeId)]);
