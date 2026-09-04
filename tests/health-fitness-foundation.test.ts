@@ -385,6 +385,7 @@ describe("health and fitness foundation", () => {
     expect(releaseRunner).toContain('id: "0153_workout_set_structure"');
     expect(routes).toContain('setKind: z.enum(["warmup", "working", "drop"])');
     expect(readFileSync(resolve(process.cwd(), "client/src/components/health/WorkoutLog.tsx"), "utf8")).toContain('Link group (A)');
+    expect(readFileSync(resolve(process.cwd(), "client/src/components/health/WorkoutLog.tsx"), "utf8")).toContain("Reference only; LyfeOS does not prefill or prescribe a load.");
   });
 
   it("summarizes recorded training only within valid, named formula boundaries", () => {

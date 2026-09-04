@@ -42,7 +42,7 @@ export type WorkoutExportSet = {
   durationSeconds: number | null;
   perceivedExertion: number | null;
   repsInReserve: number | null;
-  setKind: "warmup" | "working" | "drop";
+  setKind: string;
   reachedFailure: boolean;
   completed: boolean;
   note: string | null;
@@ -87,7 +87,7 @@ export type WorkoutLedgerExportRow = {
   setDurationSeconds: number | null;
   setPerceivedExertion: number | null;
   setRepsInReserve: number | null;
-  setKind: "warmup" | "working" | "drop" | null;
+  setKind: string | null;
   setReachedFailure: boolean | null;
   workoutNote: string | null;
   exerciseNote: string | null;
@@ -178,7 +178,7 @@ const columns: Array<keyof WorkoutLedgerExportRow> = [
 
 function csvHeader(column: string): string { return column.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`); }
 
-function csvCell(value: string | number | null): string {
+function csvCell(value: string | number | boolean | null): string {
   if (value === null) return "";
   const text = String(value);
   const protectedText = typeof value === "string" && /^[=+\-@\t\r]/.test(text) ? `'${text}` : text;
