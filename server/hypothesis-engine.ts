@@ -161,6 +161,16 @@ export async function currentHypothesisConsents(userId: number): Promise<Record<
 }
 
 export async function recordHypothesisConsent(userId: number, domain: HypothesisDomain, state: "enabled" | "revoked") {
+  // This endpoint is deliberately safe to retry. A browser can lose the
+  // response after Postgres commits it; in that case repeating the same
+  // desired state must not manufacture another consent event or re-run the
+  // revocation side effect.
+  const [current] = await db.select().from(hypothesisDomainConsents).where(and(
+    eq(hypothesisDomainConsents.userId, userId),
+    eq(hypothesisDomainConsents.domain, domain),
+  )).orderBy(desc(hypothesisDomainConsents.id)).limit(1);
+  if (current?.state === state) return current;
+
   const [record] = await db.insert(hypothesisDomainConsents).values({ userId, domain, state, policyVersion: HYPOTHESIS_CONSENT_VERSION }).returning();
   if (state === "revoked") {
     const affectedSignals = hypothesisSignalRegistryIdsForDomain(domain);

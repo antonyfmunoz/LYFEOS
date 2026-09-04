@@ -45,6 +45,8 @@ describe("Cross-domain hypothesis workspace", () => {
     expect(ui).toContain('queryClient.setQueryData<SignalResponse>(["/api/hypotheses/signals"]');
     expect(ui).toContain("The consent change was not saved. Your previous setting remains active.");
     expect(ui).toContain("aria-busy={saving}");
+    expect(ui).toContain("saveHypothesisConsent");
+    expect(engine).toContain("This endpoint is deliberately safe to retry.");
     expect(ui).toContain('aria-label="Private interpretation context"');
     expect(ui).toContain('data-testid="hypothesis-workbench"');
     expect(productionAcceptance).toContain('contract: "lyfeos.production-pattern-explorer-browser.v1"');

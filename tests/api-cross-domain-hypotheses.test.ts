@@ -44,6 +44,11 @@ describeApi("Cross-domain hypothesis authenticated journey", () => {
     expect(dictionary.data.consents).toEqual({ missions: "revoked", daily_state: "revoked", health: "revoked" });
     const denied = await request("POST", "/api/hypotheses", { title: "Hydration and completed Missions", leftSignalId: "health.hydration_ml", rightSignalId: "missions.completed_count", periodDays: 30, lagDays: 0, timeZone: "UTC", acknowledgedExploratory: true }, ownerCookie);
     expect(denied.status).toBe(409);
+    const consent = { domain: "health", state: "enabled", acknowledgedPrivateAnalysis: true };
+    expect((await request("PATCH", "/api/hypotheses/consents", consent, ownerCookie)).status).toBe(200);
+    expect((await request("PATCH", "/api/hypotheses/consents", consent, ownerCookie)).status).toBe(200);
+    const consentRows = await pool.query(`SELECT count(*)::int AS count FROM "hypothesis_domain_consents" WHERE "user_id" = $1 AND "domain" = 'health'`, [ownerId]);
+    expect(consentRows.rows[0].count).toBe(1);
   });
 
   it("calculates one explicitly consented, sample-gated, metadata-only snapshot", async () => {

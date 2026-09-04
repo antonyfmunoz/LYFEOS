@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { BrainCircuit, Pause, Play, RefreshCw, Trash2 } from "lucide-react";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { ApiResponseError, apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,6 +28,27 @@ const domainCopy: Record<Domain, { title: string; detail: string }> = {
   daily_state: { title: "Daily state", detail: "Your self-reported mental, physical, emotional, and sleep-quality reflections." },
   health: { title: "Health", detail: "Private workout, recovery, hydration, and sleep-session records." },
 };
+
+function retryableConsentError(error: unknown): boolean {
+  return !(error instanceof ApiResponseError) || error.status >= 500;
+}
+
+async function saveHypothesisConsent(domain: Domain, state: "enabled" | "revoked"): Promise<ConsentResponse> {
+  let failure: unknown;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      return await apiRequest<ConsentResponse>("/api/hypotheses/consents", {
+        method: "PATCH",
+        body: JSON.stringify({ domain, state, acknowledgedPrivateAnalysis: true }),
+      });
+    } catch (error) {
+      failure = error;
+      if (!retryableConsentError(error) || attempt === 2) throw error;
+      await new Promise((resolve) => window.setTimeout(resolve, 250 * (attempt + 1)));
+    }
+  }
+  throw failure;
+}
 
 function HypothesisCard({ hypothesis }: { hypothesis: Hypothesis }) {
   const { toast } = useToast();
@@ -111,7 +132,7 @@ export default function HypothesisWorkbench() {
   const enabledSignals = useMemo(() => (signals.data?.signals || []).filter((signal) => signal.enabled), [signals.data]);
   const invalidate = () => { void queryClient.invalidateQueries({ queryKey: ["/api/hypotheses/signals"] }); void queryClient.invalidateQueries({ queryKey: ["/api/hypotheses"] }); };
   const consent = useMutation({
-    mutationFn: ({ domain, state }: { domain: Domain; state: "enabled" | "revoked" }) => apiRequest<ConsentResponse>("/api/hypotheses/consents", { method: "PATCH", body: JSON.stringify({ domain, state, acknowledgedPrivateAnalysis: true }) }),
+    mutationFn: ({ domain, state }: { domain: Domain; state: "enabled" | "revoked" }) => saveHypothesisConsent(domain, state),
     onSuccess: (response) => {
       queryClient.setQueryData<SignalResponse>(["/api/hypotheses/signals"], (current) => current ? {
         ...current,
