@@ -294,7 +294,7 @@ select::placeholder,
     @apply shadow-[0_0_10px_rgba(249,115,22,0.7)]; /* Orange glow */
   }
   
-  /* Root Chakra (Muladhara): Red - Health Points */
+  /* Health workspace progress accent */
   .progress-hp .progress-fill::after {
     @apply shadow-[0_0_10px_rgba(239,68,68,0.7)]; /* Red glow */
   }

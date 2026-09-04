@@ -6,7 +6,7 @@ import { useState } from "react";
 const STAT_TITLES: Record<string, string> = {
   experience: "XP Growth Strategies",
   energy: "Energy Optimization Tips",
-  health: "Health-Point Game Tips",
+  health: "Health practice prompts",
   wealth: "Wealth Growth Strategies",
   time: "Time Management Tips",
   attention: "Focus Enhancement Techniques",

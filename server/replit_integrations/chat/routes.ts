@@ -221,7 +221,7 @@ Efficiency Score: ${stats?.efficiencyScore || 0}%
 === PLAYER RESOURCES ===
 ${contextPreferences.dailyState ? `
 Energy Points: ${stats?.energyPointsCurrent ?? 'N/A'}/${stats?.energyPointsMax ?? 'N/A'} (${totalEnergyCost} allocated to active missions)
-Health Points: ${stats?.healthPointsCurrent ?? 'N/A'}/${stats?.healthPointsMax ?? 'N/A'}
+Health records: not included automatically; use only information the person explicitly shares in this conversation.
 Time Tokens: ${stats?.timeTokensCurrent ?? 'N/A'}/${stats?.timeTokensMax ?? 'N/A'} (${totalTimeCost} allocated)
 Attention Tokens: ${stats?.attentionTokensCurrent ?? 'N/A'}/${stats?.attentionTokensMax ?? 'N/A'} (${totalAttentionCost} allocated)` : "Current wellbeing and resource data are not shared with you."}
 
@@ -1994,7 +1994,7 @@ export function registerChatRoutes(app: Express): void {
       const statContextMap: Record<string, string> = {
         experience: `XP: ${stats.experienceCurrent}/${stats.experienceMax}, Level: ${stats.level}, Active missions: ${activeMissions.length}, Completed missions: ${completedMissions.length}`,
         energy: `Energy: ${stats.energyPointsCurrent}/${stats.energyPointsMax}, Level: ${stats.level}, Active missions: ${activeMissions.length}`,
-        health: `Health-point game stat: ${stats.healthPointsCurrent}/${stats.healthPointsMax}, Level: ${stats.level}, Streak: ${stats.streakDays} days. These are gameplay values, not health measurements.`,
+        health: `Health workspace: factual records and recorded-practice progression; no numeric health status is available. These are gameplay values, not health measurements.`,
         wealth: `Wealth Tokens: ${stats.wealthTokensCurrent ?? 100}/${stats.wealthTokensMax ?? 100}, Level: ${stats.level}, Completed missions: ${completedMissions.length}`,
         time: `Time Tokens: ${stats.timeTokensCurrent}/${stats.timeTokensMax}, Active missions: ${activeMissions.length}, Level: ${stats.level}`,
         attention: `Attention Tokens: ${stats.attentionTokensCurrent}/${stats.attentionTokensMax}, Active missions: ${activeMissions.length}, Level: ${stats.level}`,
@@ -2005,7 +2005,7 @@ export function registerChatRoutes(app: Express): void {
       const statLabelMap: Record<string, string> = {
         experience: "Experience Points (XP) and Leveling",
         energy: "Energy Points",
-        health: "Health Points",
+        health: "Health records and practice",
         wealth: "Wealth Tokens",
         time: "Time Tokens",
         attention: "Attention Tokens",
@@ -2013,7 +2013,7 @@ export function registerChatRoutes(app: Express): void {
         streak: "Streak Tracking",
       };
 
-      const healthBoundary = statType === "health" ? "For Health Points, discuss only LyfeOS participation, factual logging, review, and user-chosen planning. State that HP is a game stat. Do not infer health status or provide medical, nutrition, supplement, sleep, or exercise prescriptions." : "";
+      const healthBoundary = statType === "health" ? "For Health records and practice, discuss only LyfeOS participation, factual logging, review, and user-chosen planning. State that practice XP recognizes records, not health status. Do not infer health status or provide medical, nutrition, supplement, sleep, or exercise prescriptions." : "";
       const prompt = `You are ${stats.aiAssistantName || "NOVA"}, the user's personal AI life coach. The user "${user.displayName}" is viewing their ${statLabelMap[statType]} stats page.
 
 Their current data: ${statContextMap[statType]}
@@ -2023,7 +2023,7 @@ Provide 3 concise, personalized, actionable tips to help them improve this stat.
       const deterministicTips: Record<string, string> = {
         experience: `Choose one active mission you can finish next. You are level ${stats.level} with ${completedMissions.length} completed mission${completedMissions.length === 1 ? "" : "s"}, so a concrete completion is the clearest next XP signal.`,
         energy: `Review the ${activeMissions.length} active mission${activeMissions.length === 1 ? "" : "s"} competing for your Energy Points and keep only the commitments you intend to act on.`,
-        health: "Treat Health Points as a participation game stat, not a health measurement. Log what you actually did and use the history to decide what you want to review next.",
+        health: "Practice XP and badges recognize factual LyfeOS records, not a health measurement. Log what you actually did and use the history to decide what you want to review next.",
         wealth: `Use the ${completedMissions.length} completed mission${completedMissions.length === 1 ? "" : "s"} as evidence, then choose one user-defined action that makes the next Wealth Token change observable.`,
         time: `Check the time cost on each of your ${activeMissions.length} active mission${activeMissions.length === 1 ? "" : "s"} and sequence the smallest finishable block first.`,
         attention: "Protect one uninterrupted block for the active mission you have deliberately ranked highest, then record the outcome instead of estimating progress.",
@@ -2077,7 +2077,7 @@ Provide 3 concise, personalized, actionable tips to help them improve this stat.
 
       const allContext = `User: ${user.displayName}
 Level: ${stats.level}, Total XP: ${stats.experienceCurrent}/${stats.experienceMax}
-Energy: ${stats.energyPointsCurrent}/${stats.energyPointsMax}, Health-point game stat: ${stats.healthPointsCurrent}/${stats.healthPointsMax} (not a health measurement)
+Energy: ${stats.energyPointsCurrent}/${stats.energyPointsMax}. Health records are not included automatically; use only information the person explicitly shares in this conversation.
 Wealth Tokens: ${stats.wealthTokensCurrent ?? 100}/${stats.wealthTokensMax ?? 100}
 Time Tokens: ${stats.timeTokensCurrent}/${stats.timeTokensMax}, Attention Tokens: ${stats.attentionTokensCurrent}/${stats.attentionTokensMax}
 Efficiency: ${stats.efficiencyScore || 0}%, Streak: ${stats.streakDays} days
@@ -2096,7 +2096,7 @@ Total energy allocated to missions: ${totalEnergyCost}, Total time allocated: ${
           "Record completion or recovery before changing the game stat so the progression remains auditable.",
         ],
         health: [
-          "Treat Health Points as a participation game stat, not a health measurement.",
+          "Practice XP and badges recognize factual LyfeOS records, not a health measurement.",
           "Log what you actually did and use the timeline to choose what you want to review next.",
           "Use qualified clinical measurements and professionals for health decisions; LyfeOS should preserve your observations without diagnosing you.",
         ],
@@ -2138,7 +2138,7 @@ ${allContext}
 
 Generate personalized tips for ALL 8 stat categories. For each category, provide exactly 3 concise, actionable tips (1-2 sentences each). Base advice on their actual numbers. Be direct, motivating, specific. No emojis.
 
-For the health category, discuss only LyfeOS participation, factual logging, review, and user-chosen planning. Explicitly treat Health Points as a game stat, never a health measurement. Do not infer health status or give medical, nutrition, supplement, sleep, or exercise prescriptions.
+For the health category, discuss only LyfeOS participation, factual logging, review, and user-chosen planning. Explicitly treat practice XP and badges as record-based game mechanics, never a health measurement. Do not infer health status or give medical, nutrition, supplement, sleep, or exercise prescriptions.
 
 Format your response as JSON with this exact structure:
 {"experience":["tip1","tip2","tip3"],"energy":["tip1","tip2","tip3"],"health":["tip1","tip2","tip3"],"wealth":["tip1","tip2","tip3"],"time":["tip1","tip2","tip3"],"attention":["tip1","tip2","tip3"],"efficiency":["tip1","tip2","tip3"],"streak":["tip1","tip2","tip3"]}

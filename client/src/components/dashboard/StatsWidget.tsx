@@ -14,7 +14,6 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
   const atPercentage = (stats.attentionTokens.current / stats.attentionTokens.max) * 100;
   const ttPercentage = (stats.timeTokens.current / stats.timeTokens.max) * 100;
   const epPercentage = (stats.energyPoints.current / stats.energyPoints.max) * 100;
-  const hpPercentage = (stats.healthPoints.current / stats.healthPoints.max) * 100;
   
   // Calculate percentages for efficiency and streak
   const efficiencyPercentage = stats.efficiencyScore;
@@ -283,7 +282,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
           </div>
         </Link>
         
-        {/* Health Points */}
+        {/* Health workspace — no default game percentage is presented as a health signal. */}
         <Link href="/health">
           <div className="stat-block group hover:bg-primary/10 hover:border-primary/40 rounded-lg p-3 transition-all cursor-pointer border border-primary/20 relative">
             <StatInfoDialog
@@ -295,30 +294,27 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
                   <Info className="h-4 w-4" />
                 </button>
               }
-              title="Health Points"
+              title="Health Records"
               titleColor="text-primary"
-              description="A self-reported LyfeOS wellbeing signal used for planning."
-              additionalInfo="It is not a medical metric, diagnosis, or prediction."
+              description="A private workspace for factual health records and recorded-practice progression."
+              additionalInfo="Practice XP and badges recognize saved LyfeOS records only; they are not a medical metric, diagnosis, or prediction."
               statType="health"
             />
             
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center">
                 <Heart className="h-4 w-4 text-primary mr-2" />
-                <h3 className="text-sm font-orbitron text-muted-foreground">HEALTH POINTS</h3>
+                <h3 className="text-sm font-orbitron text-muted-foreground">HEALTH RECORDS</h3>
               </div>
               <div className="mr-6">
                 <ArrowRight className="h-4 w-4 text-primary/40 opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
             </div>
-            <div className="progress-bar progress-hp mb-2">
-              <div className="progress-fill" style={{ width: `${hpPercentage}%` }}></div>
-            </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground font-mono text-base">
-                {Math.round(hpPercentage)}<span className="text-muted-foreground text-xs">%</span>
+                PRIVATE
               </span>
-              <span className="text-xs text-muted-foreground self-end">wellness</span>
+              <span className="text-xs text-muted-foreground self-end">open workspace</span>
             </div>
           </div>
         </Link>

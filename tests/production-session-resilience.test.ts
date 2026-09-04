@@ -35,6 +35,6 @@ describe("production session and optional-provider resilience", () => {
     expect(chatRoutes).toContain('source: "anthropic"');
     expect(chatRoutes).toContain("Stat-tip provider unavailable; returning deterministic guidance.");
     expect(chatRoutes).toContain("All-stat-tip provider unavailable; returning deterministic guidance.");
-    expect(chatRoutes).toContain("Treat Health Points as a participation game stat, not a health measurement.");
+    expect(chatRoutes).toContain("Practice XP and badges recognize factual LyfeOS records, not a health measurement.");
   });
 });

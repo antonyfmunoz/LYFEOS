@@ -17,7 +17,6 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
   const atPercentage = (stats.attentionTokens.current / stats.attentionTokens.max) * 100;
   const ttPercentage = (stats.timeTokens.current / stats.timeTokens.max) * 100;
   const epPercentage = (stats.energyPoints.current / stats.energyPoints.max) * 100;
-  const hpPercentage = (stats.healthPoints.current / stats.healthPoints.max) * 100;
   const wpPercentage = ((stats.wealthTokens?.current ?? 100) / (stats.wealthTokens?.max ?? 100)) * 100;
   
   // Calculate percentages for efficiency and streak
@@ -270,7 +269,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
           </div>
         </div>
         
-        {/* Health Points */}
+        {/* Health workspace — no default game percentage is presented as a health signal. */}
         <div className="stat-block rounded-lg p-2 border border-primary/20 relative">
           <StatInfoDialog
             trigger={
@@ -284,10 +283,10 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
                 <Info className="h-3 w-3" />
               </button>
             }
-            title="Health Points (HP)"
+            title="Health Records"
             titleColor="text-primary"
-            description="HP is a self-reported LyfeOS wellbeing signal used for planning."
-            additionalInfo="It is not a medical metric, diagnosis, or prediction."
+            description="A private workspace for factual health records and recorded-practice progression."
+            additionalInfo="Practice XP and badges recognize saved LyfeOS records only; they are not a medical metric, diagnosis, or prediction."
             statType="health"
           />
           
@@ -297,12 +296,9 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
               <h3 className="text-xs font-orbitron text-muted-foreground">HEALTH</h3>
             </div>
           </div>
-          <div className="progress-bar progress-hp h-1.5 mb-1">
-            <div className="progress-fill" style={{ width: `${hpPercentage}%`, backgroundColor: "var(--primary)" }}></div>
-          </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground font-mono text-xs">
-              {Math.round(hpPercentage)}<span className="text-muted-foreground text-xs">%</span>
+              RECORDS
             </span>
           </div>
         </div>

@@ -979,7 +979,7 @@ function PersistentProfileSection({ section, onSave }: { section: { id: string; 
 // Chakra colors for stats (used for theme colors)
 const STAT_COLORS = [
   "#00e0ff", // neon cyan - Time Tokens
-  "#ff2d95", // neon pink - Health Points
+  "#ff2d95", // neon pink - Health records
   "#ff6b2b", // neon orange - Energy Points
   "#ffe03d", // neon yellow - Efficiency
   "#39ff14", // neon green - Streak
