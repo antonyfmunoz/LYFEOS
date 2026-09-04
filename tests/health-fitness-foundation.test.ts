@@ -71,6 +71,7 @@ describe("health and fitness foundation", () => {
     expect(routes).toContain('eq(userDailyLogs.userId, req.session.userId!)');
     expect(routes).toContain('isNotNull(userDailyLogs.sleepReportedAt)');
     expect(routes).toContain('sleepReportedAt: reportedAt');
+    expect(readFileSync(resolve(process.cwd(), "server/routes/health-insights.ts"), "utf8")).toContain('isNotNull(userDailyLogs.sleepReportedAt)');
     expect(routes).toContain("sleepQuality: userDailyLogs.sleepQuality");
     expect(migration).toContain('ADD COLUMN IF NOT EXISTS "sleep_quality"');
     expect(releaseRunner).toContain('id: "0045_sleep_reflection"');

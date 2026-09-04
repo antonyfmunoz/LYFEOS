@@ -1,6 +1,6 @@
 import type { Express, Request, Response } from "express";
 import { createHash } from "node:crypto";
-import { and, desc, eq, gte, lt, lte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, isNotNull, lt, lte, sql } from "drizzle-orm";
 import { z } from "zod";
 import {
   bodyMeasurements, healthAiDrafts, healthAiRequests, healthConnections, healthDataRightsAudit, healthInsightInterpretations, healthMetricPanels, healthObservationCalculationPreferences, healthObservations, healthPlanningDraftEvents, healthPlanningDrafts, healthPracticeReviews, healthProfiles, healthSyncCursors, hydrationEntries,
@@ -174,7 +174,7 @@ async function loadSeries(userId: number, id: string, days: number, timeZone: st
       const rows = await db.select({ startedAt: sleepSessions.startedAt, endedAt: sleepSessions.endedAt, timeZone: sleepSessions.recordedTimeZone }).from(sleepSessions).where(and(eq(sleepSessions.userId, userId), gte(sleepSessions.startedAt, start), lt(sleepSessions.startedAt, end)));
       return { descriptor, points: aggregateDailyValues(rows.map((row) => ({ date: dateInTimeZone(row.startedAt, row.timeZone || "UTC"), value: Math.round((row.endedAt.getTime() - row.startedAt.getTime()) / 60_000) })), descriptor.aggregation), quality: completeQuality };
     }
-    const rows = await db.select({ date: userDailyLogs.date, sleepTime: userDailyLogs.sleepTime, wakeTime: userDailyLogs.wakeTime }).from(userDailyLogs).where(and(eq(userDailyLogs.userId, userId), gte(userDailyLogs.date, startDate), lte(userDailyLogs.date, endDate)));
+    const rows = await db.select({ date: userDailyLogs.date, sleepTime: userDailyLogs.sleepTime, wakeTime: userDailyLogs.wakeTime }).from(userDailyLogs).where(and(eq(userDailyLogs.userId, userId), isNotNull(userDailyLogs.sleepReportedAt), gte(userDailyLogs.date, startDate), lte(userDailyLogs.date, endDate)));
     return { descriptor, points: aggregateDailyValues(rows.flatMap((row) => { const value = sleepDurationMinutes(row.sleepTime, row.wakeTime); return value === null ? [] : [{ date: dateKey(row.date, timeZone), value }]; }), descriptor.aggregation), quality: completeQuality };
   }
   if (parsed.kind === "nutrition") {
