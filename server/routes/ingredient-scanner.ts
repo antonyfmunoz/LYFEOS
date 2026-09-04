@@ -232,6 +232,32 @@ export function registerIngredientScannerRoutes(app: Express): void {
     return res.json({ scan: result.scan });
   });
 
+  // Evidence refresh intentionally never changes the original label or a
+  // person's private preference rules. It only re-applies the current
+  // conservative identity catalog to the ingredients they previously saved.
+  app.post("/api/ingredient-scans/:id/evidence-review", isAuthenticated, async (req: Request, res: Response) => {
+    const id = Number(req.params.id);
+    const expectedRevision = parseExpectedResourceRevision(req.header("x-lyfeos-expected-revision"));
+    if (!Number.isInteger(id) || !expectedRevision.ok) return res.status(expectedRevision.ok ? 400 : expectedRevision.reason === "missing" ? 428 : 400).json({ error: expectedRevision.ok ? "Invalid ingredient review." : expectedRevision.reason === "missing" ? "Reload this saved label before refreshing evidence." : "Invalid expected label revision." });
+    const userId = req.session.userId!;
+    const result = await db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT id FROM ingredient_scans WHERE id = ${id} AND user_id = ${userId} FOR UPDATE`);
+      const [current] = await tx.select().from(ingredientScans).where(and(eq(ingredientScans.id, id), eq(ingredientScans.userId, userId))).limit(1);
+      if (!current) return { status: 404 as const };
+      if (current.revision !== expectedRevision.revision) return { status: 409 as const, currentRevision: current.revision };
+      const items = await tx.select().from(ingredientScanItems).where(and(eq(ingredientScanItems.scanId, id), eq(ingredientScanItems.userId, userId))).orderBy(ingredientScanItems.sourceOrder);
+      for (const item of items) {
+        const evidence = classifyIngredientEvidence(item.normalizedKey);
+        await tx.update(ingredientScanItems).set(evidence).where(and(eq(ingredientScanItems.id, item.id), eq(ingredientScanItems.userId, userId)));
+      }
+      const [scan] = await tx.update(ingredientScans).set({ revision: current.revision + 1, updatedAt: new Date() }).where(and(eq(ingredientScans.id, id), eq(ingredientScans.userId, userId))).returning();
+      return { status: 200 as const, scan, refreshedItems: items.length };
+    });
+    if (result.status === 404) return res.status(404).json({ error: "Ingredient scan not found." });
+    if (result.status === 409) return res.status(409).json({ error: "This saved label changed after you opened it. Reload it before refreshing evidence.", currentRevision: result.currentRevision });
+    return res.json({ scan: result.scan, refreshedItems: result.refreshedItems, disclosure: "LyfeOS refreshed only conservative evidence-linked ingredient identities. Your original label text and private preference rules were not changed." });
+  });
+
   app.delete("/api/ingredient-scans/:id", isAuthenticated, async (req: Request, res: Response) => {
     const id = Number(req.params.id);
     const expectedRevision = parseExpectedResourceRevision(req.header("x-lyfeos-expected-revision"));

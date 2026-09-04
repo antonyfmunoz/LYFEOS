@@ -32,9 +32,18 @@ describe("private ingredient label correction and reuse", () => {
     expect(routes).toContain("tx.delete(ingredientScanItems)");
     expect(routes).toContain("tx.insert(ingredientScanItems)");
     expect(routes).toContain("Your correction was not applied");
-    expect(routes.match(/SELECT id FROM ingredient_scans[^`]+FOR UPDATE/g)?.length).toBe(2);
+    expect(routes.match(/SELECT id FROM ingredient_scans[^`]+FOR UPDATE/g)?.length).toBeGreaterThanOrEqual(2);
     expect(routes).toContain("It was not deleted");
     const client = source("client/src/components/health/IngredientScanner.tsx");
     expect(client).toContain('"x-lyfeos-expected-revision": String(scan.revision)');
+  });
+
+  it("allows an owner to refresh derived evidence without changing the saved label", () => {
+    const routes = source("server/routes/ingredient-scanner.ts");
+    const client = source("client/src/components/health/IngredientScanner.tsx");
+    expect(routes).toContain('app.post("/api/ingredient-scans/:id/evidence-review"');
+    expect(routes).toContain("classifyIngredientEvidence(item.normalizedKey)");
+    expect(routes).toContain("Your original label text and private preference rules were not changed");
+    expect(client).toContain("Refresh evidence for");
   });
 });

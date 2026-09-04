@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Building2, Camera, Database, Pencil, ScanLine, Plus, Search, ShieldAlert, Trash2 } from "lucide-react";
+import { Building2, Camera, Database, Pencil, ScanLine, Plus, RefreshCw, Search, ShieldAlert, Trash2 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -150,6 +150,10 @@ export default function IngredientScanner({ onCatalogFoodImported, onManualFoodR
       void queryClient.invalidateQueries({ queryKey: ["/api/ingredient-scans"] });
     },
   });
+  const refreshEvidence = useMutation({
+    mutationFn: (scan: IngredientScan) => apiRequest(`/api/ingredient-scans/${scan.id}/evidence-review`, { method: "POST", headers: { "x-lyfeos-expected-revision": String(scan.revision) } }),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["/api/ingredient-scans"] }),
+  });
   const saveFoodReviewPreferences = useMutation({
     mutationFn: (kosherPackageConfirmation: boolean) => apiRequest<{ preferences: FoodReviewPreferences }>("/api/food-review-preferences", { method: "PUT", body: JSON.stringify({ kosherPackageConfirmation }) }),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["/api/food-review-preferences"] }),
@@ -284,8 +288,9 @@ export default function IngredientScanner({ onCatalogFoodImported, onManualFoodR
     </div>
     {scans.data?.scans.length ? <div className="mt-5 space-y-3">
       {scans.data.scans.map((scan) => <article key={scan.id} className="rounded-lg border border-muted/30 bg-background/20 p-3">
-        <div className="flex items-start justify-between gap-3"><div><p className="text-sm font-medium">{scan.productName || "Unnamed product"}</p><p className="text-xs text-muted-foreground">{new Date(scan.createdAt).toLocaleDateString()}{scan.barcode ? ` · barcode ${scan.barcode}` : ""} · {scan.items.length} parsed ingredients · revision {scan.revision}</p>{scan.catalogProviderId ? <p className="mt-1 text-[11px] text-muted-foreground">Source: {scan.catalogProviderId} dataset {scan.catalogDatasetVersion}{scan.catalogSourceModified ? " · privately corrected after import" : ""}{scan.catalogAttributionUrl ? <> · <a className="text-primary underline" href={scan.catalogAttributionUrl} target="_blank" rel="noreferrer">attribution</a></> : scan.catalogAttributionText ? ` · ${scan.catalogAttributionText}` : ""}</p> : null}</div><div className="flex"><Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`Correct ingredient review for ${scan.productName || "unnamed product"}`} onClick={() => editScan(scan)}><Pencil className="h-4 w-4" /></Button><Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`Delete ingredient review for ${scan.productName || "unnamed product"}`} disabled={remove.isPending} onClick={() => remove.mutate(scan.id)}><Trash2 className="h-4 w-4" /></Button></div></div>
+        <div className="flex items-start justify-between gap-3"><div><p className="text-sm font-medium">{scan.productName || "Unnamed product"}</p><p className="text-xs text-muted-foreground">{new Date(scan.createdAt).toLocaleDateString()}{scan.barcode ? ` · barcode ${scan.barcode}` : ""} · {scan.items.length} parsed ingredients · revision {scan.revision}</p>{scan.catalogProviderId ? <p className="mt-1 text-[11px] text-muted-foreground">Source: {scan.catalogProviderId} dataset {scan.catalogDatasetVersion}{scan.catalogSourceModified ? " · privately corrected after import" : ""}{scan.catalogAttributionUrl ? <> · <a className="text-primary underline" href={scan.catalogAttributionUrl} target="_blank" rel="noreferrer">attribution</a></> : scan.catalogAttributionText ? ` · ${scan.catalogAttributionText}` : ""}</p> : null}</div><div className="flex"><Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`Refresh evidence for ${scan.productName || "unnamed product"}`} disabled={refreshEvidence.isPending} onClick={() => refreshEvidence.mutate(scan)}><RefreshCw className={`h-4 w-4 ${refreshEvidence.isPending ? "animate-spin" : ""}`} /></Button><Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`Correct ingredient review for ${scan.productName || "unnamed product"}`} onClick={() => editScan(scan)}><Pencil className="h-4 w-4" /></Button><Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`Delete ingredient review for ${scan.productName || "unnamed product"}`} disabled={remove.isPending} onClick={() => remove.mutate(scan.id)}><Trash2 className="h-4 w-4" /></Button></div></div>
         <div className="mt-3 flex flex-wrap gap-1.5">{scan.items.map((item) => <span key={item.id} title={item.preference ? `Matches your ${item.preference.preferenceType} preference${item.preference.note ? `: ${item.preference.note}` : ""}` : item.reason || "No universal harmfulness or safety conclusion has been assigned"} className="rounded-md border border-muted/30 px-2 py-1 text-xs text-muted-foreground">{item.rawName} <span className="text-primary/80">· {item.preference ? `your ${item.preference.preferenceType} rule` : ingredientClassificationLabel(item.classification)}</span>{item.preference?.note ? <span> · {item.preference.note}</span> : null}{!item.preference && item.evidenceUrl && item.evidenceTitle ? <a className="ml-1 text-primary underline" href={item.evidenceUrl} target="_blank" rel="noreferrer">source</a> : null}</span>)}</div>
+        {refreshEvidence.error ? <p className="mt-2 text-xs text-destructive">Evidence could not be refreshed. Reload this label and try again.</p> : null}
       </article>)}
     </div> : null}
     {scans.data?.disclosure && <p className="mt-4 text-xs text-muted-foreground">{scans.data.disclosure}</p>}
