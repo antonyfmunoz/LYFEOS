@@ -477,7 +477,11 @@ export function registerHealthFitnessRoutes(app: Express): void {
     const rawMutationId = req.header("x-lyfeos-mutation-id");
     const clientMutationId = healthMutationId(rawMutationId);
     if (rawMutationId && !clientMutationId) return res.status(400).json({ error: "Invalid mutation identity." });
-    const mutationPayloadHash = clientMutationId ? healthMutationPayloadHash(parsed.data) : null;
+    // This is the native, user-entered measurement route. Method and protocol
+    // may preserve where a user transcribed a value from, but provider-grade
+    // provenance belongs only to a verified import path.
+    const manualMeasurement = { ...parsed.data, source: "manual" as const };
+    const mutationPayloadHash = clientMutationId ? healthMutationPayloadHash(manualMeasurement) : null;
     if (clientMutationId) {
       const [existing] = await db.select().from(bodyMeasurements).where(and(eq(bodyMeasurements.userId, userId), eq(bodyMeasurements.clientMutationId, clientMutationId))).limit(1);
       if (existing) return existing.mutationPayloadHash === mutationPayloadHash ? res.json({ measurement: existing, replayed: true }) : res.status(409).json({ error: "This mutation identity was already used for a different body measurement." });
@@ -485,7 +489,7 @@ export function registerHealthFitnessRoutes(app: Express): void {
     const selectedZone = requestTimeContext(req).timeZone;
     const timeContext = requestTimeContext(req, zonedDateTime(parsed.data.observedAt, selectedZone, 12));
     try {
-      const [measurement] = await db.insert(bodyMeasurements).values({ userId, ...parsed.data, note: parsed.data.note || null, recordedTimeZone: timeContext.timeZone, recordedUtcOffsetMinutes: timeContext.utcOffsetMinutes, clientMutationId, mutationPayloadHash }).returning();
+      const [measurement] = await db.insert(bodyMeasurements).values({ userId, ...manualMeasurement, note: manualMeasurement.note || null, recordedTimeZone: timeContext.timeZone, recordedUtcOffsetMinutes: timeContext.utcOffsetMinutes, clientMutationId, mutationPayloadHash }).returning();
       return res.status(201).json({ measurement, replayed: false });
     } catch (error) {
       if (!clientMutationId) throw error;
@@ -499,7 +503,7 @@ export function registerHealthFitnessRoutes(app: Express): void {
     const id = Number(req.params.id);
     const parsed = measurementUpdateSchema.safeParse(req.body);
     if (!Number.isInteger(id) || !parsed.success) return res.status(400).json({ error: "Invalid measurement.", details: parsed.success ? undefined : parsed.error.flatten() });
-    const [measurement] = await db.update(bodyMeasurements).set({ ...parsed.data, note: parsed.data.note || null })
+    const [measurement] = await db.update(bodyMeasurements).set({ ...parsed.data, source: "manual", note: parsed.data.note || null })
       .where(and(eq(bodyMeasurements.id, id), eq(bodyMeasurements.userId, req.session.userId!))).returning();
     return measurement ? res.json({ measurement }) : res.status(404).json({ error: "Measurement not found." });
   });

@@ -93,6 +93,13 @@ describe("health and fitness foundation", () => {
     expect(client).not.toContain("HR: device");
   });
 
+  it("keeps native body entries manual while preserving method and protocol context", () => {
+    const routes = readFileSync(resolve(process.cwd(), "server/routes/health-fitness.ts"), "utf8");
+    expect(routes).toContain('const manualMeasurement = { ...parsed.data, source: "manual" as const }');
+    expect(routes).toContain('source: "manual", note: parsed.data.note || null');
+    expect(readFileSync(resolve(process.cwd(), "client/src/components/health/BodyProgress.tsx"), "utf8")).toContain('source: "manual"');
+  });
+
   it("assembles an owner-scoped factual health timeline without causal or readiness claims", () => {
     const routes = readFileSync(resolve(process.cwd(), "server/routes/health-fitness.ts"), "utf8");
     const client = readFileSync(resolve(process.cwd(), "client/src/components/health/HealthTimeline.tsx"), "utf8");
