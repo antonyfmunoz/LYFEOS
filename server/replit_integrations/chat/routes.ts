@@ -13,6 +13,7 @@ import { buildCalendarMissionWindow } from "@shared/calendar";
 import { buildPlanningContextSnapshot } from "../../context-snapshot";
 import { buildAIContextSources, resolveAIActionPolicy } from "../../ai-governance";
 import { fetchPublicWebPage } from "../../public-web";
+import { sleepDurationMinutes } from "../../health-fitness";
 
 const anthropic = new Anthropic({
   apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY,
@@ -549,7 +550,7 @@ const tools: Anthropic.Messages.Tool[] = [
   },
   {
     name: "update_daily_log",
-    description: "Update fields in the user's daily log for today. Text fields will be APPENDED to existing content (not replaced). Only provide the NEW text to add. Use when user wants to log their mental/physical/emotional state, gratitude, thoughts, goals, reflections, wake/sleep time, research notes, etc.",
+    description: "Update fields in the user's daily log for today. Text fields will be APPENDED to existing content (not replaced). Only provide the NEW text to add. Use when user wants to log their mental/physical/emotional state, gratitude, thoughts, goals, reflections, wake/sleep time, research notes, etc. A wellness check-in becomes an explicit health record only when all three 1-10 ratings are supplied together; sleep becomes an explicit record only when both valid times are supplied together. Never infer missing ratings or times.",
     input_schema: {
       type: "object" as const,
       properties: {
@@ -1174,6 +1175,15 @@ Write a 2-3 paragraph affirmation in second person ("You are..."). Make it power
         const todayDate = new Date(today + 'T00:00:00');
         const todayLog = await storage.getUserDailyLogByDate(userId, todayDate);
 
+        // A chat request can create a self-report only from the user's complete,
+        // explicit values in this single action. Existing UI defaults or partial
+        // entries must never be promoted into health evidence by the assistant.
+        const isRating = (value: unknown) => Number.isInteger(value) && (value as number) >= 1 && (value as number) <= 10;
+        const hasCompleteWellnessReport = [logUpdates.mentalState, logUpdates.physicalState, logUpdates.emotionalState].every(isRating);
+        const hasCompleteSleepReport = sleepDurationMinutes(logUpdates.sleepTime, logUpdates.wakeTime) !== null;
+        if (hasCompleteWellnessReport) logUpdates.wellnessReportedAt = new Date();
+        if (hasCompleteSleepReport) logUpdates.sleepReportedAt = new Date();
+
         const appendableFields = [
           'gratitude', 'tomorrowGoals', 'annualGoals', 'thoughts',
           'contentConsumed', 'todoIdeas', 'researchNote', 'revisionNote',
@@ -1198,8 +1208,12 @@ Write a 2-3 paragraph affirmation in second person ("You are..."). Make it power
         } else {
           await storage.createUserDailyLog({ userId, date: today, ...logUpdates });
         }
-        const fields = Object.keys(logUpdates).join(", ");
-        return JSON.stringify({ success: true, action: "update_daily_log", message: `Daily log updated: ${fields}` });
+        const fields = Object.keys(logUpdates).filter((field) => !field.endsWith("ReportedAt")).join(", ");
+        const evidence = [
+          hasCompleteWellnessReport ? "wellness check-in recorded" : null,
+          hasCompleteSleepReport ? "sleep timing recorded" : null,
+        ].filter(Boolean);
+        return JSON.stringify({ success: true, action: "update_daily_log", message: `Daily log updated: ${fields}${evidence.length ? `; ${evidence.join(" and ")}.` : ""}` });
       }
 
       case "archive_research_entry": {
