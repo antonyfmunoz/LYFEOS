@@ -1,11 +1,12 @@
 import type { Express, Request, Response } from "express";
 import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
-import { brandOwnershipResearchReports, foodReviewPreferences, groceryPantryItems, groceryReceiptDrafts, groceryShoppingItems, ingredientPreferenceRules } from "@shared/schema";
+import { brandOwnershipResearchReports, foodReviewPreferences, groceryPantryItems, groceryRecallAlerts, groceryRecallMonitoringPreferences, groceryReceiptDrafts, groceryShoppingItems, ingredientPreferenceRules } from "@shared/schema";
 import { db } from "../db";
 import { listReviewedBrandSpotlights, lookupReviewedBrandOwnership } from "../brand-ownership";
 import { FoodCatalogError, searchFoodCatalog } from "../food-catalog";
 import { FoodRecallError, lookupFoodRecalls } from "../food-recalls";
+import { runGroceryRecallMonitor } from "../grocery-recall-monitor";
 import { ownershipScoreFromProfiles, parseReceiptText } from "../grocery-intelligence";
 import { parseIngredientLabel } from "../ingredient-scanner";
 import { isAuthenticated } from "./middleware";
@@ -60,6 +61,7 @@ const reportSchema = z.object({
   evidenceUrl: z.string().url().max(1_000).nullable().optional(),
   shareWithOwnershipReviewers: z.literal(true),
 }).strict();
+const recallMonitoringSchema = z.object({ enabled: z.boolean() }).strict();
 
 type PantryRecallReview = {
   pantryItemId: number;
@@ -122,11 +124,13 @@ async function createPendingShoppingItem(userId: number, pantry: { id: number; n
 export function registerGroceryIntelligenceRoutes(app: Express): void {
   app.get("/api/grocery-intelligence/overview", isAuthenticated, async (req: Request, res: Response) => {
     const userId = req.session.userId!;
-    const [pantry, shopping, receipts, reports] = await Promise.all([
+    const [pantry, shopping, receipts, reports, recallMonitoringRows, recallAlerts] = await Promise.all([
       db.select().from(groceryPantryItems).where(and(eq(groceryPantryItems.userId, userId), eq(groceryPantryItems.status, "active"))).orderBy(desc(groceryPantryItems.updatedAt)).limit(250),
       db.select().from(groceryShoppingItems).where(and(eq(groceryShoppingItems.userId, userId), eq(groceryShoppingItems.status, "pending"))).orderBy(desc(groceryShoppingItems.updatedAt)).limit(100),
       db.select().from(groceryReceiptDrafts).where(eq(groceryReceiptDrafts.userId, userId)).orderBy(desc(groceryReceiptDrafts.createdAt)).limit(10),
       db.select().from(brandOwnershipResearchReports).where(eq(brandOwnershipResearchReports.userId, userId)).orderBy(desc(brandOwnershipResearchReports.createdAt)).limit(20),
+      db.select().from(groceryRecallMonitoringPreferences).where(eq(groceryRecallMonitoringPreferences.userId, userId)).limit(1),
+      db.select().from(groceryRecallAlerts).where(and(eq(groceryRecallAlerts.userId, userId), eq(groceryRecallAlerts.status, "open"))).orderBy(desc(groceryRecallAlerts.lastSeenAt)).limit(50),
     ]);
     const ownershipProfiles = await Promise.all(pantry.map((item) => item.brand ? lookupReviewedBrandOwnership(item.brand).then((lookup) => lookup.profile) : Promise.resolve(null)));
     const lowStock = pantry.filter((item) => item.reorderAt !== null && item.quantity <= item.reorderAt);
@@ -138,8 +142,37 @@ export function registerGroceryIntelligenceRoutes(app: Express): void {
       lowStock: lowStock.map((item) => item.id),
       impact: ownershipScoreFromProfiles(ownershipProfiles),
       spotlights: await listReviewedBrandSpotlights(),
+      recallMonitoring: {
+        enabled: recallMonitoringRows[0]?.enabled || false,
+        alerts: recallAlerts,
+      },
       disclosure: "Pantry, receipt text, and shopping items are private to this account. An ownership research report shares only the fields you submit with narrowly authorized ownership reviewers; it never shares your pantry or other LyfeOS data. Ownership results are shown only for exact, cited registry matches; missing coverage remains unknown.",
     });
+  });
+
+  app.put("/api/grocery-intelligence/recall-monitoring", isAuthenticated, async (req: Request, res: Response) => {
+    const parsed = recallMonitoringSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: "Choose whether automatic recall monitoring is enabled." });
+    const now = new Date();
+    const [preference] = await db.insert(groceryRecallMonitoringPreferences).values({ userId: req.session.userId!, enabled: parsed.data.enabled, updatedAt: now })
+      .onConflictDoUpdate({ target: groceryRecallMonitoringPreferences.userId, set: { enabled: parsed.data.enabled, updatedAt: now } }).returning();
+    return res.json({ preference, disclosure: parsed.data.enabled ? "LyfeOS will periodically review active pantry-item names against the public FDA enforcement feed and retain only possible-match alerts for you to verify. No alert is a safety finding; a match is not proof that your package is included." : "Automatic recall monitoring is off. Existing alerts remain available until you dismiss them or remove the pantry item." });
+  });
+
+  app.post("/api/grocery-intelligence/recall-monitoring/run", isAuthenticated, async (req: Request, res: Response) => {
+    const userId = req.session.userId!;
+    const [preference] = await db.select().from(groceryRecallMonitoringPreferences).where(and(eq(groceryRecallMonitoringPreferences.userId, userId), eq(groceryRecallMonitoringPreferences.enabled, true))).limit(1);
+    if (!preference) return res.status(409).json({ error: "Enable automatic recall monitoring before running a monitored review." });
+    const receipt = await runGroceryRecallMonitor({ userId });
+    return res.json({ receipt, disclosure: "This review stores only possible FDA product-description matches as alerts. It cannot determine whether a specific package, lot, date, or distribution area is included; follow the linked official notice before acting." });
+  });
+
+  app.patch("/api/grocery-intelligence/recall-alerts/:id/dismiss", isAuthenticated, async (req: Request, res: Response) => {
+    const id = itemId(req.params.id);
+    if (!id.success) return res.status(400).json({ error: "Invalid recall alert." });
+    const [alert] = await db.update(groceryRecallAlerts).set({ status: "dismissed", dismissedAt: new Date() })
+      .where(and(eq(groceryRecallAlerts.id, id.data), eq(groceryRecallAlerts.userId, req.session.userId!))).returning();
+    return alert ? res.json({ alert }) : res.status(404).json({ error: "Recall alert not found." });
   });
 
   app.post("/api/grocery-intelligence/pantry", isAuthenticated, async (req: Request, res: Response) => {

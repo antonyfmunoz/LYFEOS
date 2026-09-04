@@ -26,6 +26,9 @@ describe("grocery intelligence", () => {
     expect(routes).toContain('app.get("/api/grocery-intelligence/overview", isAuthenticated');
     expect(routes).toContain('receipt-drafts/:id/apply');
     expect(routes).toContain('app.post("/api/grocery-intelligence/pantry-recall-review", isAuthenticated');
+    expect(routes).toContain('app.put("/api/grocery-intelligence/recall-monitoring", isAuthenticated');
+    expect(routes).toContain('app.post("/api/grocery-intelligence/recall-monitoring/run", isAuthenticated');
+    expect(routes).toContain('app.patch("/api/grocery-intelligence/recall-alerts/:id/dismiss", isAuthenticated');
     expect(routes).toContain('app.post("/api/grocery-intelligence/pantry/:id/replacements", isAuthenticated');
     expect(routes).toContain('app.delete("/api/grocery-intelligence/receipt-drafts/:id", isAuthenticated');
     expect(routes).toContain('app.delete("/api/grocery-intelligence/research-reports/:id", isAuthenticated');
@@ -41,5 +44,8 @@ describe("grocery intelligence", () => {
     expect(component).toContain("Withdraw");
     expect(component).toContain("Ingredient label unavailable—preference comparison is unknown.");
     expect(component).toContain("No product-description text match. This is not a safety finding.");
+    expect(component).toContain("FDA recall monitoring");
+    expect(component).toContain("Monitor my pantry");
+    expect(component).toContain("Possible FDA matches");
   });
 });

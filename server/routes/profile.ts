@@ -81,7 +81,13 @@ async function loadFreshUserStats(userId: number) {
 type FreshUserStats = Awaited<ReturnType<typeof loadFreshUserStats>>;
 const userStatsReads = new InFlightRequestCoalescer<number, FreshUserStats>();
 
+const groceryAccountExportTables = [
+  "grocery_pantry_items", "grocery_shopping_items", "grocery_receipt_drafts",
+  "grocery_recall_monitoring_preferences", "grocery_recall_alerts", "brand_ownership_research_reports",
+] as const;
+
 const accountExportTables = [
+  ...groceryAccountExportTables,
   "user_stats", "user_profile", "user_daily_logs", "user_integrations", "quests", "mission_external_links", "ai_messages",
   "calendar_events", "mission_pages", "contacts", "personal_relationships", "relationship_interactions", "relationship_assessments", "relationship_commitments", "relationship_governance_consents", "relationship_ai_recommendations", "relationship_governance_audit", "spreadsheet_revisions", "spreadsheets", "canvas_revisions", "canvas_templates", "canvases", "graphs", "workspace_databases", "workspace_database_revisions", "workspace_database_rows", "workspace_database_row_revisions", "workspace_forms", "workspace_table_views", "workflow_automations", "workflow_automation_runs", "workflow_automation_action_receipts", "folders",
   "documents", "templates", "integrations", "integration_action_receipts", "progress_trackers", "kanban_boards", "project_events", "media_albums",

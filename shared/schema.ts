@@ -3508,12 +3508,52 @@ export const groceryPantryItems = pgTable("grocery_pantry_items", {
   catalogDatasetVersion: text("catalog_dataset_version"),
   catalogAttributionText: text("catalog_attribution_text"),
   catalogAttributionUrl: text("catalog_attribution_url"),
+  // A user must opt in to recall monitoring separately. The last check keeps
+  // public-FDA requests bounded per pantry item.
+  lastRecallCheckedAt: timestamp("last_recall_checked_at"),
   status: text("status").notNull().default("active"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => [
   index("grocery_pantry_items_user_status_idx").on(table.userId, table.status, table.updatedAt),
   index("grocery_pantry_items_user_barcode_idx").on(table.userId, table.barcode),
+  index("grocery_pantry_items_recall_monitor_idx").on(table.status, table.lastRecallCheckedAt),
+]);
+
+// Recall monitoring is intentionally opt-in. It produces possible-match
+// notices from the public FDA enforcement feed, never a package-safety or
+// package-inclusion determination.
+export const groceryRecallMonitoringPreferences = pgTable("grocery_recall_monitoring_preferences", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  enabled: boolean("enabled").notNull().default(false),
+  lastCheckedAt: timestamp("last_checked_at"),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("grocery_recall_monitoring_preferences_user_unique_idx").on(table.userId),
+  index("grocery_recall_monitoring_preferences_enabled_checked_idx").on(table.enabled, table.lastCheckedAt),
+]);
+
+// Alerts contain only the FDA fields needed to let an owner review the
+// official notice. Positive matches are deduplicated by pantry item and FDA
+// recall number; absence of an alert is never represented as safety.
+export const groceryRecallAlerts = pgTable("grocery_recall_alerts", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  pantryItemId: integer("pantry_item_id").notNull().references(() => groceryPantryItems.id, { onDelete: "cascade" }),
+  recallNumber: text("recall_number").notNull(),
+  productDescription: text("product_description").notNull(),
+  classification: text("classification"),
+  reasonForRecall: text("reason_for_recall"),
+  codeInfo: text("code_info"),
+  sourceUrl: text("source_url").notNull(),
+  status: text("status").notNull().default("open"),
+  detectedAt: timestamp("detected_at").notNull().defaultNow(),
+  lastSeenAt: timestamp("last_seen_at").notNull().defaultNow(),
+  dismissedAt: timestamp("dismissed_at"),
+}, (table) => [
+  uniqueIndex("grocery_recall_alerts_pantry_recall_unique_idx").on(table.pantryItemId, table.recallNumber),
+  index("grocery_recall_alerts_user_status_idx").on(table.userId, table.status, table.lastSeenAt),
 ]);
 
 export const groceryShoppingItems = pgTable("grocery_shopping_items", {

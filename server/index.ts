@@ -26,6 +26,7 @@ import { db, pool } from "./db";
 import { sql } from "drizzle-orm";
 import connectPgSimple from "connect-pg-simple";
 import { startNotificationScheduler } from "./notificationScheduler";
+import { startGroceryRecallMonitor, stopGroceryRecallMonitor } from "./grocery-recall-monitor";
 import { startUMHOutboxWorker } from "./umh/outbox";
 import { startHealthDeletionReceiptCleanup } from "./health-deletion-cleanup";
 import { startProductAnalyticsDeletionWorker } from "./product-analytics";
@@ -353,6 +354,7 @@ async function ensureDatabaseSchema() {
   server.once('listening', () => {
     log(`serving on port ${port}`);
     startNotificationScheduler();
+    startGroceryRecallMonitor();
     startUMHOutboxWorker();
     startHealthDeletionReceiptCleanup();
     startProductAnalyticsDeletionWorker();
@@ -368,6 +370,7 @@ async function ensureDatabaseSchema() {
     stopHypothesisWorker();
     stopAIMemoryRetentionWorker();
     stopScheduledAutomationWorker();
+    stopGroceryRecallMonitor();
     server.close(() => {
       log('Server closed');
       process.exit(0);
