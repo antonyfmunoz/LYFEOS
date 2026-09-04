@@ -3553,6 +3553,13 @@ const migrations = [
         END $$;
       `,
     },
+  {
+      id: "0154_wellness_self_report_provenance",
+      sql: `
+        ALTER TABLE "user_daily_logs"
+          ADD COLUMN IF NOT EXISTS "wellness_reported_at" timestamp;
+      `,
+    },
 ];
 
 async function run(): Promise<void> {

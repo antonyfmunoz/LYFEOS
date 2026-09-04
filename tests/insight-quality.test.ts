@@ -40,6 +40,10 @@ describe("observed-pattern data quality", () => {
     expect(healthDetail).toContain("not a measurement, score, diagnosis, or prediction of your health");
     expect(healthDetail).not.toContain("Current Health Status");
     expect(healthDetail).not.toContain("contributes to health");
+    const profileRoutes = readFileSync(resolve(process.cwd(), "server/routes/profile.ts"), "utf8");
+    expect(profileRoutes).toContain("wellnessReportedAt !== null");
+    expect(profileRoutes).toContain("wellnessReported === true");
+    expect(readFileSync(resolve(process.cwd(), "migrations/0154_wellness_self_report_provenance.sql"), "utf8")).toContain('"wellness_reported_at"');
     expect(healthDetail).not.toContain("directly impact your health score");
     expect(wealthDetail).toContain("not an account balance, financial advice, or investment result");
     expect(wealthDetail).not.toContain("directly impact your wealth score");

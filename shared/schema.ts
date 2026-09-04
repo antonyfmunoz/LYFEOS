@@ -277,6 +277,9 @@ export const userDailyLogs = pgTable("user_daily_logs", {
   mentalState: integer("mental_state").default(5), // 1-10 scale
   physicalState: integer("physical_state").default(5), // 1-10 scale
   emotionalState: integer("emotional_state").default(5), // 1-10 scale
+  // A neutral UI default is not a self-report. Analytics use this provenance
+  // marker instead of treating an automatically created daily row as evidence.
+  wellnessReportedAt: timestamp("wellness_reported_at"),
   // Intention log fields
   gratitude: text("gratitude"), // What I'm grateful for today
   tomorrowGoals: text("tomorrow_goals"), // Goals for tomorrow
@@ -1370,6 +1373,7 @@ export const insertUserDailyLogsSchema = createInsertSchema(userDailyLogs).pick(
   mentalState: true,
   physicalState: true,
   emotionalState: true,
+  wellnessReportedAt: true,
   // Intention log fields
   gratitude: true,
   tomorrowGoals: true,
