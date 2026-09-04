@@ -37,6 +37,7 @@ describe("observed-pattern data quality", () => {
     expect(healthDetail).toContain("Recorded practice progression");
     expect(healthDetail).toContain("/api/health-progression/reconcile");
     expect(healthDetail).toContain("No mood check-ins recorded for this period");
+    expect(healthDetail).toContain(".filter(([, value]) => categoryCount(value) > 0)");
     expect(healthDetail).not.toContain("stats.healthPoints.current");
     expect(healthDetail).toContain("not a measurement, score, diagnosis, or prediction of your health");
     expect(healthDetail).not.toContain("Current Health Status");

@@ -136,7 +136,9 @@ export default function HealthDetailPage() {
 
   const activityScore = Math.min(Math.round((completedMissions / 10) * 100), 100);
   const consistencyScore = Math.min(Math.round((currentStreak / 30) * 100), 100);
-  const missionBalanceScore = Math.min(Math.round((Object.keys(categoryStats).length / 5) * 100), 100);
+  const categoryCount = (value: unknown) => typeof value === "number" ? value : (value as { count?: number; completed?: number } | undefined)?.count ?? (value as { completed?: number } | undefined)?.completed ?? 0;
+  const categoryEntries = (Object.entries(categoryStats) as [string, unknown][]).filter(([, value]) => categoryCount(value) > 0);
+  const missionBalanceScore = Math.min(Math.round((categoryEntries.length / 5) * 100), 100);
   const avgMoodPct = Math.min(Math.round((avgMoodScore / 10) * 100), 100);
   const moodTrend = data?.moodTrend ?? [];
 
@@ -155,9 +157,8 @@ export default function HealthDetailPage() {
   ];
 
   const recentMoods = moodTrend.slice(-7);
-  const categoryEntries = Object.entries(categoryStats) as [string, any][];
   const maxCategoryCount = categoryEntries.length > 0
-    ? Math.max(...categoryEntries.map(([, v]: [string, any]) => (typeof v === "number" ? v : v?.count ?? v?.completed ?? 0)))
+    ? Math.max(...categoryEntries.map(([, value]) => categoryCount(value)))
     : 1;
 
   const dayOptions = [7, 14, 30, 90];
@@ -507,8 +508,8 @@ export default function HealthDetailPage() {
                 Recorded mission distribution only; this does not establish a health outcome
               </p>
               <div className="space-y-3">
-                {categoryEntries.map(([category, value]: [string, any]) => {
-                  const count = typeof value === "number" ? value : value?.count ?? value?.completed ?? 0;
+                {categoryEntries.map(([category, value]) => {
+                  const count = categoryCount(value);
                   const pct = maxCategoryCount > 0 ? Math.round((count / maxCategoryCount) * 100) : 0;
                   return (
                     <div key={category} className="space-y-1">
@@ -623,7 +624,7 @@ export default function HealthDetailPage() {
                 </p>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-muted-foreground">Active categories:</span>
-                  <span className="font-mono text-sm text-primary font-bold">{Object.keys(categoryStats).length}</span>
+                  <span className="font-mono text-sm text-primary font-bold">{categoryEntries.length}</span>
                 </div>
               </div>
 
