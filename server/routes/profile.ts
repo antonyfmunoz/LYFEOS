@@ -1227,7 +1227,7 @@ Generate the complete affirmation now:`;
       
       const { 
         date, yesterdayXp, todayPrimaryMission, optionalBoostsShown, boostsData,
-        wakeTime, sleepTime, mentalState, physicalState, emotionalState, wellnessReported,
+        wakeTime, sleepTime, mentalState, physicalState, emotionalState, wellnessReported, sleepReported,
         gratitude, tomorrowGoals, annualGoals, thoughts,
         contentConsumed, research, todoIdeas,
         sourceAuthor, sourceMaterial, researchNote, revisionNote, executionNote,
@@ -1252,6 +1252,7 @@ Generate the complete affirmation now:`;
         physicalState: physicalState ?? 5,
         emotionalState: emotionalState ?? 5,
         ...(wellnessReported === true ? { wellnessReportedAt: new Date() } : {}),
+        ...(sleepReported === true ? { sleepReportedAt: new Date() } : {}),
         gratitude: gratitude || null,
         tomorrowGoals: tomorrowGoals || null,
         annualGoals: annualGoals || null,
@@ -1281,6 +1282,7 @@ Generate the complete affirmation now:`;
           ...(physicalState !== undefined && { physicalState }),
           ...(emotionalState !== undefined && { emotionalState }),
           ...(wellnessReported === true && { wellnessReportedAt: new Date() }),
+          ...(sleepReported === true && { sleepReportedAt: new Date() }),
           ...(gratitude !== undefined && { gratitude }),
           ...(tomorrowGoals !== undefined && { tomorrowGoals }),
           ...(annualGoals !== undefined && { annualGoals }),
@@ -1351,7 +1353,7 @@ Generate the complete affirmation now:`;
       const { 
         date, boostsData,
         // Energy log fields
-        wakeTime, sleepTime, mentalState, physicalState, emotionalState, wellnessReported,
+        wakeTime, sleepTime, mentalState, physicalState, emotionalState, wellnessReported, sleepReported,
         // Intention log fields
         gratitude, tomorrowGoals, annualGoals, thoughts,
         // Data log fields
@@ -1386,6 +1388,7 @@ Generate the complete affirmation now:`;
             physicalState: physicalState !== undefined ? physicalState : existingLog[0].physicalState,
             emotionalState: emotionalState !== undefined ? emotionalState : existingLog[0].emotionalState,
             ...(wellnessReported === true ? { wellnessReportedAt: new Date() } : {}),
+            ...(sleepReported === true ? { sleepReportedAt: new Date() } : {}),
             // Intention log fields
             gratitude: gratitude !== undefined ? gratitude : existingLog[0].gratitude,
             tomorrowGoals: tomorrowGoals !== undefined ? tomorrowGoals : existingLog[0].tomorrowGoals,
@@ -1438,6 +1441,7 @@ Generate the complete affirmation now:`;
           physicalState: physicalState || 5,
           emotionalState: emotionalState || 5,
           ...(wellnessReported === true ? { wellnessReportedAt: new Date() } : {}),
+          ...(sleepReported === true ? { sleepReportedAt: new Date() } : {}),
           // Intention log fields
           gratitude: gratitude || null,
           tomorrowGoals: tomorrowGoals || null,
@@ -1616,7 +1620,7 @@ Generate the complete affirmation now:`;
       });
 
       const sleepData = dailyLogs
-        .filter(log => log.wakeTime || log.sleepTime)
+        .filter(log => log.sleepReportedAt !== null && (log.wakeTime || log.sleepTime))
         .map(log => ({ date: log.date, wakeTime: log.wakeTime, sleepTime: log.sleepTime }));
 
       const dayNames = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
@@ -1670,7 +1674,7 @@ Generate the complete affirmation now:`;
       };
 
       const sleepWellnessCorrelation = dailyLogs
-        .filter(log => log.wellnessReportedAt !== null && log.wakeTime && log.sleepTime && log.mentalState != null && log.physicalState != null && log.emotionalState != null)
+        .filter(log => log.wellnessReportedAt !== null && log.sleepReportedAt !== null && log.wakeTime && log.sleepTime && log.mentalState != null && log.physicalState != null && log.emotionalState != null)
         .map(log => {
           const durationMinutes = sleepDurationMinutes(log.sleepTime, log.wakeTime);
           if (durationMinutes === null) return null;
@@ -1859,7 +1863,7 @@ Generate the complete affirmation now:`;
       const avgEnergyPerMission = completedMissions.length > 0 ? Math.round(totalEnergySpent / completedMissions.length) : 0;
 
       const sleepWellnessCorrelation = dailyLogs
-        .filter(log => log.wellnessReportedAt !== null && log.wakeTime && log.sleepTime && log.mentalState != null && log.physicalState != null && log.emotionalState != null)
+        .filter(log => log.wellnessReportedAt !== null && log.sleepReportedAt !== null && log.wakeTime && log.sleepTime && log.mentalState != null && log.physicalState != null && log.emotionalState != null)
         .map(log => {
           const durationMinutes = sleepDurationMinutes(log.sleepTime, log.wakeTime);
           if (durationMinutes === null) return null;

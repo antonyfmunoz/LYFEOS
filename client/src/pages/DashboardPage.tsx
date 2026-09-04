@@ -453,6 +453,9 @@ export default function DashboardPage() {
   // A visible 5/10 control value is only a UI starting point. It becomes
   // self-reported wellness evidence after the person actively selects it.
   const wellnessWasEditedRef = useRef(false);
+  // A default wake/sleep pair is not a sleep record. Both controls must be
+  // actively selected before this legacy daily pair is used as evidence.
+  const sleepTimesEditedRef = useRef({ wake: false, sleep: false });
   
   useLayoutEffect(() => {
     if (!user?.id || energyLog.isLoaded) return;
@@ -462,6 +465,8 @@ export default function DashboardPage() {
       loadedRecordFingerprintRef.current = fp;
       isDirtyRef.current = false;
       wellnessWasEditedRef.current = Boolean(cached.wellnessReportedAt);
+      const cachedSleepReported = Boolean(cached.sleepReportedAt);
+      sleepTimesEditedRef.current = { wake: cachedSleepReported, sleep: cachedSleepReported };
       updateEnergyLog({
         mentalState: cached.mentalState ?? 5,
         physicalState: cached.physicalState ?? 5,
@@ -508,7 +513,7 @@ export default function DashboardPage() {
   // The form state is the source of truth after initial load. Invalidating would
   // cause a refetch that triggers a race condition, resetting values.
   const saveDailyLogMutation = useMutation({
-    mutationFn: async (logData: Partial<DailyReflection> & { wellnessReported?: boolean; _expectedFingerprint?: string; _forceSave?: boolean }) => {
+    mutationFn: async (logData: Partial<DailyReflection> & { wellnessReported?: boolean; sleepReported?: boolean; _expectedFingerprint?: string; _forceSave?: boolean }) => {
       if (!user?.id) throw new Error("User not authenticated");
       const { _expectedFingerprint, _forceSave, ...dataToSend } = logData;
       
@@ -578,13 +583,14 @@ export default function DashboardPage() {
       const isDirty = isDirtyRef.current;
       
       if (hasValidData && hasFingerprint && isDirty) {
-        const dataToSave: Partial<DailyReflection> & { wellnessReported?: boolean; _expectedFingerprint?: string; _forceSave?: boolean } = {
+        const dataToSave: Partial<DailyReflection> & { wellnessReported?: boolean; sleepReported?: boolean; _expectedFingerprint?: string; _forceSave?: boolean } = {
           wakeTime: logs.energyLog.wakeTime,
           sleepTime: logs.energyLog.sleepTime,
           mentalState: logs.energyLog.mentalState,
           physicalState: logs.energyLog.physicalState,
           emotionalState: logs.energyLog.emotionalState,
           wellnessReported: wellnessWasEditedRef.current || undefined,
+          sleepReported: (sleepTimesEditedRef.current.wake && sleepTimesEditedRef.current.sleep) || undefined,
           gratitude: logs.intentionLog.gratitude,
           tomorrowGoals: logs.intentionLog.tomorrowGoals,
           annualGoals: logs.intentionLog.annualGoals,
@@ -658,6 +664,8 @@ export default function DashboardPage() {
         // Data exists in database - populate all global contexts and reset dirty flag
         isDirtyRef.current = false;
         wellnessWasEditedRef.current = Boolean(dailyLogData.wellnessReportedAt);
+        const sleepReported = Boolean(dailyLogData.sleepReportedAt);
+        sleepTimesEditedRef.current = { wake: sleepReported, sleep: sleepReported };
         updateEnergyLog({
           mentalState: dailyLogData.mentalState ?? 5,
           physicalState: dailyLogData.physicalState ?? 5,
@@ -775,6 +783,7 @@ export default function DashboardPage() {
       // Reset dirty flag - new session starts fresh
       isDirtyRef.current = false;
       wellnessWasEditedRef.current = false;
+      sleepTimesEditedRef.current = { wake: false, sleep: false };
       
       // Reset the contexts after logout
       resetEnergyLog();
@@ -798,6 +807,7 @@ export default function DashboardPage() {
       // Reset dirty flag - new day starts fresh
       isDirtyRef.current = false;
       wellnessWasEditedRef.current = false;
+      sleepTimesEditedRef.current = { wake: false, sleep: false };
       lastLoadedDateRef.current = todayDateStr;
       // Invalidate to reload from server for the new day
       queryClient.invalidateQueries({ queryKey: ['/api/users', user?.id, 'daily-logs'] });
@@ -841,6 +851,7 @@ export default function DashboardPage() {
         loadedRecordFingerprintRef.current = null;
         isDirtyRef.current = false;
         wellnessWasEditedRef.current = false;
+        sleepTimesEditedRef.current = { wake: false, sleep: false };
         lastLoadedDateRef.current = newDateStr;
         queryClient.invalidateQueries({ queryKey: ['/api/users', user?.id, 'daily-logs'] });
         queryClient.invalidateQueries({ queryKey: ['/api/users', user?.id, 'stats'] });
@@ -872,7 +883,7 @@ export default function DashboardPage() {
   const latestLogsRef = useRef({ energyLog, intentionLog, dataLog, reflectionLogState });
   latestLogsRef.current = { energyLog, intentionLog, dataLog, reflectionLogState };
 
-  const buildSavePayload = useCallback((): Partial<DailyReflection> & { wellnessReported?: boolean } => {
+  const buildSavePayload = useCallback((): Partial<DailyReflection> & { wellnessReported?: boolean; sleepReported?: boolean } => {
     const { energyLog: e, intentionLog: i, dataLog: d, reflectionLogState: r } = latestLogsRef.current;
     return {
       wakeTime: e.wakeTime,
@@ -881,6 +892,7 @@ export default function DashboardPage() {
       physicalState: e.physicalState,
       emotionalState: e.emotionalState,
       wellnessReported: wellnessWasEditedRef.current || undefined,
+      sleepReported: (sleepTimesEditedRef.current.wake && sleepTimesEditedRef.current.sleep) || undefined,
       gratitude: i.gratitude,
       tomorrowGoals: i.tomorrowGoals,
       annualGoals: i.annualGoals,
@@ -970,6 +982,8 @@ export default function DashboardPage() {
 
   const updateReflection = (field: keyof DailyReflection, value: any) => {
     if (field === "mentalState" || field === "physicalState" || field === "emotionalState") wellnessWasEditedRef.current = true;
+    if (field === "wakeTime") sleepTimesEditedRef.current.wake = true;
+    if (field === "sleepTime") sleepTimesEditedRef.current.sleep = true;
     // Update the appropriate global context based on field type
     if (energyLogFields.includes(field)) {
       updateEnergyLog({ [field]: value });
@@ -992,7 +1006,7 @@ export default function DashboardPage() {
       }
       
       // Build the updated data object with all fields, applying the new value
-      const updatedData: Partial<DailyReflection> & { wellnessReported?: boolean } = {
+      const updatedData: Partial<DailyReflection> & { wellnessReported?: boolean; sleepReported?: boolean } = {
         // Energy log fields
         wakeTime: field === 'wakeTime' ? value : energyLog.wakeTime,
         sleepTime: field === 'sleepTime' ? value : energyLog.sleepTime,
@@ -1000,6 +1014,7 @@ export default function DashboardPage() {
         physicalState: field === 'physicalState' ? value : energyLog.physicalState,
         emotionalState: field === 'emotionalState' ? value : energyLog.emotionalState,
         wellnessReported: wellnessWasEditedRef.current || undefined,
+        sleepReported: (sleepTimesEditedRef.current.wake && sleepTimesEditedRef.current.sleep) || undefined,
         // Intention log fields
         gratitude: field === 'gratitude' ? value : intentionLog.gratitude,
         tomorrowGoals: field === 'tomorrowGoals' ? value : intentionLog.tomorrowGoals,

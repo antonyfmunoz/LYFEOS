@@ -272,6 +272,9 @@ export const userDailyLogs = pgTable("user_daily_logs", {
   // Energy log fields
   wakeTime: text("wake_time"), // Time user woke up (HH:MM format)
   sleepTime: text("sleep_time"), // Time user went to sleep (HH:MM format)
+  // UI time defaults are not a sleep record. Both times must be explicitly
+  // selected before analytics or progression use this legacy daily-log pair.
+  sleepReportedAt: timestamp("sleep_reported_at"),
   sleepQuality: integer("sleep_quality"), // Optional subjective reflection, 1-5
   sleepNote: text("sleep_note"), // Optional user-authored context, not a measured signal
   mentalState: integer("mental_state").default(5), // 1-10 scale
@@ -1374,6 +1377,7 @@ export const insertUserDailyLogsSchema = createInsertSchema(userDailyLogs).pick(
   physicalState: true,
   emotionalState: true,
   wellnessReportedAt: true,
+  sleepReportedAt: true,
   // Intention log fields
   gratitude: true,
   tomorrowGoals: true,

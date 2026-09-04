@@ -3560,6 +3560,13 @@ const migrations = [
           ADD COLUMN IF NOT EXISTS "wellness_reported_at" timestamp;
       `,
     },
+  {
+      id: "0155_sleep_self_report_provenance",
+      sql: `
+        ALTER TABLE "user_daily_logs"
+          ADD COLUMN IF NOT EXISTS "sleep_reported_at" timestamp;
+      `,
+    },
 ];
 
 async function run(): Promise<void> {

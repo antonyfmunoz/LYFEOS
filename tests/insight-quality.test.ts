@@ -45,7 +45,10 @@ describe("observed-pattern data quality", () => {
     const profileRoutes = readFileSync(resolve(process.cwd(), "server/routes/profile.ts"), "utf8");
     expect(profileRoutes).toContain("wellnessReportedAt !== null");
     expect(profileRoutes).toContain("wellnessReported === true");
+    expect(profileRoutes).toContain("sleepReportedAt !== null");
+    expect(profileRoutes).toContain("sleepReported === true");
     expect(readFileSync(resolve(process.cwd(), "migrations/0154_wellness_self_report_provenance.sql"), "utf8")).toContain('"wellness_reported_at"');
+    expect(readFileSync(resolve(process.cwd(), "migrations/0155_sleep_self_report_provenance.sql"), "utf8")).toContain('"sleep_reported_at"');
     expect(healthDetail).not.toContain("directly impact your health score");
     expect(wealthDetail).toContain("not an account balance, financial advice, or investment result");
     expect(wealthDetail).not.toContain("directly impact your wealth score");

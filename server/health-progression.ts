@@ -20,7 +20,7 @@ async function currentHealthCandidates(userId: number, executor: HealthProgressi
     executor.select({ occurredAt: recoveryActivities.occurredAt, timeZone: recoveryActivities.recordedTimeZone }).from(recoveryActivities).where(eq(recoveryActivities.userId, userId)),
     executor.select({ observedAt: bodyMeasurements.observedAt }).from(bodyMeasurements).where(eq(bodyMeasurements.userId, userId)),
     executor.select({ observedAt: healthObservations.observedAt, timeZone: healthObservations.recordedTimeZone }).from(healthObservations).where(eq(healthObservations.userId, userId)),
-    executor.select({ date: userDailyLogs.date, sleepTime: userDailyLogs.sleepTime, wakeTime: userDailyLogs.wakeTime }).from(userDailyLogs).where(eq(userDailyLogs.userId, userId)),
+    executor.select({ date: userDailyLogs.date, sleepTime: userDailyLogs.sleepTime, wakeTime: userDailyLogs.wakeTime, sleepReportedAt: userDailyLogs.sleepReportedAt }).from(userDailyLogs).where(eq(userDailyLogs.userId, userId)),
     executor.select({ startedAt: sleepSessions.startedAt, timeZone: sleepSessions.recordedTimeZone }).from(sleepSessions).where(eq(sleepSessions.userId, userId)),
     executor.select({ reviewDate: healthPracticeReviews.reviewDate }).from(healthPracticeReviews).where(eq(healthPracticeReviews.userId, userId)),
   ]);
@@ -32,7 +32,7 @@ async function currentHealthCandidates(userId: number, executor: HealthProgressi
     ...groupedHealthPracticeCandidates("body_measurement_day", measurements.map((row) => String(row.observedAt))),
     ...groupedHealthPracticeCandidates("metric_observation_day", observations.map((row) => dateInTimeZone(row.observedAt, row.timeZone || "UTC"))),
     ...groupedHealthPracticeCandidates("sleep_record_day", [
-      ...dailyLogs.flatMap((row) => sleepDurationMinutes(row.sleepTime, row.wakeTime) === null ? [] : [String(row.date)]),
+      ...dailyLogs.flatMap((row) => row.sleepReportedAt !== null && sleepDurationMinutes(row.sleepTime, row.wakeTime) !== null ? [String(row.date)] : []),
       ...sessions.map((row) => dateInTimeZone(row.startedAt, row.timeZone || "UTC")),
     ]),
     ...weeklyHealthReviewCandidates(reviews.map((row) => String(row.reviewDate))),
