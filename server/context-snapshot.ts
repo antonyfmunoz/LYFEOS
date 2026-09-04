@@ -64,11 +64,13 @@ export function buildPlanningContextSnapshot(input: {
         ? "steady"
         : "high";
 
-  const dailyStateValues = {
-    mental: boundedState(input.dailyLog?.mentalState),
-    physical: boundedState(input.dailyLog?.physicalState),
-    emotional: boundedState(input.dailyLog?.emotionalState),
-  };
+  const dailyStateValues = input.dailyLog?.wellnessReportedAt
+    ? {
+      mental: boundedState(input.dailyLog.mentalState),
+      physical: boundedState(input.dailyLog.physicalState),
+      emotional: boundedState(input.dailyLog.emotionalState),
+    }
+    : { mental: null, physical: null, emotional: null };
   const hasDailyState = Object.values(dailyStateValues).some((value) => value !== null);
   const constraints = [
     cleanText(weeklyCapacity?.cap),

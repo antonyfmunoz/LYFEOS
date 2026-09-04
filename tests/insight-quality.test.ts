@@ -30,6 +30,10 @@ describe("observed-pattern data quality", () => {
     const statDetail = readFileSync(resolve(process.cwd(), "client/src/pages/StatDetailPage.tsx"), "utf8");
     const profileRoutes = readFileSync(resolve(process.cwd(), "server/routes/profile.ts"), "utf8");
     const dashboard = readFileSync(resolve(process.cwd(), "client/src/pages/DashboardPage.tsx"), "utf8");
+    const snapshot = readFileSync(resolve(process.cwd(), "server/context-snapshot.ts"), "utf8");
+    const hypotheses = readFileSync(resolve(process.cwd(), "server/hypothesis-engine.ts"), "utf8");
+    const crossProduct = readFileSync(resolve(process.cwd(), "server/cross-product.ts"), "utf8");
+    const storage = readFileSync(resolve(process.cwd(), "server/storage.ts"), "utf8");
     expect(compact).toContain("not a medical metric, diagnosis, or prediction");
     expect(compact).toContain("not an account balance, financial advice, or a measure of wealth");
     expect(expanded).toContain("not a measure of productivity, wellbeing, or personal worth");
@@ -56,6 +60,10 @@ describe("observed-pattern data quality", () => {
     expect(dashboard).toContain("Object.values(wellnessWasEditedRef.current).every(Boolean)");
     expect(dashboard).toContain("This is a self-report, not a health score.");
     expect(dashboard).not.toContain("Daily Total:");
+    expect(snapshot).toContain("input.dailyLog?.wellnessReportedAt");
+    expect(hypotheses).toContain("Only explicitly recorded daily-state and sleep-quality values are included.");
+    expect(crossProduct).toContain("log?.wellnessReportedAt ? log.mentalState : null");
+    expect(storage).toContain("they never write an energy score into the game layer");
     expect(readFileSync(resolve(process.cwd(), "migrations/0154_wellness_self_report_provenance.sql"), "utf8")).toContain('"wellness_reported_at"');
     expect(readFileSync(resolve(process.cwd(), "migrations/0155_sleep_self_report_provenance.sql"), "utf8")).toContain('"sleep_reported_at"');
     expect(healthDetail).not.toContain("directly impact your health score");

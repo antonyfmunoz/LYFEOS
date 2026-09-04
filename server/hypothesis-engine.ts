@@ -107,14 +107,17 @@ async function loadSignalSeries(userId: number, signalId: string, days: number, 
       physical: userDailyLogs.physicalState,
       emotional: userDailyLogs.emotionalState,
       sleepQuality: userDailyLogs.sleepQuality,
+      wellnessReportedAt: userDailyLogs.wellnessReportedAt,
+      sleepReportedAt: userDailyLogs.sleepReportedAt,
     }).from(userDailyLogs).where(and(eq(userDailyLogs.userId, userId), gte(userDailyLogs.date, window.evidenceStart), lte(userDailyLogs.date, window.evidenceEnd))).orderBy(asc(userDailyLogs.date));
     const field = signal.id.split(".")[1] as "mental_state" | "physical_state" | "emotional_state" | "sleep_quality";
     const values = rows.flatMap((row) => {
+      const isExplicit = field === "sleep_quality" ? row.sleepReportedAt !== null : row.wellnessReportedAt !== null;
       const value = field === "mental_state" ? row.mental : field === "physical_state" ? row.physical : field === "emotional_state" ? row.emotional : row.sleepQuality;
-      return typeof value === "number" && Number.isFinite(value) ? [{ date: row.date, value }] : [];
+      return isExplicit && typeof value === "number" && Number.isFinite(value) ? [{ date: row.date, value }] : [];
     });
     const points = aggregateDailyValues(values, "average");
-    return { signal, points, quality: recordedQuality(signal, points, days, "unknown_when_absent", "Missing Daily Initialization dates remain unknown. Older daily-state fields may contain the application default when the user did not revise that value.") };
+    return { signal, points, quality: recordedQuality(signal, points, days, "unknown_when_absent", "Only explicitly recorded daily-state and sleep-quality values are included. Missing dates remain unknown and legacy defaults are excluded.") };
   }
 
   if (signal.id === "health.workout_minutes") {

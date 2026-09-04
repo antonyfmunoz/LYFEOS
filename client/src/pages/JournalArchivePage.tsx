@@ -17,6 +17,8 @@ interface DailyLog {
   mentalState: number | null;
   physicalState: number | null;
   emotionalState: number | null;
+  wellnessReportedAt: string | null;
+  sleepReportedAt: string | null;
   gratitude: string | null;
   tomorrowGoals: string | null;
   annualGoals: string | null;
@@ -226,11 +228,11 @@ function LogCard({ log }: { log: DailyLog }) {
             icon={Brain}
             title="Daily Energy Log"
             fields={[
-              { label: 'Wake Time', value: formatTime12Hour(log.wakeTime) === '--:--' ? null : formatTime12Hour(log.wakeTime) },
-              { label: 'Sleep Time', value: formatTime12Hour(log.sleepTime) === '--:--' ? null : formatTime12Hour(log.sleepTime) },
-              { label: 'Mental State', value: log.mentalState != null ? `${log.mentalState}/10` : null },
-              { label: 'Physical State', value: log.physicalState != null ? `${log.physicalState}/10` : null },
-              { label: 'Emotional State', value: log.emotionalState != null ? `${log.emotionalState}/10` : null },
+              { label: 'Wake Time', value: log.sleepReportedAt && formatTime12Hour(log.wakeTime) !== '--:--' ? formatTime12Hour(log.wakeTime) : null },
+              { label: 'Sleep Time', value: log.sleepReportedAt && formatTime12Hour(log.sleepTime) !== '--:--' ? formatTime12Hour(log.sleepTime) : null },
+              { label: 'Mental State', value: log.wellnessReportedAt && log.mentalState != null ? `${log.mentalState}/10` : null },
+              { label: 'Physical State', value: log.wellnessReportedAt && log.physicalState != null ? `${log.physicalState}/10` : null },
+              { label: 'Emotional State', value: log.wellnessReportedAt && log.emotionalState != null ? `${log.emotionalState}/10` : null },
             ]}
           />
         </div>

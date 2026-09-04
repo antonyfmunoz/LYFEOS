@@ -396,7 +396,7 @@ export async function queueCoordinationContext(userId: number, date: string): Pr
   if (!sharing.enabled || destinations.length === 0) return false;
   const config = getUMHFederationConfig();
   const [dailyLog, stats] = config ? await Promise.all([
-    db.select({ mentalState: userDailyLogs.mentalState, physicalState: userDailyLogs.physicalState, emotionalState: userDailyLogs.emotionalState }).from(userDailyLogs)
+    db.select({ mentalState: userDailyLogs.mentalState, physicalState: userDailyLogs.physicalState, emotionalState: userDailyLogs.emotionalState, wellnessReportedAt: userDailyLogs.wellnessReportedAt }).from(userDailyLogs)
       .where(and(eq(userDailyLogs.userId, userId), eq(userDailyLogs.date, date))).limit(1),
     db.select({ energyCurrent: userStats.energyPointsCurrent, energyMax: userStats.energyPointsMax }).from(userStats).where(eq(userStats.userId, userId)).limit(1),
   ]) : [[], []] as const;
@@ -406,13 +406,13 @@ export async function queueCoordinationContext(userId: number, date: string): Pr
   const userStat = stats[0];
   if (!log && !userStat) return false;
   const band = capacityBand({
-    mentalState: log?.mentalState ?? null,
-    physicalState: log?.physicalState ?? null,
-    emotionalState: log?.emotionalState ?? null,
+    mentalState: log?.wellnessReportedAt ? log.mentalState : null,
+    physicalState: log?.wellnessReportedAt ? log.physicalState : null,
+    emotionalState: log?.wellnessReportedAt ? log.emotionalState : null,
     energyCurrent: userStat?.energyCurrent ?? null,
     energyMax: userStat?.energyMax ?? null,
   });
-  const evidenceQuality = log && userStat ? "combined" : log ? "self_reported" : "local_resource_state";
+  const evidenceQuality = log?.wellnessReportedAt && userStat ? "combined" : log?.wellnessReportedAt ? "self_reported" : "local_resource_state";
   const version = crypto.createHash("sha256").update(JSON.stringify({ date, band, evidenceQuality, destinations })).digest("hex").slice(0, 24);
   const event: UMHProjectionEventEnvelope = {
     schemaVersion: "umh.v1", eventId: crypto.randomUUID(), projectionId: "lyfeos",

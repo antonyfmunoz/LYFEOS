@@ -459,38 +459,13 @@ export class DatabaseStorage implements IStorage {
       lastActiveDate: todayStr
     };
     
-    // Reset daily tokens and recalculate HP/EP from yesterday's log at the start of each new day
+    // Reset daily game resources. Wellness self-reports remain private records;
+    // they never write an energy score into the game layer.
     if (isNewDay) {
       updateData.timeTokensCurrent = stats.timeTokensMax;
       updateData.attentionTokensCurrent = stats.attentionTokensMax;
       updateData.previousDayEnergyUsed = 0;
-      
-      // Fetch yesterday's daily log to calculate HP and EP
-      const yesterday = new Date(today);
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = formatLocalDate(yesterday);
-      
-      const yesterdayLogs = await db.select()
-        .from(userDailyLogs)
-        .where(and(
-          eq(userDailyLogs.userId, userId),
-          eq(userDailyLogs.date, yesterdayStr)
-        ));
-      
-      if (yesterdayLogs.length > 0) {
-        const log = yesterdayLogs[0];
-        const mental = log.mentalState ?? 5;
-        const physical = log.physicalState ?? 5;
-        const emotional = log.emotionalState ?? 5;
-        const avgRating = (mental + physical + emotional) / 3;
-        
-        // EP is calculated from yesterday's log ratings
-        const newEP = Math.round((avgRating / 10) * stats.energyPointsMax);
-        updateData.energyPointsCurrent = Math.max(0, Math.min(stats.energyPointsMax, newEP));
-      } else {
-        // No log from yesterday — reset EP to max
-        updateData.energyPointsCurrent = stats.energyPointsMax;
-      }
+      updateData.energyPointsCurrent = stats.energyPointsMax;
     }
     
     await this.updateUserStats(userId, updateData);

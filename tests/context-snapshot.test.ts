@@ -10,7 +10,7 @@ describe("planning context snapshot", () => {
         timeTokensCurrent: 40, timeTokensMax: 100,
         attentionTokensCurrent: 30, attentionTokensMax: 100,
       } as any,
-      dailyLog: { mentalState: 4, physicalState: 5, emotionalState: 6 } as any,
+      dailyLog: { mentalState: 4, physicalState: 5, emotionalState: 6, wellnessReportedAt: new Date("2026-08-14T10:00:00.000Z") } as any,
       capturedAt: new Date("2026-08-14T12:00:00.000Z"),
     });
 
@@ -32,6 +32,16 @@ describe("planning context snapshot", () => {
     });
 
     expect(snapshot.capacity.availability).toBe("unknown");
+    expect(snapshot.dailyState).toBeNull();
+  });
+
+  it("does not treat a legacy visible default as an explicit daily-state report", () => {
+    const snapshot = buildPlanningContextSnapshot({
+      profile: {} as any,
+      stats: {} as any,
+      dailyLog: { mentalState: 5, physicalState: 5, emotionalState: 5 } as any,
+    });
+
     expect(snapshot.dailyState).toBeNull();
   });
 });

@@ -150,15 +150,16 @@ function buildSystemPrompt(ctx: NOVAContext): string {
   const recentLogs = (dailyLogs || [])
     .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .slice(0, 7);
+  const recentWellnessLogs = recentLogs.filter((log: any) => log.wellnessReportedAt);
 
   const safeAvg = (logs: any[], field: string): string => {
     const valid = logs.filter((l: any) => l[field] != null && l[field] > 0);
     if (valid.length === 0) return 'N/A';
     return (valid.reduce((s: number, l: any) => s + l[field], 0) / valid.length).toFixed(1);
   };
-  const avgMental = safeAvg(recentLogs, 'mentalState');
-  const avgPhysical = safeAvg(recentLogs, 'physicalState');
-  const avgEmotional = safeAvg(recentLogs, 'emotionalState');
+  const avgMental = safeAvg(recentWellnessLogs, 'mentalState');
+  const avgPhysical = safeAvg(recentWellnessLogs, 'physicalState');
+  const avgEmotional = safeAvg(recentWellnessLogs, 'emotionalState');
 
   const todayDate = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
   const todayLog = recentLogs.find((log: any) => {
@@ -166,6 +167,12 @@ function buildSystemPrompt(ctx: NOVAContext): string {
     return !Number.isNaN(date.getTime())
       && date.toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' }) === todayDate;
   });
+  const dailyStateSummary = (log: any) => log?.wellnessReportedAt
+    ? `Mental ${log.mentalState}/10, Physical ${log.physicalState}/10, Emotional ${log.emotionalState}/10`
+    : "Wellness: not explicitly recorded";
+  const sleepSummary = (log: any) => log?.sleepReportedAt
+    ? `Wake: ${log.wakeTime || '-'}, Sleep: ${log.sleepTime || '-'}`
+    : "Sleep: not explicitly recorded";
   const planningSnapshot = buildPlanningContextSnapshot({ profile, stats, dailyLog: todayLog });
 
   const upcomingEvents = missions
@@ -286,8 +293,8 @@ Grounding Ritual: ${profile?.groundingRitual || 'Not set'}` : 'Planning context 
 === RECENT DAILY LOGS (7-day trend) ===
 ${contextPreferences.dailyState ? `
 Mental avg: ${avgMental}/10 | Physical avg: ${avgPhysical}/10 | Emotional avg: ${avgEmotional}/10
-${todayLog ? `Today's log: Mental ${todayLog.mentalState || '-'}/10, Physical ${todayLog.physicalState || '-'}/10, Emotional ${todayLog.emotionalState || '-'}/10, Wake: ${todayLog.wakeTime || '-'}, Sleep: ${todayLog.sleepTime || '-'}${todayLog.todayPrimaryMission ? `, Focus: "${todayLog.todayPrimaryMission}"` : ''}${todayLog.gratitude ? `, Gratitude: "${todayLog.gratitude.substring(0, 200)}"` : ''}` : 'No log for today yet'}
-${recentLogs.slice(1, 4).map((l: any) => `${l.date}: Mental ${l.mentalState || '-'}, Physical ${l.physicalState || '-'}, Emotional ${l.emotionalState || '-'}`).join('\n')}` : 'Daily state and reflection data are private unless the Player enables it.'}
+${todayLog ? `Today's log: ${dailyStateSummary(todayLog)}, ${sleepSummary(todayLog)}${todayLog.todayPrimaryMission ? `, Focus: "${todayLog.todayPrimaryMission}"` : ''}${todayLog.gratitude ? `, Gratitude: "${todayLog.gratitude.substring(0, 200)}"` : ''}` : 'No log for today yet'}
+${recentLogs.slice(1, 4).map((l: any) => `${l.date}: ${dailyStateSummary(l)}`).join('\n')}` : 'Daily state and reflection data are private unless the Player enables it.'}
 
 === ACTIVE MISSIONS (${activeMissions.length}) ===
 ${contextPreferences.planning ? activeMissions.map(m => `- [ID:${m.id}] "${m.title}" | ${m.category || 'general'} | Difficulty: ${m.difficulty || 'D'} | XP: ${m.experienceReward} | Energy: ${m.energyCost || 0} | Start: ${m.startDate || 'none'} | Due: ${m.dueDate || 'none'}${m.description ? ` | Desc: ${m.description.substring(0, 100)}` : ''}`).join('\n') || 'No active missions' : 'Mission context is private unless the Player enables it.'}
