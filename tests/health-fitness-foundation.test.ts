@@ -69,6 +69,8 @@ describe("health and fitness foundation", () => {
     expect(routes).toContain('app.put("/api/health-fitness/sleep", isAuthenticated');
     expect(routes).toContain('target: [userDailyLogs.userId, userDailyLogs.date]');
     expect(routes).toContain('eq(userDailyLogs.userId, req.session.userId!)');
+    expect(routes).toContain('isNotNull(userDailyLogs.sleepReportedAt)');
+    expect(routes).toContain('sleepReportedAt: reportedAt');
     expect(routes).toContain("sleepQuality: userDailyLogs.sleepQuality");
     expect(migration).toContain('ADD COLUMN IF NOT EXISTS "sleep_quality"');
     expect(releaseRunner).toContain('id: "0045_sleep_reflection"');
@@ -80,6 +82,14 @@ describe("health and fitness foundation", () => {
     expect(profileRoutes).toContain('"sleep_naps"');
     expect(profileRoutes).toContain("sleepDurationMinutes(log.sleepTime, log.wakeTime)");
     expect(healthPage).toContain("<SleepLog />");
+  });
+
+  it("keeps direct workout heart-rate entries manual rather than permitting a user-selected device label", () => {
+    const routes = readFileSync(resolve(process.cwd(), "server/routes/workouts.ts"), "utf8");
+    const client = readFileSync(resolve(process.cwd(), "client/src/components/health/WorkoutLog.tsx"), "utf8");
+    expect(routes).toContain('? "manual" : null');
+    expect(client).toContain("Heart-rate values logged here are manual self-reports");
+    expect(client).not.toContain("HR: device");
   });
 
   it("assembles an owner-scoped factual health timeline without causal or readiness claims", () => {

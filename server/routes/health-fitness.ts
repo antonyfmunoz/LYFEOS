@@ -1,5 +1,5 @@
 import type { Express, Request, Response } from "express";
-import { and, desc, eq, gte, inArray, isNull, lte, lt, sql, sum } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNotNull, isNull, lte, lt, sql, sum } from "drizzle-orm";
 import { z } from "zod";
 import { bodyMeasurements, fastingWindows, healthObservationCalculationPreferences, healthObservations, healthProfiles, healthSourcePreferences, healthTargetRevisions, healthTargets, hydrationEntries, nutritionDiaryEntries, nutritionFoods, recoveryActivities, sleepNaps, sleepSessions, supplementEntries, userDailyLogs, workoutExercises, workouts, workoutSets } from "@shared/schema";
 import { db } from "../db";
@@ -217,7 +217,7 @@ export function registerHealthFitnessRoutes(app: Express): void {
       ...supplements.map((entry) => ({ id: `supplement:${entry.id}`, type: "supplement", occurredAt: entry.occurredAt.toISOString(), title: entry.name, detail: entry.amount != null ? `${entry.amount}${entry.unit ? ` ${entry.unit}` : ""}` : "amount not recorded", source: entry.source })),
       ...fasting.map((entry) => ({ id: `fasting:${entry.id}`, type: "fasting", occurredAt: entry.startedAt.toISOString(), title: "Fasting window", detail: entry.endedAt ? `Ended ${entry.endedAt.toISOString()}` : "In progress", source: entry.source })),
       ...nutrition.map((entry) => ({ id: `nutrition:${entry.id}`, type: "nutrition", occurredAt: entry.occurredAt.toISOString(), title: entry.foodName, detail: `${entry.servingGrams} g · ${entry.mealSlot}${entry.note ? ` · ${entry.note}` : ""}`, source: entry.source })),
-      ...dailySleep.filter((entry) => entry.sleepTime || entry.wakeTime || entry.sleepQuality || entry.sleepNote).map((entry) => ({ id: `sleep:${entry.id}`, type: "sleep", occurredAt: zonedDateTime(entry.date, timeZone, 12).toISOString(), title: "Sleep", detail: `${entry.sleepTime || "?"}–${entry.wakeTime || "?"}${entry.sleepQuality ? ` · subjective ${entry.sleepQuality}/5` : ""}${entry.sleepNote ? ` · ${entry.sleepNote}` : ""}`, source: "manual" })),
+      ...dailySleep.filter((entry) => entry.sleepReportedAt !== null && (entry.sleepTime || entry.wakeTime || entry.sleepQuality || entry.sleepNote)).map((entry) => ({ id: `sleep:${entry.id}`, type: "sleep", occurredAt: zonedDateTime(entry.date, timeZone, 12).toISOString(), title: "Sleep", detail: `${entry.sleepTime || "?"}–${entry.wakeTime || "?"}${entry.sleepQuality ? ` · subjective ${entry.sleepQuality}/5` : ""}${entry.sleepNote ? ` · ${entry.sleepNote}` : ""}`, source: "manual" })),
       ...naps.map((entry) => { const [hour, minute] = entry.startTime.split(":").map(Number); return { id: `nap:${entry.id}`, type: "sleep", occurredAt: zonedDateTime(entry.date, timeZone, hour, minute).toISOString(), title: "Nap", detail: `${entry.startTime}–${entry.endTime}${entry.sleepQuality ? ` · subjective ${entry.sleepQuality}/5` : ""}${entry.note ? ` · ${entry.note}` : ""}`, source: entry.source }; }),
       ...sessions.map((entry) => ({ id: `sleep-session:${entry.id}`, type: "sleep", occurredAt: entry.startedAt.toISOString(), title: "Sleep session", detail: `${sleepSessionDurationMinutes(entry.startedAt, entry.endedAt)} min · ${entry.source.replaceAll("_", " ")}${entry.deviceName ? ` · ${entry.deviceName}` : ""}`, source: entry.source })),
     ].sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
@@ -264,7 +264,7 @@ export function registerHealthFitnessRoutes(app: Express): void {
     const [logs, naps, sessions] = await Promise.all([
       db.select({ date: userDailyLogs.date, sleepTime: userDailyLogs.sleepTime, wakeTime: userDailyLogs.wakeTime, sleepQuality: userDailyLogs.sleepQuality, sleepNote: userDailyLogs.sleepNote })
         .from(userDailyLogs)
-        .where(and(eq(userDailyLogs.userId, req.session.userId!), gte(userDailyLogs.date, startDate), lte(userDailyLogs.date, endDate)))
+        .where(and(eq(userDailyLogs.userId, req.session.userId!), isNotNull(userDailyLogs.sleepReportedAt), gte(userDailyLogs.date, startDate), lte(userDailyLogs.date, endDate)))
         .orderBy(userDailyLogs.date),
       db.select().from(sleepNaps)
         .where(and(eq(sleepNaps.userId, req.session.userId!), gte(sleepNaps.date, startDate), lte(sleepNaps.date, endDate)))
@@ -285,9 +285,10 @@ export function registerHealthFitnessRoutes(app: Express): void {
   app.put("/api/health-fitness/sleep", isAuthenticated, async (req: Request, res: Response) => {
     const parsed = sleepSchema.safeParse(req.body);
     if (!parsed.success || !localDate(parsed.data?.date)) return res.status(400).json({ error: "Invalid sleep record.", details: parsed.success ? undefined : parsed.error.flatten() });
-    const values = { userId: req.session.userId!, date: parsed.data.date, sleepTime: parsed.data.sleepTime, wakeTime: parsed.data.wakeTime, sleepQuality: parsed.data.sleepQuality, sleepNote: parsed.data.sleepNote };
+    const reportedAt = new Date();
+    const values = { userId: req.session.userId!, date: parsed.data.date, sleepTime: parsed.data.sleepTime, wakeTime: parsed.data.wakeTime, sleepQuality: parsed.data.sleepQuality, sleepNote: parsed.data.sleepNote, sleepReportedAt: reportedAt };
     const [log] = await db.insert(userDailyLogs).values(values)
-      .onConflictDoUpdate({ target: [userDailyLogs.userId, userDailyLogs.date], set: { sleepTime: parsed.data.sleepTime, wakeTime: parsed.data.wakeTime, sleepQuality: parsed.data.sleepQuality, sleepNote: parsed.data.sleepNote } })
+      .onConflictDoUpdate({ target: [userDailyLogs.userId, userDailyLogs.date], set: { sleepTime: parsed.data.sleepTime, wakeTime: parsed.data.wakeTime, sleepQuality: parsed.data.sleepQuality, sleepNote: parsed.data.sleepNote, sleepReportedAt: reportedAt } })
       .returning({ date: userDailyLogs.date, sleepTime: userDailyLogs.sleepTime, wakeTime: userDailyLogs.wakeTime, sleepQuality: userDailyLogs.sleepQuality, sleepNote: userDailyLogs.sleepNote });
     return res.json({ record: { ...log, durationMinutes: sleepDurationMinutes(log.sleepTime, log.wakeTime), source: "manual" as const } });
   });

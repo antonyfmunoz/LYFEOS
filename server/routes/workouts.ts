@@ -584,7 +584,7 @@ export function registerWorkoutRoutes(app: Express): void {
     try {
       const timeContext = requestTimeContext(req, occurredAt);
       const workout = await db.transaction(async (tx) => {
-        const [created] = await tx.insert(workouts).values({ userId, activityType: parsed.data.activityType, durationMinutes: parsed.data.durationMinutes || null, perceivedExertion: parsed.data.perceivedExertion || null, movingTimeSeconds: parsed.data.movingTimeSeconds ?? null, elevationGainMeters: parsed.data.elevationGainMeters ?? null, averageHeartRateBpm: parsed.data.averageHeartRateBpm ?? null, maxHeartRateBpm: parsed.data.maxHeartRateBpm ?? null, heartRateSource: parsed.data.heartRateSource ?? null, occurredAt, note: parsed.data.note || null, source: "manual", clientMutationId, mutationPayloadHash, recordedTimeZone: timeContext.timeZone, recordedUtcOffsetMinutes: timeContext.utcOffsetMinutes }).returning();
+        const [created] = await tx.insert(workouts).values({ userId, activityType: parsed.data.activityType, durationMinutes: parsed.data.durationMinutes || null, perceivedExertion: parsed.data.perceivedExertion || null, movingTimeSeconds: parsed.data.movingTimeSeconds ?? null, elevationGainMeters: parsed.data.elevationGainMeters ?? null, averageHeartRateBpm: parsed.data.averageHeartRateBpm ?? null, maxHeartRateBpm: parsed.data.maxHeartRateBpm ?? null, heartRateSource: parsed.data.averageHeartRateBpm != null || parsed.data.maxHeartRateBpm != null ? "manual" : null, occurredAt, note: parsed.data.note || null, source: "manual", clientMutationId, mutationPayloadHash, recordedTimeZone: timeContext.timeZone, recordedUtcOffsetMinutes: timeContext.utcOffsetMinutes }).returning();
         const exercises = [];
         for (let sortOrder = 0; sortOrder < parsed.data.exercises.length; sortOrder += 1) {
           const exercise = parsed.data.exercises[sortOrder];
@@ -628,7 +628,7 @@ export function registerWorkoutRoutes(app: Express): void {
         elevationGainMeters: parsed.data.elevationGainMeters ?? null,
         averageHeartRateBpm: parsed.data.averageHeartRateBpm ?? null,
         maxHeartRateBpm: parsed.data.maxHeartRateBpm ?? null,
-        heartRateSource: parsed.data.heartRateSource ?? null,
+        heartRateSource: parsed.data.averageHeartRateBpm != null || parsed.data.maxHeartRateBpm != null ? "manual" : null,
         occurredAt,
         note: parsed.data.note || null,
       }).where(and(eq(workouts.id, id), eq(workouts.userId, req.session.userId!))).returning();
