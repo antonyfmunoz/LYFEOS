@@ -27,6 +27,7 @@ export type WorkoutExportExercise = {
   distanceMeters: number | null;
   durationSeconds: number | null;
   sortOrder: number;
+  supersetGroup: string | null;
   note: string | null;
 };
 
@@ -41,6 +42,8 @@ export type WorkoutExportSet = {
   durationSeconds: number | null;
   perceivedExertion: number | null;
   repsInReserve: number | null;
+  setKind: "warmup" | "working" | "drop";
+  reachedFailure: boolean;
   completed: boolean;
   note: string | null;
 };
@@ -67,6 +70,7 @@ export type WorkoutLedgerExportRow = {
   exerciseId: number | null;
   exerciseOrder: number | null;
   exerciseName: string | null;
+  exerciseSupersetGroup: string | null;
   legacyAggregateSets: number | null;
   legacyAggregateReps: number | null;
   legacyAggregateLoadValue: number | null;
@@ -83,6 +87,8 @@ export type WorkoutLedgerExportRow = {
   setDurationSeconds: number | null;
   setPerceivedExertion: number | null;
   setRepsInReserve: number | null;
+  setKind: "warmup" | "working" | "drop" | null;
+  setReachedFailure: boolean | null;
   workoutNote: string | null;
   exerciseNote: string | null;
   setNote: string | null;
@@ -120,9 +126,9 @@ export function workoutLedgerExportRows(
     };
     if (!workoutExercises.length) return [{
       ...base, recordLevel: "workout" as const,
-      exerciseId: null, exerciseOrder: null, exerciseName: null,
+      exerciseId: null, exerciseOrder: null, exerciseName: null, exerciseSupersetGroup: null,
       legacyAggregateSets: null, legacyAggregateReps: null, legacyAggregateLoadValue: null, legacyAggregateLoadUnit: null, legacyAggregateDistanceMeters: null, legacyAggregateDurationSeconds: null,
-      setId: null, setOrder: null, setState: null, setReps: null, setLoadValue: null, setLoadUnit: null, setDistanceMeters: null, setDurationSeconds: null, setPerceivedExertion: null, setRepsInReserve: null,
+      setId: null, setOrder: null, setState: null, setReps: null, setLoadValue: null, setLoadUnit: null, setDistanceMeters: null, setDurationSeconds: null, setPerceivedExertion: null, setRepsInReserve: null, setKind: null, setReachedFailure: null,
       exerciseNote: null, setNote: null,
     }];
     return workoutExercises.flatMap<WorkoutLedgerExportRow>((exercise): WorkoutLedgerExportRow[] => {
@@ -132,6 +138,7 @@ export function workoutLedgerExportRows(
         exerciseId: exercise.id,
         exerciseOrder: exercise.sortOrder,
         exerciseName: exercise.name,
+        exerciseSupersetGroup: exercise.supersetGroup,
         legacyAggregateSets: exercise.sets,
         legacyAggregateReps: exercise.reps,
         legacyAggregateLoadValue: exercise.loadValue,
@@ -142,7 +149,7 @@ export function workoutLedgerExportRows(
       };
       if (!exerciseSets.length) return [{
         ...exerciseBase, recordLevel: "exercise" as const,
-        setId: null, setOrder: null, setState: null, setReps: null, setLoadValue: null, setLoadUnit: null, setDistanceMeters: null, setDurationSeconds: null, setPerceivedExertion: null, setRepsInReserve: null, setNote: null,
+        setId: null, setOrder: null, setState: null, setReps: null, setLoadValue: null, setLoadUnit: null, setDistanceMeters: null, setDurationSeconds: null, setPerceivedExertion: null, setRepsInReserve: null, setKind: null, setReachedFailure: null, setNote: null,
       }];
       return exerciseSets.map((setRecord) => ({
         ...exerciseBase,
@@ -157,6 +164,8 @@ export function workoutLedgerExportRows(
         setDurationSeconds: setRecord.durationSeconds,
         setPerceivedExertion: setRecord.perceivedExertion,
         setRepsInReserve: setRecord.repsInReserve,
+        setKind: setRecord.setKind,
+        setReachedFailure: setRecord.reachedFailure,
         setNote: setRecord.note,
       }));
     });
@@ -164,7 +173,7 @@ export function workoutLedgerExportRows(
 }
 
 const columns: Array<keyof WorkoutLedgerExportRow> = [
-  "recordLevel", "workoutId", "workoutOccurredAtUtc", "exportCalendarDate", "exportTimeZone", "recordedTimeZone", "recordedUtcOffsetMinutes", "workoutSource", "activityType", "workoutDurationMinutes", "workoutPerceivedExertion", "movingTimeSeconds", "elevationGainMeters", "averageHeartRateBpm", "maxHeartRateBpm", "heartRateSource", "latestRevisionNumber", "workoutCreatedAtUtc", "exerciseId", "exerciseOrder", "exerciseName", "legacyAggregateSets", "legacyAggregateReps", "legacyAggregateLoadValue", "legacyAggregateLoadUnit", "legacyAggregateDistanceMeters", "legacyAggregateDurationSeconds", "setId", "setOrder", "setState", "setReps", "setLoadValue", "setLoadUnit", "setDistanceMeters", "setDurationSeconds", "setPerceivedExertion", "setRepsInReserve", "workoutNote", "exerciseNote", "setNote",
+  "recordLevel", "workoutId", "workoutOccurredAtUtc", "exportCalendarDate", "exportTimeZone", "recordedTimeZone", "recordedUtcOffsetMinutes", "workoutSource", "activityType", "workoutDurationMinutes", "workoutPerceivedExertion", "movingTimeSeconds", "elevationGainMeters", "averageHeartRateBpm", "maxHeartRateBpm", "heartRateSource", "latestRevisionNumber", "workoutCreatedAtUtc", "exerciseId", "exerciseOrder", "exerciseName", "exerciseSupersetGroup", "legacyAggregateSets", "legacyAggregateReps", "legacyAggregateLoadValue", "legacyAggregateLoadUnit", "legacyAggregateDistanceMeters", "legacyAggregateDurationSeconds", "setId", "setOrder", "setState", "setReps", "setLoadValue", "setLoadUnit", "setDistanceMeters", "setDurationSeconds", "setPerceivedExertion", "setRepsInReserve", "setKind", "setReachedFailure", "workoutNote", "exerciseNote", "setNote",
 ];
 
 function csvHeader(column: string): string { return column.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`); }

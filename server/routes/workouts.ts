@@ -19,6 +19,8 @@ const setRecordSchema = z.object({
   durationSeconds: z.number().int().positive().max(86400).nullable().optional(),
   perceivedExertion: z.number().int().min(1).max(10).nullable().optional(),
   repsInReserve: z.number().int().min(0).max(20).nullable().optional(),
+  setKind: z.enum(["warmup", "working", "drop"]).default("working"),
+  reachedFailure: z.boolean().default(false),
   completed: z.boolean().optional(),
   note: z.string().trim().max(500).nullable().optional(),
 }).refine((record) => record.reps != null || record.loadValue != null || record.distanceMeters != null || record.durationSeconds != null || record.note != null || record.completed === false, { message: "A set needs a performed value, note, or an explicit skipped state." });
@@ -33,6 +35,7 @@ const exerciseSchema = z.object({
   loadUnit: z.enum(["kg", "lb"]).nullable().optional(),
   distanceMeters: z.number().positive().max(10_000_000).nullable().optional(),
   durationSeconds: z.number().int().positive().max(86400).nullable().optional(),
+  supersetGroup: z.string().trim().min(1).max(24).nullable().optional(),
   note: z.string().trim().max(500).nullable().optional(),
   setRecords: z.array(setRecordSchema).max(100).optional(),
 });
@@ -59,9 +62,12 @@ const plannedSetSchema = z.object({
   durationSeconds: z.number().int().positive().max(86400).nullable().optional(),
   perceivedExertion: z.number().int().min(1).max(10).nullable().optional(),
   repsInReserve: z.number().int().min(0).max(20).nullable().optional(),
+  setKind: z.enum(["warmup", "working", "drop"]).default("working"),
+  reachedFailure: z.boolean().default(false),
 });
 const plannedExerciseSchema = z.object({
   name: z.string().trim().min(1).max(120),
+  supersetGroup: z.string().trim().min(1).max(24).nullable().optional(),
   setRecords: z.array(plannedSetSchema).min(1).max(100),
 });
 const workoutTemplateSchema = z.object({
@@ -141,7 +147,7 @@ function legacySetRecords(exercise: ExerciseInput): Array<z.infer<typeof setReco
   if (!exercise.sets) return [];
   return Array.from({ length: exercise.sets }, () => ({
     reps: exercise.reps || null, loadValue: exercise.loadValue || null, loadUnit: exercise.loadUnit || null,
-    distanceMeters: exercise.distanceMeters || null, durationSeconds: exercise.durationSeconds || null, completed: true,
+    distanceMeters: exercise.distanceMeters || null, durationSeconds: exercise.durationSeconds || null, setKind: "working", reachedFailure: false, completed: true,
   }));
 }
 
@@ -583,8 +589,8 @@ export function registerWorkoutRoutes(app: Express): void {
         for (let sortOrder = 0; sortOrder < parsed.data.exercises.length; sortOrder += 1) {
           const exercise = parsed.data.exercises[sortOrder];
           const setRecords = legacySetRecords(exercise);
-          const [createdExercise] = await tx.insert(workoutExercises).values({ workoutId: created.id, name: exercise.name, sets: exercise.sets || (setRecords.length || null), reps: exercise.reps || null, loadValue: exercise.loadValue || null, loadUnit: exercise.loadUnit || null, distanceMeters: exercise.distanceMeters || null, durationSeconds: exercise.durationSeconds || null, note: exercise.note || null, sortOrder }).returning();
-          const createdSets = setRecords.length ? await tx.insert(workoutSets).values(setRecords.map((setRecord, setOrder) => ({ workoutExerciseId: createdExercise.id, setOrder, reps: setRecord.reps || null, loadValue: setRecord.loadValue || null, loadUnit: setRecord.loadUnit || null, distanceMeters: setRecord.distanceMeters || null, durationSeconds: setRecord.durationSeconds || null, perceivedExertion: setRecord.perceivedExertion || null, repsInReserve: setRecord.repsInReserve ?? null, completed: setRecord.completed ?? true, note: setRecord.note || null }))).returning() : [];
+          const [createdExercise] = await tx.insert(workoutExercises).values({ workoutId: created.id, name: exercise.name, sets: exercise.sets || (setRecords.length || null), reps: exercise.reps || null, loadValue: exercise.loadValue || null, loadUnit: exercise.loadUnit || null, distanceMeters: exercise.distanceMeters || null, durationSeconds: exercise.durationSeconds || null, supersetGroup: exercise.supersetGroup || null, note: exercise.note || null, sortOrder }).returning();
+          const createdSets = setRecords.length ? await tx.insert(workoutSets).values(setRecords.map((setRecord, setOrder) => ({ workoutExerciseId: createdExercise.id, setOrder, reps: setRecord.reps || null, loadValue: setRecord.loadValue || null, loadUnit: setRecord.loadUnit || null, distanceMeters: setRecord.distanceMeters || null, durationSeconds: setRecord.durationSeconds || null, perceivedExertion: setRecord.perceivedExertion || null, repsInReserve: setRecord.repsInReserve ?? null, setKind: setRecord.setKind, reachedFailure: setRecord.reachedFailure, completed: setRecord.completed ?? true, note: setRecord.note || null }))).returning() : [];
           exercises.push({ ...createdExercise, setRecords: createdSets });
         }
         await tx.insert(workoutRevisions).values({ userId, workoutId: created.id, revisionNumber: 1, snapshot: { workout: created, exercises } });
@@ -632,8 +638,8 @@ export function registerWorkoutRoutes(app: Express): void {
       for (let sortOrder = 0; sortOrder < parsed.data.exercises.length; sortOrder += 1) {
         const exercise = parsed.data.exercises[sortOrder];
         const setRecords = legacySetRecords(exercise);
-        const [createdExercise] = await tx.insert(workoutExercises).values({ workoutId: updated.id, name: exercise.name, sets: exercise.sets || (setRecords.length || null), reps: exercise.reps || null, loadValue: exercise.loadValue || null, loadUnit: exercise.loadUnit || null, distanceMeters: exercise.distanceMeters || null, durationSeconds: exercise.durationSeconds || null, note: exercise.note || null, sortOrder }).returning();
-        const createdSets = setRecords.length ? await tx.insert(workoutSets).values(setRecords.map((setRecord, setOrder) => ({ workoutExerciseId: createdExercise.id, setOrder, reps: setRecord.reps || null, loadValue: setRecord.loadValue || null, loadUnit: setRecord.loadUnit || null, distanceMeters: setRecord.distanceMeters || null, durationSeconds: setRecord.durationSeconds || null, perceivedExertion: setRecord.perceivedExertion || null, repsInReserve: setRecord.repsInReserve ?? null, completed: setRecord.completed ?? true, note: setRecord.note || null }))).returning() : [];
+        const [createdExercise] = await tx.insert(workoutExercises).values({ workoutId: updated.id, name: exercise.name, sets: exercise.sets || (setRecords.length || null), reps: exercise.reps || null, loadValue: exercise.loadValue || null, loadUnit: exercise.loadUnit || null, distanceMeters: exercise.distanceMeters || null, durationSeconds: exercise.durationSeconds || null, supersetGroup: exercise.supersetGroup || null, note: exercise.note || null, sortOrder }).returning();
+        const createdSets = setRecords.length ? await tx.insert(workoutSets).values(setRecords.map((setRecord, setOrder) => ({ workoutExerciseId: createdExercise.id, setOrder, reps: setRecord.reps || null, loadValue: setRecord.loadValue || null, loadUnit: setRecord.loadUnit || null, distanceMeters: setRecord.distanceMeters || null, durationSeconds: setRecord.durationSeconds || null, perceivedExertion: setRecord.perceivedExertion || null, repsInReserve: setRecord.repsInReserve ?? null, setKind: setRecord.setKind, reachedFailure: setRecord.reachedFailure, completed: setRecord.completed ?? true, note: setRecord.note || null }))).returning() : [];
         exercises.push({ ...createdExercise, setRecords: createdSets });
       }
       const nextRevision = currentRevision + 1;
@@ -688,8 +694,8 @@ export function registerWorkoutRoutes(app: Express): void {
       }).returning();
       const exercises = [];
       for (const exercise of snapshot.exercises) {
-        const [createdExercise] = await tx.insert(workoutExercises).values({ workoutId: workout.id, name: exercise.name, sets: exercise.sets, reps: exercise.reps, loadValue: exercise.loadValue, loadUnit: exercise.loadUnit, distanceMeters: exercise.distanceMeters, durationSeconds: exercise.durationSeconds, sortOrder: exercise.sortOrder, note: exercise.note }).returning();
-        const createdSets = exercise.setRecords.length ? await tx.insert(workoutSets).values(exercise.setRecords.map((setRecord) => ({ workoutExerciseId: createdExercise.id, setOrder: setRecord.setOrder, reps: setRecord.reps, loadValue: setRecord.loadValue, loadUnit: setRecord.loadUnit, distanceMeters: setRecord.distanceMeters, durationSeconds: setRecord.durationSeconds, perceivedExertion: setRecord.perceivedExertion, repsInReserve: setRecord.repsInReserve, completed: setRecord.completed, note: setRecord.note }))).returning() : [];
+        const [createdExercise] = await tx.insert(workoutExercises).values({ workoutId: workout.id, name: exercise.name, sets: exercise.sets, reps: exercise.reps, loadValue: exercise.loadValue, loadUnit: exercise.loadUnit, distanceMeters: exercise.distanceMeters, durationSeconds: exercise.durationSeconds, supersetGroup: exercise.supersetGroup, sortOrder: exercise.sortOrder, note: exercise.note }).returning();
+        const createdSets = exercise.setRecords.length ? await tx.insert(workoutSets).values(exercise.setRecords.map((setRecord) => ({ workoutExerciseId: createdExercise.id, setOrder: setRecord.setOrder, reps: setRecord.reps, loadValue: setRecord.loadValue, loadUnit: setRecord.loadUnit, distanceMeters: setRecord.distanceMeters, durationSeconds: setRecord.durationSeconds, perceivedExertion: setRecord.perceivedExertion, repsInReserve: setRecord.repsInReserve, setKind: setRecord.setKind, reachedFailure: setRecord.reachedFailure, completed: setRecord.completed, note: setRecord.note }))).returning() : [];
         exercises.push({ ...createdExercise, setRecords: createdSets });
       }
       await tx.insert(workoutRevisions).values({ userId, workoutId: workout.id, revisionNumber: 1, snapshot: { workout, exercises } });

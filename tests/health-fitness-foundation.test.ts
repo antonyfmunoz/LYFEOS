@@ -381,6 +381,10 @@ describe("health and fitness foundation", () => {
     expect(routes).toContain('app.put("/api/workouts/:id", isAuthenticated');
     expect(routes).toContain('eq(workouts.userId, req.session.userId!)');
     expect(routes).toContain('tx.delete(workoutExercises)');
+    expect(readFileSync(resolve(process.cwd(), "migrations/0153_workout_set_structure.sql"), "utf8")).toContain('"set_kind"');
+    expect(releaseRunner).toContain('id: "0153_workout_set_structure"');
+    expect(routes).toContain('setKind: z.enum(["warmup", "working", "drop"])');
+    expect(readFileSync(resolve(process.cwd(), "client/src/components/health/WorkoutLog.tsx"), "utf8")).toContain('Link group (A)');
   });
 
   it("summarizes recorded training only within valid, named formula boundaries", () => {

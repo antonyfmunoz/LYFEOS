@@ -10,8 +10,9 @@ import { submitHealthMutation } from "@/lib/healthOfflineQueue";
 import { toast } from "@/hooks/use-toast";
 
 type LoadUnit = "kg" | "lb";
-type SetDraft = { reps: string; load: string; loadUnit: LoadUnit; distance: string; duration: string; rpe: string; rir: string; note: string; completed: boolean };
-type ExerciseDraft = { name: string; sets: SetDraft[] };
+type SetKind = "warmup" | "working" | "drop";
+type SetDraft = { reps: string; load: string; loadUnit: LoadUnit; distance: string; duration: string; rpe: string; rir: string; note: string; setKind: SetKind; reachedFailure: boolean; completed: boolean };
+type ExerciseDraft = { name: string; supersetGroup: string; sets: SetDraft[] };
 type Workout = {
   id: number;
   currentRevision: number;
@@ -24,9 +25,9 @@ type Workout = {
   averageHeartRateBpm: number | null;
   maxHeartRateBpm: number | null;
   heartRateSource: string | null;
-  exercises: Array<{ id: number; name: string; setRecords: Array<{ id: number; reps: number | null; loadValue: number | null; loadUnit: string | null; distanceMeters: number | null; durationSeconds: number | null; perceivedExertion: number | null; repsInReserve: number | null; completed: boolean; note: string | null }> }>;
+  exercises: Array<{ id: number; name: string; supersetGroup: string | null; setRecords: Array<{ id: number; reps: number | null; loadValue: number | null; loadUnit: string | null; distanceMeters: number | null; durationSeconds: number | null; perceivedExertion: number | null; repsInReserve: number | null; setKind: SetKind; reachedFailure: boolean; completed: boolean; note: string | null }> }>;
 };
-type WorkoutTemplate = { id: number; name: string; activityType: string; folder: string | null; note: string | null; exerciseBlueprint: Array<{ name: string; setRecords?: Array<{ reps?: number | null; loadValue?: number | null; loadUnit?: string | null; distanceMeters?: number | null; durationSeconds?: number | null; perceivedExertion?: number | null; repsInReserve?: number | null }> }> };
+type WorkoutTemplate = { id: number; name: string; activityType: string; folder: string | null; note: string | null; exerciseBlueprint: Array<{ name: string; supersetGroup?: string | null; setRecords?: Array<{ reps?: number | null; loadValue?: number | null; loadUnit?: string | null; distanceMeters?: number | null; durationSeconds?: number | null; perceivedExertion?: number | null; repsInReserve?: number | null; setKind?: SetKind; reachedFailure?: boolean }> }> };
 type WorkoutTemplateRevision = Omit<WorkoutTemplate, "id"> & { id: number; revisionNumber: number; createdAt: string };
 type ExerciseProgress = { exerciseName: string; loadUnit: string; totalVolume: number; estimatedOneRepMax: number | null; bestObservedLoad: number | null; performedSets: number; lastPerformedAt: string };
 type WorkoutProgressResponse = { progress: ExerciseProgress[]; method: { estimatedOneRepMax: string; personalRecord: string }; disclosure: string };
@@ -36,8 +37,8 @@ type ExerciseDefinition = { id: number; name: string; category: string | null; e
 type ExerciseRecord = { exerciseName: string; loadUnit: string; bestObservedLoad: number; observedLoadAt: string; observedLoadWorkoutId: number; observedLoadSetId: number; bestEstimatedOneRepMax: number | null; estimatedOneRepMaxAt: string | null; estimatedWorkoutId: number | null; estimatedSetId: number | null };
 type ExerciseRecordResponse = { records: ExerciseRecord[]; calculations: { observedLoadRecord: { id: string; definition: string }; estimatedOneRepMax: { id: string; definition: string } }; disclosure: string };
 
-const blankSet = (loadUnit: LoadUnit = "kg"): SetDraft => ({ reps: "", load: "", loadUnit, distance: "", duration: "", rpe: "", rir: "", note: "", completed: true });
-const blankExercise = (loadUnit: LoadUnit = "kg"): ExerciseDraft => ({ name: "", sets: [blankSet(loadUnit)] });
+const blankSet = (loadUnit: LoadUnit = "kg"): SetDraft => ({ reps: "", load: "", loadUnit, distance: "", duration: "", rpe: "", rir: "", note: "", setKind: "working", reachedFailure: false, completed: true });
+const blankExercise = (loadUnit: LoadUnit = "kg"): ExerciseDraft => ({ name: "", supersetGroup: "", sets: [blankSet(loadUnit)] });
 function today() { return getLocalDateString(); }
 function localDateOffset(days: number) {
   const value = new Date(`${today()}T12:00:00.000Z`);
@@ -51,7 +52,8 @@ function formatSet(set: Workout["exercises"][number]["setRecords"][number]): str
     set.distanceMeters ? `${set.distanceMeters}m` : "",
     set.durationSeconds ? `${Math.round(set.durationSeconds / 60)}m` : "",
   ].filter(Boolean);
-  return parts.join(" ") || "recorded";
+  const kind = set.setKind === "warmup" ? "warm-up" : set.setKind === "drop" ? "drop" : "working";
+  return `${kind}${set.reachedFailure ? " · failure" : ""}${parts.length ? ` · ${parts.join(" ")}` : ""}`;
 }
 
 export default function WorkoutLog() {
@@ -185,7 +187,7 @@ export default function WorkoutLog() {
   const resetSession = () => { setSessionState("not_started"); setSessionStartedAt(null); setSessionAccumulatedSeconds(0); setSessionActiveSince(null); };
 
   const editExercise = (exerciseIndex: number, update: (exercise: ExerciseDraft) => ExerciseDraft) => setExercises((items) => items.map((item, index) => index === exerciseIndex ? update(item) : item));
-  const editSet = (exerciseIndex: number, setIndex: number, key: keyof SetDraft, value: string) => editExercise(exerciseIndex, (exercise) => ({ ...exercise, sets: exercise.sets.map((set, index) => index === setIndex ? { ...set, [key]: value } : set) }));
+  const editSet = (exerciseIndex: number, setIndex: number, key: keyof SetDraft, value: SetDraft[keyof SetDraft]) => editExercise(exerciseIndex, (exercise) => ({ ...exercise, sets: exercise.sets.map((set, index) => index === setIndex ? { ...set, [key]: value } : set) }));
   const workoutPayload = () => ({
     activityType,
     durationMinutes: durationMinutes ? Number(durationMinutes) : sessionStartedAt ? Math.max(1, Math.round(sessionElapsedSeconds / 60)) : null,
@@ -198,6 +200,7 @@ export default function WorkoutLog() {
     occurredAt: localNoonIso(date),
     exercises: exercises.filter((exercise) => exercise.name.trim()).map((exercise) => ({
       name: exercise.name.trim(),
+      supersetGroup: exercise.supersetGroup.trim() || null,
       setRecords: exercise.sets.map((set) => ({
         reps: set.reps ? Number(set.reps) : null,
         loadValue: set.load ? Number(set.load) : null,
@@ -206,6 +209,8 @@ export default function WorkoutLog() {
         durationSeconds: set.duration ? Number(set.duration) * 60 : null,
         perceivedExertion: set.rpe ? Number(set.rpe) : null,
         repsInReserve: set.rir ? Number(set.rir) : null,
+        setKind: set.setKind,
+        reachedFailure: set.reachedFailure,
         note: set.note || null,
         completed: set.completed,
       })),
@@ -240,7 +245,7 @@ export default function WorkoutLog() {
     onSuccess: ({ workout }) => { setWorkoutEditConflict(false); setDate(getLocalDateString(new Date(workout.occurredAt))); editWorkout(workout); },
   });
   const saveTemplate = useMutation({
-    mutationFn: () => { const currentRevision = templateRevisions.data?.revisions[0]?.revisionNumber; if (selectedTemplateId && !currentRevision) throw new Error("Reload this template before saving changes."); return apiRequest(selectedTemplateId ? `/api/workout-templates/${selectedTemplateId}` : "/api/workout-templates", { method: selectedTemplateId ? "PATCH" : "POST", headers: selectedTemplateId ? { "x-lyfeos-expected-revision": String(currentRevision) } : undefined, body: JSON.stringify({ name: templateName, folder: templateFolder.trim() || null, note: templateNote.trim() || null, activityType, exercises: exercises.filter((exercise) => exercise.name.trim()).map((exercise) => ({ name: exercise.name.trim(), setRecords: exercise.sets.map((set) => ({ reps: set.reps ? Number(set.reps) : null, loadValue: set.load ? Number(set.load) : null, loadUnit: set.load ? set.loadUnit : null, distanceMeters: set.distance ? Number(set.distance) : null, durationSeconds: set.duration ? Number(set.duration) * 60 : null, perceivedExertion: set.rpe ? Number(set.rpe) : null, repsInReserve: set.rir ? Number(set.rir) : null })) })) }) }); },
+    mutationFn: () => { const currentRevision = templateRevisions.data?.revisions[0]?.revisionNumber; if (selectedTemplateId && !currentRevision) throw new Error("Reload this template before saving changes."); return apiRequest(selectedTemplateId ? `/api/workout-templates/${selectedTemplateId}` : "/api/workout-templates", { method: selectedTemplateId ? "PATCH" : "POST", headers: selectedTemplateId ? { "x-lyfeos-expected-revision": String(currentRevision) } : undefined, body: JSON.stringify({ name: templateName, folder: templateFolder.trim() || null, note: templateNote.trim() || null, activityType, exercises: exercises.filter((exercise) => exercise.name.trim()).map((exercise) => ({ name: exercise.name.trim(), supersetGroup: exercise.supersetGroup.trim() || null, setRecords: exercise.sets.map((set) => ({ reps: set.reps ? Number(set.reps) : null, loadValue: set.load ? Number(set.load) : null, loadUnit: set.load ? set.loadUnit : null, distanceMeters: set.distance ? Number(set.distance) : null, durationSeconds: set.duration ? Number(set.duration) * 60 : null, perceivedExertion: set.rpe ? Number(set.rpe) : null, repsInReserve: set.rir ? Number(set.rir) : null, setKind: set.setKind, reachedFailure: set.reachedFailure })) })) }) }); },
     onSuccess: () => { void queryClient.invalidateQueries({ queryKey: ["/api/workout-templates"] }); void queryClient.invalidateQueries({ queryKey: ["/api/workout-templates", selectedTemplateId, "revisions"] }); },
     onError: (error: Error) => toast({ title: error.message.startsWith("409:") ? "A newer template version exists" : "Template was not saved", description: error.message.startsWith("409:") ? "Your planned fields remain here. Reload the template before trying again." : error.message, variant: "destructive" }),
   });
@@ -251,7 +256,7 @@ export default function WorkoutLog() {
   });
   const restoreTemplateRevision = useMutation({
     mutationFn: () => { const currentRevision = templateRevisions.data?.revisions[0]?.revisionNumber; if (!currentRevision) throw new Error("Reload this template before restoring a version."); return apiRequest<{ template: WorkoutTemplate }>(`/api/workout-templates/${selectedTemplateId}/revisions/${selectedRevisionNumber}/restore`, { method: "POST", headers: { "x-lyfeos-expected-revision": String(currentRevision) } }); },
-    onSuccess: ({ template }) => { void queryClient.invalidateQueries({ queryKey: ["/api/workout-templates"] }); void queryClient.invalidateQueries({ queryKey: ["/api/workout-templates", selectedTemplateId, "revisions"] }); setSelectedRevisionNumber(""); setTemplateName(template.name); setTemplateFolder(template.folder || ""); setTemplateNote(template.note || ""); setActivityType(template.activityType); setExercises(template.exerciseBlueprint.map((exercise) => ({ name: exercise.name, sets: (exercise.setRecords?.length ? exercise.setRecords : [{}]).map((set) => ({ reps: set.reps ? String(set.reps) : "", load: set.loadValue ? String(set.loadValue) : "", loadUnit: set.loadUnit === "lb" ? "lb" : "kg", distance: set.distanceMeters ? String(set.distanceMeters) : "", duration: set.durationSeconds ? String(set.durationSeconds / 60) : "", rpe: set.perceivedExertion ? String(set.perceivedExertion) : "", rir: set.repsInReserve != null ? String(set.repsInReserve) : "", note: "", completed: true })) }))); },
+    onSuccess: ({ template }) => { void queryClient.invalidateQueries({ queryKey: ["/api/workout-templates"] }); void queryClient.invalidateQueries({ queryKey: ["/api/workout-templates", selectedTemplateId, "revisions"] }); setSelectedRevisionNumber(""); setTemplateName(template.name); setTemplateFolder(template.folder || ""); setTemplateNote(template.note || ""); setActivityType(template.activityType); setExercises(template.exerciseBlueprint.map((exercise) => ({ name: exercise.name, supersetGroup: exercise.supersetGroup || "", sets: (exercise.setRecords?.length ? exercise.setRecords : [{}]).map((set) => ({ reps: set.reps ? String(set.reps) : "", load: set.loadValue ? String(set.loadValue) : "", loadUnit: set.loadUnit === "lb" ? "lb" : "kg", distance: set.distanceMeters ? String(set.distanceMeters) : "", duration: set.durationSeconds ? String(set.durationSeconds / 60) : "", rpe: set.perceivedExertion ? String(set.perceivedExertion) : "", rir: set.repsInReserve != null ? String(set.repsInReserve) : "", note: "", setKind: set.setKind || "working", reachedFailure: set.reachedFailure || false, completed: true })) }))); },
     onError: (error: Error) => toast({ title: "Revision was not restored", description: error.message, variant: "destructive" }),
   });
   const draftTemplateMission = useMutation({
@@ -277,7 +282,7 @@ export default function WorkoutLog() {
     setTemplateFolder(template.folder || "");
     setTemplateNote(template.note || "");
     setActivityType(template.activityType);
-    setExercises(template.exerciseBlueprint.map((exercise) => ({ name: exercise.name, sets: (exercise.setRecords?.length ? exercise.setRecords : [{}]).map((set) => ({ reps: set.reps ? String(set.reps) : "", load: set.loadValue ? String(set.loadValue) : "", loadUnit: set.loadUnit === "lb" ? "lb" : "kg", distance: set.distanceMeters ? String(set.distanceMeters) : "", duration: set.durationSeconds ? String(set.durationSeconds / 60) : "", rpe: set.perceivedExertion ? String(set.perceivedExertion) : "", rir: set.repsInReserve != null ? String(set.repsInReserve) : "", note: "", completed: true })) })));
+    setExercises(template.exerciseBlueprint.map((exercise) => ({ name: exercise.name, supersetGroup: exercise.supersetGroup || "", sets: (exercise.setRecords?.length ? exercise.setRecords : [{}]).map((set) => ({ reps: set.reps ? String(set.reps) : "", load: set.loadValue ? String(set.loadValue) : "", loadUnit: set.loadUnit === "lb" ? "lb" : "kg", distance: set.distanceMeters ? String(set.distanceMeters) : "", duration: set.durationSeconds ? String(set.durationSeconds / 60) : "", rpe: set.perceivedExertion ? String(set.perceivedExertion) : "", rir: set.repsInReserve != null ? String(set.repsInReserve) : "", note: "", setKind: set.setKind || "working", reachedFailure: set.reachedFailure || false, completed: true })) })));
   };
   const editWorkout = (workout: Workout) => {
     setEditingWorkoutId(workout.id);
@@ -291,7 +296,7 @@ export default function WorkoutLog() {
     setAverageHeartRateBpm(workout.averageHeartRateBpm ? String(workout.averageHeartRateBpm) : "");
     setMaxHeartRateBpm(workout.maxHeartRateBpm ? String(workout.maxHeartRateBpm) : "");
     setHeartRateSource(workout.heartRateSource === "device" || workout.heartRateSource === "imported" ? workout.heartRateSource : "manual");
-    setExercises(workout.exercises.length ? workout.exercises.map((exercise) => ({ name: exercise.name, sets: exercise.setRecords.length ? exercise.setRecords.map((set) => ({ reps: set.reps ? String(set.reps) : "", load: set.loadValue ? String(set.loadValue) : "", loadUnit: set.loadUnit === "lb" ? "lb" : "kg", distance: set.distanceMeters ? String(set.distanceMeters) : "", duration: set.durationSeconds ? String(set.durationSeconds / 60) : "", rpe: set.perceivedExertion ? String(set.perceivedExertion) : "", rir: set.repsInReserve != null ? String(set.repsInReserve) : "", note: set.note || "", completed: set.completed })) : [blankSet(preferredLoadUnit)] })) : [blankExercise(preferredLoadUnit)]);
+    setExercises(workout.exercises.length ? workout.exercises.map((exercise) => ({ name: exercise.name, supersetGroup: exercise.supersetGroup || "", sets: exercise.setRecords.length ? exercise.setRecords.map((set) => ({ reps: set.reps ? String(set.reps) : "", load: set.loadValue ? String(set.loadValue) : "", loadUnit: set.loadUnit === "lb" ? "lb" : "kg", distance: set.distanceMeters ? String(set.distanceMeters) : "", duration: set.durationSeconds ? String(set.durationSeconds / 60) : "", rpe: set.perceivedExertion ? String(set.perceivedExertion) : "", rir: set.repsInReserve != null ? String(set.repsInReserve) : "", note: set.note || "", setKind: set.setKind || "working", reachedFailure: set.reachedFailure || false, completed: set.completed })) : [blankSet(preferredLoadUnit)] })) : [blankExercise(preferredLoadUnit)]);
   };
   const downloadWorkoutHistory = async () => {
     setHistoryExportError(null);
@@ -331,8 +336,9 @@ export default function WorkoutLog() {
     <div className="mt-2 grid gap-2 sm:grid-cols-2"><Input aria-label="Workout template folder" placeholder="Optional template folder" value={templateFolder} onChange={(event) => setTemplateFolder(event.target.value)} /><Input aria-label="Workout template note" placeholder="Optional planned-session note" value={templateNote} onChange={(event) => setTemplateNote(event.target.value)} /></div>{selectedTemplateId ? <div className="mt-2 rounded-lg border border-muted/20 bg-background/20 p-3"><div className="flex flex-wrap items-center gap-2"><p className="mr-auto text-[11px] text-muted-foreground">{templateRevisions.data?.revisions.length || 0} immutable template revision(s). Restoring creates a new revision; it never rewrites history.</p><Button variant="outline" size="sm" disabled={duplicateTemplate.isPending} onClick={() => duplicateTemplate.mutate()}>Duplicate plan</Button><Button variant="outline" size="sm" disabled={draftTemplateMission.isPending} onClick={() => draftTemplateMission.mutate()}>Draft mission</Button><select aria-label="Workout template revision" className="h-8 rounded-md border border-input bg-background px-2 text-xs" value={selectedRevisionNumber} onChange={(event) => setSelectedRevisionNumber(event.target.value)}><option value="">Compare a revision</option>{templateRevisions.data?.revisions.map((revision) => <option key={revision.id} value={revision.revisionNumber}>v{revision.revisionNumber} · {new Date(revision.createdAt).toLocaleDateString()}</option>)}</select><Button variant="outline" size="sm" disabled={!selectedRevisionNumber || restoreTemplateRevision.isPending} onClick={() => restoreTemplateRevision.mutate()}>Restore as new version</Button></div>{selectedRevisionNumber ? (() => { const revision = templateRevisions.data?.revisions.find((item) => item.revisionNumber === Number(selectedRevisionNumber)); const current = templates.data?.templates.find((item) => item.id === Number(selectedTemplateId)); if (!revision || !current) return null; const revisionSets = revision.exerciseBlueprint.reduce((sum, exercise) => sum + (exercise.setRecords?.length || 0), 0); const currentSets = current.exerciseBlueprint.reduce((sum, exercise) => sum + (exercise.setRecords?.length || 0), 0); return <p className="mt-2 text-[11px] text-muted-foreground">v{revision.revisionNumber}: {revision.name} · {revision.activityType} · {revision.exerciseBlueprint.length} exercises / {revisionSets} planned sets. Current: {current.exerciseBlueprint.length} exercises / {currentSets} planned sets.</p>; })() : null}</div> : null}
     <datalist id="lyfeos-exercise-library">{exerciseLibrary.data?.exercises.map((exercise) => <option key={exercise.id} value={exercise.name}>{[exercise.category, exercise.equipment].filter(Boolean).join(" · ")}</option>)}</datalist>
     <div className="space-y-4 mt-4">{exercises.map((exercise, exerciseIndex) => <div key={exerciseIndex} className="rounded-lg border border-muted/20 bg-background/20 p-3">
-      <div className="flex gap-2"><Input list="lyfeos-exercise-library" aria-label={`Exercise ${exerciseIndex + 1} name`} placeholder="Exercise or custom library search" value={exercise.name} onChange={(event) => editExercise(exerciseIndex, (item) => ({ ...item, name: event.target.value }))} /><Button variant="ghost" size="sm" disabled={exercises.length === 1} onClick={() => setExercises((items) => items.filter((_, index) => index !== exerciseIndex))}>Remove</Button></div>
-      <div className="space-y-2 mt-2">{exercise.sets.map((set, setIndex) => <div key={setIndex} className="grid gap-2 sm:grid-cols-[4rem_6rem_6rem_6rem_5rem_5rem_1fr_auto_auto_auto]">
+      <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_10rem_auto]"><Input list="lyfeos-exercise-library" aria-label={`Exercise ${exerciseIndex + 1} name`} placeholder="Exercise or custom library search" value={exercise.name} onChange={(event) => editExercise(exerciseIndex, (item) => ({ ...item, name: event.target.value }))} /><Input aria-label={`Exercise ${exerciseIndex + 1} superset group`} maxLength={24} placeholder="Link group (A)" value={exercise.supersetGroup} onChange={(event) => editExercise(exerciseIndex, (item) => ({ ...item, supersetGroup: event.target.value }))} /><Button variant="ghost" size="sm" disabled={exercises.length === 1} onClick={() => setExercises((items) => items.filter((_, index) => index !== exerciseIndex))}>Remove</Button></div>
+      <p className="mt-2 text-[11px] text-muted-foreground">Use the same link group, such as A, on exercises you intentionally alternate. It records the structure you performed; it does not prescribe a routine.</p>
+      <div className="space-y-2 mt-2">{exercise.sets.map((set, setIndex) => <div key={setIndex} className="grid gap-2 sm:grid-cols-[4rem_6rem_6rem_6rem_5rem_5rem_1fr_6rem_auto_auto_auto_auto]">
         <Input aria-label={`Exercise ${exerciseIndex + 1} set ${setIndex + 1} repetitions`} type="number" min="1" placeholder="Reps" value={set.reps} onChange={(event) => editSet(exerciseIndex, setIndex, "reps", event.target.value)} />
         <Input aria-label={`Exercise ${exerciseIndex + 1} set ${setIndex + 1} load ${set.loadUnit}`} type="number" min="0" step="0.5" placeholder={`Load ${set.loadUnit}`} value={set.load} onChange={(event) => editSet(exerciseIndex, setIndex, "load", event.target.value)} />
         <Input aria-label={`Exercise ${exerciseIndex + 1} set ${setIndex + 1} distance meters`} type="number" min="1" placeholder="Meters" value={set.distance} onChange={(event) => editSet(exerciseIndex, setIndex, "distance", event.target.value)} />
@@ -340,6 +346,8 @@ export default function WorkoutLog() {
         <Input aria-label={`Exercise ${exerciseIndex + 1} set ${setIndex + 1} perceived exertion`} type="number" min="1" max="10" placeholder="RPE" value={set.rpe} onChange={(event) => editSet(exerciseIndex, setIndex, "rpe", event.target.value)} />
         <Input aria-label={`Exercise ${exerciseIndex + 1} set ${setIndex + 1} repetitions in reserve`} type="number" min="0" max="20" placeholder="RIR" value={set.rir} onChange={(event) => editSet(exerciseIndex, setIndex, "rir", event.target.value)} />
         <Input aria-label={`Exercise ${exerciseIndex + 1} set ${setIndex + 1} note`} placeholder="Set note" value={set.note} onChange={(event) => editSet(exerciseIndex, setIndex, "note", event.target.value)} />
+        <select aria-label={`Exercise ${exerciseIndex + 1} set ${setIndex + 1} kind`} className="h-10 rounded-md border border-input bg-background px-2 text-xs" value={set.setKind} onChange={(event) => editSet(exerciseIndex, setIndex, "setKind", event.target.value as SetKind)}><option value="warmup">Warm-up</option><option value="working">Working</option><option value="drop">Drop set</option></select>
+        <Button variant={set.reachedFailure ? "secondary" : "outline"} size="sm" aria-pressed={set.reachedFailure} onClick={() => editSet(exerciseIndex, setIndex, "reachedFailure", !set.reachedFailure)}>{set.reachedFailure ? "Failure" : "No failure"}</Button>
         <Button variant={set.completed ? "outline" : "secondary"} size="sm" onClick={() => editExercise(exerciseIndex, (item) => ({ ...item, sets: item.sets.map((candidate, index) => index === setIndex ? { ...candidate, completed: !candidate.completed } : candidate) }))}>{set.completed ? "Done" : "Skipped"}</Button>
         <Button variant="ghost" size="sm" onClick={() => editExercise(exerciseIndex, (item) => ({ ...item, sets: [...item.sets, { ...set }] }))}>Repeat</Button>
         <Button variant="ghost" size="sm" disabled={exercise.sets.length === 1} onClick={() => editExercise(exerciseIndex, (item) => ({ ...item, sets: item.sets.filter((_, index) => index !== setIndex) }))}>Remove</Button>

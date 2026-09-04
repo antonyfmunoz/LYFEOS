@@ -3533,6 +3533,26 @@ const migrations = [
         ALTER TABLE "push_subscriptions" ALTER COLUMN "fcm_token" DROP NOT NULL;
       `,
     },
+  {
+      id: "0153_workout_set_structure",
+      sql: `
+        ALTER TABLE "workout_exercises"
+          ADD COLUMN IF NOT EXISTS "superset_group" text;
+        ALTER TABLE "workout_sets"
+          ADD COLUMN IF NOT EXISTS "set_kind" text NOT NULL DEFAULT 'working',
+          ADD COLUMN IF NOT EXISTS "reached_failure" boolean NOT NULL DEFAULT false;
+        DO $$
+        BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint WHERE conname = 'workout_sets_set_kind_check'
+          ) THEN
+            ALTER TABLE "workout_sets"
+              ADD CONSTRAINT "workout_sets_set_kind_check"
+              CHECK ("set_kind" IN ('warmup', 'working', 'drop'));
+          END IF;
+        END $$;
+      `,
+    },
 ];
 
 async function run(): Promise<void> {

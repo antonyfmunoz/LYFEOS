@@ -26,12 +26,12 @@ describe("workout ledger export", () => {
     const rows = workoutLedgerExportRows(
       [workout(1), workout(2), workout(3)],
       [
-        { id: 20, workoutId: 2, name: "Legacy row", sets: 3, reps: 8, loadValue: 50, loadUnit: "kg", distanceMeters: null, durationSeconds: null, sortOrder: 0, note: null },
-        { id: 30, workoutId: 3, name: "Squat", sets: 2, reps: null, loadValue: null, loadUnit: null, distanceMeters: null, durationSeconds: null, sortOrder: 0, note: "rack 2" },
+        { id: 20, workoutId: 2, name: "Legacy row", sets: 3, reps: 8, loadValue: 50, loadUnit: "kg", distanceMeters: null, durationSeconds: null, sortOrder: 0, supersetGroup: null, note: null },
+        { id: 30, workoutId: 3, name: "Squat", sets: 2, reps: null, loadValue: null, loadUnit: null, distanceMeters: null, durationSeconds: null, sortOrder: 0, supersetGroup: "A", note: "rack 2" },
       ],
       [
-        { id: 300, workoutExerciseId: 30, setOrder: 0, reps: 5, loadValue: 100, loadUnit: "kg", distanceMeters: null, durationSeconds: null, perceivedExertion: 8, repsInReserve: 2, completed: true, note: "controlled" },
-        { id: 301, workoutExerciseId: 30, setOrder: 1, reps: null, loadValue: null, loadUnit: null, distanceMeters: null, durationSeconds: null, perceivedExertion: null, repsInReserve: null, completed: false, note: "skipped" },
+        { id: 300, workoutExerciseId: 30, setOrder: 0, reps: 5, loadValue: 100, loadUnit: "kg", distanceMeters: null, durationSeconds: null, perceivedExertion: 8, repsInReserve: 2, setKind: "working", reachedFailure: true, completed: true, note: "controlled" },
+        { id: 301, workoutExerciseId: 30, setOrder: 1, reps: null, loadValue: null, loadUnit: null, distanceMeters: null, durationSeconds: null, perceivedExertion: null, repsInReserve: null, setKind: "drop", reachedFailure: false, completed: false, note: "skipped" },
       ],
       new Map([[1, 1], [2, 2], [3, 4]]),
       "America/Los_Angeles",
@@ -40,8 +40,8 @@ describe("workout ledger export", () => {
     expect(rows).toHaveLength(4);
     expect(rows[0]).toMatchObject({ recordLevel: "workout", workoutId: 1, exerciseId: null, latestRevisionNumber: 1 });
     expect(rows[1]).toMatchObject({ recordLevel: "exercise", workoutId: 2, exerciseId: 20, legacyAggregateSets: 3, legacyAggregateReps: 8, setId: null });
-    expect(rows[2]).toMatchObject({ recordLevel: "set", workoutId: 3, exerciseId: 30, setId: 300, setState: "performed", setReps: 5, setLoadValue: 100, setLoadUnit: "kg" });
-    expect(rows[3]).toMatchObject({ recordLevel: "set", setId: 301, setState: "skipped", setReps: null });
+    expect(rows[2]).toMatchObject({ recordLevel: "set", workoutId: 3, exerciseId: 30, exerciseSupersetGroup: "A", setId: 300, setState: "performed", setKind: "working", setReachedFailure: true, setReps: 5, setLoadValue: 100, setLoadUnit: "kg" });
+    expect(rows[3]).toMatchObject({ recordLevel: "set", setId: 301, setState: "skipped", setKind: "drop", setReachedFailure: false, setReps: null });
   });
 
   it("writes stable snake-case columns and protects spreadsheet formulas", () => {

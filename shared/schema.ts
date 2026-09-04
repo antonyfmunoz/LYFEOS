@@ -3689,6 +3689,10 @@ export const workoutExercises = pgTable("workout_exercises", {
   distanceMeters: real("distance_meters"),
   durationSeconds: integer("duration_seconds"),
   sortOrder: integer("sort_order").notNull().default(0),
+  // A user-assigned label (for example "A") links exercises that were
+  // intentionally alternated. It records workout structure, not a claim
+  // about the training effect of the pairing.
+  supersetGroup: text("superset_group"),
   note: text("note"),
 }, (table) => [index("workout_exercises_workout_idx").on(table.workoutId)]);
 
@@ -3706,6 +3710,10 @@ export const workoutSets = pgTable("workout_sets", {
   durationSeconds: integer("duration_seconds"),
   perceivedExertion: integer("perceived_exertion"),
   repsInReserve: integer("reps_in_reserve"),
+  // Set kind and failure are separate from completion: a completed warm-up
+  // and a completed working set are different factual attempts.
+  setKind: text("set_kind").notNull().default("working"),
+  reachedFailure: boolean("reached_failure").notNull().default(false),
   completed: boolean("completed").notNull().default(true),
   note: text("note"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
