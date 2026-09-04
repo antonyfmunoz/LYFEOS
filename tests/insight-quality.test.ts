@@ -29,6 +29,7 @@ describe("observed-pattern data quality", () => {
     const wealthDetail = readFileSync(resolve(process.cwd(), "client/src/pages/WealthDetailPage.tsx"), "utf8");
     const statDetail = readFileSync(resolve(process.cwd(), "client/src/pages/StatDetailPage.tsx"), "utf8");
     const profileRoutes = readFileSync(resolve(process.cwd(), "server/routes/profile.ts"), "utf8");
+    const dashboard = readFileSync(resolve(process.cwd(), "client/src/pages/DashboardPage.tsx"), "utf8");
     expect(compact).toContain("not a medical metric, diagnosis, or prediction");
     expect(compact).toContain("not an account balance, financial advice, or a measure of wealth");
     expect(expanded).toContain("not a measure of productivity, wellbeing, or personal worth");
@@ -46,8 +47,15 @@ describe("observed-pattern data quality", () => {
     expect(healthDetail).not.toContain("contributes to health");
     expect(profileRoutes).toContain("wellnessReportedAt !== null");
     expect(profileRoutes).toContain("wellnessReported === true");
+    expect(profileRoutes).toContain("hasCompleteWellnessSelfReport");
+    expect(profileRoutes).toContain("Choose all three wellness values before recording a wellness check-in.");
+    expect(profileRoutes).toContain("hasCompleteSleepSelfReport");
+    expect(profileRoutes).toContain("Choose a valid sleep and wake time before recording sleep.");
     expect(profileRoutes).toContain("sleepReportedAt !== null");
     expect(profileRoutes).toContain("sleepReported === true");
+    expect(dashboard).toContain("Object.values(wellnessWasEditedRef.current).every(Boolean)");
+    expect(dashboard).toContain("This is a self-report, not a health score.");
+    expect(dashboard).not.toContain("Daily Total:");
     expect(readFileSync(resolve(process.cwd(), "migrations/0154_wellness_self_report_provenance.sql"), "utf8")).toContain('"wellness_reported_at"');
     expect(readFileSync(resolve(process.cwd(), "migrations/0155_sleep_self_report_provenance.sql"), "utf8")).toContain('"sleep_reported_at"');
     expect(healthDetail).not.toContain("directly impact your health score");

@@ -1222,6 +1222,10 @@ Generate the complete affirmation now:`;
       if (!date) {
         return res.status(400).json({ error: "Date is required" });
       }
+      const hasCompleteWellnessSelfReport = wellnessReported === true && [mentalState, physicalState, emotionalState].every((value) => Number.isInteger(value) && value >= 1 && value <= 10);
+      const hasCompleteSleepSelfReport = sleepReported === true && typeof wakeTime === "string" && typeof sleepTime === "string" && sleepDurationMinutes(sleepTime, wakeTime) !== null;
+      if (wellnessReported === true && !hasCompleteWellnessSelfReport) return res.status(400).json({ error: "Choose all three wellness values before recording a wellness check-in." });
+      if (sleepReported === true && !hasCompleteSleepSelfReport) return res.status(400).json({ error: "Choose a valid sleep and wake time before recording sleep." });
       
       const result = await db.insert(userDailyLogs).values({
         userId,
@@ -1235,8 +1239,8 @@ Generate the complete affirmation now:`;
         mentalState: mentalState ?? 5,
         physicalState: physicalState ?? 5,
         emotionalState: emotionalState ?? 5,
-        ...(wellnessReported === true ? { wellnessReportedAt: new Date() } : {}),
-        ...(sleepReported === true ? { sleepReportedAt: new Date() } : {}),
+        ...(hasCompleteWellnessSelfReport ? { wellnessReportedAt: new Date() } : {}),
+        ...(hasCompleteSleepSelfReport ? { sleepReportedAt: new Date() } : {}),
         gratitude: gratitude || null,
         tomorrowGoals: tomorrowGoals || null,
         annualGoals: annualGoals || null,
@@ -1265,8 +1269,8 @@ Generate the complete affirmation now:`;
           ...(mentalState !== undefined && { mentalState }),
           ...(physicalState !== undefined && { physicalState }),
           ...(emotionalState !== undefined && { emotionalState }),
-          ...(wellnessReported === true && { wellnessReportedAt: new Date() }),
-          ...(sleepReported === true && { sleepReportedAt: new Date() }),
+          ...(hasCompleteWellnessSelfReport && { wellnessReportedAt: new Date() }),
+          ...(hasCompleteSleepSelfReport && { sleepReportedAt: new Date() }),
           ...(gratitude !== undefined && { gratitude }),
           ...(tomorrowGoals !== undefined && { tomorrowGoals }),
           ...(annualGoals !== undefined && { annualGoals }),
@@ -1351,6 +1355,10 @@ Generate the complete affirmation now:`;
       if (!date) {
         return res.status(400).json({ error: "Date is required" });
       }
+      const hasCompleteWellnessSelfReport = wellnessReported === true && [mentalState, physicalState, emotionalState].every((value) => Number.isInteger(value) && value >= 1 && value <= 10);
+      const hasCompleteSleepSelfReport = sleepReported === true && typeof wakeTime === "string" && typeof sleepTime === "string" && sleepDurationMinutes(sleepTime, wakeTime) !== null;
+      if (wellnessReported === true && !hasCompleteWellnessSelfReport) return res.status(400).json({ error: "Choose all three wellness values before recording a wellness check-in." });
+      if (sleepReported === true && !hasCompleteSleepSelfReport) return res.status(400).json({ error: "Choose a valid sleep and wake time before recording sleep." });
       
       // Check if a log exists for this date
       const existingLog = await db.select()
@@ -1371,8 +1379,8 @@ Generate the complete affirmation now:`;
             mentalState: mentalState !== undefined ? mentalState : existingLog[0].mentalState,
             physicalState: physicalState !== undefined ? physicalState : existingLog[0].physicalState,
             emotionalState: emotionalState !== undefined ? emotionalState : existingLog[0].emotionalState,
-            ...(wellnessReported === true ? { wellnessReportedAt: new Date() } : {}),
-            ...(sleepReported === true ? { sleepReportedAt: new Date() } : {}),
+            ...(hasCompleteWellnessSelfReport ? { wellnessReportedAt: new Date() } : {}),
+            ...(hasCompleteSleepSelfReport ? { sleepReportedAt: new Date() } : {}),
             // Intention log fields
             gratitude: gratitude !== undefined ? gratitude : existingLog[0].gratitude,
             tomorrowGoals: tomorrowGoals !== undefined ? tomorrowGoals : existingLog[0].tomorrowGoals,
@@ -1424,8 +1432,8 @@ Generate the complete affirmation now:`;
           mentalState: mentalState || 5,
           physicalState: physicalState || 5,
           emotionalState: emotionalState || 5,
-          ...(wellnessReported === true ? { wellnessReportedAt: new Date() } : {}),
-          ...(sleepReported === true ? { sleepReportedAt: new Date() } : {}),
+          ...(hasCompleteWellnessSelfReport ? { wellnessReportedAt: new Date() } : {}),
+          ...(hasCompleteSleepSelfReport ? { sleepReportedAt: new Date() } : {}),
           // Intention log fields
           gratitude: gratitude || null,
           tomorrowGoals: tomorrowGoals || null,
@@ -1544,12 +1552,12 @@ Generate the complete affirmation now:`;
         storage.getUserStats(userId),
       ]);
 
-      const moodTrends = dailyLogs.filter(log => log.wellnessReportedAt !== null).map(log => ({
+      const moodTrends = dailyLogs.filter(log => log.wellnessReportedAt !== null && log.mentalState != null && log.physicalState != null && log.emotionalState != null).map(log => ({
         date: log.date,
-        mental: log.mentalState ?? 5,
-        physical: log.physicalState ?? 5,
-        emotional: log.emotionalState ?? 5,
-        average: Math.round(((log.mentalState ?? 5) + (log.physicalState ?? 5) + (log.emotionalState ?? 5)) / 3 * 10) / 10,
+        mental: log.mentalState!,
+        physical: log.physicalState!,
+        emotional: log.emotionalState!,
+        average: Math.round((log.mentalState! + log.physicalState! + log.emotionalState!) / 3 * 10) / 10,
       }));
 
       const excludedCategories = ['onboarding', 'todo'];
@@ -1663,7 +1671,7 @@ Generate the complete affirmation now:`;
           const durationMinutes = sleepDurationMinutes(log.sleepTime, log.wakeTime);
           if (durationMinutes === null) return null;
           const sleepHours = Math.round(durationMinutes / 60 * 10) / 10;
-          const mood = Math.round(((log.mentalState ?? 5) + (log.physicalState ?? 5) + (log.emotionalState ?? 5)) / 3 * 10) / 10;
+          const mood = Math.round((log.mentalState! + log.physicalState! + log.emotionalState!) / 3 * 10) / 10;
           return { date: log.date, sleepHours, mood };
         }).filter((entry): entry is { date: string; sleepHours: number; mood: number } => entry !== null);
       const sleepWellnessDataQuality = assessObservedPatternQuality(sleepWellnessCorrelation.length, dateRange.length);
@@ -1787,12 +1795,12 @@ Generate the complete affirmation now:`;
         }
       });
 
-      const moodTrend = dailyLogs.filter(log => log.wellnessReportedAt !== null).map(log => ({
+      const moodTrend = dailyLogs.filter(log => log.wellnessReportedAt !== null && log.mentalState != null && log.physicalState != null && log.emotionalState != null).map(log => ({
         date: log.date,
-        mental: log.mentalState ?? 5,
-        physical: log.physicalState ?? 5,
-        emotional: log.emotionalState ?? 5,
-        average: Math.round(((log.mentalState ?? 5) + (log.physicalState ?? 5) + (log.emotionalState ?? 5)) / 3 * 10) / 10,
+        mental: log.mentalState!,
+        physical: log.physicalState!,
+        emotional: log.emotionalState!,
+        average: Math.round((log.mentalState! + log.physicalState! + log.emotionalState!) / 3 * 10) / 10,
       }));
 
       const completionTrend = dateRange.map(date => ({
@@ -1852,7 +1860,7 @@ Generate the complete affirmation now:`;
           const durationMinutes = sleepDurationMinutes(log.sleepTime, log.wakeTime);
           if (durationMinutes === null) return null;
           const sleepHours = Math.round(durationMinutes / 60 * 10) / 10;
-          const mood = Math.round(((log.mentalState ?? 5) + (log.physicalState ?? 5) + (log.emotionalState ?? 5)) / 3 * 10) / 10;
+          const mood = Math.round((log.mentalState! + log.physicalState! + log.emotionalState!) / 3 * 10) / 10;
           return { date: log.date, sleepHours, mood };
         }).filter((entry): entry is { date: string; sleepHours: number; mood: number } => entry !== null);
       const sleepWellnessDataQuality = assessObservedPatternQuality(sleepWellnessCorrelation.length, dateRange.length);

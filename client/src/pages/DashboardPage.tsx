@@ -452,7 +452,7 @@ export default function DashboardPage() {
   const isDirtyRef = useRef(false);
   // A visible 5/10 control value is only a UI starting point. It becomes
   // self-reported wellness evidence after the person actively selects it.
-  const wellnessWasEditedRef = useRef(false);
+  const wellnessWasEditedRef = useRef({ mental: false, physical: false, emotional: false });
   // A default wake/sleep pair is not a sleep record. Both controls must be
   // actively selected before this legacy daily pair is used as evidence.
   const sleepTimesEditedRef = useRef({ wake: false, sleep: false });
@@ -464,7 +464,11 @@ export default function DashboardPage() {
       const fp = `record-${cached.id}-${todayDateStr}`;
       loadedRecordFingerprintRef.current = fp;
       isDirtyRef.current = false;
-      wellnessWasEditedRef.current = Boolean(cached.wellnessReportedAt);
+      wellnessWasEditedRef.current = {
+        mental: Boolean(cached.wellnessReportedAt),
+        physical: Boolean(cached.wellnessReportedAt),
+        emotional: Boolean(cached.wellnessReportedAt),
+      };
       const cachedSleepReported = Boolean(cached.sleepReportedAt);
       sleepTimesEditedRef.current = { wake: cachedSleepReported, sleep: cachedSleepReported };
       updateEnergyLog({
@@ -589,7 +593,7 @@ export default function DashboardPage() {
           mentalState: logs.energyLog.mentalState,
           physicalState: logs.energyLog.physicalState,
           emotionalState: logs.energyLog.emotionalState,
-          wellnessReported: wellnessWasEditedRef.current || undefined,
+          wellnessReported: Object.values(wellnessWasEditedRef.current).every(Boolean) || undefined,
           sleepReported: (sleepTimesEditedRef.current.wake && sleepTimesEditedRef.current.sleep) || undefined,
           gratitude: logs.intentionLog.gratitude,
           tomorrowGoals: logs.intentionLog.tomorrowGoals,
@@ -663,7 +667,11 @@ export default function DashboardPage() {
       if (!dailyLogData._noData) {
         // Data exists in database - populate all global contexts and reset dirty flag
         isDirtyRef.current = false;
-        wellnessWasEditedRef.current = Boolean(dailyLogData.wellnessReportedAt);
+        wellnessWasEditedRef.current = {
+          mental: Boolean(dailyLogData.wellnessReportedAt),
+          physical: Boolean(dailyLogData.wellnessReportedAt),
+          emotional: Boolean(dailyLogData.wellnessReportedAt),
+        };
         const sleepReported = Boolean(dailyLogData.sleepReportedAt);
         sleepTimesEditedRef.current = { wake: sleepReported, sleep: sleepReported };
         updateEnergyLog({
@@ -782,7 +790,7 @@ export default function DashboardPage() {
       loadedRecordFingerprintRef.current = null;
       // Reset dirty flag - new session starts fresh
       isDirtyRef.current = false;
-      wellnessWasEditedRef.current = false;
+      wellnessWasEditedRef.current = { mental: false, physical: false, emotional: false };
       sleepTimesEditedRef.current = { wake: false, sleep: false };
       
       // Reset the contexts after logout
@@ -806,7 +814,7 @@ export default function DashboardPage() {
       loadedRecordFingerprintRef.current = null;
       // Reset dirty flag - new day starts fresh
       isDirtyRef.current = false;
-      wellnessWasEditedRef.current = false;
+      wellnessWasEditedRef.current = { mental: false, physical: false, emotional: false };
       sleepTimesEditedRef.current = { wake: false, sleep: false };
       lastLoadedDateRef.current = todayDateStr;
       // Invalidate to reload from server for the new day
@@ -850,7 +858,7 @@ export default function DashboardPage() {
         resetReflectionLog();
         loadedRecordFingerprintRef.current = null;
         isDirtyRef.current = false;
-        wellnessWasEditedRef.current = false;
+        wellnessWasEditedRef.current = { mental: false, physical: false, emotional: false };
         sleepTimesEditedRef.current = { wake: false, sleep: false };
         lastLoadedDateRef.current = newDateStr;
         queryClient.invalidateQueries({ queryKey: ['/api/users', user?.id, 'daily-logs'] });
@@ -891,7 +899,7 @@ export default function DashboardPage() {
       mentalState: e.mentalState,
       physicalState: e.physicalState,
       emotionalState: e.emotionalState,
-      wellnessReported: wellnessWasEditedRef.current || undefined,
+      wellnessReported: Object.values(wellnessWasEditedRef.current).every(Boolean) || undefined,
       sleepReported: (sleepTimesEditedRef.current.wake && sleepTimesEditedRef.current.sleep) || undefined,
       gratitude: i.gratitude,
       tomorrowGoals: i.tomorrowGoals,
@@ -981,7 +989,9 @@ export default function DashboardPage() {
   }, [isAllLogsLoaded, buildSavePayload, saveDailyLogMutation]);
 
   const updateReflection = (field: keyof DailyReflection, value: any) => {
-    if (field === "mentalState" || field === "physicalState" || field === "emotionalState") wellnessWasEditedRef.current = true;
+    if (field === "mentalState") wellnessWasEditedRef.current.mental = true;
+    if (field === "physicalState") wellnessWasEditedRef.current.physical = true;
+    if (field === "emotionalState") wellnessWasEditedRef.current.emotional = true;
     if (field === "wakeTime") sleepTimesEditedRef.current.wake = true;
     if (field === "sleepTime") sleepTimesEditedRef.current.sleep = true;
     // Update the appropriate global context based on field type
@@ -1013,7 +1023,7 @@ export default function DashboardPage() {
         mentalState: field === 'mentalState' ? value : energyLog.mentalState,
         physicalState: field === 'physicalState' ? value : energyLog.physicalState,
         emotionalState: field === 'emotionalState' ? value : energyLog.emotionalState,
-        wellnessReported: wellnessWasEditedRef.current || undefined,
+        wellnessReported: Object.values(wellnessWasEditedRef.current).every(Boolean) || undefined,
         sleepReported: (sleepTimesEditedRef.current.wake && sleepTimesEditedRef.current.sleep) || undefined,
         // Intention log fields
         gratitude: field === 'gratitude' ? value : intentionLog.gratitude,
@@ -1586,12 +1596,7 @@ export default function DashboardPage() {
                   <Smile className="h-4 w-4 text-primary" />
                 )}
               </div>
-              <div className="flex items-center justify-end text-sm mt-3">
-                <span className="text-muted-foreground mr-2">Daily Total:</span>
-                <span className="text-primary font-mono">
-                  {Math.round(((reflection.mentalState + reflection.physicalState + reflection.emotionalState) / 30) * 100)}%
-                </span>
-              </div>
+              <p className="mt-3 text-right text-xs text-muted-foreground">Wellness trends use this check-in only after you actively choose all three values. This is a self-report, not a health score.</p>
             </div>
           </div>
         );
