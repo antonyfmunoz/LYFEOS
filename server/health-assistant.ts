@@ -5,11 +5,11 @@ export type HealthAssistantBoundary = { kind: "emergency" | "clinical"; message:
 
 export function healthAssistantBoundary(question: string): HealthAssistantBoundary {
   const normalized = question.toLocaleLowerCase();
-  if (/\b(chest pain|cannot breathe|can't breathe|severe bleeding|overdose|suicid(?:e|al)|stroke symptoms|unconscious)\b/.test(normalized)) return {
+  if (/\b(chest pain|cannot breathe|can't breathe|difficulty breathing|shortness of breath|severe bleeding|overdose|seizure|anaphylaxis|severe allergic reaction|suicid(?:e|al)|self[- ]?harm|thoughts? of harming myself|stroke symptoms|unconscious)\b/.test(normalized)) return {
     kind: "emergency",
     message: "LyfeOS cannot assess an emergency. Contact local emergency services or an appropriate crisis service now; do not wait for an app response.",
   };
-  if (/\b(diagnos(?:e|is)|prescrib(?:e|ing)|what (?:disease|condition) do i have|should i (?:take|stop taking)|what dose|dosage|treat(?:ment)? for|cure for|interpret my blood(?:work| test))\b/.test(normalized)) return {
+  if (/\b(diagnos(?:e|is)|prescrib(?:e|ing)|what (?:disease|condition) do i have|am i (?:sick|ill|healthy)|do i have|should i (?:take|stop taking|exercise|work out)|what dose|dosage|treat(?:ment)? for|cure for|interpret my blood(?:work| test)|are my (?:labs?|blood work|blood pressure|glucose|oxygen|heart rate)(?: readings?)? (?:normal|okay|ok|high|low)|is my (?:blood pressure|glucose|oxygen|heart rate|temperature)(?: readings?)? (?:normal|okay|ok|high|low)|is this (?:normal|safe))\b/.test(normalized)) return {
     kind: "clinical",
     message: "LyfeOS can summarize the records you select, but it cannot diagnose, prescribe, choose a dose, interpret laboratory results clinically, or recommend treatment. Ask a qualified clinician for that decision.",
   };

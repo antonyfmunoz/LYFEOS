@@ -8,6 +8,8 @@ describe("private health-record assistant", () => {
     expect(healthAssistantBoundary("I have chest pain, what does my data say?")).toMatchObject({ kind: "emergency" });
     expect(healthAssistantBoundary("What dose should I take?")).toMatchObject({ kind: "clinical" });
     expect(healthAssistantBoundary("Diagnose me from these records")).toMatchObject({ kind: "clinical" });
+    expect(healthAssistantBoundary("I have shortness of breath, is my oxygen okay?")).toMatchObject({ kind: "emergency" });
+    expect(healthAssistantBoundary("Are my blood pressure readings normal?")).toMatchObject({ kind: "clinical" });
     expect(healthAssistantBoundary("Summarize which sleep days are recorded and missing")).toBeNull();
   });
 
