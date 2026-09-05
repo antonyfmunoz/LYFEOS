@@ -37,6 +37,9 @@ describe("production Health offline browser acceptance custody", () => {
     expect(script).toContain('window.dispatchEvent(new Event("online"))');
     expect(script).toContain("reconnectSyncedExactlyOnce");
     expect(script).toContain("reloadRenderedPersistedRecord");
+    expect(script).toContain("offlineMeasurementRenderedAsDeviceOnly");
+    expect(script).toContain("measurementReconnectSyncedExactlyOnce");
+    expect(script).toContain("reloadRenderedPersistedMeasurement");
     expect(script).toContain("queueDrained");
     expect(script).toContain("first-ever offline use");
     expect(script).toContain("storage eviction");
@@ -50,6 +53,8 @@ describe("production Health offline browser acceptance custody", () => {
     expect(dailyLog).toContain('data-testid="health-hydration-amount"');
     expect(dailyLog).toContain('data-testid="health-hydration-unit"');
     expect(dailyLog).toContain('data-testid="health-hydration-save"');
+    expect(dailyLog).toContain('data-testid="health-weight-amount"');
+    expect(dailyLog).toContain('data-testid="health-weight-save"');
     expect(queue).toContain('data-testid="health-offline-storage-unavailable"');
     expect(queue).toContain('data-testid="health-offline-queue"');
     expect(queue).toContain("health-offline-queue-item-");

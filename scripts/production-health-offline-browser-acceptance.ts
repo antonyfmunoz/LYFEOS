@@ -18,6 +18,9 @@ type ViewResult = {
   offlineRecordAbsentFromServer: boolean;
   reconnectSyncedExactlyOnce: boolean;
   reloadRenderedPersistedRecord: boolean;
+  offlineMeasurementRenderedAsDeviceOnly: boolean;
+  measurementReconnectSyncedExactlyOnce: boolean;
+  reloadRenderedPersistedMeasurement: boolean;
   queueDrained: boolean;
   audit: Audit;
   signals: Signals;
@@ -31,6 +34,7 @@ const OUTPUT_DIR = path.resolve(process.env.LYFEOS_HEALTH_OFFLINE_OUTPUT_DIR || 
 const OUTPUT_FILE = path.join(OUTPUT_DIR, "health-offline-report.json");
 const PASSWORD = "TestPass123!";
 const HYDRATION_ML = 432.1;
+const WEIGHT_KG = 72.4;
 const VIEWPORTS: Array<{ name: string; value: Viewport }> = [
   { name: "desktop-1440x900", value: { width: 1440, height: 900, deviceScaleFactor: 1 } },
   { name: "mobile-390x844", value: { width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true } },
@@ -232,6 +236,27 @@ async function waitForHydrationCount(account: Account, date: string, timeZone: s
   throw new Error(`Expected ${expected} accepted hydration record(s), observed ${latest}.`);
 }
 
+async function readMeasurements(account: Account): Promise<any[]> {
+  const result = await request("GET", "/api/health-fitness/measurements", undefined, account.cookie);
+  assert(result.status === 200 && Array.isArray(result.body?.measurements), `Measurement read returned ${result.status}.`);
+  return result.body.measurements;
+}
+
+function isAcceptanceWeight(entry: any): boolean {
+  return entry?.metric === "weight" && entry?.unit === "kg" && Math.abs(Number(entry?.value) - WEIGHT_KG) < 0.001;
+}
+
+async function waitForWeightCount(account: Account, expected: number): Promise<void> {
+  const deadline = Date.now() + 45_000;
+  let latest = -1;
+  while (Date.now() < deadline) {
+    latest = (await readMeasurements(account)).filter(isAcceptanceWeight).length;
+    if (latest === expected) return;
+    await new Promise((resolve) => setTimeout(resolve, 400));
+  }
+  throw new Error(`Expected ${expected} accepted weight record(s), observed ${latest}.`);
+}
+
 async function eraseAccount(account: Account): Promise<boolean> {
   if (!account.cookie) return true;
   for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -357,12 +382,40 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     const queueDrained = (await page.$$('[data-testid="health-offline-queue"]')).length === 0;
     assert(queueDrained, "The Health offline queue did not drain after the server accepted the record.");
 
+    stage = "prove initial weight absence";
+    await waitForWeightCount(account, 0);
+    stage = "submit durable offline weight";
+    await setValue(page, '[data-testid="health-weight-amount"]', String(WEIGHT_KG));
+    offlineState.intentionalOffline = true;
+    await page.setOfflineMode(true);
+    await clickReady(page, '[data-testid="health-weight-save"]');
+    stage = "wait for queued measurement label";
+    await page.waitForSelector('[data-testid="health-offline-queue"]', { visible: true, timeout: 30_000 });
+    await page.waitForFunction(() => document.querySelector('[data-testid="health-offline-queue"]')?.textContent?.includes("Measurement record"), { timeout: 30_000 });
+    const offlineMeasurementRenderedAsDeviceOnly = true;
+    stage = "prove queued weight absent from server";
+    await waitForWeightCount(account, 0);
+    offlineState.intentionalOffline = false;
+    await page.setOfflineMode(false);
+    await page.evaluate(() => window.dispatchEvent(new Event("online")));
+    stage = "wait for weight reconnect queue drainage";
+    await page.waitForSelector('[data-testid="health-offline-queue"]', { hidden: true, timeout: 45_000 });
+    stage = "prove exactly one reconnected weight";
+    await waitForWeightCount(account, 1);
+    const measurementReconnectSyncedExactlyOnce = true;
+    stage = "reload Health after weight sync";
+    await page.reload({ waitUntil: "domcontentloaded", timeout: 60_000 });
+    await page.waitForSelector('[data-testid="daily-health-log"]', { visible: true, timeout: 60_000 });
+    await page.waitForFunction((value) => document.body.innerText.includes(`${value} kg`), { timeout: 45_000 }, String(WEIGHT_KG));
+    await waitForWeightCount(account, 1);
+    const reloadRenderedPersistedMeasurement = true;
+
     stage = "audit final Health page";
     const audit = await auditPage(page);
     assert(audit.mainCount === 1 && audit.duplicateIds.length === 0 && audit.invalidLabelReferences.length === 0 && audit.unlabeledControls.length === 0 && audit.horizontalOverflowPx <= 2, `${viewport.name} failed Health semantics or overflow checks.`);
     await acknowledgeBoundedChunkRecovery(page, signals);
     assert(!hasUnexpectedBrowserSignals(signals), `${viewport.name} produced unexpected browser signals: ${JSON.stringify(signals)}.`);
-    view = { viewport: viewport.name, quotaFailureLeftFormIntact, quotaFailureCreatedNoQueueItem, offlineRecordRenderedAsDeviceOnly, offlineRecordAbsentFromServer, reconnectSyncedExactlyOnce, reloadRenderedPersistedRecord, queueDrained, audit, signals };
+    view = { viewport: viewport.name, quotaFailureLeftFormIntact, quotaFailureCreatedNoQueueItem, offlineRecordRenderedAsDeviceOnly, offlineRecordAbsentFromServer, reconnectSyncedExactlyOnce, reloadRenderedPersistedRecord, offlineMeasurementRenderedAsDeviceOnly, measurementReconnectSyncedExactlyOnce, reloadRenderedPersistedMeasurement, queueDrained, audit, signals };
   } catch (error) {
     const pages = context ? await context.pages().catch(() => []) : [];
     const rendered = pages[0] ? await pages[0].evaluate(() => document.body?.innerText.slice(0, 4_000) || "").catch(() => "") : "";
@@ -398,7 +451,7 @@ async function main(): Promise<void> {
     await browser.close().catch(() => undefined);
   }
 
-  const passed = views.length === VIEWPORTS.length && views.every((view) => view.quotaFailureLeftFormIntact && view.quotaFailureCreatedNoQueueItem && view.offlineRecordRenderedAsDeviceOnly && view.offlineRecordAbsentFromServer && view.reconnectSyncedExactlyOnce && view.reloadRenderedPersistedRecord && view.queueDrained && !hasUnexpectedBrowserSignals(view.signals)) && cleanup.every((item) => item.accountErased);
+  const passed = views.length === VIEWPORTS.length && views.every((view) => view.quotaFailureLeftFormIntact && view.quotaFailureCreatedNoQueueItem && view.offlineRecordRenderedAsDeviceOnly && view.offlineRecordAbsentFromServer && view.reconnectSyncedExactlyOnce && view.reloadRenderedPersistedRecord && view.offlineMeasurementRenderedAsDeviceOnly && view.measurementReconnectSyncedExactlyOnce && view.reloadRenderedPersistedMeasurement && view.queueDrained && !hasUnexpectedBrowserSignals(view.signals)) && cleanup.every((item) => item.accountErased);
   const report = {
     contract: "lyfeos.production-health-offline-browser.v1",
     generatedAt: new Date().toISOString(),

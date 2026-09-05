@@ -201,7 +201,7 @@ export default function DailyHealthLog() {
         <div className="rounded-xl border border-primary/20 bg-background/30 p-4">
           <div className="flex items-center justify-between gap-3 mb-3"><span className="text-sm font-semibold flex items-center gap-2"><Scale className="h-4 w-4 text-primary" />Weight</span><span className="font-mono text-primary text-sm">{summary.data?.latestWeight ? `${summary.data.latestWeight.value} ${summary.data.latestWeight.unit}` : "No entry"}</span></div>
           <p className="text-xs text-muted-foreground mb-4">{summary.data?.latestWeight ? `Last recorded ${summary.data.latestWeight.observedAt}. Your measurements stay separate from points and rank.` : "Log a baseline whenever it is useful to you. No health score is inferred."}</p>
-          <div className="flex gap-2"><Input aria-label={`Weight in ${weightUnit}`} type="number" min="1" max="100000" step="0.1" placeholder={`Weight (${weightUnit})`} value={weight} onChange={(event) => setWeight(event.target.value)} /><Button size="sm" disabled={!Number(weight) || addWeight.isPending} onClick={() => addWeight.mutate()}><Plus />Log</Button></div>
+          <div className="flex gap-2"><Input data-testid="health-weight-amount" aria-label={`Weight in ${weightUnit}`} type="number" min="1" max="100000" step="0.1" placeholder={`Weight (${weightUnit})`} value={weight} onChange={(event) => setWeight(event.target.value)} /><Button size="sm" data-testid="health-weight-save" disabled={!Number(weight) || addWeight.isPending} onClick={() => addWeight.mutate()}><Plus />Log</Button></div>
           {addWeight.error && <p className="text-xs text-destructive mt-2">Could not save that measurement. Please check the value and try again.</p>}
         </div>
       </div>
