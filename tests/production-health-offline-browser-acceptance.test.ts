@@ -10,6 +10,7 @@ const recoveryLog = fs.readFileSync("client/src/components/health/RecoveryLog.ts
 const metricsLedger = fs.readFileSync("client/src/components/health/HealthMetricsLedger.tsx", "utf8");
 const sleepLog = fs.readFileSync("client/src/components/health/SleepLog.tsx", "utf8");
 const workoutLog = fs.readFileSync("client/src/components/health/WorkoutLog.tsx", "utf8");
+const nutritionDiary = fs.readFileSync("client/src/components/health/NutritionDiary.tsx", "utf8");
 const queue = fs.readFileSync("client/src/components/health/OfflineHealthQueueStatus.tsx", "utf8");
 
 describe("production Health offline browser acceptance custody", () => {
@@ -61,6 +62,11 @@ describe("production Health offline browser acceptance custody", () => {
     expect(script).toContain("offlineWorkoutRenderedAsDeviceOnly");
     expect(script).toContain("workoutReconnectSyncedExactlyOnce");
     expect(script).toContain("reloadRenderedPersistedWorkout");
+    expect(script).toContain("offlineNutritionRenderedAsDeviceOnly");
+    expect(script).toContain("nutritionReconnectSyncedExactlyOnce");
+    expect(script).toContain("reloadRenderedPersistedNutrition");
+    expect(script).toContain("createAcceptanceFood");
+    expect(script).toContain("waitForNutritionCount");
     expect(script).toContain("queueDrained");
     expect(script).toContain("first-ever offline use");
     expect(script).toContain("storage eviction");
@@ -101,5 +107,7 @@ describe("production Health offline browser acceptance custody", () => {
     expect(workoutLog).toContain('data-testid="workout-log"');
     expect(workoutLog).toContain('data-testid="workout-activity-type"');
     expect(workoutLog).toContain('data-testid="workout-save"');
+    expect(nutritionDiary).toContain('data-testid="nutrition-diary"');
+    expect(nutritionDiary).toContain('data-testid="nutrition-log-toggle"');
   });
 });
