@@ -34,6 +34,8 @@ describe("production Health data-rights browser acceptance custody", () => {
     expect(script).toContain("human file-save destination");
     expect(script).toContain("legal retention-policy approval");
     expect(script).toContain("provider-token revoke");
+    expect(script).toContain("content-disposition");
+    expect(script).toContain("Authenticated Health export read");
   });
 
   it("uses semantic hooks without changing the Health data-rights layout", () => {
