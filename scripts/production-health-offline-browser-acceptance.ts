@@ -9,7 +9,7 @@ import { acknowledgeBoundedChunkRecovery, hasUnexpectedBrowserSignals, type Brow
 type ApiResult = { status: number; body: any; cookie: string; retryAfterSeconds: number | null };
 type Account = { id: number; email: string; displayName: string; cookie: string };
 type Signals = BrowserSignals & { expectedOfflineFailures: string[] };
-type Audit = { mainCount: number; duplicateIds: string[]; invalidLabelReferences: string[]; unlabeledControls: string[]; horizontalOverflowPx: number };
+type Audit = { mainCount: number; duplicateIds: string[]; invalidLabelReferences: string[]; unlabeledControls: Array<{ tag: string; testId: string | null; type: string | null; text: string; markup: string }>; horizontalOverflowPx: number };
 type ViewResult = {
   viewport: string;
   quotaFailureLeftFormIntact: boolean;
@@ -253,7 +253,13 @@ async function auditPage(page: Page): Promise<Audit> {
         const name = element.getAttribute("aria-label") || element.getAttribute("aria-labelledby") || element.getAttribute("title") || element.textContent?.trim();
         return !label && !element.closest("label") && !name;
       })
-      .map((element) => element.getAttribute("data-testid") || element.tagName.toLowerCase())
+      .map((element) => ({
+        tag: element.tagName.toLowerCase(),
+        testId: element.getAttribute("data-testid"),
+        type: element.getAttribute("type"),
+        text: (element.textContent || "").trim().slice(0, 120),
+        markup: element.outerHTML.replace(/\s+/g, " ").slice(0, 500),
+      }))
       .slice(0, 20);
     const width = Math.max(document.documentElement.scrollWidth, document.body?.scrollWidth || 0);
     return {
