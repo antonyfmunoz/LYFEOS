@@ -207,6 +207,16 @@ jobs:
           LYFEOS_ACCEPTANCE_HARNESS_SOURCE: ${{ github.sha }}
           LYFEOS_HEALTH_OFFLINE_OUTPUT_DIR: ${{ runner.temp }}/lyfeos-browser-acceptance
         run: npm run acceptance:production-health-offline
+      - name: Run disposable production Health data-rights acceptance
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.require_authenticated }}
+        env:
+          LYFEOS_CHROMIUM_PATH: ${{ steps.chrome.outputs.chrome-path }}
+          LYFEOS_TEST_API_URL: https://lyfeos.net
+          LYFEOS_HEALTH_DATA_RIGHTS_ACCEPTANCE_MODE: production
+          LYFEOS_ACCEPTANCE_SOURCE: ${{ steps.release.outputs.source }}
+          LYFEOS_ACCEPTANCE_HARNESS_SOURCE: ${{ github.sha }}
+          LYFEOS_HEALTH_DATA_RIGHTS_OUTPUT_DIR: ${{ runner.temp }}/lyfeos-browser-acceptance
+        run: npm run acceptance:production-health-data-rights
       - name: Run disposable production Health trends acceptance
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.require_authenticated }}
         env:
