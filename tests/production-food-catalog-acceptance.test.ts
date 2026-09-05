@@ -17,6 +17,10 @@ describe("production food-catalog acceptance custody", () => {
     expect(script).toContain('"/api/nutrition/foods/catalog-import"');
     expect(script).toContain("Tampered catalog receipt was not rejected");
     expect(script).toContain("Unknown barcode did not fail closed");
+    expect(script).toContain("unknownBarcodeCandidates");
+    expect(script).toContain("findExplicitUnknownBarcode");
+    expect(script).toContain("Configured catalog did not return an explicit unknown");
+    expect(script).toContain("weightedBodySum");
     expect(script).toContain('confirmation: "DELETE MY ACCOUNT"');
     expect(script).toContain('contract: "lyfeos.production-food-catalog.v1"');
     expect(script).not.toMatch(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);

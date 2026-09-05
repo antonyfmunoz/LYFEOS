@@ -58,6 +58,29 @@ async function eraseAccount(account: Account): Promise<boolean> {
   return erased.status === 200;
 }
 
+function unknownBarcodeCandidates(): string[] {
+  // A public catalog evolves; a fixed all-zero value became a real record in
+  // the live provider. Generate a bounded set of valid-format values and
+  // require the provider to explicitly say at least one is unknown.
+  return Array.from({ length: 5 }, (_, index) => {
+    const digits = randomUUID().replace(/-/g, "").split("").map((character) => String(parseInt(character, 16) % 10)).join("");
+    // The configured live catalog's known item is EAN-13, so exercise its
+    // supported checksum-valid format rather than an adapter-rejected length.
+    const body = `9${digits.slice(0, 10)}${index}`;
+    const weightedBodySum = body.split("").reverse().reduce((sum, digit, position) => sum + Number(digit) * (position % 2 === 0 ? 3 : 1), 0);
+    return `${body}${(10 - (weightedBodySum % 10)) % 10}`;
+  });
+}
+
+async function findExplicitUnknownBarcode(providerId: string, cookie: string): Promise<ApiResult> {
+  for (const barcode of unknownBarcodeCandidates()) {
+    const result = await request("GET", `/api/food-catalog/barcodes/${barcode}?providerId=${encodeURIComponent(providerId)}`, undefined, cookie);
+    assert(result.status === 200, `Unknown-barcode lookup returned ${result.status}.`);
+    if (result.body?.found === false && result.body?.item === null) return result;
+  }
+  throw new Error("Configured catalog did not return an explicit unknown for any generated valid-format barcode.");
+}
+
 async function main(): Promise<void> {
   assert(BASE_URL.origin === "https://lyfeos.net", "Production food-catalog acceptance may target only https://lyfeos.net.");
   assert(/^[0-9a-f]{40}$/.test(SOURCE), "Food-catalog acceptance requires the exact deployed source revision.");
@@ -96,7 +119,7 @@ async function main(): Promise<void> {
       assert(barcode.status === 200 && barcode.body?.found === true && barcode.body?.item?.externalId, `Known provider barcode lookup returned ${barcode.status}.`);
       knownBarcodeChecked = true;
     }
-    const unknownBarcode = await request("GET", `/api/food-catalog/barcodes/000000000000?providerId=${encodeURIComponent(providerId)}`, undefined, account.cookie);
+    const unknownBarcode = await findExplicitUnknownBarcode(providerId, account.cookie);
     assert(unknownBarcode.status === 200 && unknownBarcode.body?.found === false && unknownBarcode.body?.item === null, "Unknown barcode did not fail closed as an explicit unknown.");
 
     let nextPageChecked = false;

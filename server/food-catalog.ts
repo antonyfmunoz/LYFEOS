@@ -377,7 +377,7 @@ function normalizedUsdaFoodDataItem(raw: unknown, territory: string, locale: str
   };
 }
 
-async function openFoodFactsRequest(path: string, config: OpenFoodFactsCatalogConfig, fetchImpl: typeof fetch): Promise<unknown> {
+async function openFoodFactsRequest(path: string, config: OpenFoodFactsCatalogConfig, fetchImpl: typeof fetch, unknownStatuses: readonly number[] = []): Promise<unknown | null> {
   let response: Response | null = null;
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
@@ -392,7 +392,13 @@ async function openFoodFactsRequest(path: string, config: OpenFoodFactsCatalogCo
     if (response.ok || ![429, 502, 503, 504].includes(response.status) || attempt === 1) break;
   }
   if (!response) throw new FoodCatalogError("provider_failure", "The food catalog did not respond.");
-  if (!response.ok) throw new FoodCatalogError("provider_failure", "The food catalog could not complete this lookup.");
+  if (!response.ok) {
+    // Product-code validation and a missing product are absence, not provider
+    // outage. Keep every other status explicit so we never manufacture a
+    // product or hide rate-limit/authentication/provider failures.
+    if (unknownStatuses.includes(response.status)) return null;
+    throw new FoodCatalogError("provider_failure", "The food catalog could not complete this lookup.");
+  }
   try { return await response.json(); } catch { throw new FoodCatalogError("invalid_response", "The food catalog returned an invalid response."); }
 }
 
@@ -430,7 +436,8 @@ async function searchOpenFoodFacts(input: FoodCatalogSearchInput, config: OpenFo
 
 async function lookupOpenFoodFactsBarcode(barcode: string, config: OpenFoodFactsCatalogConfig, fetchImpl: typeof fetch) {
   const fields = "code,product_name,brands,nutriments,ingredients_text,serving_size,last_modified_t,labels_tags,labels";
-  const response = await openFoodFactsRequest(`/api/v3/product/${encodeURIComponent(barcode)}?fields=${fields}`, config, fetchImpl) as { status?: number | string; product?: unknown; result?: { id?: string } };
+  const response = await openFoodFactsRequest(`/api/v3/product/${encodeURIComponent(barcode)}?fields=${fields}`, config, fetchImpl, [400, 404]) as { status?: number | string; product?: unknown; result?: { id?: string } } | null;
+  if (!response) return { provider: openFoodFactsProvider, item: null };
   const found = response.status === 1 || response.status === "success" || response.result?.id === "product_found";
   return { provider: openFoodFactsProvider, item: found ? normalizedOpenFoodFactsItem(response.product, "US", "en-US") : null };
 }

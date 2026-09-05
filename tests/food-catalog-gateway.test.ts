@@ -127,6 +127,12 @@ describe("food catalog gateway", () => {
     expect(JSON.stringify(search)).not.toContain("FOOD_CATALOG_GATEWAY_TOKEN");
   });
 
+  it("maps an Open Food Facts invalid or missing product code to an explicit unknown without masking provider outages", async () => {
+    const invalidBarcodeFetch = vi.fn(async () => new Response(JSON.stringify({ status: 0 }), { status: 400, headers: { "content-type": "application/json" } }));
+    const lookup = await (await import("../server/food-catalog")).lookupFoodCatalogBarcode("9999999999999", openFoodFactsEnv, invalidBarcodeFetch as typeof fetch);
+    expect(lookup.item).toBeNull();
+  });
+
   it("supports a separately selected USDA FoodData Central nutrient source and preserves its provenance", async () => {
     expect(getFoodCatalogConfigs({ ...openFoodFactsEnv, ...usdaFoodDataEnv })).toEqual(expect.arrayContaining([expect.objectContaining({ kind: "open_food_facts" }), expect.objectContaining({ kind: "usda_fooddata_central" })]));
     const food = {
@@ -159,6 +165,8 @@ describe("food catalog gateway", () => {
     const portionMigration = readFileSync(resolve(process.cwd(), "migrations/0105_food_catalog_portions.sql"), "utf8");
     const release = readFileSync(resolve(process.cwd(), "server/release-migrate.ts"), "utf8");
     expect(routes.match(/isAuthenticated/g)?.length).toBeGreaterThanOrEqual(3);
+    expect(routes).toContain("function isValidGtin");
+    expect(routes).toContain("valid 8–14 digit GTIN barcode");
     expect(nutrition).toContain('"/api/nutrition/foods/catalog-import"');
     expect(nutrition).toContain("verifyConfiguredFoodCatalogToken");
     expect(scanner).toContain("catalogLookupToken");

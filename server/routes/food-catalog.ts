@@ -11,7 +11,12 @@ const initialSearchSchema = z.object({
   providerId: z.string().trim().min(1).max(80).regex(/^[a-z0-9][a-z0-9_-]*$/).optional(),
 }).strict();
 const searchSchema = z.union([initialSearchSchema, z.object({ cursor: z.string().min(80).max(4_000) }).strict()]);
-const barcodeSchema = z.string().trim().regex(/^\d{8,14}$/);
+function isValidGtin(value: string): boolean {
+  if (!/^\d{8,14}$/.test(value)) return false;
+  return value.split("").reverse().reduce((sum, digit, index) => sum + Number(digit) * (index % 2 === 0 ? 1 : 3), 0) % 10 === 0;
+}
+
+const barcodeSchema = z.string().trim().refine(isValidGtin, "Enter a valid 8–14 digit GTIN barcode.");
 const barcodeProviderSchema = z.string().trim().min(1).max(80).regex(/^[a-z0-9][a-z0-9_-]*$/).optional();
 
 function catalogFailure(error: unknown, res: Response) {
@@ -39,7 +44,7 @@ export function registerFoodCatalogRoutes(app: Express): void {
 
   app.get("/api/food-catalog/barcodes/:barcode", isAuthenticated, async (req: Request, res: Response) => {
     const parsed = barcodeSchema.safeParse(req.params.barcode);
-    if (!parsed.success) return res.status(400).json({ error: "Enter a valid 8–14 digit product barcode." });
+    if (!parsed.success) return res.status(400).json({ error: "Enter a valid 8–14 digit GTIN product barcode." });
     const provider = barcodeProviderSchema.safeParse(req.query.providerId);
     if (!provider.success) return res.status(400).json({ error: "Choose a valid food catalog provider." });
     try {
