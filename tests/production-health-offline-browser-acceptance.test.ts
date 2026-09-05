@@ -84,6 +84,13 @@ describe("production Health offline browser acceptance custody", () => {
     expect(script).toContain("site-data deletion");
   });
 
+  it("retries only bounded, idempotent evidence reads after a transient transport timeout", () => {
+    expect(script).toContain("async function requestRead");
+    expect(script).toContain('request("GET", pathname, undefined, cookie, headers');
+    expect(script).toContain("every HTTP response (including 5xx) stay one-shot evidence.");
+    expect(script).toContain("isTransientReadFailure");
+  });
+
   it("uses stable semantic hooks without changing the Health layout", () => {
     expect(page).toContain('data-testid="health-page"');
     expect(dailyLog).toContain('data-testid="daily-health-log"');

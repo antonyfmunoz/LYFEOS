@@ -101,10 +101,10 @@ function isExpectedOfflineSentryTelemetryError(message: string): boolean {
   return /ERR_INTERNET_DISCONNECTED/i.test(message) && /https:\/\/o\d+\.ingest\.[\w.-]+\.sentry\.io\/api\//i.test(message);
 }
 
-async function request(method: string, pathname: string, body?: unknown, cookie = "", headers: Record<string, string> = {}): Promise<ApiResult> {
+async function request(method: string, pathname: string, body?: unknown, cookie = "", headers: Record<string, string> = {}, timeoutMs = 30_000): Promise<ApiResult> {
   const response = await fetch(new URL(pathname, BASE_URL), {
     method,
-    signal: AbortSignal.timeout(30_000),
+    signal: AbortSignal.timeout(timeoutMs),
     headers: {
       "Content-Type": "application/json",
       ...(MODE === "isolated" ? { "X-Forwarded-Proto": "https" } : {}),
@@ -120,6 +120,32 @@ async function request(method: string, pathname: string, body?: unknown, cookie 
     cookie: (response.headers.get("set-cookie") || "").split(";", 1)[0],
     retryAfterSeconds: Number.isFinite(Number(response.headers.get("retry-after"))) ? Number(response.headers.get("retry-after")) : null,
   };
+}
+
+function isTransientReadFailure(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /aborted due to timeout|timeout|fetch failed|network error|socket hang up/i.test(message);
+}
+
+/**
+ * Production evidence reads occasionally race a deploy-time database pool
+ * reconnect. Retry only safe GETs, with a bounded per-attempt timeout. Writes
+ * and every HTTP response (including 5xx) stay one-shot evidence.
+ */
+async function requestRead(pathname: string, cookie = "", headers: Record<string, string> = {}): Promise<ApiResult> {
+  const deadline = Date.now() + 45_000;
+  let lastError: unknown = null;
+  while (Date.now() < deadline) {
+    try {
+      return await request("GET", pathname, undefined, cookie, headers, Math.min(10_000, Math.max(1_000, deadline - Date.now())));
+    } catch (error) {
+      if (!isTransientReadFailure(error)) throw error;
+      lastError = error;
+      if (Date.now() + 500 >= deadline) break;
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+  }
+  throw lastError || new Error(`Timed out reading ${pathname}.`);
 }
 
 async function registerDisposableAccount(account: Account): Promise<void> {
@@ -280,7 +306,7 @@ async function auditPage(page: Page): Promise<Audit> {
 }
 
 async function readHydration(account: Account, date: string, timeZone: string, utcOffsetMinutes: number): Promise<any[]> {
-  const result = await request("GET", `/api/health-fitness/hydration?date=${encodeURIComponent(date)}`, undefined, account.cookie, { "x-lyfeos-time-zone": timeZone, "x-lyfeos-utc-offset-minutes": String(utcOffsetMinutes) });
+  const result = await requestRead(`/api/health-fitness/hydration?date=${encodeURIComponent(date)}`, account.cookie, { "x-lyfeos-time-zone": timeZone, "x-lyfeos-utc-offset-minutes": String(utcOffsetMinutes) });
   assert(result.status === 200 && Array.isArray(result.body?.entries), `Hydration read returned ${result.status}.`);
   return result.body.entries;
 }
@@ -303,7 +329,7 @@ async function waitForHydrationCount(account: Account, date: string, timeZone: s
 }
 
 async function readMeasurements(account: Account): Promise<any[]> {
-  const result = await request("GET", "/api/health-fitness/measurements", undefined, account.cookie);
+  const result = await requestRead("/api/health-fitness/measurements", account.cookie);
   assert(result.status === 200 && Array.isArray(result.body?.measurements), `Measurement read returned ${result.status}.`);
   return result.body.measurements;
 }
@@ -324,7 +350,7 @@ async function waitForWeightCount(account: Account, expected: number): Promise<v
 }
 
 async function readSupplements(account: Account, date: string, timeZone: string, utcOffsetMinutes: number): Promise<any[]> {
-  const result = await request("GET", `/api/health-fitness/supplements?date=${encodeURIComponent(date)}`, undefined, account.cookie, { "x-lyfeos-time-zone": timeZone, "x-lyfeos-utc-offset-minutes": String(utcOffsetMinutes) });
+  const result = await requestRead(`/api/health-fitness/supplements?date=${encodeURIComponent(date)}`, account.cookie, { "x-lyfeos-time-zone": timeZone, "x-lyfeos-utc-offset-minutes": String(utcOffsetMinutes) });
   assert(result.status === 200 && Array.isArray(result.body?.entries), `Supplement read returned ${result.status}.`);
   return result.body.entries;
 }
@@ -345,7 +371,7 @@ async function waitForSupplementCount(account: Account, date: string, timeZone: 
 }
 
 async function readRecoveryActivities(account: Account, date: string, timeZone: string, utcOffsetMinutes: number): Promise<any[]> {
-  const result = await request("GET", `/api/recovery-activities?date=${encodeURIComponent(date)}`, undefined, account.cookie, { "x-lyfeos-time-zone": timeZone, "x-lyfeos-utc-offset-minutes": String(utcOffsetMinutes) });
+  const result = await requestRead(`/api/recovery-activities?date=${encodeURIComponent(date)}`, account.cookie, { "x-lyfeos-time-zone": timeZone, "x-lyfeos-utc-offset-minutes": String(utcOffsetMinutes) });
   assert(result.status === 200 && Array.isArray(result.body?.activities), `Recovery activity read returned ${result.status}.`);
   return result.body.activities;
 }
@@ -366,7 +392,7 @@ async function waitForRecoveryActivityCount(account: Account, date: string, time
 }
 
 async function readHealthObservations(account: Account): Promise<any[]> {
-  const result = await request("GET", "/api/health-observations", undefined, account.cookie);
+  const result = await requestRead("/api/health-observations", account.cookie);
   assert(result.status === 200 && Array.isArray(result.body?.observations), `Health-observation read returned ${result.status}.`);
   return result.body.observations;
 }
@@ -387,7 +413,7 @@ async function waitForObservationCount(account: Account, expected: number): Prom
 }
 
 async function readSleepSessions(account: Account, date: string, timeZone: string, utcOffsetMinutes: number): Promise<any[]> {
-  const result = await request("GET", `/api/health-fitness/sleep?days=14&endDate=${encodeURIComponent(date)}`, undefined, account.cookie, { "x-lyfeos-time-zone": timeZone, "x-lyfeos-utc-offset-minutes": String(utcOffsetMinutes) });
+  const result = await requestRead(`/api/health-fitness/sleep?days=14&endDate=${encodeURIComponent(date)}`, account.cookie, { "x-lyfeos-time-zone": timeZone, "x-lyfeos-utc-offset-minutes": String(utcOffsetMinutes) });
   assert(result.status === 200 && Array.isArray(result.body?.sessions), `Sleep-session read returned ${result.status}.`);
   return result.body.sessions;
 }
@@ -408,7 +434,7 @@ async function waitForSleepSessionCount(account: Account, date: string, timeZone
 }
 
 async function readWorkouts(account: Account, date: string, timeZone: string, utcOffsetMinutes: number): Promise<any[]> {
-  const result = await request("GET", `/api/workouts?date=${encodeURIComponent(date)}`, undefined, account.cookie, { "x-lyfeos-time-zone": timeZone, "x-lyfeos-utc-offset-minutes": String(utcOffsetMinutes) });
+  const result = await requestRead(`/api/workouts?date=${encodeURIComponent(date)}`, account.cookie, { "x-lyfeos-time-zone": timeZone, "x-lyfeos-utc-offset-minutes": String(utcOffsetMinutes) });
   assert(result.status === 200 && Array.isArray(result.body?.workouts), `Workout read returned ${result.status}.`);
   return result.body.workouts;
 }
@@ -444,7 +470,7 @@ async function createAcceptanceFood(account: Account): Promise<number> {
 }
 
 async function readNutritionDiary(account: Account, date: string, timeZone: string, utcOffsetMinutes: number): Promise<any[]> {
-  const result = await request("GET", `/api/nutrition/diary?date=${encodeURIComponent(date)}`, undefined, account.cookie, { "x-lyfeos-time-zone": timeZone, "x-lyfeos-utc-offset-minutes": String(utcOffsetMinutes) });
+  const result = await requestRead(`/api/nutrition/diary?date=${encodeURIComponent(date)}`, account.cookie, { "x-lyfeos-time-zone": timeZone, "x-lyfeos-utc-offset-minutes": String(utcOffsetMinutes) });
   assert(result.status === 200 && Array.isArray(result.body?.entries), `Nutrition diary read returned ${result.status}.`);
   return result.body.entries;
 }
