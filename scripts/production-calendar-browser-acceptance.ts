@@ -458,6 +458,13 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     await page.waitForFunction((title) => !document.querySelector('[data-testid="calendar-offline-queue"]')?.textContent?.includes(String(title)), { timeout: 45_000 }, offlineTitle);
 
     stage = "stop stale edit and require explicit conflict choice";
+    // The offline recovery contract above is intentionally exercised with the
+    // HTTP cache disabled. Its proof is complete once the queued create has
+    // reconciled. Restore the primary tab's ordinary cache before beginning
+    // the independent two-live-tab conflict contract, so that contract does
+    // not manufacture a dual cold-load storm against the same HTTP/2 session.
+    // Strict browser-signal auditing remains in force for both contracts.
+    await page.setCacheEnabled(true);
     await page.reload({ waitUntil: "domcontentloaded", timeout: 60_000 });
     await page.waitForSelector('[data-testid="calendar-page"]', { visible: true, timeout: 60_000 });
     await dismissBlockingTutorial(page);

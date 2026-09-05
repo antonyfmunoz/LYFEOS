@@ -38,6 +38,11 @@ describe("production Calendar evidence custody", () => {
     expect(acceptance).toContain("competingPage = await context.newPage()");
     expect(acceptance).toContain("await competingPage.setCacheEnabled(true)");
     expect(acceptance).toContain("duplicate cold-load storm for route assets over one HTTP/2 session");
+    expect(acceptance).toContain("Restore the primary tab's ordinary cache before beginning");
+    const restorePrimaryCache = acceptance.indexOf("await page.setCacheEnabled(true);");
+    const conflictOpen = acceptance.indexOf('stage = "open a second live tab on the same canonical revision"');
+    expect(restorePrimaryCache).toBeGreaterThan(-1);
+    expect(conflictOpen).toBeGreaterThan(restorePrimaryCache);
     expect(acceptance).toContain("await page.bringToFront()");
     expect(acceptance).toContain("The second live tab did not commit Calendar mission revision two");
     const competingRecovery = acceptance.indexOf("await acknowledgeBoundedChunkRecovery(competingPage, signals)");
