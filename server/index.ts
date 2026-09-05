@@ -95,7 +95,11 @@ app.set("trust proxy", 1);
 // Clerk's Svix signature covers the exact request bytes. This must run before
 // JSON parsing so the webhook route can authenticate those bytes.
 app.post("/api/webhooks/clerk", express.raw({ type: "application/json", limit: "1mb" }));
-app.post("/api/sentry-tunnel", express.raw({ type: "application/x-sentry-envelope", limit: "250kb" }));
+// Sentry's browser SDK can include a content-type parameter on envelopes. This
+// route is itself fixed and its handler only accepts a non-empty raw buffer for
+// the configured Sentry DSN, so parse the full request body here rather than
+// rejecting a valid SDK envelope on a harmless content-type variation.
+app.post("/api/sentry-tunnel", express.raw({ type: () => true, limit: "250kb" }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 
