@@ -35,6 +35,9 @@ describe("consent-bound collaboration contract", () => {
     expect(component).toContain("from workspace");
     expect(component).toContain('aria-label="Shared view recipient"');
     expect(component).toContain('aria-label="Mission or Thread to share"');
+    expect(component).toContain('refetchOnMount: "always"');
+    expect(component).toContain('refetchOnWindowFocus: "always"');
+    expect(component).toContain("refetchInterval: 10_000");
     expect(source("client/src/pages/ProfilePage.tsx")).toContain("<CollaborationSettings />");
   });
 

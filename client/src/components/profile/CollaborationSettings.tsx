@@ -32,7 +32,17 @@ export default function CollaborationSettings() {
   const [grantPurpose, setGrantPurpose] = useState("");
   const [grantExpiry, setGrantExpiry] = useState(inThirtyDays());
 
-  const state = useQuery<CollaborationState>({ queryKey: ["/api/collaboration"] });
+  // Invitations and revocations can be initiated by another account while this
+  // Profile view is open. Do not inherit the app-wide immutable query cache for
+  // this consent state: a member must be able to see an arriving invitation and
+  // a revoked grant without navigating away or relying on stale local data.
+  const state = useQuery<CollaborationState>({
+    queryKey: ["/api/collaboration"],
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: "always",
+    refetchInterval: 10_000,
+  });
   const shared = useQuery<{ items: SharedItem[] }>({ queryKey: ["/api/collaboration/shared-with-me"] });
   const options = useQuery<ShareOptions>({ queryKey: ["/api/collaboration/share-options"] });
   const search = useQuery<{ users: Array<{ id: number; displayName: string }> }>({
