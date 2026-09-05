@@ -1,8 +1,9 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { describe, expect, it } from "vitest";
+import { indexedDB as fakeIndexedDB } from "fake-indexeddb";
+import { describe, expect, it, vi } from "vitest";
 import { deletionReceiptExpiry, healthMutationId, healthMutationPayloadHash } from "../server/health-mutation-integrity";
-import { countHealthMutationQueue, healthMutationRecordType, offlineHealthStorageError } from "../client/src/lib/healthOfflineQueue";
+import { countHealthMutationQueue, flushHealthMutationQueue, healthMutationRecordType, listHealthMutationQueue, offlineHealthStorageError, submitHealthMutation } from "../client/src/lib/healthOfflineQueue";
 
 const source = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8");
 
@@ -116,6 +117,57 @@ describe("health mutation integrity", () => {
     } finally {
       if (descriptor) Object.defineProperty(globalThis, "indexedDB", descriptor);
       else delete (globalThis as { indexedDB?: IDBFactory }).indexedDB;
+    }
+  });
+
+  it("replays each supported offline Health create once, to its own endpoint, without exposing its private payload", async () => {
+    const indexedDbDescriptor = Object.getOwnPropertyDescriptor(globalThis, "indexedDB");
+    const navigatorDescriptor = Object.getOwnPropertyDescriptor(globalThis, "navigator");
+    const originalFetch = globalThis.fetch;
+    const sent: Array<{ url: string; method: string; mutationId: string | null; body: unknown }> = [];
+    const userId = Number(`9${Date.now().toString().slice(-9)}`);
+    const cases = [
+      { url: "/api/nutrition/diary", body: { foodId: 1, quantity: 100, inputUnit: "g" }, recordType: "nutrition" },
+      { url: "/api/workouts", body: { activityType: "Strength training", exercises: [] }, recordType: "workout" },
+      { url: "/api/health-fitness/sleep/sessions", body: { startedAt: "2026-09-04T01:00:00.000Z", endedAt: "2026-09-04T09:00:00.000Z", source: "manual" }, recordType: "sleep" },
+      { url: "/api/recovery-activities", body: { activityType: "sauna", occurredAt: "2026-09-04T12:00:00.000Z" }, recordType: "recovery" },
+      { url: "/api/health-fitness/hydration", body: { quantity: 500, inputUnit: "ml" }, recordType: "hydration" },
+      { url: "/api/health-fitness/measurements", body: { metric: "weight", value: 75, unit: "kg", source: "manual" }, recordType: "measurement" },
+      { url: "/api/health-fitness/supplements", body: { name: "Vitamin D", amount: 1000, unit: "IU" }, recordType: "supplement" },
+      { url: "/api/health-observations", body: { metricKey: "resting_heart_rate", displayName: "Resting heart rate", category: "cardiovascular", value: 55, unit: "bpm", observedAt: "2026-09-04" }, recordType: "health observation" },
+    ] as const;
+
+    Object.defineProperty(globalThis, "indexedDB", { configurable: true, value: fakeIndexedDB });
+    Object.defineProperty(globalThis, "navigator", { configurable: true, value: { onLine: false } });
+    globalThis.fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const headers = new Headers(init?.headers);
+      sent.push({ url: String(input), method: init?.method || "GET", mutationId: headers.get("x-lyfeos-mutation-id"), body: init?.body ? JSON.parse(String(init.body)) : null });
+      return new Response(JSON.stringify({ accepted: true }), { status: 201, headers: { "Content-Type": "application/json" } });
+    });
+
+    try {
+      const queued = await Promise.all(cases.map((item) => submitHealthMutation({ userId, url: item.url, body: item.body })));
+      expect(queued.every((result) => result.queued)).toBe(true);
+      const deviceOnly = await listHealthMutationQueue(userId);
+      expect(deviceOnly).toHaveLength(cases.length);
+      expect(deviceOnly.map((item) => item.recordType).sort()).toEqual(cases.map((item) => item.recordType).sort());
+      expect(JSON.stringify(deviceOnly)).not.toContain("Vitamin D");
+      expect(JSON.stringify(deviceOnly)).not.toContain("resting_heart_rate");
+
+      Object.defineProperty(globalThis, "navigator", { configurable: true, value: { onLine: true } });
+      await expect(flushHealthMutationQueue(userId)).resolves.toEqual({ sent: cases.length, pending: 0, failed: 0 });
+      expect(await countHealthMutationQueue(userId)).toEqual({ pending: 0, failed: 0 });
+      expect(sent).toHaveLength(cases.length);
+      expect(sent.map((item) => item.url).sort()).toEqual(cases.map((item) => item.url).sort());
+      expect(sent.every((item) => item.method === "POST" && Boolean(item.mutationId))).toBe(true);
+      expect(new Set(sent.map((item) => item.mutationId)).size).toBe(cases.length);
+      expect(sent.map((item) => JSON.stringify(item.body)).sort()).toEqual(cases.map((item) => JSON.stringify(item.body)).sort());
+    } finally {
+      globalThis.fetch = originalFetch;
+      if (indexedDbDescriptor) Object.defineProperty(globalThis, "indexedDB", indexedDbDescriptor);
+      else delete (globalThis as { indexedDB?: IDBFactory }).indexedDB;
+      if (navigatorDescriptor) Object.defineProperty(globalThis, "navigator", navigatorDescriptor);
+      else delete (globalThis as { navigator?: Navigator }).navigator;
     }
   });
 

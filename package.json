@@ -167,6 +167,7 @@
     "autoprefixer": "^10.4.20",
     "drizzle-kit": "^0.31.10",
     "esbuild": "^0.28.2",
+    "fake-indexeddb": "^6.2.5",
     "postcss": "^8.4.47",
     "puppeteer-core": "^24.43.1",
     "supertest": "^7.2.2",
