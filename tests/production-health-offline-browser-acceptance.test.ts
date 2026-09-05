@@ -39,6 +39,7 @@ describe("production Health offline browser acceptance custody", () => {
     expect(script).toContain("quotaFailureCreatedNoQueueItem");
     expect(script).toContain("storageProtectionDisclosed");
     expect(script).toContain("truthful offline-storage protection disclosure");
+    expect(script).toContain("JSON.stringify(audit)");
     expect(script).toContain("offlineRecordRenderedAsDeviceOnly");
     expect(script).toContain("offlineRecordAbsentFromServer");
     expect(script).toContain("await page.setOfflineMode(true)");
