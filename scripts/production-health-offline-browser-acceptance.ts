@@ -97,6 +97,10 @@ function isExpectedOfflineClerkChunkError(message: string): boolean {
   return /ChunkLoadError: Loading chunk \d+ failed\.\s*\(error: https:\/\/clerk\.lyfeos\.net\/npm\/@clerk\/clerk-js@\d+(?:\.\d+){1,3}\/dist\/[\w.-]+\.js\)/i.test(message);
 }
 
+function isExpectedOfflineSentryTelemetryError(message: string): boolean {
+  return /ERR_INTERNET_DISCONNECTED/i.test(message) && /https:\/\/o\d+\.ingest\.[\w.-]+\.sentry\.io\/api\//i.test(message);
+}
+
 async function request(method: string, pathname: string, body?: unknown, cookie = "", headers: Record<string, string> = {}): Promise<ApiResult> {
   const response = await fetch(new URL(pathname, BASE_URL), {
     method,
@@ -161,7 +165,10 @@ function captureSignals(page: Page, state: { intentionalOffline: boolean }): Sig
   page.on("console", (entry) => {
     if (entry.type() !== "error") return;
     const detail = `${entry.text()}${entry.location().url ? ` @ ${entry.location().url}` : ""}`.slice(0, 500);
-    if (state.intentionalOffline && detail.includes("ERR_INTERNET_DISCONNECTED")) return;
+    if ((state.intentionalOffline && detail.includes("ERR_INTERNET_DISCONNECTED")) || isExpectedOfflineSentryTelemetryError(detail)) {
+      signals.expectedOfflineFailures.push(`console ${detail}`);
+      return;
+    }
     signals.consoleErrors.push(detail);
   });
   page.on("pageerror", (error) => {
