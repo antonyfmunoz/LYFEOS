@@ -53,6 +53,7 @@ describe("Cross-domain hypothesis workspace", () => {
     expect(productionAcceptance).toContain('new URL("/tracker", BASE_URL)');
     expect(productionAcceptance).toContain("domainsDefaultedOff");
     expect(productionAcceptance).toContain("noProgressionOrAutomaticAction");
+    expect(productionAcceptance).toContain("wellnessReported: true");
     expect(productionWorkflow).toContain("npm run acceptance:production-pattern-explorer");
   });
 });

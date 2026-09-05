@@ -212,6 +212,9 @@ async function seedOwnedEvidence(account: Account): Promise<void> {
       mentalState: index + 2,
       physicalState: 5,
       emotionalState: 5,
+      // A neutral/default daily row is intentionally not analytical evidence.
+      // The fixture must model an explicit user check-in for this signal.
+      wellnessReported: true,
     }, account.cookie);
     assert(daily.status === 200, `Daily-state fixture ${index + 1} returned ${daily.status}.`);
     const hydration = await request("POST", "/api/health-fitness/hydration", {
