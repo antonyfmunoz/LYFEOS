@@ -25,7 +25,10 @@ concurrency:
 jobs:
   production-browser-acceptance:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    # This suite intentionally runs every disposable production journey serially
+    # against one immutable release. Keep the gate bounded, but give its full
+    # authenticated, data-rights, Health, and cleanup coverage time to finish.
+    timeout-minutes: 90
     environment: production
     env:
       LYFEOS_ACCEPTANCE_BASE_URL: https://lyfeos.net
