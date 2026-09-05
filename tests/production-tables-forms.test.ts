@@ -33,16 +33,20 @@ describe("production Tables and Forms evidence custody", () => {
     expect(acceptance).toContain('source === new URL("/api/auth/me", BASE_URL).toString()');
     expect(acceptance).toContain("acknowledgeReconciledBodylessMutation");
     expect(acceptance).toContain("human assistive-technology comprehension");
+    expect(acceptance).toContain("Restore normal browser caching before the");
 
     const revocationProof = acceptance.indexOf('candidate.id === grant.id && candidate.revokedAt');
     const tokenProof = acceptance.indexOf('assert(revokedTokenRejected');
     const navigationProof = acceptance.indexOf("await page.waitForSelector('[data-testid=\"table-editor\"]'", tokenProof);
+    const restoreCache = acceptance.indexOf("await page.setCacheEnabled(true);");
+    const revokeStage = acceptance.indexOf('stage = "revoke shared access and delete table"');
     const revocationAcknowledgement = acceptance.indexOf('acknowledgeReconciledBodylessMutation(signals, "POST", `/api/forms/${formId}/access-grants/${grant.id}/revoke`)');
     const recoveryAcknowledgement = acceptance.indexOf("await acknowledgeBoundedChunkRecovery(page, signals)");
     const signalAssertion = acceptance.indexOf('assert(!hasUnexpectedBrowserSignals(signals), `${viewport.name} private Table/Form journey');
     expect(revocationProof).toBeGreaterThan(-1);
     expect(tokenProof).toBeGreaterThan(revocationProof);
     expect(navigationProof).toBeGreaterThan(tokenProof);
+    expect(restoreCache).toBeGreaterThan(revokeStage);
     expect(revocationAcknowledgement).toBeGreaterThan(navigationProof);
     expect(recoveryAcknowledgement).toBeGreaterThan(revocationAcknowledgement);
     expect(signalAssertion).toBeGreaterThan(recoveryAcknowledgement);

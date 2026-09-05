@@ -413,6 +413,13 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     publicPage = null;
 
     stage = "revoke shared access and delete table";
+    // The owner journey above deliberately starts from an empty browser cache.
+    // That first-load proof is complete before this independent revocation and
+    // deletion contract begins. Restore normal browser caching before the
+    // reload so the test does not manufacture a cold route/API storm while it
+    // is auditing a routine live-session transition. All signal, ownership,
+    // revocation, and deletion assertions remain strict.
+    await page.setCacheEnabled(true);
     await page.reload({ waitUntil: "domcontentloaded", timeout: 60_000 });
     await page.waitForFunction(() => [...document.querySelectorAll("button")].some((button) => button.textContent?.trim() === "Revoke"), { timeout: 45_000 });
     await activateButtonByText(page, "Revoke");
