@@ -21,6 +21,9 @@ Sentry.init({
   enabled: Boolean(dsn),
   environment,
   release: runtimeConfig?.sentryRelease || import.meta.env.VITE_SENTRY_RELEASE,
+  // Route browser envelopes through LyfeOS so the app's trusted server can
+  // forward them to the configured project without a browser CORS dependency.
+  tunnel: "/api/sentry-tunnel",
   integrations: [Sentry.browserTracingIntegration()],
   tracesSampleRate: environment === "production" ? 0.1 : 1,
   tracePropagationTargets: ["localhost", /^\/api\//],

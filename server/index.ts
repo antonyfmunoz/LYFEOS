@@ -95,6 +95,7 @@ app.set("trust proxy", 1);
 // Clerk's Svix signature covers the exact request bytes. This must run before
 // JSON parsing so the webhook route can authenticate those bytes.
 app.post("/api/webhooks/clerk", express.raw({ type: "application/json", limit: "1mb" }));
+app.post("/api/sentry-tunnel", express.raw({ type: "application/x-sentry-envelope", limit: "250kb" }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 
@@ -128,6 +129,20 @@ app.use(session({
     sameSite: 'lax'
   }
 }));
+
+app.post("/api/sentry-tunnel", async (req, res) => {
+  if (!sentryDsn || !Buffer.isBuffer(req.body) || req.body.length === 0) return res.sendStatus(404);
+  try {
+    const dsn = new URL(sentryDsn);
+    const projectId = dsn.pathname.replace(/^\//, "");
+    if (!dsn.username || !/^\d+$/.test(projectId)) return res.sendStatus(404);
+    const endpoint = `${dsn.protocol}//${dsn.host}/api/${projectId}/envelope/?sentry_version=7&sentry_key=${encodeURIComponent(dsn.username)}`;
+    const upstream = await fetch(endpoint, { method: "POST", headers: { "content-type": "application/x-sentry-envelope" }, body: req.body, signal: AbortSignal.timeout(10_000) });
+    return res.sendStatus(upstream.ok ? 200 : 502);
+  } catch {
+    return res.sendStatus(502);
+  }
+});
 
 const rateLimitStore = new Map<string, { count: number; windowStart: number }>();
 
