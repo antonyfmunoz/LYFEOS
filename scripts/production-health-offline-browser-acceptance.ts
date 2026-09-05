@@ -577,6 +577,13 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     const reconnectSyncedExactlyOnce = true;
 
     stage = "reload Health";
+    // The offline hydration lifecycle has now been proven through queueing,
+    // device-only disclosure, reconnect, and exact server reconciliation.
+    // Restore normal browser caching for the following persistence checks so
+    // repeated ordinary Health reloads do not manufacture a cold-load storm.
+    // Every reload still verifies the factual record and strict browser
+    // signals remain part of the final contract.
+    await page.setCacheEnabled(true);
     await page.reload({ waitUntil: "domcontentloaded", timeout: 60_000 });
     stage = "wait for reloaded Health page";
     await page.waitForSelector('[data-testid="health-page"]', { visible: true, timeout: 60_000 });

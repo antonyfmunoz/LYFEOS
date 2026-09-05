@@ -44,6 +44,10 @@ describe("production Health offline browser acceptance custody", () => {
     expect(script).toContain('window.dispatchEvent(new Event("online"))');
     expect(script).toContain("reconnectSyncedExactlyOnce");
     expect(script).toContain("reloadRenderedPersistedRecord");
+    expect(script).toContain("Restore normal browser caching for the following persistence checks");
+    const restoreNormalCaching = script.indexOf("await page.setCacheEnabled(true);");
+    const firstReload = script.indexOf('stage = "reload Health"');
+    expect(restoreNormalCaching).toBeGreaterThan(firstReload);
     expect(script).toContain("offlineMeasurementRenderedAsDeviceOnly");
     expect(script).toContain("measurementReconnectSyncedExactlyOnce");
     expect(script).toContain("reloadRenderedPersistedMeasurement");
