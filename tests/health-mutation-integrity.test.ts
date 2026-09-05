@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { indexedDB as fakeIndexedDB } from "fake-indexeddb";
 import { describe, expect, it, vi } from "vitest";
 import { deletionReceiptExpiry, healthMutationId, healthMutationPayloadHash } from "../server/health-mutation-integrity";
-import { countHealthMutationQueue, flushHealthMutationQueue, healthMutationRecordType, listHealthMutationQueue, offlineHealthStorageError, submitHealthMutation } from "../client/src/lib/healthOfflineQueue";
+import { countHealthMutationQueue, flushHealthMutationQueue, healthMutationRecordType, healthOfflinePersistenceState, listHealthMutationQueue, offlineHealthStorageError, submitHealthMutation } from "../client/src/lib/healthOfflineQueue";
 
 const source = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8");
 
@@ -125,6 +125,20 @@ describe("health mutation integrity", () => {
     } finally {
       if (descriptor) Object.defineProperty(globalThis, "indexedDB", descriptor);
       else delete (globalThis as { indexedDB?: IDBFactory }).indexedDB;
+    }
+  });
+
+  it("requests persistent browser storage for new offline health records without overstating the result", async () => {
+    const persisted = vi.fn().mockResolvedValue(false);
+    const persist = vi.fn().mockResolvedValue(true);
+    vi.stubGlobal("navigator", { storage: { persisted, persist } });
+    try {
+      await expect(healthOfflinePersistenceState()).resolves.toBe("best-effort");
+      expect(persist).not.toHaveBeenCalled();
+      await expect(healthOfflinePersistenceState(true)).resolves.toBe("persistent");
+      expect(persist).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.unstubAllGlobals();
     }
   });
 
