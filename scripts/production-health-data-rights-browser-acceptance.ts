@@ -67,6 +67,18 @@ async function clickReady(page: Page, selector: string): Promise<void> {
   await page.click(selector);
 }
 
+async function loadHealthDataRights(page: Page): Promise<void> {
+  // Health workspaces intentionally defer their chunks by viewport proximity.
+  // Advance through the document rather than jumping to the initial placeholder
+  // height, because earlier chunks expand the page while they load.
+  for (let step = 0; step < 80; step += 1) {
+    if (await page.$('[data-testid="health-data-rights"]')) return;
+    await page.evaluate(() => window.scrollBy(0, Math.max(480, Math.floor(window.innerHeight * 0.8))));
+    await new Promise((resolve) => setTimeout(resolve, 120));
+  }
+  await page.waitForSelector('[data-testid="health-data-rights"]', { visible: true, timeout: 30_000 });
+}
+
 async function auditPage(page: Page): Promise<Audit> {
   return page.evaluate(() => {
     const scope = document.querySelector<HTMLElement>('[data-testid="health-page"]'); if (!scope) throw new Error("Health acceptance scope is not rendered.");
@@ -96,7 +108,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     context = await browser.createBrowserContext(); const page = await context.newPage(); const signals = captureSignals(page); const session = cookieParts(account.cookie);
     await page.setCookie({ ...session, url: BASE_URL.origin, path: "/", httpOnly: true, secure: true, sameSite: "Lax" }); await page.setViewport(viewport.value); await page.setCacheEnabled(false);
     stage = "navigate to Health"; await page.goto(new URL("/health", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 }); await page.waitForSelector('[data-testid="health-page"]', { visible: true, timeout: 60_000 });
-    stage = "load Health data controls"; await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight)); await page.waitForSelector('[data-testid="health-data-rights"]', { visible: true, timeout: 60_000 });
+    stage = "load Health data controls"; await loadHealthDataRights(page);
     stage = "save explicit Health data permissions"; await clickReady(page, '[data-testid="health-ai-context-enabled"]'); await clickReady(page, '[data-testid="health-planning-context-enabled"]'); await clickReady(page, '[data-testid="health-data-rights-save"]'); await page.waitForSelector('[data-testid="health-data-rights-saved"]', { visible: true, timeout: 30_000 });
     const savedRights = await request("GET", "/api/health-data/rights", undefined, account.cookie); const preferencesSaved = savedRights.status === 200 && savedRights.body?.preferences?.aiContextEnabled === true && savedRights.body?.preferences?.planningContextEnabled === true; assert(preferencesSaved, "Health permission settings did not persist through the UI.");
     stage = "download Health export from the UI"; const exportResponse = page.waitForResponse((response) => new URL(response.url()).pathname === "/api/health-data/export" && response.request().method() === "GET", { timeout: 30_000 }); await clickReady(page, '[data-testid="health-data-export"]'); const exportBody = JSON.parse(await (await exportResponse).text());

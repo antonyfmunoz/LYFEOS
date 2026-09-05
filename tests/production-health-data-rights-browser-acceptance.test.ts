@@ -27,6 +27,8 @@ describe("production Health data-rights browser acceptance custody", () => {
     expect(script).toContain("exportIncludedNoCredentialReferences");
     expect(script).toContain("deletedHealthDomain");
     expect(script).toContain("rightsReceiptRetained");
+    expect(script).toContain("loadHealthDataRights");
+    expect(script).toContain("Health workspaces intentionally defer their chunks");
     expect(script).toContain("human file-save destination");
     expect(script).toContain("legal retention-policy approval");
     expect(script).toContain("provider-token revoke");
