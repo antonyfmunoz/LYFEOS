@@ -238,7 +238,7 @@ app.use("/api/progression/reconcile", createRateLimiter("progression-reconcile",
 // the anonymous ceiling while saving eight Missions and activating its Thread,
 // so authenticated accounts receive a larger aggregate budget. Tighter auth,
 // AI, webhook, public-form, and provider-specific policies still run first.
-app.use("/api", createRateLimiter("api", qualificationRequestLimit(100), 60 * 1000, true, qualificationRequestLimit(300)));
+app.use("/api", createRateLimiter("api", qualificationRequestLimit(100), 60 * 1000, true, qualificationRequestLimit(600)));
 
 const rateLimitCleanupTimer = setInterval(() => {
   deleteExpiredRateLimits(pool).catch((error) => log(`Rate-limit cleanup failed: ${error instanceof Error ? error.message : "unknown error"}`));
