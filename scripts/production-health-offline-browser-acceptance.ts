@@ -445,12 +445,22 @@ function isAcceptanceNutrition(entry: any): boolean {
 async function waitForNutritionCount(account: Account, date: string, timeZone: string, utcOffsetMinutes: number, expected: number): Promise<void> {
   const deadline = Date.now() + 45_000;
   let latest = -1;
+  let latestEntries: any[] = [];
   while (Date.now() < deadline) {
-    latest = (await readNutritionDiary(account, date, timeZone, utcOffsetMinutes)).filter(isAcceptanceNutrition).length;
+    latestEntries = await readNutritionDiary(account, date, timeZone, utcOffsetMinutes);
+    latest = latestEntries.filter(isAcceptanceNutrition).length;
     if (latest === expected) return;
     await new Promise((resolve) => setTimeout(resolve, 400));
   }
-  throw new Error(`Expected ${expected} accepted nutrition record(s), observed ${latest}.`);
+  const observed = latestEntries.map((entry) => ({
+    foodId: entry?.foodId,
+    foodName: entry?.foodName,
+    inputQuantity: entry?.inputQuantity,
+    inputUnit: entry?.inputUnit,
+    servingGrams: entry?.servingGrams,
+    occurredAt: entry?.occurredAt,
+  }));
+  throw new Error(`Expected ${expected} accepted nutrition record(s), observed ${latest}. Received ${JSON.stringify(observed)}.`);
 }
 
 async function clickButtonWithText(page: Page, scopeSelector: string, label: string): Promise<void> {
@@ -818,8 +828,13 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     stage = "prove initial nutrition absence";
     await waitForNutritionCount(account, localContext.date, localContext.timeZone, localContext.utcOffsetMinutes, 0);
     await page.select('[aria-label="Choose saved food"]', String(nutritionFoodId));
-    await setValue(page, '[aria-label="Food quantity"]', String(NUTRITION_QUANTITY_GRAMS));
+    // Selecting a unit deliberately resets the form to the food's known
+    // serving basis. Select the unit first, then enter the exact measured
+    // amount that this acceptance fixture must persist.
     await page.select('[aria-label="Food quantity unit"]', "g");
+    await page.waitForFunction((quantity) => (document.querySelector('[aria-label="Food quantity"]') as HTMLInputElement | null)?.value === String(quantity), { timeout: 30_000 }, 100);
+    await setValue(page, '[aria-label="Food quantity"]', String(NUTRITION_QUANTITY_GRAMS));
+    await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
     await page.select('[aria-label="Meal"]', "breakfast");
     await setValue(page, '[aria-label="Meal time"]', "08:15");
     stage = "submit durable offline nutrition";
