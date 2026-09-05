@@ -25,7 +25,12 @@ primary_region = "sjc"
   grace_period = "10s"
   interval = "30s"
   method = "GET"
-  path = "/api/ready"
+  # Keep Fly's routing decision tied to process liveness. `/api/ready`
+  # deliberately verifies the database and can briefly queue behind a valid
+  # burst of application queries; using it here made Fly withdraw the only
+  # healthy machine and turn a recoverable dependency delay into an HTTP/2
+  # outage for every request. External monitoring still checks `/api/ready`.
+  path = "/api/health"
   timeout = "5s"
 
 [[vm]]
