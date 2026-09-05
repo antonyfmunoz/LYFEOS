@@ -30,6 +30,17 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
+      - name: Resolve immutable production release
+        id: release
+        run: |
+          body="$(curl --fail --silent --show-error --retry 2 --retry-all-errors --max-time 20 https://lyfeos.net/api/release)"
+          test "$(printf '%s' "$body" | jq -r '.service')" = "lyfeos"
+          source="$(printf '%s' "$body" | jq -r '.sourceRevision')"
+          printf '%s' "$source" | grep -Eq '^[0-9a-f]{40}$'
+          echo "source=$source" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ steps.release.outputs.source }}
       - name: Verify readiness
         run: |
           if [ "${{ inputs.force_failure }}" = "true" ]; then
@@ -46,10 +57,14 @@ jobs:
         run: |
           body="$(curl --fail --silent --show-error --retry 2 --retry-all-errors --max-time 20 https://lyfeos.net/api/release)"
           test "$(printf '%s' "$body" | jq -r '.service')" = "lyfeos"
-          printf '%s' "$body" | jq -e '.sourceRevision | test("^[0-9a-f]{40}$")' >/dev/null
+          test "$(printf '%s' "$body" | jq -r '.sourceRevision')" = "${{ steps.release.outputs.source }}"
           test "$(printf '%s' "$body" | jq -r '.migrations.status')" = "available"
-          test "$(printf '%s' "$body" | jq -r '.migrations.count')" -ge 149
-          test "$(printf '%s' "$body" | jq -r '.migrations.latest')" = "0157_nutrition_recipe_sources"
+          expected_migrations="$(grep -oE 'id: "[^"]+"' server/release-migrate.ts | sed -E 's/id: "([^"]+)"/\1/' | sort)"
+          expected_count="$(printf '%s\n' "$expected_migrations" | sed '/^$/d' | wc -l | tr -d ' ')"
+          expected_latest="$(printf '%s\n' "$expected_migrations" | tail -n 1)"
+          test "$expected_count" -gt 0
+          test "$(printf '%s' "$body" | jq -r '.migrations.count')" = "$expected_count"
+          test "$(printf '%s' "$body" | jq -r '.migrations.latest')" = "$expected_latest"
       - name: Verify protected health integrity aggregates
         env:
           LYFEOS_MONITOR_TOKEN: ${{ secrets.LYFEOS_MONITOR_TOKEN }}
