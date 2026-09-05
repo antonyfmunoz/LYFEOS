@@ -70,13 +70,21 @@ describe("health mutation integrity", () => {
     expect(queue).not.toContain("caches.open");
     expect(queue).toContain('typeof indexedDB === "undefined"');
     expect(queue).toContain("QuotaExceededError");
+    expect(queue).toContain("navigator.storage.persisted");
+    expect(queue).toContain("navigator.storage.persist()");
+    expect(queue).toContain("healthOfflinePersistenceState(true)");
     expect(queue).toContain("listHealthMutationQueue");
     expect(queue).toContain("retryHealthMutationQueueItem");
     expect(queue).toContain("discardHealthMutationQueueItem");
     expect(queueStatus).toContain("Records stored only on this device");
+    expect(queueStatus).toContain('data-testid="health-offline-storage-protection"');
+    expect(queueStatus).toContain("may remove unsynced records under storage pressure");
+    expect(queueStatus).toContain("Reconnect before clearing LyfeOS site data");
     expect(queueStatus).toContain("Permanently discard this unsynced record from this device?");
     expect(queueStatus).not.toContain("item.body");
-    expect(queueStatus.match(/networkMode: "always"/g)).toHaveLength(3);
+    // Queue reads, retry/discard actions, and the local persistence-status
+    // check must remain available while the browser reports offline.
+    expect(queueStatus.match(/networkMode: "always"/g)).toHaveLength(4);
     expect(nutrition).toContain("submitHealthMutation({ userId: user.id");
     expect(workouts).toContain("submitHealthMutation({ userId: user.id");
     expect(sleep).toContain('url: "/api/health-fitness/sleep/sessions"');

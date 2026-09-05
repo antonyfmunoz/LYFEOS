@@ -41,6 +41,7 @@ export type HealthMutationResult<T> =
   | { queued: false; mutationId: string; data: T };
 
 export type HealthOfflineStorageErrorCode = "unavailable" | "quota" | "blocked" | "operation_failed";
+export type HealthOfflinePersistenceState = "persistent" | "best-effort" | "unavailable";
 
 export class HealthOfflineStorageError extends Error {
   constructor(public readonly code: HealthOfflineStorageErrorCode, message: string) {
@@ -87,6 +88,22 @@ function openDatabase(): Promise<IDBDatabase> {
   });
 }
 
+/**
+ * Ask the browser to retain unsynced health records where it supports that
+ * protection. This cannot make a record recoverable after the user clears
+ * LyfeOS site data, so the queue surface discloses the actual result.
+ */
+export async function healthOfflinePersistenceState(requestPersistence = false): Promise<HealthOfflinePersistenceState> {
+  if (typeof navigator === "undefined" || !navigator.storage) return "unavailable";
+  try {
+    if (typeof navigator.storage.persisted === "function" && await navigator.storage.persisted()) return "persistent";
+    if (requestPersistence && typeof navigator.storage.persist === "function" && await navigator.storage.persist()) return "persistent";
+    return "best-effort";
+  } catch {
+    return "unavailable";
+  }
+}
+
 async function withStore<T>(mode: IDBTransactionMode, operation: (store: IDBObjectStore) => IDBRequest<T>): Promise<T> {
   const database = await openDatabase();
   try {
@@ -107,6 +124,11 @@ async function withStore<T>(mode: IDBTransactionMode, operation: (store: IDBObje
 
 async function put(record: HealthMutationRecord): Promise<void> {
   await withStore("readwrite", (store) => store.put(record));
+}
+
+async function storeNew(record: HealthMutationRecord): Promise<void> {
+  await healthOfflinePersistenceState(true);
+  await put(record);
 }
 
 async function remove(id: string): Promise<void> {
@@ -139,14 +161,14 @@ function isNetworkFailure(error: unknown): boolean {
 export async function submitHealthMutation<T>(input: { userId: number; url: string; body: unknown }): Promise<HealthMutationResult<T>> {
   const record: HealthMutationRecord = { id: mutationId(), userId: input.userId, url: input.url, method: "POST", body: input.body, createdAt: new Date().toISOString(), status: "pending" };
   if (typeof navigator !== "undefined" && !navigator.onLine) {
-    await put(record);
+    await storeNew(record);
     return { queued: true, mutationId: record.id };
   }
   try {
     return { queued: false, mutationId: record.id, data: await send<T>(record) };
   } catch (error) {
     if (!isNetworkFailure(error)) throw error;
-    await put(record);
+    await storeNew(record);
     return { queued: true, mutationId: record.id };
   }
 }

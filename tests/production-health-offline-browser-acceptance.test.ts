@@ -37,6 +37,8 @@ describe("production Health offline browser acceptance custody", () => {
     expect(script).toContain('document.body.innerText.includes("Hydration was not saved")');
     expect(script).toContain("quotaFailureLeftFormIntact");
     expect(script).toContain("quotaFailureCreatedNoQueueItem");
+    expect(script).toContain("storageProtectionDisclosed");
+    expect(script).toContain("truthful offline-storage protection disclosure");
     expect(script).toContain("offlineRecordRenderedAsDeviceOnly");
     expect(script).toContain("offlineRecordAbsentFromServer");
     expect(script).toContain("await page.setOfflineMode(true)");
@@ -95,6 +97,7 @@ describe("production Health offline browser acceptance custody", () => {
     expect(dailyLog).toContain('data-testid="health-supplement-save"');
     expect(queue).toContain('data-testid="health-offline-storage-unavailable"');
     expect(queue).toContain('data-testid="health-offline-queue"');
+    expect(queue).toContain('data-testid="health-offline-storage-protection"');
     expect(queue).toContain("health-offline-queue-item-");
     expect(queue).toContain("health-offline-retry-");
     expect(queue).toContain("health-offline-discard-");

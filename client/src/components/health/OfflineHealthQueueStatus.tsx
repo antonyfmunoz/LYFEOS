@@ -3,7 +3,7 @@ import { Database, RotateCcw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/authContext";
-import { discardHealthMutationQueueItem, listHealthMutationQueue, retryHealthMutationQueueItem } from "@/lib/healthOfflineQueue";
+import { discardHealthMutationQueueItem, healthOfflinePersistenceState, listHealthMutationQueue, retryHealthMutationQueueItem } from "@/lib/healthOfflineQueue";
 import { queryClient } from "@/lib/queryClient";
 
 const title = (value: string) => value.replace(/\b\w/g, (letter) => letter.toUpperCase());
@@ -17,6 +17,12 @@ export default function OfflineHealthQueueStatus() {
     queryFn: () => listHealthMutationQueue(userId!),
     enabled: Boolean(userId),
     refetchOnWindowFocus: true,
+  });
+  const persistence = useQuery({
+    networkMode: "always",
+    queryKey: ["health-offline-persistence"],
+    queryFn: () => healthOfflinePersistenceState(),
+    enabled: Boolean(queue.data?.length),
   });
   const refreshHealthRecords = () => queryClient.invalidateQueries({ predicate: (query) => typeof query.queryKey[0] === "string" && (query.queryKey[0].startsWith("/api/nutrition/") || query.queryKey[0].startsWith("/api/workouts") || query.queryKey[0].startsWith("/api/health-fitness/") || query.queryKey[0].startsWith("/api/recovery-") || query.queryKey[0].startsWith("/api/health-observations")) });
   const retry = useMutation({
@@ -49,6 +55,13 @@ export default function OfflineHealthQueueStatus() {
   return <section className="mb-8 rounded-xl border border-primary/25 bg-background/20 p-4" aria-labelledby="offline-health-queue-heading" data-testid="health-offline-queue">
     <h2 id="offline-health-queue-heading" className="flex items-center gap-2 text-sm font-medium text-white"><Database className="h-4 w-4 text-primary" />Records stored only on this device ({queue.data?.length || 0})</h2>
     <p className="mt-1 text-xs text-muted-foreground">Only record type, time, and sync status appear here; the health payload stays in private browser storage. Records disappear after the server accepts them.</p>
+    <p data-testid="health-offline-storage-protection" className="mt-1 text-xs text-muted-foreground">
+      {persistence.data === "persistent"
+        ? "This browser granted persistent storage, reducing automatic eviction risk. Reconnect before clearing LyfeOS site data."
+        : persistence.data === "best-effort"
+          ? "This browser may remove unsynced records under storage pressure or when site data is cleared. Reconnect soon."
+          : "Browser storage protection could not be confirmed. Reconnect soon and do not clear LyfeOS site data."}
+    </p>
     <div className="mt-3 space-y-2">{queue.data?.map((item) => <div key={item.id} data-testid={`health-offline-queue-item-${item.id}`} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-muted/20 px-3 py-2 text-xs"><div><p className="text-white">{title(item.recordType)} record · {new Date(item.createdAt).toLocaleString()}</p><p className={item.status === "failed" ? "text-amber-200" : "text-muted-foreground"}>{item.status === "failed" ? item.lastError || "The server rejected this queued record." : "Waiting for an online sync attempt."}</p></div><div className="flex gap-1">{item.status === "failed" ? <Button size="sm" variant="outline" data-testid={`health-offline-retry-${item.id}`} disabled={retry.isPending} onClick={() => retry.mutate(item.id)}><RotateCcw />Retry</Button> : null}<Button size="sm" variant="ghost" data-testid={`health-offline-discard-${item.id}`} disabled={discard.isPending} onClick={() => discard.mutate(item.id)}><Trash2 />Discard</Button></div></div>)}</div>
   </section>;
 }

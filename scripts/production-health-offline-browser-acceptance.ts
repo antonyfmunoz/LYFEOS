@@ -14,6 +14,7 @@ type ViewResult = {
   viewport: string;
   quotaFailureLeftFormIntact: boolean;
   quotaFailureCreatedNoQueueItem: boolean;
+  storageProtectionDisclosed: boolean;
   offlineRecordRenderedAsDeviceOnly: boolean;
   offlineRecordAbsentFromServer: boolean;
   reconnectSyncedExactlyOnce: boolean;
@@ -572,6 +573,16 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     await page.waitForSelector('[data-testid="health-offline-queue"]', { visible: true, timeout: 30_000 });
     stage = "wait for queued hydration label";
     await page.waitForFunction(() => document.querySelector('[data-testid="health-offline-queue"]')?.textContent?.includes("Hydration record"), { timeout: 30_000 });
+    stage = "verify truthful offline-storage protection disclosure";
+    await page.waitForFunction(() => Boolean(document.querySelector('[data-testid="health-offline-storage-protection"]')?.textContent?.trim()), { timeout: 30_000 });
+    const storageProtectionDisclosed = await page.$eval('[data-testid="health-offline-storage-protection"]', async (element) => {
+      const text = element.textContent || "";
+      const persisted = typeof navigator.storage?.persisted === "function" && await navigator.storage.persisted().catch(() => false);
+      return persisted
+        ? text.includes("granted persistent storage") && text.includes("Reconnect before clearing LyfeOS site data")
+        : (text.includes("may remove unsynced records under storage pressure") || text.includes("could not be confirmed")) && text.includes("Reconnect");
+    });
+    assert(storageProtectionDisclosed, "Health did not truthfully disclose the current browser-storage protection boundary.");
     const offlineRecordRenderedAsDeviceOnly = true;
     stage = "prove queued record absent from server";
     await waitForHydrationCount(account, localContext.date, localContext.timeZone, localContext.utcOffsetMinutes, 0);
@@ -869,7 +880,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     assert(audit.mainCount === 1 && audit.duplicateIds.length === 0 && audit.invalidLabelReferences.length === 0 && audit.unlabeledControls.length === 0 && audit.horizontalOverflowPx <= 2, `${viewport.name} failed Health semantics or overflow checks.`);
     await acknowledgeBoundedChunkRecovery(page, signals);
     assert(!hasUnexpectedBrowserSignals(signals), `${viewport.name} produced unexpected browser signals: ${JSON.stringify(signals)}.`);
-    view = { viewport: viewport.name, quotaFailureLeftFormIntact, quotaFailureCreatedNoQueueItem, offlineRecordRenderedAsDeviceOnly, offlineRecordAbsentFromServer, reconnectSyncedExactlyOnce, reloadRenderedPersistedRecord, offlineMeasurementRenderedAsDeviceOnly, measurementReconnectSyncedExactlyOnce, reloadRenderedPersistedMeasurement, offlineSupplementRenderedAsDeviceOnly, supplementReconnectSyncedExactlyOnce, reloadRenderedPersistedSupplement, offlineRecoveryRenderedAsDeviceOnly, recoveryReconnectSyncedExactlyOnce, reloadRenderedPersistedRecovery, offlineObservationRenderedAsDeviceOnly, observationReconnectSyncedExactlyOnce, reloadRenderedPersistedObservation, offlineSleepSessionRenderedAsDeviceOnly, sleepSessionReconnectSyncedExactlyOnce, reloadRenderedPersistedSleepSession, offlineWorkoutRenderedAsDeviceOnly, workoutReconnectSyncedExactlyOnce, reloadRenderedPersistedWorkout, offlineNutritionRenderedAsDeviceOnly, nutritionReconnectSyncedExactlyOnce, reloadRenderedPersistedNutrition, queueDrained, audit, signals };
+    view = { viewport: viewport.name, quotaFailureLeftFormIntact, quotaFailureCreatedNoQueueItem, storageProtectionDisclosed, offlineRecordRenderedAsDeviceOnly, offlineRecordAbsentFromServer, reconnectSyncedExactlyOnce, reloadRenderedPersistedRecord, offlineMeasurementRenderedAsDeviceOnly, measurementReconnectSyncedExactlyOnce, reloadRenderedPersistedMeasurement, offlineSupplementRenderedAsDeviceOnly, supplementReconnectSyncedExactlyOnce, reloadRenderedPersistedSupplement, offlineRecoveryRenderedAsDeviceOnly, recoveryReconnectSyncedExactlyOnce, reloadRenderedPersistedRecovery, offlineObservationRenderedAsDeviceOnly, observationReconnectSyncedExactlyOnce, reloadRenderedPersistedObservation, offlineSleepSessionRenderedAsDeviceOnly, sleepSessionReconnectSyncedExactlyOnce, reloadRenderedPersistedSleepSession, offlineWorkoutRenderedAsDeviceOnly, workoutReconnectSyncedExactlyOnce, reloadRenderedPersistedWorkout, offlineNutritionRenderedAsDeviceOnly, nutritionReconnectSyncedExactlyOnce, reloadRenderedPersistedNutrition, queueDrained, audit, signals };
   } catch (error) {
     const pages = context ? await context.pages().catch(() => []) : [];
     const rendered = pages[0] ? await pages[0].evaluate(() => document.body?.innerText.slice(0, 4_000) || "").catch(() => "") : "";
