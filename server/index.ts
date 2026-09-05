@@ -98,8 +98,11 @@ app.post("/api/webhooks/clerk", express.raw({ type: "application/json", limit: "
 // Sentry's browser SDK can include a content-type parameter on envelopes. This
 // route is itself fixed and its handler only accepts a non-empty raw buffer for
 // the configured Sentry DSN, so parse the full request body here rather than
-// rejecting a valid SDK envelope on a harmless content-type variation.
-app.post("/api/sentry-tunnel", express.raw({ type: () => true, limit: "250kb" }));
+// rejecting a valid SDK envelope on a harmless content-type variation. A
+// bounded 1 MB cap accommodates browser stack/trace envelopes, while a
+// dedicated public rate limit prevents the fixed-destination tunnel from
+// becoming an unbounded relay.
+app.post("/api/sentry-tunnel", createRateLimiter("sentry-tunnel", 60, 60 * 1000), express.raw({ type: () => true, limit: "1mb" }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 
