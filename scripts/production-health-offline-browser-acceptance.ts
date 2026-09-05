@@ -207,10 +207,15 @@ function captureSignals(page: Page, state: { intentionalOffline: boolean }): Sig
   });
   page.on("requestfailed", (failed) => {
     const method = failed.method();
-    const detail = `${method} ${new URL(failed.url()).pathname}: ${failed.failure()?.errorText || "failed"}`;
+    const url = new URL(failed.url());
+    const detail = `${method} ${url.pathname}: ${failed.failure()?.errorText || "failed"}`;
     if (["GET", "HEAD"].includes(method) && detail.includes("ERR_ABORTED")) return;
+    // A page transition can cancel a fire-and-forget observability envelope
+    // after every Health mutation has already been reconciled and verified.
+    // Keep every canonical Health write and every other failed request strict.
+    if (method === "POST" && url.origin === BASE_URL.origin && url.pathname === "/api/sentry-tunnel" && detail.includes("ERR_ABORTED")) return;
     if (state.intentionalOffline && detail.includes("ERR_INTERNET_DISCONNECTED")) signals.expectedOfflineFailures.push(detail.slice(0, 500));
-    else if (failed.url().startsWith(BASE_URL.origin)) signals.failedRequests.push(detail.slice(0, 500));
+    else if (url.origin === BASE_URL.origin) signals.failedRequests.push(detail.slice(0, 500));
   });
   page.on("response", (response) => {
     if (response.url().startsWith(BASE_URL.origin) && response.status() >= 500) signals.serverErrors.push(`${response.status()} ${new URL(response.url()).pathname}`);

@@ -91,6 +91,11 @@ describe("production Health offline browser acceptance custody", () => {
     expect(script).toContain("isTransientReadFailure");
   });
 
+  it("excuses only a teardown-aborted Sentry telemetry envelope, never a Health write", () => {
+    expect(script).toContain('method === "POST" && url.origin === BASE_URL.origin && url.pathname === "/api/sentry-tunnel" && detail.includes("ERR_ABORTED")');
+    expect(script).toContain("Keep every canonical Health write and every other failed request strict.");
+  });
+
   it("uses stable semantic hooks without changing the Health layout", () => {
     expect(page).toContain('data-testid="health-page"');
     expect(dailyLog).toContain('data-testid="daily-health-log"');
