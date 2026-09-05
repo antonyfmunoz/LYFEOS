@@ -63,6 +63,7 @@ describe("production Health offline browser acceptance custody", () => {
     expect(script).toContain("offlineSleepSessionRenderedAsDeviceOnly");
     expect(script).toContain("sleepSessionReconnectSyncedExactlyOnce");
     expect(script).toContain("reloadRenderedPersistedSleepSession");
+    expect(script).toContain('text.includes("Detailed sleep sessions") && text.includes("7h 0m") && text.includes("manual")');
     expect(script).toContain("Keep this as a literal browser script");
     expect(script).toContain("const sleepSession = await page.evaluate(`");
     expect(script).toContain("offlineWorkoutRenderedAsDeviceOnly");

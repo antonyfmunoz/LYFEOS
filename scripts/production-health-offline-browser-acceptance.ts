@@ -764,7 +764,13 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     await page.waitForSelector('[data-testid="health-page"]', { visible: true, timeout: 60_000 });
     await page.evaluate(() => document.getElementById("health-section-sleep")?.scrollIntoView({ block: "center" }));
     await page.waitForSelector('[data-testid="sleep-log"]', { visible: true, timeout: 60_000 });
-    await page.waitForFunction(() => document.querySelector('[data-testid="sleep-log"]')?.textContent?.includes("Sleep session") && document.querySelector('[data-testid="sleep-log"]')?.textContent?.includes("7h 0m"), { timeout: 45_000 });
+    await page.waitForFunction(() => {
+      const text = document.querySelector('[data-testid="sleep-log"]')?.textContent || "";
+      // The rendered section is deliberately named "Detailed sleep sessions".
+      // Require that durable UI contract plus the calculated elapsed duration
+      // and recorded manual source—not an unrelated form aria-label.
+      return text.includes("Detailed sleep sessions") && text.includes("7h 0m") && text.includes("manual");
+    }, { timeout: 45_000 });
     await waitForSleepSessionCount(account, localContext.date, localContext.timeZone, localContext.utcOffsetMinutes, sleepSession.startedAt, sleepSession.endedAt, 1);
     const reloadRenderedPersistedSleepSession = true;
 
