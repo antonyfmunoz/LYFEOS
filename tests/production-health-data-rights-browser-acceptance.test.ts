@@ -43,4 +43,12 @@ describe("production Health data-rights browser acceptance custody", () => {
     for (const hook of ["health-data-rights", "health-data-export", "health-ai-context-enabled", "health-planning-context-enabled", "health-data-rights-save", "health-data-rights-saved", "health-data-deletion-confirmation", "health-data-delete", "health-data-deletion-complete"]) expect(rights).toContain(`data-testid=\"${hook}\"`);
     expect(healthPage).toContain('targetId="health-section-data-rights"');
   });
+
+  it("persists the current consent draft even when a person toggles and saves quickly", () => {
+    expect(rights).toContain("const preferenceDraftRef = useRef");
+    expect(rights).toContain("preferenceDraftRef.current = { ...preferenceDraftRef.current, aiContextEnabled: next }");
+    expect(rights).toContain("preferenceDraftRef.current = { ...preferenceDraftRef.current, planningContextEnabled: next }");
+    expect(rights).toContain("preferences.mutate(preferenceDraftRef.current)");
+    expect(rights).toContain('data-testid="health-data-rights-save-error"');
+  });
 });
