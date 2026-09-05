@@ -21,6 +21,9 @@ type ViewResult = {
   offlineMeasurementRenderedAsDeviceOnly: boolean;
   measurementReconnectSyncedExactlyOnce: boolean;
   reloadRenderedPersistedMeasurement: boolean;
+  offlineSupplementRenderedAsDeviceOnly: boolean;
+  supplementReconnectSyncedExactlyOnce: boolean;
+  reloadRenderedPersistedSupplement: boolean;
   queueDrained: boolean;
   audit: Audit;
   signals: Signals;
@@ -35,6 +38,8 @@ const OUTPUT_FILE = path.join(OUTPUT_DIR, "health-offline-report.json");
 const PASSWORD = "TestPass123!";
 const HYDRATION_ML = 432.1;
 const WEIGHT_KG = 72.4;
+const SUPPLEMENT_NAME = "Vitamin C";
+const SUPPLEMENT_AMOUNT_MG = 250;
 const VIEWPORTS: Array<{ name: string; value: Viewport }> = [
   { name: "desktop-1440x900", value: { width: 1440, height: 900, deviceScaleFactor: 1 } },
   { name: "mobile-390x844", value: { width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true } },
@@ -261,6 +266,27 @@ async function waitForWeightCount(account: Account, expected: number): Promise<v
   throw new Error(`Expected ${expected} accepted weight record(s), observed ${latest}.`);
 }
 
+async function readSupplements(account: Account, date: string, timeZone: string, utcOffsetMinutes: number): Promise<any[]> {
+  const result = await request("GET", `/api/health-fitness/supplements?date=${encodeURIComponent(date)}`, undefined, account.cookie, { "x-lyfeos-time-zone": timeZone, "x-lyfeos-utc-offset-minutes": String(utcOffsetMinutes) });
+  assert(result.status === 200 && Array.isArray(result.body?.entries), `Supplement read returned ${result.status}.`);
+  return result.body.entries;
+}
+
+function isAcceptanceSupplement(entry: any): boolean {
+  return entry?.name === SUPPLEMENT_NAME && entry?.unit === "mg" && Math.abs(Number(entry?.amount) - SUPPLEMENT_AMOUNT_MG) < 0.001;
+}
+
+async function waitForSupplementCount(account: Account, date: string, timeZone: string, utcOffsetMinutes: number, expected: number): Promise<void> {
+  const deadline = Date.now() + 45_000;
+  let latest = -1;
+  while (Date.now() < deadline) {
+    latest = (await readSupplements(account, date, timeZone, utcOffsetMinutes)).filter(isAcceptanceSupplement).length;
+    if (latest === expected) return;
+    await new Promise((resolve) => setTimeout(resolve, 400));
+  }
+  throw new Error(`Expected ${expected} accepted supplement record(s), observed ${latest}.`);
+}
+
 async function eraseAccount(account: Account): Promise<boolean> {
   if (!account.cookie) return true;
   for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -414,12 +440,42 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     await waitForWeightCount(account, 1);
     const reloadRenderedPersistedMeasurement = true;
 
+    stage = "prove initial supplement absence";
+    await waitForSupplementCount(account, localContext.date, localContext.timeZone, localContext.utcOffsetMinutes, 0);
+    stage = "submit durable offline supplement";
+    await setValue(page, '[data-testid="health-supplement-name"]', SUPPLEMENT_NAME);
+    await setValue(page, '[data-testid="health-supplement-amount"]', String(SUPPLEMENT_AMOUNT_MG));
+    await setValue(page, '[data-testid="health-supplement-unit"]', "mg");
+    offlineState.intentionalOffline = true;
+    await page.setOfflineMode(true);
+    await clickReady(page, '[data-testid="health-supplement-save"]');
+    stage = "wait for queued supplement label";
+    await page.waitForSelector('[data-testid="health-offline-queue"]', { visible: true, timeout: 30_000 });
+    await page.waitForFunction(() => document.querySelector('[data-testid="health-offline-queue"]')?.textContent?.includes("Supplement record"), { timeout: 30_000 });
+    const offlineSupplementRenderedAsDeviceOnly = true;
+    stage = "prove queued supplement absent from server";
+    await waitForSupplementCount(account, localContext.date, localContext.timeZone, localContext.utcOffsetMinutes, 0);
+    offlineState.intentionalOffline = false;
+    await page.setOfflineMode(false);
+    await page.evaluate(() => window.dispatchEvent(new Event("online")));
+    stage = "wait for supplement reconnect queue drainage";
+    await page.waitForSelector('[data-testid="health-offline-queue"]', { hidden: true, timeout: 45_000 });
+    stage = "prove exactly one reconnected supplement";
+    await waitForSupplementCount(account, localContext.date, localContext.timeZone, localContext.utcOffsetMinutes, 1);
+    const supplementReconnectSyncedExactlyOnce = true;
+    stage = "reload Health after supplement sync";
+    await page.reload({ waitUntil: "domcontentloaded", timeout: 60_000 });
+    await page.waitForSelector('[data-testid="daily-health-log"]', { visible: true, timeout: 60_000 });
+    await page.waitForFunction((name, amount) => document.body.innerText.includes(`${name} ${amount} mg`), { timeout: 45_000 }, SUPPLEMENT_NAME, String(SUPPLEMENT_AMOUNT_MG));
+    await waitForSupplementCount(account, localContext.date, localContext.timeZone, localContext.utcOffsetMinutes, 1);
+    const reloadRenderedPersistedSupplement = true;
+
     stage = "audit final Health page";
     const audit = await auditPage(page);
     assert(audit.mainCount === 1 && audit.duplicateIds.length === 0 && audit.invalidLabelReferences.length === 0 && audit.unlabeledControls.length === 0 && audit.horizontalOverflowPx <= 2, `${viewport.name} failed Health semantics or overflow checks.`);
     await acknowledgeBoundedChunkRecovery(page, signals);
     assert(!hasUnexpectedBrowserSignals(signals), `${viewport.name} produced unexpected browser signals: ${JSON.stringify(signals)}.`);
-    view = { viewport: viewport.name, quotaFailureLeftFormIntact, quotaFailureCreatedNoQueueItem, offlineRecordRenderedAsDeviceOnly, offlineRecordAbsentFromServer, reconnectSyncedExactlyOnce, reloadRenderedPersistedRecord, offlineMeasurementRenderedAsDeviceOnly, measurementReconnectSyncedExactlyOnce, reloadRenderedPersistedMeasurement, queueDrained, audit, signals };
+    view = { viewport: viewport.name, quotaFailureLeftFormIntact, quotaFailureCreatedNoQueueItem, offlineRecordRenderedAsDeviceOnly, offlineRecordAbsentFromServer, reconnectSyncedExactlyOnce, reloadRenderedPersistedRecord, offlineMeasurementRenderedAsDeviceOnly, measurementReconnectSyncedExactlyOnce, reloadRenderedPersistedMeasurement, offlineSupplementRenderedAsDeviceOnly, supplementReconnectSyncedExactlyOnce, reloadRenderedPersistedSupplement, queueDrained, audit, signals };
   } catch (error) {
     const pages = context ? await context.pages().catch(() => []) : [];
     const rendered = pages[0] ? await pages[0].evaluate(() => document.body?.innerText.slice(0, 4_000) || "").catch(() => "") : "";
@@ -456,7 +512,7 @@ async function main(): Promise<void> {
     await browser.close().catch(() => undefined);
   }
 
-  const passed = views.length === SELECTED_VIEWPORTS.length && views.every((view) => view.quotaFailureLeftFormIntact && view.quotaFailureCreatedNoQueueItem && view.offlineRecordRenderedAsDeviceOnly && view.offlineRecordAbsentFromServer && view.reconnectSyncedExactlyOnce && view.reloadRenderedPersistedRecord && view.offlineMeasurementRenderedAsDeviceOnly && view.measurementReconnectSyncedExactlyOnce && view.reloadRenderedPersistedMeasurement && view.queueDrained && !hasUnexpectedBrowserSignals(view.signals)) && cleanup.every((item) => item.accountErased);
+  const passed = views.length === SELECTED_VIEWPORTS.length && views.every((view) => view.quotaFailureLeftFormIntact && view.quotaFailureCreatedNoQueueItem && view.offlineRecordRenderedAsDeviceOnly && view.offlineRecordAbsentFromServer && view.reconnectSyncedExactlyOnce && view.reloadRenderedPersistedRecord && view.offlineMeasurementRenderedAsDeviceOnly && view.measurementReconnectSyncedExactlyOnce && view.reloadRenderedPersistedMeasurement && view.offlineSupplementRenderedAsDeviceOnly && view.supplementReconnectSyncedExactlyOnce && view.reloadRenderedPersistedSupplement && view.queueDrained && !hasUnexpectedBrowserSignals(view.signals)) && cleanup.every((item) => item.accountErased);
   const report = {
     contract: "lyfeos.production-health-offline-browser.v1",
     generatedAt: new Date().toISOString(),
