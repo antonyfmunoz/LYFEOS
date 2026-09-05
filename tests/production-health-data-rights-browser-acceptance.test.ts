@@ -5,6 +5,7 @@ const script = fs.readFileSync("scripts/production-health-data-rights-browser-ac
 const workflow = fs.readFileSync(".github/workflows/production-browser-acceptance.yml", "utf8");
 const packageJson = fs.readFileSync("package.json", "utf8");
 const rights = fs.readFileSync("client/src/components/health/HealthDataRights.tsx", "utf8");
+const healthPage = fs.readFileSync("client/src/pages/HealthDetailPage.tsx", "utf8");
 
 describe("production Health data-rights browser acceptance custody", () => {
   it("binds the immutable deployed runtime to a disposable desktop/mobile journey", () => {
@@ -29,6 +30,7 @@ describe("production Health data-rights browser acceptance custody", () => {
     expect(script).toContain("rightsReceiptRetained");
     expect(script).toContain("loadHealthDataRights");
     expect(script).toContain("Health workspaces intentionally defer their chunks");
+    expect(script).toContain("#health-section-data-rights");
     expect(script).toContain("human file-save destination");
     expect(script).toContain("legal retention-policy approval");
     expect(script).toContain("provider-token revoke");
@@ -36,5 +38,6 @@ describe("production Health data-rights browser acceptance custody", () => {
 
   it("uses semantic hooks without changing the Health data-rights layout", () => {
     for (const hook of ["health-data-rights", "health-data-export", "health-ai-context-enabled", "health-planning-context-enabled", "health-data-rights-save", "health-data-rights-saved", "health-data-deletion-confirmation", "health-data-delete", "health-data-deletion-complete"]) expect(rights).toContain(`data-testid=\"${hook}\"`);
+    expect(healthPage).toContain('targetId="health-section-data-rights"');
   });
 });

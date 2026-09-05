@@ -250,7 +250,7 @@ export default function HealthDetailPage() {
 
       <DeferredHealthSection label="health connections" targetId="health-section-connections"><HealthConnections /></DeferredHealthSection>
 
-      <DeferredHealthSection label="health data controls"><HealthDataRights /></DeferredHealthSection>
+      <DeferredHealthSection label="health data controls" targetId="health-section-data-rights"><HealthDataRights /></DeferredHealthSection>
 
       <div className={`glassmorphic rounded-2xl p-8 mb-8 border border-primary/30 relative overflow-hidden ${healthGlow}`}>
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/3 pointer-events-none" />

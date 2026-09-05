@@ -69,13 +69,10 @@ async function clickReady(page: Page, selector: string): Promise<void> {
 
 async function loadHealthDataRights(page: Page): Promise<void> {
   // Health workspaces intentionally defer their chunks by viewport proximity.
-  // Advance through the document rather than jumping to the initial placeholder
-  // height, because earlier chunks expand the page while they load.
-  for (let step = 0; step < 80; step += 1) {
-    if (await page.$('[data-testid="health-data-rights"]')) return;
-    await page.evaluate(() => window.scrollBy(0, Math.max(480, Math.floor(window.innerHeight * 0.8))));
-    await new Promise((resolve) => setTimeout(resolve, 120));
-  }
+  // Scroll the stable section anchor into view, rather than guessing at a page
+  // height which changes as earlier deferred sections expand.
+  await page.waitForSelector("#health-section-data-rights", { visible: true, timeout: 30_000 });
+  await page.$eval("#health-section-data-rights", (element) => element.scrollIntoView({ block: "center" }));
   await page.waitForSelector('[data-testid="health-data-rights"]', { visible: true, timeout: 30_000 });
 }
 
