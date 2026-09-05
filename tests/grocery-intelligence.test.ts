@@ -47,5 +47,7 @@ describe("grocery intelligence", () => {
     expect(component).toContain("FDA recall monitoring");
     expect(component).toContain("Monitor my pantry");
     expect(component).toContain("Possible FDA matches");
+    expect(component).toContain('aria-label="Add pantry item"');
+    expect(component).toContain('aria-label="Add shopping item"');
   });
 });
