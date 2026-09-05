@@ -107,7 +107,6 @@ describe("production Health offline browser acceptance custody", () => {
     expect(workoutLog).toContain('data-testid="workout-log"');
     expect(workoutLog).toContain('data-testid="workout-activity-type"');
     expect(workoutLog).toContain('data-testid="workout-save"');
-    expect(nutritionDiary).toContain('data-testid="nutrition-diary"');
-    expect(nutritionDiary).toContain('data-testid="nutrition-log-toggle"');
+    expect(nutritionDiary).toContain('aria-labelledby="nutrition-heading"');
   });
 });

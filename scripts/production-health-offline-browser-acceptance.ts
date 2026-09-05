@@ -794,8 +794,8 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     const nutritionFoodId = await createAcceptanceFood(account);
     stage = "load nutrition diary";
     await page.evaluate(() => document.getElementById("health-section-nutrition")?.scrollIntoView({ block: "center" }));
-    await page.waitForSelector('[data-testid="nutrition-diary"]', { visible: true, timeout: 60_000 });
-    await clickReady(page, '[data-testid="nutrition-log-toggle"]');
+    await page.waitForSelector('[aria-labelledby="nutrition-heading"]', { visible: true, timeout: 60_000 });
+    await clickButtonWithText(page, '[aria-labelledby="nutrition-heading"]', "Log food");
     await page.waitForFunction((foodName) => Array.from(document.querySelectorAll('[aria-label="Choose saved food"] option')).some((option) => option.textContent?.includes(String(foodName))), { timeout: 45_000 }, NUTRITION_FOOD_NAME);
     stage = "prove initial nutrition absence";
     await waitForNutritionCount(account, localContext.date, localContext.timeZone, localContext.utcOffsetMinutes, 0);
@@ -807,7 +807,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     stage = "submit durable offline nutrition";
     offlineState.intentionalOffline = true;
     await page.setOfflineMode(true);
-    await clickButtonWithText(page, '[data-testid="nutrition-diary"]', "Add to diary");
+    await clickButtonWithText(page, '[aria-labelledby="nutrition-heading"]', "Add to diary");
     stage = "wait for queued nutrition label";
     await page.waitForSelector('[data-testid="health-offline-queue"]', { visible: true, timeout: 30_000 });
     await page.waitForFunction(() => document.querySelector('[data-testid="health-offline-queue"]')?.textContent?.includes("Nutrition record"), { timeout: 30_000 });
@@ -826,8 +826,8 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     await page.reload({ waitUntil: "domcontentloaded", timeout: 60_000 });
     await page.waitForSelector('[data-testid="health-page"]', { visible: true, timeout: 60_000 });
     await page.evaluate(() => document.getElementById("health-section-nutrition")?.scrollIntoView({ block: "center" }));
-    await page.waitForSelector('[data-testid="nutrition-diary"]', { visible: true, timeout: 60_000 });
-    await page.waitForFunction((foodName) => document.querySelector('[data-testid="nutrition-diary"]')?.textContent?.includes(String(foodName)), { timeout: 45_000 }, NUTRITION_FOOD_NAME);
+    await page.waitForSelector('[aria-labelledby="nutrition-heading"]', { visible: true, timeout: 60_000 });
+    await page.waitForFunction((foodName) => document.querySelector('[aria-labelledby="nutrition-heading"]')?.textContent?.includes(String(foodName)), { timeout: 45_000 }, NUTRITION_FOOD_NAME);
     await waitForNutritionCount(account, localContext.date, localContext.timeZone, localContext.utcOffsetMinutes, 1);
     const reloadRenderedPersistedNutrition = true;
 

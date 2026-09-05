@@ -281,10 +281,10 @@ export default function NutritionDiary({ importedFoodId, onImportedFoodHandled, 
     }
   };
   return (
-    <section className="glassmorphic rounded-2xl p-6 mb-8 border border-primary/30" aria-labelledby="nutrition-heading" data-testid="nutrition-diary">
+    <section className="glassmorphic rounded-2xl p-6 mb-8 border border-primary/30" aria-labelledby="nutrition-heading">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div><h2 id="nutrition-heading" className="font-orbitron text-lg text-primary flex items-center gap-2"><Apple className="h-5 w-5" />Nutrition diary</h2><p className="text-sm text-muted-foreground mt-1">A factual food diary. Calories and macros come only from records you log.</p></div>
-        <div className="flex flex-wrap gap-2"><Button variant="outline" size="sm" disabled={Boolean(diary.data?.entries.length) || copyPreviousDay.isPending} onClick={() => copyPreviousDay.mutate()}>Copy previous day</Button><Button variant="outline" size="sm" data-testid="nutrition-log-toggle" onClick={() => setExpanded((value) => !value)}><ChevronDown className={`transition-transform ${expanded ? "rotate-180" : ""}`} />{expanded ? "Close" : "Log food"}</Button></div>
+        <div className="flex flex-wrap gap-2"><Button variant="outline" size="sm" disabled={Boolean(diary.data?.entries.length) || copyPreviousDay.isPending} onClick={() => copyPreviousDay.mutate()}>Copy previous day</Button><Button variant="outline" size="sm" onClick={() => setExpanded((value) => !value)}><ChevronDown className={`transition-transform ${expanded ? "rotate-180" : ""}`} />{expanded ? "Close" : "Log food"}</Button></div>
       </div>
       <div className="mt-4 flex flex-wrap items-center gap-2"><Button variant="ghost" size="icon" aria-label="Previous diary day" onClick={() => setDate(previousDay(date))}><ChevronLeft className="h-4 w-4" /></Button><Input aria-label="Diary date" className="w-40" type="date" max={today()} value={date} onChange={(event) => event.target.value && setDate(event.target.value)} /><Button variant="ghost" size="icon" aria-label="Next diary day" disabled={date >= today()} onClick={() => setDate(nextDay(date))}><ChevronRight className="h-4 w-4" /></Button>{date !== today() ? <Button variant="ghost" size="sm" onClick={() => setDate(today())}>Today</Button> : <span className="text-xs text-muted-foreground">Today</span>}</div>
       <div className="grid grid-cols-4 gap-2 mt-5">
