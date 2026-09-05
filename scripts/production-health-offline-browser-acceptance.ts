@@ -33,6 +33,9 @@ type ViewResult = {
   offlineSleepSessionRenderedAsDeviceOnly: boolean;
   sleepSessionReconnectSyncedExactlyOnce: boolean;
   reloadRenderedPersistedSleepSession: boolean;
+  offlineWorkoutRenderedAsDeviceOnly: boolean;
+  workoutReconnectSyncedExactlyOnce: boolean;
+  reloadRenderedPersistedWorkout: boolean;
   queueDrained: boolean;
   audit: Audit;
   signals: Signals;
@@ -54,6 +57,8 @@ const RECOVERY_DURATION_MINUTES = 20;
 const OBSERVATION_NAME = "Acceptance resting heart rate";
 const OBSERVATION_VALUE_BPM = 60;
 const OBSERVATION_UNIT = "bpm";
+const WORKOUT_ACTIVITY_TYPE = "Acceptance mobility session";
+const WORKOUT_DURATION_MINUTES = 30;
 const VIEWPORTS: Array<{ name: string; value: Viewport }> = [
   { name: "desktop-1440x900", value: { width: 1440, height: 900, deviceScaleFactor: 1 } },
   { name: "mobile-390x844", value: { width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true } },
@@ -364,6 +369,27 @@ async function waitForSleepSessionCount(account: Account, date: string, timeZone
   throw new Error(`Expected ${expected} accepted sleep session(s), observed ${latest}.`);
 }
 
+async function readWorkouts(account: Account, date: string, timeZone: string, utcOffsetMinutes: number): Promise<any[]> {
+  const result = await request("GET", `/api/workouts?date=${encodeURIComponent(date)}`, undefined, account.cookie, { "x-lyfeos-time-zone": timeZone, "x-lyfeos-utc-offset-minutes": String(utcOffsetMinutes) });
+  assert(result.status === 200 && Array.isArray(result.body?.workouts), `Workout read returned ${result.status}.`);
+  return result.body.workouts;
+}
+
+function isAcceptanceWorkout(entry: any): boolean {
+  return entry?.activityType === WORKOUT_ACTIVITY_TYPE && Number(entry?.durationMinutes) === WORKOUT_DURATION_MINUTES;
+}
+
+async function waitForWorkoutCount(account: Account, date: string, timeZone: string, utcOffsetMinutes: number, expected: number): Promise<void> {
+  const deadline = Date.now() + 45_000;
+  let latest = -1;
+  while (Date.now() < deadline) {
+    latest = (await readWorkouts(account, date, timeZone, utcOffsetMinutes)).filter(isAcceptanceWorkout).length;
+    if (latest === expected) return;
+    await new Promise((resolve) => setTimeout(resolve, 400));
+  }
+  throw new Error(`Expected ${expected} accepted workout(s), observed ${latest}.`);
+}
+
 async function eraseAccount(account: Account): Promise<boolean> {
   if (!account.cookie) return true;
   for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -657,12 +683,46 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     await waitForSleepSessionCount(account, localContext.date, localContext.timeZone, localContext.utcOffsetMinutes, sleepSession.startedAt, sleepSession.endedAt, 1);
     const reloadRenderedPersistedSleepSession = true;
 
+    stage = "load workout log";
+    await page.evaluate(() => document.getElementById("health-section-training")?.scrollIntoView({ block: "center" }));
+    await page.waitForSelector('[data-testid="workout-log"]', { visible: true, timeout: 60_000 });
+    stage = "prove initial workout absence";
+    await waitForWorkoutCount(account, localContext.date, localContext.timeZone, localContext.utcOffsetMinutes, 0);
+    stage = "submit durable offline workout";
+    await setValue(page, '[data-testid="workout-activity-type"]', WORKOUT_ACTIVITY_TYPE);
+    await setValue(page, 'input[aria-label="Workout duration minutes"]', String(WORKOUT_DURATION_MINUTES));
+    offlineState.intentionalOffline = true;
+    await page.setOfflineMode(true);
+    await clickReady(page, '[data-testid="workout-save"]');
+    stage = "wait for queued workout label";
+    await page.waitForSelector('[data-testid="health-offline-queue"]', { visible: true, timeout: 30_000 });
+    await page.waitForFunction(() => document.querySelector('[data-testid="health-offline-queue"]')?.textContent?.includes("Workout record"), { timeout: 30_000 });
+    const offlineWorkoutRenderedAsDeviceOnly = true;
+    stage = "prove queued workout absent from server";
+    await waitForWorkoutCount(account, localContext.date, localContext.timeZone, localContext.utcOffsetMinutes, 0);
+    offlineState.intentionalOffline = false;
+    await page.setOfflineMode(false);
+    await page.evaluate(() => window.dispatchEvent(new Event("online")));
+    stage = "wait for workout reconnect queue drainage";
+    await page.waitForSelector('[data-testid="health-offline-queue"]', { hidden: true, timeout: 45_000 });
+    stage = "prove exactly one reconnected workout";
+    await waitForWorkoutCount(account, localContext.date, localContext.timeZone, localContext.utcOffsetMinutes, 1);
+    const workoutReconnectSyncedExactlyOnce = true;
+    stage = "reload Health after workout sync";
+    await page.reload({ waitUntil: "domcontentloaded", timeout: 60_000 });
+    await page.waitForSelector('[data-testid="health-page"]', { visible: true, timeout: 60_000 });
+    await page.evaluate(() => document.getElementById("health-section-training")?.scrollIntoView({ block: "center" }));
+    await page.waitForSelector('[data-testid="workout-log"]', { visible: true, timeout: 60_000 });
+    await page.waitForFunction((activity, duration) => document.querySelector('[data-testid="workout-log"]')?.textContent?.includes(activity) && document.querySelector('[data-testid="workout-log"]')?.textContent?.includes(`${duration}m`), { timeout: 45_000 }, WORKOUT_ACTIVITY_TYPE, String(WORKOUT_DURATION_MINUTES));
+    await waitForWorkoutCount(account, localContext.date, localContext.timeZone, localContext.utcOffsetMinutes, 1);
+    const reloadRenderedPersistedWorkout = true;
+
     stage = "audit final Health page";
     const audit = await auditPage(page);
     assert(audit.mainCount === 1 && audit.duplicateIds.length === 0 && audit.invalidLabelReferences.length === 0 && audit.unlabeledControls.length === 0 && audit.horizontalOverflowPx <= 2, `${viewport.name} failed Health semantics or overflow checks.`);
     await acknowledgeBoundedChunkRecovery(page, signals);
     assert(!hasUnexpectedBrowserSignals(signals), `${viewport.name} produced unexpected browser signals: ${JSON.stringify(signals)}.`);
-    view = { viewport: viewport.name, quotaFailureLeftFormIntact, quotaFailureCreatedNoQueueItem, offlineRecordRenderedAsDeviceOnly, offlineRecordAbsentFromServer, reconnectSyncedExactlyOnce, reloadRenderedPersistedRecord, offlineMeasurementRenderedAsDeviceOnly, measurementReconnectSyncedExactlyOnce, reloadRenderedPersistedMeasurement, offlineSupplementRenderedAsDeviceOnly, supplementReconnectSyncedExactlyOnce, reloadRenderedPersistedSupplement, offlineRecoveryRenderedAsDeviceOnly, recoveryReconnectSyncedExactlyOnce, reloadRenderedPersistedRecovery, offlineObservationRenderedAsDeviceOnly, observationReconnectSyncedExactlyOnce, reloadRenderedPersistedObservation, offlineSleepSessionRenderedAsDeviceOnly, sleepSessionReconnectSyncedExactlyOnce, reloadRenderedPersistedSleepSession, queueDrained, audit, signals };
+    view = { viewport: viewport.name, quotaFailureLeftFormIntact, quotaFailureCreatedNoQueueItem, offlineRecordRenderedAsDeviceOnly, offlineRecordAbsentFromServer, reconnectSyncedExactlyOnce, reloadRenderedPersistedRecord, offlineMeasurementRenderedAsDeviceOnly, measurementReconnectSyncedExactlyOnce, reloadRenderedPersistedMeasurement, offlineSupplementRenderedAsDeviceOnly, supplementReconnectSyncedExactlyOnce, reloadRenderedPersistedSupplement, offlineRecoveryRenderedAsDeviceOnly, recoveryReconnectSyncedExactlyOnce, reloadRenderedPersistedRecovery, offlineObservationRenderedAsDeviceOnly, observationReconnectSyncedExactlyOnce, reloadRenderedPersistedObservation, offlineSleepSessionRenderedAsDeviceOnly, sleepSessionReconnectSyncedExactlyOnce, reloadRenderedPersistedSleepSession, offlineWorkoutRenderedAsDeviceOnly, workoutReconnectSyncedExactlyOnce, reloadRenderedPersistedWorkout, queueDrained, audit, signals };
   } catch (error) {
     const pages = context ? await context.pages().catch(() => []) : [];
     const rendered = pages[0] ? await pages[0].evaluate(() => document.body?.innerText.slice(0, 4_000) || "").catch(() => "") : "";
@@ -699,7 +759,7 @@ async function main(): Promise<void> {
     await browser.close().catch(() => undefined);
   }
 
-  const passed = views.length === SELECTED_VIEWPORTS.length && views.every((view) => view.quotaFailureLeftFormIntact && view.quotaFailureCreatedNoQueueItem && view.offlineRecordRenderedAsDeviceOnly && view.offlineRecordAbsentFromServer && view.reconnectSyncedExactlyOnce && view.reloadRenderedPersistedRecord && view.offlineMeasurementRenderedAsDeviceOnly && view.measurementReconnectSyncedExactlyOnce && view.reloadRenderedPersistedMeasurement && view.offlineSupplementRenderedAsDeviceOnly && view.supplementReconnectSyncedExactlyOnce && view.reloadRenderedPersistedSupplement && view.offlineRecoveryRenderedAsDeviceOnly && view.recoveryReconnectSyncedExactlyOnce && view.reloadRenderedPersistedRecovery && view.offlineObservationRenderedAsDeviceOnly && view.observationReconnectSyncedExactlyOnce && view.reloadRenderedPersistedObservation && view.offlineSleepSessionRenderedAsDeviceOnly && view.sleepSessionReconnectSyncedExactlyOnce && view.reloadRenderedPersistedSleepSession && view.queueDrained && !hasUnexpectedBrowserSignals(view.signals)) && cleanup.every((item) => item.accountErased);
+  const passed = views.length === SELECTED_VIEWPORTS.length && views.every((view) => view.quotaFailureLeftFormIntact && view.quotaFailureCreatedNoQueueItem && view.offlineRecordRenderedAsDeviceOnly && view.offlineRecordAbsentFromServer && view.reconnectSyncedExactlyOnce && view.reloadRenderedPersistedRecord && view.offlineMeasurementRenderedAsDeviceOnly && view.measurementReconnectSyncedExactlyOnce && view.reloadRenderedPersistedMeasurement && view.offlineSupplementRenderedAsDeviceOnly && view.supplementReconnectSyncedExactlyOnce && view.reloadRenderedPersistedSupplement && view.offlineRecoveryRenderedAsDeviceOnly && view.recoveryReconnectSyncedExactlyOnce && view.reloadRenderedPersistedRecovery && view.offlineObservationRenderedAsDeviceOnly && view.observationReconnectSyncedExactlyOnce && view.reloadRenderedPersistedObservation && view.offlineSleepSessionRenderedAsDeviceOnly && view.sleepSessionReconnectSyncedExactlyOnce && view.reloadRenderedPersistedSleepSession && view.offlineWorkoutRenderedAsDeviceOnly && view.workoutReconnectSyncedExactlyOnce && view.reloadRenderedPersistedWorkout && view.queueDrained && !hasUnexpectedBrowserSignals(view.signals)) && cleanup.every((item) => item.accountErased);
   const report = {
     contract: "lyfeos.production-health-offline-browser.v1",
     generatedAt: new Date().toISOString(),
