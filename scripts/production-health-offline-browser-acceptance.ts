@@ -36,6 +36,9 @@ type ViewResult = {
   offlineWorkoutRenderedAsDeviceOnly: boolean;
   workoutReconnectSyncedExactlyOnce: boolean;
   reloadRenderedPersistedWorkout: boolean;
+  offlineNutritionRenderedAsDeviceOnly: boolean;
+  nutritionReconnectSyncedExactlyOnce: boolean;
+  reloadRenderedPersistedNutrition: boolean;
   queueDrained: boolean;
   audit: Audit;
   signals: Signals;
@@ -59,6 +62,8 @@ const OBSERVATION_VALUE_BPM = 60;
 const OBSERVATION_UNIT = "bpm";
 const WORKOUT_ACTIVITY_TYPE = "Acceptance mobility session";
 const WORKOUT_DURATION_MINUTES = 30;
+const NUTRITION_FOOD_NAME = "Acceptance measured oats";
+const NUTRITION_QUANTITY_GRAMS = 41;
 const VIEWPORTS: Array<{ name: string; value: Viewport }> = [
   { name: "desktop-1440x900", value: { width: 1440, height: 900, deviceScaleFactor: 1 } },
   { name: "mobile-390x844", value: { width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true } },
@@ -409,6 +414,55 @@ async function waitForWorkoutCount(account: Account, date: string, timeZone: str
   throw new Error(`Expected ${expected} accepted workout(s), observed ${latest}.`);
 }
 
+async function createAcceptanceFood(account: Account): Promise<number> {
+  const created = await request("POST", "/api/nutrition/foods", {
+    name: NUTRITION_FOOD_NAME,
+    servingSizeGrams: 100,
+    nutrients: [
+      { nutrientKey: "energy_kcal", amountPer100g: 389 },
+      { nutrientKey: "protein_g", amountPer100g: 16.9 },
+      { nutrientKey: "carbohydrate_g", amountPer100g: 66.3 },
+      { nutrientKey: "fat_g", amountPer100g: 6.9 },
+    ],
+  }, account.cookie);
+  assert(created.status === 201 && Number.isInteger(created.body?.food?.id), `Acceptance food creation returned ${created.status}.`);
+  return created.body.food.id;
+}
+
+async function readNutritionDiary(account: Account, date: string, timeZone: string, utcOffsetMinutes: number): Promise<any[]> {
+  const result = await request("GET", `/api/nutrition/diary?date=${encodeURIComponent(date)}`, undefined, account.cookie, { "x-lyfeos-time-zone": timeZone, "x-lyfeos-utc-offset-minutes": String(utcOffsetMinutes) });
+  assert(result.status === 200 && Array.isArray(result.body?.entries), `Nutrition diary read returned ${result.status}.`);
+  return result.body.entries;
+}
+
+function isAcceptanceNutrition(entry: any): boolean {
+  return entry?.foodName === NUTRITION_FOOD_NAME
+    && entry?.inputUnit === "g"
+    && Math.abs(Number(entry?.inputQuantity) - NUTRITION_QUANTITY_GRAMS) < 0.001
+    && Math.abs(Number(entry?.servingGrams) - NUTRITION_QUANTITY_GRAMS) < 0.001;
+}
+
+async function waitForNutritionCount(account: Account, date: string, timeZone: string, utcOffsetMinutes: number, expected: number): Promise<void> {
+  const deadline = Date.now() + 45_000;
+  let latest = -1;
+  while (Date.now() < deadline) {
+    latest = (await readNutritionDiary(account, date, timeZone, utcOffsetMinutes)).filter(isAcceptanceNutrition).length;
+    if (latest === expected) return;
+    await new Promise((resolve) => setTimeout(resolve, 400));
+  }
+  throw new Error(`Expected ${expected} accepted nutrition record(s), observed ${latest}.`);
+}
+
+async function clickButtonWithText(page: Page, scopeSelector: string, label: string): Promise<void> {
+  const clicked = await page.$eval(scopeSelector, (scope, targetLabel) => {
+    const button = Array.from(scope.querySelectorAll("button")).find((candidate) => candidate.textContent?.trim().includes(String(targetLabel)) && !(candidate as HTMLButtonElement).disabled) as HTMLButtonElement | undefined;
+    if (!button) return false;
+    button.click();
+    return true;
+  }, label);
+  assert(clicked, `Could not activate ${label} in ${scopeSelector}.`);
+}
+
 async function eraseAccount(account: Account): Promise<boolean> {
   if (!account.cookie) return true;
   for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -736,12 +790,53 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     await waitForWorkoutCount(account, localContext.date, localContext.timeZone, localContext.utcOffsetMinutes, 1);
     const reloadRenderedPersistedWorkout = true;
 
+    stage = "create a factual nutrition fixture";
+    const nutritionFoodId = await createAcceptanceFood(account);
+    stage = "load nutrition diary";
+    await page.evaluate(() => document.getElementById("health-section-nutrition")?.scrollIntoView({ block: "center" }));
+    await page.waitForSelector('[data-testid="nutrition-diary"]', { visible: true, timeout: 60_000 });
+    await clickReady(page, '[data-testid="nutrition-log-toggle"]');
+    await page.waitForFunction((foodName) => Array.from(document.querySelectorAll('[aria-label="Choose saved food"] option')).some((option) => option.textContent?.includes(String(foodName))), { timeout: 45_000 }, NUTRITION_FOOD_NAME);
+    stage = "prove initial nutrition absence";
+    await waitForNutritionCount(account, localContext.date, localContext.timeZone, localContext.utcOffsetMinutes, 0);
+    await page.select('[aria-label="Choose saved food"]', String(nutritionFoodId));
+    await setValue(page, '[aria-label="Food quantity"]', String(NUTRITION_QUANTITY_GRAMS));
+    await page.select('[aria-label="Food quantity unit"]', "g");
+    await page.select('[aria-label="Meal"]', "breakfast");
+    await setValue(page, '[aria-label="Meal time"]', "08:15");
+    stage = "submit durable offline nutrition";
+    offlineState.intentionalOffline = true;
+    await page.setOfflineMode(true);
+    await clickButtonWithText(page, '[data-testid="nutrition-diary"]', "Add to diary");
+    stage = "wait for queued nutrition label";
+    await page.waitForSelector('[data-testid="health-offline-queue"]', { visible: true, timeout: 30_000 });
+    await page.waitForFunction(() => document.querySelector('[data-testid="health-offline-queue"]')?.textContent?.includes("Nutrition record"), { timeout: 30_000 });
+    const offlineNutritionRenderedAsDeviceOnly = true;
+    stage = "prove queued nutrition absent from server";
+    await waitForNutritionCount(account, localContext.date, localContext.timeZone, localContext.utcOffsetMinutes, 0);
+    offlineState.intentionalOffline = false;
+    await page.setOfflineMode(false);
+    await page.evaluate(() => window.dispatchEvent(new Event("online")));
+    stage = "wait for nutrition reconnect queue drainage";
+    await page.waitForSelector('[data-testid="health-offline-queue"]', { hidden: true, timeout: 45_000 });
+    stage = "prove exactly one reconnected nutrition entry";
+    await waitForNutritionCount(account, localContext.date, localContext.timeZone, localContext.utcOffsetMinutes, 1);
+    const nutritionReconnectSyncedExactlyOnce = true;
+    stage = "reload Health after nutrition sync";
+    await page.reload({ waitUntil: "domcontentloaded", timeout: 60_000 });
+    await page.waitForSelector('[data-testid="health-page"]', { visible: true, timeout: 60_000 });
+    await page.evaluate(() => document.getElementById("health-section-nutrition")?.scrollIntoView({ block: "center" }));
+    await page.waitForSelector('[data-testid="nutrition-diary"]', { visible: true, timeout: 60_000 });
+    await page.waitForFunction((foodName) => document.querySelector('[data-testid="nutrition-diary"]')?.textContent?.includes(String(foodName)), { timeout: 45_000 }, NUTRITION_FOOD_NAME);
+    await waitForNutritionCount(account, localContext.date, localContext.timeZone, localContext.utcOffsetMinutes, 1);
+    const reloadRenderedPersistedNutrition = true;
+
     stage = "audit final Health page";
     const audit = await auditPage(page);
     assert(audit.mainCount === 1 && audit.duplicateIds.length === 0 && audit.invalidLabelReferences.length === 0 && audit.unlabeledControls.length === 0 && audit.horizontalOverflowPx <= 2, `${viewport.name} failed Health semantics or overflow checks.`);
     await acknowledgeBoundedChunkRecovery(page, signals);
     assert(!hasUnexpectedBrowserSignals(signals), `${viewport.name} produced unexpected browser signals: ${JSON.stringify(signals)}.`);
-    view = { viewport: viewport.name, quotaFailureLeftFormIntact, quotaFailureCreatedNoQueueItem, offlineRecordRenderedAsDeviceOnly, offlineRecordAbsentFromServer, reconnectSyncedExactlyOnce, reloadRenderedPersistedRecord, offlineMeasurementRenderedAsDeviceOnly, measurementReconnectSyncedExactlyOnce, reloadRenderedPersistedMeasurement, offlineSupplementRenderedAsDeviceOnly, supplementReconnectSyncedExactlyOnce, reloadRenderedPersistedSupplement, offlineRecoveryRenderedAsDeviceOnly, recoveryReconnectSyncedExactlyOnce, reloadRenderedPersistedRecovery, offlineObservationRenderedAsDeviceOnly, observationReconnectSyncedExactlyOnce, reloadRenderedPersistedObservation, offlineSleepSessionRenderedAsDeviceOnly, sleepSessionReconnectSyncedExactlyOnce, reloadRenderedPersistedSleepSession, offlineWorkoutRenderedAsDeviceOnly, workoutReconnectSyncedExactlyOnce, reloadRenderedPersistedWorkout, queueDrained, audit, signals };
+    view = { viewport: viewport.name, quotaFailureLeftFormIntact, quotaFailureCreatedNoQueueItem, offlineRecordRenderedAsDeviceOnly, offlineRecordAbsentFromServer, reconnectSyncedExactlyOnce, reloadRenderedPersistedRecord, offlineMeasurementRenderedAsDeviceOnly, measurementReconnectSyncedExactlyOnce, reloadRenderedPersistedMeasurement, offlineSupplementRenderedAsDeviceOnly, supplementReconnectSyncedExactlyOnce, reloadRenderedPersistedSupplement, offlineRecoveryRenderedAsDeviceOnly, recoveryReconnectSyncedExactlyOnce, reloadRenderedPersistedRecovery, offlineObservationRenderedAsDeviceOnly, observationReconnectSyncedExactlyOnce, reloadRenderedPersistedObservation, offlineSleepSessionRenderedAsDeviceOnly, sleepSessionReconnectSyncedExactlyOnce, reloadRenderedPersistedSleepSession, offlineWorkoutRenderedAsDeviceOnly, workoutReconnectSyncedExactlyOnce, reloadRenderedPersistedWorkout, offlineNutritionRenderedAsDeviceOnly, nutritionReconnectSyncedExactlyOnce, reloadRenderedPersistedNutrition, queueDrained, audit, signals };
   } catch (error) {
     const pages = context ? await context.pages().catch(() => []) : [];
     const rendered = pages[0] ? await pages[0].evaluate(() => document.body?.innerText.slice(0, 4_000) || "").catch(() => "") : "";
@@ -778,7 +873,7 @@ async function main(): Promise<void> {
     await browser.close().catch(() => undefined);
   }
 
-  const passed = views.length === SELECTED_VIEWPORTS.length && views.every((view) => view.quotaFailureLeftFormIntact && view.quotaFailureCreatedNoQueueItem && view.offlineRecordRenderedAsDeviceOnly && view.offlineRecordAbsentFromServer && view.reconnectSyncedExactlyOnce && view.reloadRenderedPersistedRecord && view.offlineMeasurementRenderedAsDeviceOnly && view.measurementReconnectSyncedExactlyOnce && view.reloadRenderedPersistedMeasurement && view.offlineSupplementRenderedAsDeviceOnly && view.supplementReconnectSyncedExactlyOnce && view.reloadRenderedPersistedSupplement && view.offlineRecoveryRenderedAsDeviceOnly && view.recoveryReconnectSyncedExactlyOnce && view.reloadRenderedPersistedRecovery && view.offlineObservationRenderedAsDeviceOnly && view.observationReconnectSyncedExactlyOnce && view.reloadRenderedPersistedObservation && view.offlineSleepSessionRenderedAsDeviceOnly && view.sleepSessionReconnectSyncedExactlyOnce && view.reloadRenderedPersistedSleepSession && view.offlineWorkoutRenderedAsDeviceOnly && view.workoutReconnectSyncedExactlyOnce && view.reloadRenderedPersistedWorkout && view.queueDrained && !hasUnexpectedBrowserSignals(view.signals)) && cleanup.every((item) => item.accountErased);
+  const passed = views.length === SELECTED_VIEWPORTS.length && views.every((view) => view.quotaFailureLeftFormIntact && view.quotaFailureCreatedNoQueueItem && view.offlineRecordRenderedAsDeviceOnly && view.offlineRecordAbsentFromServer && view.reconnectSyncedExactlyOnce && view.reloadRenderedPersistedRecord && view.offlineMeasurementRenderedAsDeviceOnly && view.measurementReconnectSyncedExactlyOnce && view.reloadRenderedPersistedMeasurement && view.offlineSupplementRenderedAsDeviceOnly && view.supplementReconnectSyncedExactlyOnce && view.reloadRenderedPersistedSupplement && view.offlineRecoveryRenderedAsDeviceOnly && view.recoveryReconnectSyncedExactlyOnce && view.reloadRenderedPersistedRecovery && view.offlineObservationRenderedAsDeviceOnly && view.observationReconnectSyncedExactlyOnce && view.reloadRenderedPersistedObservation && view.offlineSleepSessionRenderedAsDeviceOnly && view.sleepSessionReconnectSyncedExactlyOnce && view.reloadRenderedPersistedSleepSession && view.offlineWorkoutRenderedAsDeviceOnly && view.workoutReconnectSyncedExactlyOnce && view.reloadRenderedPersistedWorkout && view.offlineNutritionRenderedAsDeviceOnly && view.nutritionReconnectSyncedExactlyOnce && view.reloadRenderedPersistedNutrition && view.queueDrained && !hasUnexpectedBrowserSignals(view.signals)) && cleanup.every((item) => item.accountErased);
   const report = {
     contract: "lyfeos.production-health-offline-browser.v1",
     generatedAt: new Date().toISOString(),
