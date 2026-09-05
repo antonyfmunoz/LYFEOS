@@ -79,6 +79,18 @@ function safeError(error: unknown): string {
     .slice(0, 1_500);
 }
 
+/**
+ * Clerk can defer a presentation-only browser chunk until a control becomes
+ * visible. During this journey we deliberately take the already-loaded Health
+ * screen offline. A failed fetch for that exact third-party chunk is expected
+ * transport evidence, provided the app finishes its own queued-write and
+ * reload lifecycle after reconnect. Do not broaden this exception to LyfeOS
+ * assets or to arbitrary page errors.
+ */
+function isExpectedOfflineClerkChunkError(message: string): boolean {
+  return /ChunkLoadError: Loading chunk \d+ failed\.\s*\(error: https:\/\/clerk\.lyfeos\.net\/npm\/@clerk\/clerk-js@\d+(?:\.\d+){1,3}\/dist\/[\w.-]+\.js\)/i.test(message);
+}
+
 async function request(method: string, pathname: string, body?: unknown, cookie = "", headers: Record<string, string> = {}): Promise<ApiResult> {
   const response = await fetch(new URL(pathname, BASE_URL), {
     method,
@@ -146,7 +158,14 @@ function captureSignals(page: Page, state: { intentionalOffline: boolean }): Sig
     if (state.intentionalOffline && detail.includes("ERR_INTERNET_DISCONNECTED")) return;
     signals.consoleErrors.push(detail);
   });
-  page.on("pageerror", (error) => signals.pageErrors.push(error.message.slice(0, 500)));
+  page.on("pageerror", (error) => {
+    const message = error.message.slice(0, 500);
+    if (state.intentionalOffline && isExpectedOfflineClerkChunkError(message)) {
+      signals.expectedOfflineFailures.push(`pageerror ${message}`);
+      return;
+    }
+    signals.pageErrors.push(message);
+  });
   page.on("requestfailed", (failed) => {
     const method = failed.method();
     const detail = `${method} ${new URL(failed.url()).pathname}: ${failed.failure()?.errorText || "failed"}`;
