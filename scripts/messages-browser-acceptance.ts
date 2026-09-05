@@ -499,6 +499,14 @@ async function main(): Promise<void> {
       isolatedProviderErrors: [...combined.isolatedProviderErrors, ...current.isolatedProviderErrors],
     }), { consoleErrors: [], pageErrors: [], failedRequests: [], serverErrors: [], recoveredChunkLoads: [], isolatedProviderErrors: [] });
     const browserClean = !hasUnexpectedBrowserSignals(allSignals);
+    const browserSignalCounts = {
+      consoleErrors: allSignals.consoleErrors.length,
+      pageErrors: allSignals.pageErrors.length,
+      failedRequests: allSignals.failedRequests.length,
+      serverErrors: allSignals.serverErrors.length,
+      recoveredChunkLoads: allSignals.recoveredChunkLoads.length,
+      isolatedProviderErrors: allSignals.isolatedProviderErrors.length,
+    };
     const passed = failure === null
       && readReceiptRendered
       && reactionRendered
@@ -519,12 +527,13 @@ async function main(): Promise<void> {
       lifecycle: { readReceiptRendered, reactionRendered, replyRendered, editRendered, privateNoteOwnerOnly, blockLifecycleRendered },
       views,
       browserSignals: allSignals,
+      browserSignalCounts,
       cleanup: { accountErased, identifierErasure, residualCounts: MODE === "isolated" ? residualCounts : null },
       summary: { passed, failure },
       boundary: `Disposable ${MODE === "production" ? "production-account" : "isolated PostgreSQL"} plus Chromium evidence for the native LyfeOS Messages UI. It proves rendered two-account delivery, read evidence, reaction, reply, edit, author-only note, block/unblock, responsive semantics and verified account/session/identifier erasure. It is not external-provider delivery, human assistive-technology comprehension, physical-device behavior, or authorization for autonomous sending.`,
     };
     await fs.writeFile(OUTPUT_FILE, `${JSON.stringify(report, null, 2)}\n`, "utf8");
-    console.log(JSON.stringify({ contract: report.contract, passed, viewCount: views.length, lifecycle: report.lifecycle, accountErased }));
+    console.log(JSON.stringify({ contract: report.contract, passed, viewCount: views.length, lifecycle: report.lifecycle, browserClean, browserSignalCounts, accountErased }));
     if (!passed && !failure) failure = "Rendered Messages acceptance did not satisfy every lifecycle, browser and cleanup invariant.";
   }
 

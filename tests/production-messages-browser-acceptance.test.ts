@@ -18,6 +18,7 @@ describe("production Messages browser acceptance custody", () => {
   it("reuses the same two-account rendered lifecycle in isolated and production modes", () => {
     expect(script).toContain('"lyfeos.production-messages-browser.v1"');
     expect(script).toContain('"lyfeos.isolated-messages-browser.v1"');
+    expect(script).toContain("browserSignalCounts");
     for (const invariant of [
       "readReceiptRendered",
       "reactionRendered",
