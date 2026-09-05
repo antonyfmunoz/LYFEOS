@@ -145,9 +145,15 @@ app.post("/api/sentry-tunnel", async (req, res) => {
     if (!dsn.username || !/^\d+$/.test(projectId)) return res.sendStatus(404);
     const endpoint = `${dsn.protocol}//${dsn.host}/api/${projectId}/envelope/?sentry_version=7&sentry_key=${encodeURIComponent(dsn.username)}`;
     const upstream = await fetch(endpoint, { method: "POST", headers: { "content-type": "application/x-sentry-envelope" }, body: req.body, signal: AbortSignal.timeout(10_000) });
-    return res.sendStatus(upstream.ok ? 200 : 502);
-  } catch {
-    return res.sendStatus(502);
+    if (upstream.ok) return res.sendStatus(200);
+    // Browser telemetry must never turn a successful product action into a
+    // visible console/network error. Delivery remains observable from server
+    // logs without recording user content or the envelope itself.
+    console.warn(`[sentry-tunnel] upstream delivery failed status=${upstream.status}`);
+    return res.sendStatus(204);
+  } catch (error) {
+    console.warn(`[sentry-tunnel] upstream delivery failed reason=${error instanceof Error ? error.name : "unknown"}`);
+    return res.sendStatus(204);
   }
 });
 
