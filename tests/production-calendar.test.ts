@@ -44,6 +44,9 @@ describe("production Calendar evidence custody", () => {
     expect(restorePrimaryCache).toBeGreaterThan(-1);
     expect(conflictOpen).toBeGreaterThan(restorePrimaryCache);
     expect(acceptance).toContain("await page.bringToFront()");
+    expect(acceptance).toContain("async function enterText");
+    expect(acceptance).toContain("await page.keyboard.type(value)");
+    expect(acceptance).toContain('await enterText(competingPage, "#edit-title", serverTitle)');
     expect(acceptance).toContain("The second live tab did not commit Calendar mission revision two");
     const competingRecovery = acceptance.indexOf("await acknowledgeBoundedChunkRecovery(competingPage, signals)");
     const competingClose = acceptance.indexOf("await competingPage.close()", competingRecovery);

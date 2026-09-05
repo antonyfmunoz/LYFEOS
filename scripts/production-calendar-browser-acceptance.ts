@@ -268,6 +268,19 @@ async function activate(page: Page, selector: string): Promise<void> {
   await page.click(selector);
 }
 
+async function enterText(page: Page, selector: string, value: string): Promise<void> {
+  await page.waitForSelector(selector, { visible: true, timeout: 30_000 });
+  await page.click(selector, { clickCount: 3 });
+  await page.keyboard.press("Backspace");
+  await page.keyboard.type(value);
+  await page.waitForFunction((targetSelector, expected) => {
+    const input = document.querySelector<HTMLInputElement>(targetSelector);
+    return input?.value === expected;
+  }, { timeout: 30_000 }, selector, value);
+  // Let React commit the controlled-input change before the subsequent submit.
+  await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+}
+
 async function waitForMission(account: Account, date: string, predicate: (mission: any) => boolean, label: string): Promise<any> {
   const deadline = Date.now() + 45_000;
   let latest: ApiResult | null = null;
@@ -475,7 +488,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
 
     stage = "queue the first-tab edit while offline";
     await page.bringToFront();
-    await setValue(page, "#edit-title", queuedTitle);
+    await enterText(page, "#edit-title", queuedTitle);
     intentionallyOffline = true;
     await enterOffline(page);
     await activate(page, '[data-testid="mission-update-submit"]');
@@ -484,7 +497,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     stage = "commit the competing canonical edit from the already-open second tab";
     await competingPage.bringToFront();
     await activate(competingPage, `[aria-label="Edit mission ${conflictTitle} at 10:00"]`);
-    await setValue(competingPage, "#edit-title", serverTitle);
+    await enterText(competingPage, "#edit-title", serverTitle);
     // The Calendar queue adapter owns its transport shape; on a live route it
     // can complete a canonical update without leaving the form open long
     // enough for a response listener to observe it. The persisted revision is
