@@ -39,6 +39,10 @@ const VIEWPORTS: Array<{ name: string; value: Viewport }> = [
   { name: "desktop-1440x900", value: { width: 1440, height: 900, deviceScaleFactor: 1 } },
   { name: "mobile-390x844", value: { width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true } },
 ];
+const VIEWPORT_FILTER = process.env.LYFEOS_ACCEPTANCE_VIEWPORT?.trim() || null;
+const SELECTED_VIEWPORTS = VIEWPORT_FILTER
+  ? VIEWPORTS.filter((viewport) => viewport.name === VIEWPORT_FILTER)
+  : VIEWPORTS;
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -434,6 +438,7 @@ async function main(): Promise<void> {
   if (MODE === "production") assert(BASE_URL.origin === "https://lyfeos.net", "Production Health offline acceptance may target only https://lyfeos.net.");
   assert(/^[0-9a-f]{40}$/.test(SOURCE), "Health offline acceptance requires the exact deployed source revision.");
   assert(/^[0-9a-f]{40}$/.test(HARNESS_SOURCE), "Health offline acceptance requires the exact harness source revision.");
+  assert(SELECTED_VIEWPORTS.length > 0, `Unknown Health offline acceptance viewport: ${VIEWPORT_FILTER || "none"}.`);
   const release = await request("GET", "/api/release");
   assert(release.status === 200 && release.body?.sourceRevision === SOURCE, "Health offline runtime does not match the requested immutable source.");
   await fs.mkdir(OUTPUT_DIR, { recursive: true });
@@ -442,7 +447,7 @@ async function main(): Promise<void> {
   const views: ViewResult[] = [];
   const cleanup: Array<{ viewport: string; accountErased: boolean }> = [];
   try {
-    for (const [ordinal, viewport] of VIEWPORTS.entries()) {
+    for (const [ordinal, viewport] of SELECTED_VIEWPORTS.entries()) {
       const result = await runViewport(browser, viewport, ordinal);
       views.push(result.view);
       cleanup.push({ viewport: viewport.name, accountErased: result.accountErased });
@@ -451,7 +456,7 @@ async function main(): Promise<void> {
     await browser.close().catch(() => undefined);
   }
 
-  const passed = views.length === VIEWPORTS.length && views.every((view) => view.quotaFailureLeftFormIntact && view.quotaFailureCreatedNoQueueItem && view.offlineRecordRenderedAsDeviceOnly && view.offlineRecordAbsentFromServer && view.reconnectSyncedExactlyOnce && view.reloadRenderedPersistedRecord && view.offlineMeasurementRenderedAsDeviceOnly && view.measurementReconnectSyncedExactlyOnce && view.reloadRenderedPersistedMeasurement && view.queueDrained && !hasUnexpectedBrowserSignals(view.signals)) && cleanup.every((item) => item.accountErased);
+  const passed = views.length === SELECTED_VIEWPORTS.length && views.every((view) => view.quotaFailureLeftFormIntact && view.quotaFailureCreatedNoQueueItem && view.offlineRecordRenderedAsDeviceOnly && view.offlineRecordAbsentFromServer && view.reconnectSyncedExactlyOnce && view.reloadRenderedPersistedRecord && view.offlineMeasurementRenderedAsDeviceOnly && view.measurementReconnectSyncedExactlyOnce && view.reloadRenderedPersistedMeasurement && view.queueDrained && !hasUnexpectedBrowserSignals(view.signals)) && cleanup.every((item) => item.accountErased);
   const report = {
     contract: "lyfeos.production-health-offline-browser.v1",
     generatedAt: new Date().toISOString(),

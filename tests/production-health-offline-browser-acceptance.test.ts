@@ -19,7 +19,9 @@ describe("production Health offline browser acceptance custody", () => {
     expect(script).toContain('BASE_URL.origin === "https://lyfeos.net"');
     expect(script).toContain("sourceRevision: SOURCE");
     expect(script).toContain("harnessSource: HARNESS_SOURCE");
-    expect(script).toContain("for (const [ordinal, viewport] of VIEWPORTS.entries())");
+    expect(script).toContain("for (const [ordinal, viewport] of SELECTED_VIEWPORTS.entries())");
+    expect(script).toContain("LYFEOS_ACCEPTANCE_VIEWPORT");
+    expect(script).toContain("Unknown Health offline acceptance viewport");
     expect(script).toContain('confirmation: "DELETE MY ACCOUNT"');
     expect(script).toContain("accountErased");
     expect(script).not.toMatch(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
