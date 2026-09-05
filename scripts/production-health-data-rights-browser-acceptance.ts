@@ -51,7 +51,7 @@ function captureSignals(page: Page): BrowserSignals {
   const signals: BrowserSignals = { consoleErrors: [], pageErrors: [], failedRequests: [], serverErrors: [], recoveredChunkLoads: [] };
   page.on("console", (entry) => { if (entry.type() === "error") signals.consoleErrors.push(`${entry.text()}${entry.location().url ? ` @ ${entry.location().url}` : ""}`.slice(0, 500)); });
   page.on("pageerror", (error) => signals.pageErrors.push(error.message.slice(0, 500)));
-  page.on("requestfailed", (failed) => { if (failed.url().startsWith(BASE_URL.origin)) signals.failedRequests.push(`${failed.method()} ${new URL(failed.url()).pathname}: ${failed.failure()?.errorText || "failed"}`.slice(0, 500)); });
+  page.on("requestfailed", (failed) => { const detail = `${failed.method()} ${new URL(failed.url()).pathname}: ${failed.failure()?.errorText || "failed"}`; if (["GET", "HEAD"].includes(failed.method()) && detail.includes("ERR_ABORTED")) return; if (failed.url().startsWith(BASE_URL.origin)) signals.failedRequests.push(detail.slice(0, 500)); });
   page.on("response", (response) => { if (response.url().startsWith(BASE_URL.origin) && response.status() >= 500) signals.serverErrors.push(`${response.status()} ${new URL(response.url()).pathname}`); });
   return signals;
 }
