@@ -6,6 +6,7 @@ const workflow = fs.readFileSync(".github/workflows/production-browser-acceptanc
 const packageJson = fs.readFileSync("package.json", "utf8");
 const page = fs.readFileSync("client/src/pages/HealthDetailPage.tsx", "utf8");
 const dailyLog = fs.readFileSync("client/src/components/health/DailyHealthLog.tsx", "utf8");
+const recoveryLog = fs.readFileSync("client/src/components/health/RecoveryLog.tsx", "utf8");
 const queue = fs.readFileSync("client/src/components/health/OfflineHealthQueueStatus.tsx", "utf8");
 
 describe("production Health offline browser acceptance custody", () => {
@@ -45,6 +46,9 @@ describe("production Health offline browser acceptance custody", () => {
     expect(script).toContain("offlineSupplementRenderedAsDeviceOnly");
     expect(script).toContain("supplementReconnectSyncedExactlyOnce");
     expect(script).toContain("reloadRenderedPersistedSupplement");
+    expect(script).toContain("offlineRecoveryRenderedAsDeviceOnly");
+    expect(script).toContain("recoveryReconnectSyncedExactlyOnce");
+    expect(script).toContain("reloadRenderedPersistedRecovery");
     expect(script).toContain("queueDrained");
     expect(script).toContain("first-ever offline use");
     expect(script).toContain("storage eviction");
@@ -69,5 +73,9 @@ describe("production Health offline browser acceptance custody", () => {
     expect(queue).toContain("health-offline-queue-item-");
     expect(queue).toContain("health-offline-retry-");
     expect(queue).toContain("health-offline-discard-");
+    expect(recoveryLog).toContain('data-testid="recovery-log"');
+    expect(recoveryLog).toContain('data-testid="recovery-activity-type"');
+    expect(recoveryLog).toContain('data-testid="recovery-duration-minutes"');
+    expect(recoveryLog).toContain('data-testid="recovery-save"');
   });
 });

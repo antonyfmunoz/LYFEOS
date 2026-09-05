@@ -99,18 +99,18 @@ export default function RecoveryLog() {
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["/api/recovery-tag-policies"] }),
   });
 
-  return <section className="glassmorphic rounded-2xl p-6 mb-8 border border-primary/30" aria-labelledby="recovery-heading">
+  return <section className="glassmorphic rounded-2xl p-6 mb-8 border border-primary/30" aria-labelledby="recovery-heading" data-testid="recovery-log">
     <div>
       <h2 id="recovery-heading" className="font-orbitron text-lg text-primary flex items-center gap-2"><HeartPulse className="h-5 w-5" />Recovery log</h2>
       <p className="text-sm text-muted-foreground mt-1">Record the practices you choose. These are self-reports, not treatment or readiness claims.</p>
     </div>
     <div className="grid gap-2 mt-4 sm:grid-cols-[10rem_1fr_7rem_7rem_7rem_auto]">
       <Input aria-label="Recovery date" type="date" value={date} onChange={(event) => setDate(event.target.value)} />
-      <select aria-label="Recovery activity" className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={activityType} onChange={(event) => setActivityType(event.target.value)}>{recoveryTypes.map((type) => <option value={type} key={type}>{display(type)}</option>)}</select>
-      <Input aria-label="Recovery duration minutes" type="number" min="1" placeholder="Minutes" value={minutes} onChange={(event) => setMinutes(event.target.value)} />
+      <select aria-label="Recovery activity" data-testid="recovery-activity-type" className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={activityType} onChange={(event) => setActivityType(event.target.value)}>{recoveryTypes.map((type) => <option value={type} key={type}>{display(type)}</option>)}</select>
+      <Input aria-label="Recovery duration minutes" data-testid="recovery-duration-minutes" type="number" min="1" placeholder="Minutes" value={minutes} onChange={(event) => setMinutes(event.target.value)} />
       <Input aria-label="Recovery intensity 1 to 10" type="number" min="1" max="10" placeholder="Intensity" value={intensity} onChange={(event) => setIntensity(event.target.value)} />
       <Input aria-label="Perceived recovery effect 1 to 5" type="number" min="1" max="5" placeholder="Effect 1–5" value={effect} onChange={(event) => setEffect(event.target.value)} />
-      <Button size="sm" disabled={log.isPending || (activityType === "other" && !customLabel.trim())} onClick={() => log.mutate()}>{editingId ? <Pencil /> : <Plus />}{editingId ? "Update" : "Log"}</Button>
+      <Button size="sm" data-testid="recovery-save" disabled={log.isPending || (activityType === "other" && !customLabel.trim())} onClick={() => log.mutate()}>{editingId ? <Pencil /> : <Plus />}{editingId ? "Update" : "Log"}</Button>
     </div>
     {activityType === "other" ? <Input className="mt-2" aria-label="Custom recovery activity name" placeholder="Name your recovery practice" value={customLabel} onChange={(event) => setCustomLabel(event.target.value)} /> : null}
     <Input className="mt-2" aria-label="Recovery activity note" placeholder="Optional note or intent" value={note} onChange={(event) => setNote(event.target.value)} />
