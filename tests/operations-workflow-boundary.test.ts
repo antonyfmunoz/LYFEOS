@@ -10,7 +10,9 @@ describe("production operations workflow boundary", () => {
     expect(monitor).toContain("Verify immutable release and migration identity");
     expect(monitor).toContain(".sourceRevision");
     expect(monitor).toContain(".migrations.status");
-    expect(monitor).toContain("0144_integration_action_governance");
+    expect(monitor).toContain("Resolve immutable production release");
+    expect(monitor).toContain("ref: ${{ steps.release.outputs.source }}");
+    expect(monitor).toContain("expected_migrations");
   });
 
   it("rehearses a real isolated logical restore and structural comparison", () => {
@@ -20,7 +22,8 @@ describe("production operations workflow boundary", () => {
     expect(verify).toContain("pg_restore");
     expect(verify).toContain("schema_fingerprint");
     expect(verify).toContain("lyfeos_restore_ci");
-    expect(verify.match(/= "136"/g)).toHaveLength(2);
+    expect(verify).toContain('test "$source_migrations" = "$expected_migrations"');
+    expect(verify).toContain('= "$expected_migrations"');
   });
 
   it("keeps production browser qualification source-pinned and disposable", () => {
