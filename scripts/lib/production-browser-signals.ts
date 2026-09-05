@@ -16,10 +16,11 @@ export type FixtureBrowserUser = {
   displayName: string;
 };
 
-// The product owns the exact bounded deadline. The qualification contract
-// accepts only its fully structured, marker-backed timeout signal, so a
-// reviewed deadline adjustment cannot silently turn into an unexplained error.
-const BOUNDED_ROUTE_CHUNK_TIMEOUT = /^ChunkLoadError: Failed to fetch dynamically imported module: route chunk timed out after \d+ms(?: @ https?:\/\/[^\s]+\/assets\/[^\s]+\.js)?$/;
+// This must track the exact production deadline. The qualification contract
+// accepts only this fully structured, marker-backed signal, so a deadline
+// change requires an explicit reviewed test update rather than broadening an
+// error exception.
+const BOUNDED_ROUTE_CHUNK_TIMEOUT = /^ChunkLoadError: Failed to fetch dynamically imported module: route chunk timed out after 60000ms(?: @ https?:\/\/[^\s]+\/assets\/[^\s]+\.js)?$/;
 const BOUNDED_ROUTE_CHUNK_SETTLE_MS = 2_000;
 const BOUNDED_ROUTE_CHUNK_POLL_MS = 100;
 const SENTRY_BROWSER_INGEST = /https:\/\/o\d+\.ingest(?:\.[a-z0-9-]+)?\.sentry\.io\/api\/\d+\/envelope\//i;

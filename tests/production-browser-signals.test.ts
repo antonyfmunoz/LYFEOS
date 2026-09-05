@@ -22,7 +22,7 @@ function signals(consoleErrors: string[] = []): BrowserSignals {
   };
 }
 
-const exactTimeout = "ChunkLoadError: Failed to fetch dynamically imported module: route chunk timed out after 15000ms @ https://lyfeos.net/assets/index-ByYtYs3v.js";
+const exactTimeout = "ChunkLoadError: Failed to fetch dynamically imported module: route chunk timed out after 60000ms @ https://lyfeos.net/assets/index-ByYtYs3v.js";
 
 describe("production browser signal reconciliation", () => {
   it("does not report fixture seeding as an application error in storage-ineligible documents", async () => {
