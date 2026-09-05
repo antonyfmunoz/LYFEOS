@@ -9,7 +9,11 @@ const CHUNK_LOAD_ERROR_PATTERNS = [
 
 export const CHUNK_RECOVERY_STORAGE_KEY = "lyfeos-chunk-recovery";
 export const CHUNK_RECOVERY_COOLDOWN_MS = 60_000;
-export const ROUTE_CHUNK_TIMEOUT_MS = 15_000;
+// A production browser can legitimately be busy hydrating a second tab while it
+// fetches a deferred route chunk. Keep this bounded so a genuinely unavailable
+// release still recovers, but do not turn a transient 15-second delay into a
+// permanent workspace failure.
+export const ROUTE_CHUNK_TIMEOUT_MS = 30_000;
 
 export function attemptRouteChunkRecovery(error: unknown, now = Date.now()): boolean {
   if (!isChunkLoadError(error) || typeof window === "undefined" || typeof sessionStorage === "undefined") return false;
