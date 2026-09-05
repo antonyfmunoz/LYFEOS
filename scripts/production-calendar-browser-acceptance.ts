@@ -270,7 +270,14 @@ async function activate(page: Page, selector: string): Promise<void> {
 
 async function enterText(page: Page, selector: string, value: string): Promise<void> {
   await page.waitForSelector(selector, { visible: true, timeout: 30_000 });
-  await page.click(selector, { clickCount: 3 });
+  await page.$eval(selector, (control) => control.scrollIntoView({ block: "center", inline: "center" }));
+  // On the mobile full-height editor the input can be offscreen before the
+  // browser scrolls it. Focus is the native keyboard path and avoids treating
+  // an off-viewport pointer coordinate as an application submission failure.
+  await page.focus(selector);
+  await page.keyboard.down("Control");
+  await page.keyboard.press("A");
+  await page.keyboard.up("Control");
   await page.keyboard.press("Backspace");
   await page.keyboard.type(value);
   await page.waitForFunction((targetSelector, expected) => {
