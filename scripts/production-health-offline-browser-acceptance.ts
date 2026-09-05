@@ -718,13 +718,18 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     stage = "load sleep log";
     await page.evaluate(() => document.getElementById("health-section-sleep")?.scrollIntoView({ block: "center" }));
     await page.waitForSelector('[data-testid="sleep-log"]', { visible: true, timeout: 60_000 });
-    const sleepSession = await page.evaluate(() => {
-      const end = new Date();
-      end.setHours(end.getHours() - 1, 0, 0, 0);
-      const start = new Date(end.getTime() - 7 * 60 * 60 * 1_000);
-      const localDateTime = (value: Date) => new Date(value.getTime() - value.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
-      return { startInput: localDateTime(start), endInput: localDateTime(end), startedAt: start.toISOString(), endedAt: end.toISOString() };
-    });
+    // Keep this as a literal browser script. The TypeScript runner decorates
+    // nested named callbacks with host-only helpers before Puppeteer
+    // serializes them, which would make the browser see an undefined helper.
+    const sleepSession = await page.evaluate(`
+      (() => {
+        const end = new Date();
+        end.setHours(end.getHours() - 1, 0, 0, 0);
+        const start = new Date(end.getTime() - 7 * 60 * 60 * 1_000);
+        const localDateTime = (value) => new Date(value.getTime() - value.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+        return { startInput: localDateTime(start), endInput: localDateTime(end), startedAt: start.toISOString(), endedAt: end.toISOString() };
+      })()
+    `) as { startInput: string; endInput: string; startedAt: string; endedAt: string };
     stage = "prove initial sleep-session absence";
     await waitForSleepSessionCount(account, localContext.date, localContext.timeZone, localContext.utcOffsetMinutes, sleepSession.startedAt, sleepSession.endedAt, 0);
     stage = "submit durable offline sleep session";
