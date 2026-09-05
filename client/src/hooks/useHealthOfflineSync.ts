@@ -15,7 +15,7 @@ export function useHealthOfflineSync(): void {
         if (!active) return;
         void queryClient.invalidateQueries({ queryKey: ["health-offline-queue", user.id] });
         if (result.sent) {
-          void queryClient.invalidateQueries({ predicate: (query) => typeof query.queryKey[0] === "string" && (query.queryKey[0].startsWith("/api/nutrition/") || query.queryKey[0].startsWith("/api/workouts") || query.queryKey[0].startsWith("/api/health-fitness/") || query.queryKey[0].startsWith("/api/recovery-")) });
+          void queryClient.invalidateQueries({ predicate: (query) => typeof query.queryKey[0] === "string" && (query.queryKey[0].startsWith("/api/nutrition/") || query.queryKey[0].startsWith("/api/workouts") || query.queryKey[0].startsWith("/api/health-fitness/") || query.queryKey[0].startsWith("/api/recovery-") || query.queryKey[0].startsWith("/api/health-observations")) });
           toast({ title: `${result.sent} offline health ${result.sent === 1 ? "record" : "records"} synced` });
         }
         if (result.failed) toast({ title: "An offline health record needs attention", description: "It remains on this device and was not added to your account.", variant: "destructive" });

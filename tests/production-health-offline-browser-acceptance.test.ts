@@ -7,6 +7,7 @@ const packageJson = fs.readFileSync("package.json", "utf8");
 const page = fs.readFileSync("client/src/pages/HealthDetailPage.tsx", "utf8");
 const dailyLog = fs.readFileSync("client/src/components/health/DailyHealthLog.tsx", "utf8");
 const recoveryLog = fs.readFileSync("client/src/components/health/RecoveryLog.tsx", "utf8");
+const metricsLedger = fs.readFileSync("client/src/components/health/HealthMetricsLedger.tsx", "utf8");
 const queue = fs.readFileSync("client/src/components/health/OfflineHealthQueueStatus.tsx", "utf8");
 
 describe("production Health offline browser acceptance custody", () => {
@@ -49,6 +50,9 @@ describe("production Health offline browser acceptance custody", () => {
     expect(script).toContain("offlineRecoveryRenderedAsDeviceOnly");
     expect(script).toContain("recoveryReconnectSyncedExactlyOnce");
     expect(script).toContain("reloadRenderedPersistedRecovery");
+    expect(script).toContain("offlineObservationRenderedAsDeviceOnly");
+    expect(script).toContain("observationReconnectSyncedExactlyOnce");
+    expect(script).toContain("reloadRenderedPersistedObservation");
     expect(script).toContain("queueDrained");
     expect(script).toContain("first-ever offline use");
     expect(script).toContain("storage eviction");
@@ -77,5 +81,10 @@ describe("production Health offline browser acceptance custody", () => {
     expect(recoveryLog).toContain('data-testid="recovery-activity-type"');
     expect(recoveryLog).toContain('data-testid="recovery-duration-minutes"');
     expect(recoveryLog).toContain('data-testid="recovery-save"');
+    expect(metricsLedger).toContain('data-testid="health-metrics-ledger"');
+    expect(metricsLedger).toContain('data-testid="health-observation-name"');
+    expect(metricsLedger).toContain('data-testid="health-observation-unit"');
+    expect(metricsLedger).toContain('data-testid="health-observation-value"');
+    expect(metricsLedger).toContain('data-testid="health-observation-save"');
   });
 });

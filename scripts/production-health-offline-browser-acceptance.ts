@@ -27,6 +27,9 @@ type ViewResult = {
   offlineRecoveryRenderedAsDeviceOnly: boolean;
   recoveryReconnectSyncedExactlyOnce: boolean;
   reloadRenderedPersistedRecovery: boolean;
+  offlineObservationRenderedAsDeviceOnly: boolean;
+  observationReconnectSyncedExactlyOnce: boolean;
+  reloadRenderedPersistedObservation: boolean;
   queueDrained: boolean;
   audit: Audit;
   signals: Signals;
@@ -45,6 +48,9 @@ const SUPPLEMENT_NAME = "Vitamin C";
 const SUPPLEMENT_AMOUNT_MG = 250;
 const RECOVERY_ACTIVITY_TYPE = "sauna";
 const RECOVERY_DURATION_MINUTES = 20;
+const OBSERVATION_NAME = "Acceptance resting heart rate";
+const OBSERVATION_VALUE_BPM = 60;
+const OBSERVATION_UNIT = "bpm";
 const VIEWPORTS: Array<{ name: string; value: Viewport }> = [
   { name: "desktop-1440x900", value: { width: 1440, height: 900, deviceScaleFactor: 1 } },
   { name: "mobile-390x844", value: { width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true } },
@@ -313,6 +319,27 @@ async function waitForRecoveryActivityCount(account: Account, date: string, time
   throw new Error(`Expected ${expected} accepted recovery activity record(s), observed ${latest}.`);
 }
 
+async function readHealthObservations(account: Account): Promise<any[]> {
+  const result = await request("GET", "/api/health-observations", undefined, account.cookie);
+  assert(result.status === 200 && Array.isArray(result.body?.observations), `Health-observation read returned ${result.status}.`);
+  return result.body.observations;
+}
+
+function isAcceptanceObservation(entry: any): boolean {
+  return entry?.displayName === OBSERVATION_NAME && entry?.unit === OBSERVATION_UNIT && Number(entry?.value) === OBSERVATION_VALUE_BPM;
+}
+
+async function waitForObservationCount(account: Account, expected: number): Promise<void> {
+  const deadline = Date.now() + 45_000;
+  let latest = -1;
+  while (Date.now() < deadline) {
+    latest = (await readHealthObservations(account)).filter(isAcceptanceObservation).length;
+    if (latest === expected) return;
+    await new Promise((resolve) => setTimeout(resolve, 400));
+  }
+  throw new Error(`Expected ${expected} accepted health observation(s), observed ${latest}.`);
+}
+
 async function eraseAccount(account: Account): Promise<boolean> {
   if (!account.cookie) return true;
   for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -530,12 +557,47 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     await waitForRecoveryActivityCount(account, localContext.date, localContext.timeZone, localContext.utcOffsetMinutes, 1);
     const reloadRenderedPersistedRecovery = true;
 
+    stage = "load health metrics ledger";
+    await page.evaluate(() => document.getElementById("health-section-metrics")?.scrollIntoView({ block: "center" }));
+    await page.waitForSelector('[data-testid="health-metrics-ledger"]', { visible: true, timeout: 60_000 });
+    stage = "prove initial health observation absence";
+    await waitForObservationCount(account, 0);
+    stage = "submit durable offline health observation";
+    await setValue(page, '[data-testid="health-observation-name"]', OBSERVATION_NAME);
+    await setValue(page, '[data-testid="health-observation-unit"]', OBSERVATION_UNIT);
+    await setValue(page, '[data-testid="health-observation-value"]', String(OBSERVATION_VALUE_BPM));
+    offlineState.intentionalOffline = true;
+    await page.setOfflineMode(true);
+    await clickReady(page, '[data-testid="health-observation-save"]');
+    stage = "wait for queued health observation label";
+    await page.waitForSelector('[data-testid="health-offline-queue"]', { visible: true, timeout: 30_000 });
+    await page.waitForFunction(() => document.querySelector('[data-testid="health-offline-queue"]')?.textContent?.includes("Health Observation record"), { timeout: 30_000 });
+    const offlineObservationRenderedAsDeviceOnly = true;
+    stage = "prove queued health observation absent from server";
+    await waitForObservationCount(account, 0);
+    offlineState.intentionalOffline = false;
+    await page.setOfflineMode(false);
+    await page.evaluate(() => window.dispatchEvent(new Event("online")));
+    stage = "wait for health observation reconnect queue drainage";
+    await page.waitForSelector('[data-testid="health-offline-queue"]', { hidden: true, timeout: 45_000 });
+    stage = "prove exactly one reconnected health observation";
+    await waitForObservationCount(account, 1);
+    const observationReconnectSyncedExactlyOnce = true;
+    stage = "reload Health after health-observation sync";
+    await page.reload({ waitUntil: "domcontentloaded", timeout: 60_000 });
+    await page.waitForSelector('[data-testid="health-page"]', { visible: true, timeout: 60_000 });
+    await page.evaluate(() => document.getElementById("health-section-metrics")?.scrollIntoView({ block: "center" }));
+    await page.waitForSelector('[data-testid="health-metrics-ledger"]', { visible: true, timeout: 60_000 });
+    await page.waitForFunction((name, value, unit) => document.querySelector('[data-testid="health-metrics-ledger"]')?.textContent?.includes(name) && document.querySelector('[data-testid="health-metrics-ledger"]')?.textContent?.includes(`${value} ${unit}`), { timeout: 45_000 }, OBSERVATION_NAME, String(OBSERVATION_VALUE_BPM), OBSERVATION_UNIT);
+    await waitForObservationCount(account, 1);
+    const reloadRenderedPersistedObservation = true;
+
     stage = "audit final Health page";
     const audit = await auditPage(page);
     assert(audit.mainCount === 1 && audit.duplicateIds.length === 0 && audit.invalidLabelReferences.length === 0 && audit.unlabeledControls.length === 0 && audit.horizontalOverflowPx <= 2, `${viewport.name} failed Health semantics or overflow checks.`);
     await acknowledgeBoundedChunkRecovery(page, signals);
     assert(!hasUnexpectedBrowserSignals(signals), `${viewport.name} produced unexpected browser signals: ${JSON.stringify(signals)}.`);
-    view = { viewport: viewport.name, quotaFailureLeftFormIntact, quotaFailureCreatedNoQueueItem, offlineRecordRenderedAsDeviceOnly, offlineRecordAbsentFromServer, reconnectSyncedExactlyOnce, reloadRenderedPersistedRecord, offlineMeasurementRenderedAsDeviceOnly, measurementReconnectSyncedExactlyOnce, reloadRenderedPersistedMeasurement, offlineSupplementRenderedAsDeviceOnly, supplementReconnectSyncedExactlyOnce, reloadRenderedPersistedSupplement, offlineRecoveryRenderedAsDeviceOnly, recoveryReconnectSyncedExactlyOnce, reloadRenderedPersistedRecovery, queueDrained, audit, signals };
+    view = { viewport: viewport.name, quotaFailureLeftFormIntact, quotaFailureCreatedNoQueueItem, offlineRecordRenderedAsDeviceOnly, offlineRecordAbsentFromServer, reconnectSyncedExactlyOnce, reloadRenderedPersistedRecord, offlineMeasurementRenderedAsDeviceOnly, measurementReconnectSyncedExactlyOnce, reloadRenderedPersistedMeasurement, offlineSupplementRenderedAsDeviceOnly, supplementReconnectSyncedExactlyOnce, reloadRenderedPersistedSupplement, offlineRecoveryRenderedAsDeviceOnly, recoveryReconnectSyncedExactlyOnce, reloadRenderedPersistedRecovery, offlineObservationRenderedAsDeviceOnly, observationReconnectSyncedExactlyOnce, reloadRenderedPersistedObservation, queueDrained, audit, signals };
   } catch (error) {
     const pages = context ? await context.pages().catch(() => []) : [];
     const rendered = pages[0] ? await pages[0].evaluate(() => document.body?.innerText.slice(0, 4_000) || "").catch(() => "") : "";
@@ -572,7 +634,7 @@ async function main(): Promise<void> {
     await browser.close().catch(() => undefined);
   }
 
-  const passed = views.length === SELECTED_VIEWPORTS.length && views.every((view) => view.quotaFailureLeftFormIntact && view.quotaFailureCreatedNoQueueItem && view.offlineRecordRenderedAsDeviceOnly && view.offlineRecordAbsentFromServer && view.reconnectSyncedExactlyOnce && view.reloadRenderedPersistedRecord && view.offlineMeasurementRenderedAsDeviceOnly && view.measurementReconnectSyncedExactlyOnce && view.reloadRenderedPersistedMeasurement && view.offlineSupplementRenderedAsDeviceOnly && view.supplementReconnectSyncedExactlyOnce && view.reloadRenderedPersistedSupplement && view.offlineRecoveryRenderedAsDeviceOnly && view.recoveryReconnectSyncedExactlyOnce && view.reloadRenderedPersistedRecovery && view.queueDrained && !hasUnexpectedBrowserSignals(view.signals)) && cleanup.every((item) => item.accountErased);
+  const passed = views.length === SELECTED_VIEWPORTS.length && views.every((view) => view.quotaFailureLeftFormIntact && view.quotaFailureCreatedNoQueueItem && view.offlineRecordRenderedAsDeviceOnly && view.offlineRecordAbsentFromServer && view.reconnectSyncedExactlyOnce && view.reloadRenderedPersistedRecord && view.offlineMeasurementRenderedAsDeviceOnly && view.measurementReconnectSyncedExactlyOnce && view.reloadRenderedPersistedMeasurement && view.offlineSupplementRenderedAsDeviceOnly && view.supplementReconnectSyncedExactlyOnce && view.reloadRenderedPersistedSupplement && view.offlineRecoveryRenderedAsDeviceOnly && view.recoveryReconnectSyncedExactlyOnce && view.reloadRenderedPersistedRecovery && view.offlineObservationRenderedAsDeviceOnly && view.observationReconnectSyncedExactlyOnce && view.reloadRenderedPersistedObservation && view.queueDrained && !hasUnexpectedBrowserSignals(view.signals)) && cleanup.every((item) => item.accountErased);
   const report = {
     contract: "lyfeos.production-health-offline-browser.v1",
     generatedAt: new Date().toISOString(),

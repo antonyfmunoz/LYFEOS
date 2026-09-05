@@ -18,7 +18,7 @@ export default function OfflineHealthQueueStatus() {
     enabled: Boolean(userId),
     refetchOnWindowFocus: true,
   });
-  const refreshHealthRecords = () => queryClient.invalidateQueries({ predicate: (query) => typeof query.queryKey[0] === "string" && (query.queryKey[0].startsWith("/api/nutrition/") || query.queryKey[0].startsWith("/api/workouts") || query.queryKey[0].startsWith("/api/health-fitness/") || query.queryKey[0].startsWith("/api/recovery-")) });
+  const refreshHealthRecords = () => queryClient.invalidateQueries({ predicate: (query) => typeof query.queryKey[0] === "string" && (query.queryKey[0].startsWith("/api/nutrition/") || query.queryKey[0].startsWith("/api/workouts") || query.queryKey[0].startsWith("/api/health-fitness/") || query.queryKey[0].startsWith("/api/recovery-") || query.queryKey[0].startsWith("/api/health-observations")) });
   const retry = useMutation({
     networkMode: "always",
     mutationFn: (id: string) => retryHealthMutationQueueItem(userId!, id),
