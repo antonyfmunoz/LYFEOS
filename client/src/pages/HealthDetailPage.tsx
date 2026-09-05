@@ -103,7 +103,12 @@ export default function HealthDetailPage() {
   const healthProfile = useQuery<{ profile: { trackedDomains?: HealthTrackingDomain[] } | null }>({ queryKey: ["/api/health-fitness/profile"], queryFn: () => apiRequest("/api/health-fitness/profile"), enabled: !!user });
   const healthProgression = useQuery<{ progression: HealthPracticeProgression }>({
     queryKey: ["/api/health-progression"],
-    queryFn: () => apiRequest("/api/health-progression/reconcile", { method: "POST" }),
+    // The home surface only needs the current ledger snapshot. Reconciliation
+    // already runs after factual Health mutations, while the deferred
+    // progression workspace deliberately performs its explicit reconciliation
+    // when a user opens it. Avoid replaying the complete evidence ledger as
+    // part of every Health-page load.
+    queryFn: () => apiRequest("/api/health-progression"),
     enabled: !!user,
     refetchOnMount: "always",
   });

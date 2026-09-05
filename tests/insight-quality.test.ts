@@ -41,7 +41,8 @@ describe("observed-pattern data quality", () => {
     expect(expanded).not.toContain("typically correlate with improved productivity and wellbeing");
     expect(healthDetail).toContain("not a medical conclusion");
     expect(healthDetail).toContain("Recorded practice progression");
-    expect(healthDetail).toContain("/api/health-progression/reconcile");
+    expect(healthDetail).toContain('apiRequest("/api/health-progression")');
+    expect(healthDetail).not.toContain('apiRequest("/api/health-progression/reconcile", { method: "POST" })');
     expect(healthDetail).toContain("No mood check-ins recorded for this period");
     expect(healthDetail).toContain(".filter(([, value]) => categoryCount(value) > 0)");
     expect(healthDetail).not.toContain("stats.healthPoints.current");
