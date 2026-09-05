@@ -36,6 +36,8 @@ describe("production Calendar evidence custody", () => {
     expect(acceptance).toContain("queueDrained");
     expect(acceptance).toContain("enterOffline(page)");
     expect(acceptance).toContain("competingPage = await context.newPage()");
+    expect(acceptance).toContain("await competingPage.setCacheEnabled(true)");
+    expect(acceptance).toContain("duplicate cold-load storm for route assets over one HTTP/2 session");
     expect(acceptance).toContain("await page.bringToFront()");
     expect(acceptance).toContain("The second live tab did not commit Calendar mission revision two");
     const competingRecovery = acceptance.indexOf("await acknowledgeBoundedChunkRecovery(competingPage, signals)");

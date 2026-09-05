@@ -474,7 +474,12 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     }, { id: account.id, displayName: account.displayName });
     await competingPage.setViewport(viewport.value);
     await competingPage.emulateTimezone(CALENDAR_TIME_ZONE);
-    await competingPage.setCacheEnabled(false);
+    // A second, live browser tab represents an ordinary user tab. Keep its
+    // normal HTTP cache available so the conflict proof does not manufacture
+    // a duplicate cold-load storm for route assets over one HTTP/2 session.
+    // The primary tab remains cache-disabled for the actual offline/recovery
+    // contract above.
+    await competingPage.setCacheEnabled(true);
     await competingPage.setOfflineMode(false);
     await competingPage.goto(new URL("/calendar", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
     await competingPage.waitForSelector('[data-testid="calendar-page"]', { visible: true, timeout: 60_000 });
