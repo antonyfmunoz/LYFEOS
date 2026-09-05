@@ -86,6 +86,12 @@ describe("production Calendar evidence custody", () => {
     expect(secondStrictSignals).toBeGreaterThan(secondRestore);
   });
 
+  it("excuses only a teardown-aborted Sentry telemetry envelope, never a Calendar write", () => {
+    expect(acceptance).toContain('method === "POST" && url.origin === BASE_URL.origin && url.pathname === "/api/sentry-tunnel" && errorText.includes("ERR_ABORTED")');
+    expect(acceptance).toContain("Every canonical write remains a hard signal.");
+    expect(acceptance).toContain("signals.failedRequests.push(`${method} ${url.pathname}: ${errorText}`)");
+  });
+
   it("uses stable nonvisual hooks and protected evidence custody", () => {
     expect(calendar).toContain('data-testid="calendar-page"');
     expect(calendar).toContain('data-testid="calendar-title"');

@@ -174,7 +174,13 @@ function captureSignals(page: Page, intentionallyOffline: () => boolean, signals
     const method = failed.method();
     const errorText = failed.failure()?.errorText || "failed";
     if (["GET", "HEAD"].includes(method) && errorText.includes("ERR_ABORTED")) return;
-    if (failed.url().startsWith(BASE_URL.origin)) signals.failedRequests.push(`${method} ${new URL(failed.url()).pathname}: ${errorText}`);
+    const url = new URL(failed.url());
+    // A page teardown may cancel the fire-and-forget telemetry envelope after
+    // the Calendar mutation itself has committed.  This is not a Calendar data
+    // transport failure: only this exact observability endpoint and Chromium's
+    // abort signature are exempt. Every canonical write remains a hard signal.
+    if (method === "POST" && url.origin === BASE_URL.origin && url.pathname === "/api/sentry-tunnel" && errorText.includes("ERR_ABORTED")) return;
+    if (url.origin === BASE_URL.origin) signals.failedRequests.push(`${method} ${url.pathname}: ${errorText}`);
   });
   page.on("response", (response) => {
     if (!intentionallyOffline() && response.url().startsWith(BASE_URL.origin) && response.status() >= 500) signals.serverErrors.push(`${response.status()} ${new URL(response.url()).pathname}`);
