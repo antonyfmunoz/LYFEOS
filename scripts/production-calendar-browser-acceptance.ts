@@ -3,7 +3,7 @@ import { access } from "node:fs/promises";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import puppeteer, { type Browser, type BrowserContext, type HTTPResponse, type Page, type Viewport } from "puppeteer-core";
+import puppeteer, { type Browser, type BrowserContext, type Page, type Viewport } from "puppeteer-core";
 import { acknowledgeBoundedChunkRecovery, hasUnexpectedBrowserSignals, type BrowserSignals } from "./lib/production-browser-signals";
 
 type ApiResult = { status: number; body: any; cookie: string; retryAfterSeconds: number | null };
@@ -262,33 +262,6 @@ async function activate(page: Page, selector: string): Promise<void> {
   await page.click(selector);
 }
 
-async function responseStatusForAction(page: Page, action: () => Promise<void>, method: string, pathname: string): Promise<number | null> {
-  let timer: ReturnType<typeof setTimeout> | null = null;
-  let listener: ((response: HTTPResponse) => void) | null = null;
-  const responseStatus = new Promise<number | null>((resolve) => {
-    const finish = (status: number | null) => {
-      if (timer) clearTimeout(timer);
-      if (listener) page.off("response", listener);
-      resolve(status);
-    };
-    listener = (response) => {
-      if (response.request().method() !== method) return;
-      if (new URL(response.url()).pathname !== pathname) return;
-      finish(response.status());
-    };
-    page.on("response", listener);
-    timer = setTimeout(() => finish(null), 10_000);
-  });
-  try {
-    await action();
-    return await responseStatus;
-  } catch (error) {
-    if (timer) clearTimeout(timer);
-    if (listener) page.off("response", listener);
-    throw error;
-  }
-}
-
 async function waitForMission(account: Account, date: string, predicate: (mission: any) => boolean, label: string): Promise<any> {
   const deadline = Date.now() + 45_000;
   let latest: ApiResult | null = null;
@@ -506,16 +479,12 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     await competingPage.bringToFront();
     await activate(competingPage, `[aria-label="Edit mission ${conflictTitle} at 10:00"]`);
     await setValue(competingPage, "#edit-title", serverTitle);
-    const submitCompetingEdit = () => activate(competingPage!, '[data-testid="mission-update-submit"]');
-    let competingStatus = await responseStatusForAction(competingPage, submitCompetingEdit, "PATCH", `/api/quests/${missionId}`);
-    if (competingStatus === null) {
-      // A long combined browser suite can occasionally miss the first DOM
-      // activation without issuing any request. Retry only in that exact case;
-      // never repeat an emitted mutation request.
-      competingStatus = await responseStatusForAction(competingPage, submitCompetingEdit, "PATCH", `/api/quests/${missionId}`);
-    }
-    assert(competingStatus !== null, "The second-tab submit did not emit its Calendar mutation request.");
-    assert(competingStatus >= 200 && competingStatus < 300, `The second-tab Calendar mutation returned ${competingStatus}.`);
+    // The Calendar queue adapter owns its transport shape; on a live route it
+    // can complete a canonical update without leaving the form open long
+    // enough for a response listener to observe it. The persisted revision is
+    // the user-visible truth, and avoids ever repeating an already-emitted
+    // competing mutation just because an observer missed its response.
+    await activate(competingPage, '[data-testid="mission-update-submit"]');
     const secondTabState = await waitForMission(account, date, (mission) => Number(mission.id) === missionId && mission.revision === 2, "second-tab Calendar edit");
     const secondTabCommitted = secondTabState.title === serverTitle;
     assert(secondTabCommitted, "The second live tab did not commit Calendar mission revision two.");

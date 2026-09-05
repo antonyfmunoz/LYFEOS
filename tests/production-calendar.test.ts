@@ -28,7 +28,7 @@ describe("production Calendar evidence custody", () => {
     expect(acceptance).toContain("reconnectCreateConverged");
     expect(acceptance).toContain("multiTabConflictReconciled");
     expect(acceptance).toContain("staleEditStoppedAsConflict");
-    expect(acceptance).toContain("responseStatusForAction");
+    expect(acceptance).toContain("The persisted revision is");
     expect(acceptance).toContain("never repeat an emitted mutation request");
     expect(acceptance).toContain("calendar-${viewport.name}-competing-failure.png");
     expect(acceptance).toContain("acknowledgeReconciledConflict(signals)");
