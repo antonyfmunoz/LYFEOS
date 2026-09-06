@@ -264,9 +264,14 @@ app.use("/api/progression/reconcile", createRateLimiter("progression-reconcile",
 // aggregate traffic per authenticated account rather than pooling every user
 // behind the same proxy IP. A complete onboarding journey legitimately crosses
 // the anonymous ceiling while saving eight Missions and activating its Thread,
-// so authenticated accounts receive a larger aggregate budget. Tighter auth,
-// AI, webhook, public-form, and provider-specific policies still run first.
-app.use("/api", createRateLimiter("api", qualificationRequestLimit(100), 60 * 1000, true, qualificationRequestLimit(600)));
+// so authenticated accounts receive a larger aggregate budget. A Health
+// workspace deliberately composes many independently-owned, cached read
+// models; its normal offline/reconnect lifecycle can remount that workspace
+// several times in one minute without being abusive. Keep that legitimate
+// authenticated read burst below a bounded aggregate ceiling rather than
+// surfacing 429 errors from ordinary product navigation. Tighter auth, AI,
+// webhook, public-form, and provider-specific policies still run first.
+app.use("/api", createRateLimiter("api", qualificationRequestLimit(100), 60 * 1000, true, qualificationRequestLimit(1_200)));
 
 const rateLimitCleanupTimer = setInterval(() => {
   deleteExpiredRateLimits(pool).catch((error) => log(`Rate-limit cleanup failed: ${error instanceof Error ? error.message : "unknown error"}`));
