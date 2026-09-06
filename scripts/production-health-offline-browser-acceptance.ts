@@ -129,15 +129,21 @@ function isTransientReadFailure(error: unknown): boolean {
 
 /**
  * Production evidence reads occasionally race a deploy-time database pool
- * reconnect. Retry only safe GETs, with a bounded per-attempt timeout. Writes
- * and every HTTP response (including 5xx) stay one-shot evidence.
+ * reconnect. Retry only safe GETs, with a bounded per-attempt timeout. A
+ * server-directed rate-limit response may be retried after its Retry-After
+ * delay; writes and every other HTTP response (including 5xx) stay one-shot
+ * evidence.
  */
 async function requestRead(pathname: string, cookie = "", headers: Record<string, string> = {}): Promise<ApiResult> {
-  const deadline = Date.now() + 45_000;
+  const deadline = Date.now() + 75_000;
   let lastError: unknown = null;
   while (Date.now() < deadline) {
     try {
-      return await request("GET", pathname, undefined, cookie, headers, Math.min(10_000, Math.max(1_000, deadline - Date.now())));
+      const result = await request("GET", pathname, undefined, cookie, headers, Math.min(10_000, Math.max(1_000, deadline - Date.now())));
+      if (result.status !== 429) return result;
+      const delayMs = Math.min(61, Math.max(1, result.retryAfterSeconds || 1)) * 1_000 + 250;
+      if (Date.now() + delayMs >= deadline) return result;
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
     } catch (error) {
       if (!isTransientReadFailure(error)) throw error;
       lastError = error;

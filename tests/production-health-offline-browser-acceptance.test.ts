@@ -87,7 +87,10 @@ describe("production Health offline browser acceptance custody", () => {
   it("retries only bounded, idempotent evidence reads after a transient transport timeout", () => {
     expect(script).toContain("async function requestRead");
     expect(script).toContain('request("GET", pathname, undefined, cookie, headers');
-    expect(script).toContain("every HTTP response (including 5xx) stay one-shot evidence.");
+    expect(script).toContain("server-directed rate-limit response may be retried after its Retry-After");
+    expect(script).toContain("if (result.status !== 429) return result;");
+    expect(script).toContain("const delayMs = Math.min(61, Math.max(1, result.retryAfterSeconds || 1)) * 1_000 + 250;");
+    expect(script).toContain("every other HTTP response (including 5xx) stay one-shot");
     expect(script).toContain("isTransientReadFailure");
   });
 
