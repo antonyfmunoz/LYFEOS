@@ -96,6 +96,15 @@ describe("production Health offline browser acceptance custody", () => {
     expect(script).toContain("Keep every canonical Health write and every other failed request strict.");
   });
 
+  it("pairs intentional offline shell-read console noise with its exact disconnected request", () => {
+    expect(script).toContain('type OfflineShellReadFailure = "user-stats" | "computed-stats" | "mission-pages" | "quests" | "conversations"');
+    expect(script).toContain("function offlineShellReadFailureForPath");
+    expect(script).toContain("function offlineShellReadFailureForConsole");
+    expect(script).toContain("const pendingOfflineShellReadFailures = new Set<OfflineShellReadFailure>()");
+    expect(script).toContain("pendingOfflineShellReadFailures.delete(matchingShellRead)");
+    expect(script).toContain("pendingOfflineShellReadFailures.add(matchingShellRead)");
+  });
+
   it("uses stable semantic hooks without changing the Health layout", () => {
     expect(page).toContain('data-testid="health-page"');
     expect(dailyLog).toContain('data-testid="daily-health-log"');

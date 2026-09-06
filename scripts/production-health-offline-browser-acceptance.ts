@@ -186,11 +186,37 @@ function cookieParts(cookie: string): { name: string; value: string } {
   return { name: cookie.slice(0, separator), value: cookie.slice(separator + 1) };
 }
 
+type OfflineShellReadFailure = "user-stats" | "computed-stats" | "mission-pages" | "quests" | "conversations";
+
+function offlineShellReadFailureForPath(pathname: string): OfflineShellReadFailure | null {
+  if (/^\/api\/users\/\d+\/stats$/.test(pathname)) return "user-stats";
+  if (pathname === "/api/computed-stats") return "computed-stats";
+  if (/^\/api\/users\/\d+\/mission-pages$/.test(pathname)) return "mission-pages";
+  if (/^\/api\/users\/\d+\/quests$/.test(pathname)) return "quests";
+  if (pathname === "/api/conversations") return "conversations";
+  return null;
+}
+
+function offlineShellReadFailureForConsole(detail: string): OfflineShellReadFailure | null {
+  if (/^Failed to fetch user stats: TypeError: Failed to fetch(?: @ https:\/\/lyfeos\.net\/assets\/index-[^\s]+\.js)?$/.test(detail)) return "user-stats";
+  if (/^Failed to fetch computed stats: TypeError: Failed to fetch(?: @ https:\/\/lyfeos\.net\/assets\/index-[^\s]+\.js)?$/.test(detail)) return "computed-stats";
+  if (/^Failed to fetch mission pages: TypeError: Failed to fetch(?: @ https:\/\/lyfeos\.net\/assets\/index-[^\s]+\.js)?$/.test(detail)) return "mission-pages";
+  if (/^Failed to refetch quests: TypeError: Failed to fetch(?: @ https:\/\/lyfeos\.net\/assets\/index-[^\s]+\.js)?$/.test(detail)) return "quests";
+  if (/^Failed to fetch conversations: TypeError: Failed to fetch(?: @ https:\/\/lyfeos\.net\/assets\/index-[^\s]+\.js)?$/.test(detail)) return "conversations";
+  return null;
+}
+
 function captureSignals(page: Page, state: { intentionalOffline: boolean }): Signals {
   const signals: Signals = { consoleErrors: [], pageErrors: [], failedRequests: [], serverErrors: [], recoveredChunkLoads: [], expectedOfflineFailures: [] };
+  const pendingOfflineShellReadFailures = new Set<OfflineShellReadFailure>();
   page.on("console", (entry) => {
     if (entry.type() !== "error") return;
     const detail = `${entry.text()}${entry.location().url ? ` @ ${entry.location().url}` : ""}`.slice(0, 500);
+    const matchingShellRead = offlineShellReadFailureForConsole(detail);
+    if (matchingShellRead && pendingOfflineShellReadFailures.delete(matchingShellRead)) {
+      signals.expectedOfflineFailures.push(`console ${detail}`);
+      return;
+    }
     if ((state.intentionalOffline && detail.includes("ERR_INTERNET_DISCONNECTED")) || isExpectedOfflineSentryTelemetryError(detail)) {
       signals.expectedOfflineFailures.push(`console ${detail}`);
       return;
@@ -214,8 +240,11 @@ function captureSignals(page: Page, state: { intentionalOffline: boolean }): Sig
     // after every Health mutation has already been reconciled and verified.
     // Keep every canonical Health write and every other failed request strict.
     if (method === "POST" && url.origin === BASE_URL.origin && url.pathname === "/api/sentry-tunnel" && detail.includes("ERR_ABORTED")) return;
-    if (state.intentionalOffline && detail.includes("ERR_INTERNET_DISCONNECTED")) signals.expectedOfflineFailures.push(detail.slice(0, 500));
-    else if (url.origin === BASE_URL.origin) signals.failedRequests.push(detail.slice(0, 500));
+    if (state.intentionalOffline && detail.includes("ERR_INTERNET_DISCONNECTED")) {
+      const matchingShellRead = url.origin === BASE_URL.origin ? offlineShellReadFailureForPath(url.pathname) : null;
+      if (matchingShellRead) pendingOfflineShellReadFailures.add(matchingShellRead);
+      signals.expectedOfflineFailures.push(detail.slice(0, 500));
+    } else if (url.origin === BASE_URL.origin) signals.failedRequests.push(detail.slice(0, 500));
   });
   page.on("response", (response) => {
     if (response.url().startsWith(BASE_URL.origin) && response.status() >= 500) signals.serverErrors.push(`${response.status()} ${new URL(response.url()).pathname}`);
