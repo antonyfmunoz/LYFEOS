@@ -59,6 +59,9 @@ describe("consent-bound collaboration contract", () => {
     expect(acceptance).toContain("async function performAndWaitForResponse");
     expect(acceptance.match(/\.waitForResponse\(/g)).toHaveLength(1);
     expect(acceptance).toContain("void pending");
+    expect(acceptance).toContain('failed.method() === "POST" && failed.url().startsWith(BASE_URL.origin) && new URL(failed.url()).pathname === "/api/sentry-tunnel" && errorText.includes("ERR_ABORTED")');
+    expect(acceptance).toContain("Keep every collaboration write and every");
+    expect(acceptance).toContain("other target-origin request strict");
     expect(acceptance).toContain("desktop-1440x900");
     expect(acceptance).toContain("mobile-390x844");
     expect(packageJson).toContain('"acceptance:collaboration": "tsx scripts/collaboration-browser-acceptance.ts"');

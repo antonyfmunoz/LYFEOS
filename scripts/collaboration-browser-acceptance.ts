@@ -162,6 +162,12 @@ function captureSignals(page: Page): CollaborationBrowserSignals {
   page.on("requestfailed", (failed) => {
     const errorText = failed.failure()?.errorText || "failed";
     if (["GET", "HEAD"].includes(failed.method()) && errorText.includes("ERR_ABORTED")) return;
+    // Navigation may cancel the fire-and-forget observability envelope after
+    // the collaboration action, its server response, and all user-visible
+    // assertions have completed. Keep every collaboration write and every
+    // other target-origin request strict; this one telemetry abort is neither
+    // a product mutation nor an actionable UI failure.
+    if (failed.method() === "POST" && failed.url().startsWith(BASE_URL.origin) && new URL(failed.url()).pathname === "/api/sentry-tunnel" && errorText.includes("ERR_ABORTED")) return;
     if (failed.url().startsWith(BASE_URL.origin)) signals.failedRequests.push(`${failed.method()} ${new URL(failed.url()).pathname}: ${errorText}`);
   });
   page.on("response", (response) => {
