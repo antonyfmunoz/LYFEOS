@@ -30,6 +30,10 @@ describe("route loading boundary", () => {
     expect(health).toContain("Other Health workspaces remain available.");
     expect(health).toContain('lazyHealthFeature(() => import("@/components/health/HealthTrendWorkbench"))');
     expect(health).toContain('rootMargin: "600px 0px"');
+    expect(health).toContain('const [isOnline, setIsOnline] = useState(() => typeof navigator === "undefined" || navigator.onLine);');
+    expect(health).toContain('if (ready || !isOnline) return;');
+    expect(health).toContain('entry.isIntersecting && navigator.onLine');
+    expect(health).toContain('window.addEventListener("online", markOnline);');
     expect(health).toContain('<DeferredHealthSection label="nutrition diary" targetId="health-section-nutrition"><NutritionDiary importedFoodId={importedNutritionFoodId}');
     expect(health).toContain('id={targetId} className="scroll-mt-6"');
     expect(health).not.toContain('import NutritionDiary from "@/components/health/NutritionDiary"');

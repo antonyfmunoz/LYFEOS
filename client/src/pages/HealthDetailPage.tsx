@@ -46,13 +46,36 @@ const ActivitySignals = lazyHealthFeature(() => import("@/components/health/Acti
 function DeferredHealthSection({ children, label, targetId }: { children: ReactNode; label: string; targetId?: string }) {
   const target = useRef<HTMLDivElement>(null);
   const [ready, setReady] = useState(false);
+  const [isOnline, setIsOnline] = useState(() => typeof navigator === "undefined" || navigator.onLine);
+
   useEffect(() => {
-    if (ready) return;
+    const markOnline = () => setIsOnline(true);
+    const markOffline = () => setIsOnline(false);
+    window.addEventListener("online", markOnline);
+    window.addEventListener("offline", markOffline);
+    return () => {
+      window.removeEventListener("online", markOnline);
+      window.removeEventListener("offline", markOffline);
+    };
+  }, []);
+
+  useEffect(() => {
+    // A below-the-fold module must not begin its first dynamic import while
+    // the user is intentionally offline. It has no usable response to show,
+    // and React caches a rejected lazy import for the rest of the document.
+    // Keep the section dormant and let the normal intersection check load it
+    // once the browser reconnects.
+    if (ready || !isOnline) return;
     if (!target.current || typeof IntersectionObserver === "undefined") { setReady(true); return; }
-    const observer = new IntersectionObserver(([entry]) => { if (entry.isIntersecting) { setReady(true); observer.disconnect(); } }, { rootMargin: "600px 0px" });
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting && navigator.onLine) {
+        setReady(true);
+        observer.disconnect();
+      }
+    }, { rootMargin: "600px 0px" });
     observer.observe(target.current);
     return () => observer.disconnect();
-  }, [ready]);
+  }, [isOnline, ready]);
   return <div ref={target} id={targetId} className="scroll-mt-6">{ready ? <DeferredFeatureChunkBoundary fallback={<div className="glassmorphic mb-8 min-h-32 rounded-2xl border border-destructive/30 p-6 text-sm" role="alert"><p className="font-medium">The {label} workspace could not load.</p><p className="mt-1 text-xs text-muted-foreground">Other Health workspaces remain available. Reload the latest LyfeOS version to retry this workspace.</p><button type="button" className="mt-3 rounded-md border border-primary/30 px-3 py-1.5 text-xs text-primary" onClick={() => window.location.reload()}>Reload LyfeOS</button></div>}><Suspense fallback={<div className="glassmorphic mb-8 min-h-32 rounded-2xl border border-primary/20 p-6 text-sm text-muted-foreground" role="status">Loading {label}…</div>}>{children}</Suspense></DeferredFeatureChunkBoundary> : <div className="mb-8 min-h-32" aria-hidden="true" />}</div>;
 }
 
