@@ -46,24 +46,27 @@ async function primeCurrentAppShell(): Promise<void> {
   });
 }
 
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', async () => {
-    try {
-      const registrations = await navigator.serviceWorker.getRegistrations();
-      for (const reg of registrations) {
-        await reg.update();
-      }
-    } catch (e) {
-      console.warn('SW cleanup error:', e);
+async function startServiceWorker(): Promise<void> {
+  try {
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    for (const registration of registrations) {
+      await registration.update();
     }
-    try {
-      await navigator.serviceWorker.register('/sw.js');
-      await primeCurrentAppShell();
-    } catch (err) {
-      console.warn('Service worker setup failed:', err);
-    }
-  });
+  } catch (error) {
+    console.warn('SW cleanup error:', error);
+  }
+
+  try {
+    await navigator.serviceWorker.register('/sw.js');
+    const prime = () => { void primeCurrentAppShell(); };
+    if (document.readyState === 'complete') prime();
+    else window.addEventListener('load', prime, { once: true });
+  } catch (error) {
+    console.warn('Service worker setup failed:', error);
+  }
 }
+
+if ('serviceWorker' in navigator) void startServiceWorker();
 
 const application = (
   <ClerkProvider

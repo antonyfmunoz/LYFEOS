@@ -7,6 +7,7 @@ describe("push-notification availability", () => {
     const routes = readFileSync(resolve(process.cwd(), "server/routes/push-notifications.ts"), "utf8");
     const scheduler = readFileSync(resolve(process.cwd(), "server/notificationScheduler.ts"), "utf8");
     const profile = readFileSync(resolve(process.cwd(), "client/src/pages/ProfilePage.tsx"), "utf8");
+    const main = readFileSync(resolve(process.cwd(), "client/src/main.tsx"), "utf8");
     const settings = readFileSync(resolve(process.cwd(), "client/src/components/profile/PushNotificationSettings.tsx"), "utf8");
     const serviceWorker = readFileSync(resolve(process.cwd(), "client/public/sw.js"), "utf8");
 
@@ -19,6 +20,8 @@ describe("push-notification availability", () => {
     expect(profile).toContain("<PushNotificationSettings />");
     expect(settings).toContain("Notification.requestPermission()");
     expect(settings).toContain("subscription.unsubscribe()");
+    expect(main).toContain("if ('serviceWorker' in navigator) void startServiceWorker();");
+    expect(main).toContain("window.addEventListener('load', prime, { once: true });");
     expect(serviceWorker).toContain("self.addEventListener('push'");
   });
 });
