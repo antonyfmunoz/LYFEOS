@@ -495,6 +495,11 @@ async function waitForWorkoutCount(account: Account, date: string, timeZone: str
 }
 
 async function createAcceptanceFood(account: Account): Promise<number> {
+  // This is the only write in the journey that creates a parent plus four
+  // nutrient children in one database transaction. Keep the acceptance gate
+  // strict (it must still receive a real 201), but give that atomic operation
+  // the same bounded window as the full protected browser journey instead of
+  // mistaking a transient production pool stall for a negative product result.
   const created = await request("POST", "/api/nutrition/foods", {
     name: NUTRITION_FOOD_NAME,
     servingSizeGrams: 100,
@@ -504,7 +509,7 @@ async function createAcceptanceFood(account: Account): Promise<number> {
       { nutrientKey: "carbohydrate_g", amountPer100g: 66.3 },
       { nutrientKey: "fat_g", amountPer100g: 6.9 },
     ],
-  }, account.cookie);
+  }, account.cookie, {}, 75_000);
   assert(created.status === 201 && Number.isInteger(created.body?.food?.id), `Acceptance food creation returned ${created.status}.`);
   return created.body.food.id;
 }
