@@ -3023,6 +3023,7 @@ export default function ProfilePage() {
               <Button 
                 variant="ghost" 
                 size="icon" 
+                aria-label="Go back"
                 className="h-8 w-8 hover:bg-primary hover:text-background" 
                 onClick={() => window.history.back()}
               >

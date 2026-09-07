@@ -76,6 +76,12 @@ describe("shared accessibility shell", () => {
     expect(brandRuntime).toContain('if (document.title === "LYFEOS - Dashboard")');
   });
 
+  it("keeps the Profile loading back control explicitly named", () => {
+    const profile = readFileSync(resolve(process.cwd(), "client/src/pages/ProfilePage.tsx"), "utf8");
+    expect(profile).toContain('aria-label="Go back"');
+    expect(profile).toContain('onClick={() => window.history.back()}');
+  });
+
   it("keeps audited standalone routes and shared controls semantically named", () => {
     const thankYou = readFileSync(resolve(process.cwd(), "client/src/pages/WaitlistThankYouPage.tsx"), "utf8");
     const subscription = readFileSync(resolve(process.cwd(), "client/src/pages/SubscriptionPage.tsx"), "utf8");
