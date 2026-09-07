@@ -43,9 +43,12 @@ describe("private capability registry", () => {
 
   it("keeps the active Thread dashboard stable and labels branch entry", () => {
     const panel = readFileSync(resolve(process.cwd(), "client/src/components/dashboard/TransformationThreadPanel.tsx"), "utf8");
-    expect(panel).toContain('className="mb-6 min-h-[calc(100vh-15rem)]"');
+    expect(panel).toContain('const threadPanelShellClassName = "mb-6 min-h-[calc(100vh-15rem)]"');
     expect(panel).toContain('aria-busy="true"');
     expect(panel).toContain('aria-label="Connected skill branch name"');
+    expect(panel).toContain('data-testid="transformation-thread-onboarding-gate"');
+    expect(panel).toContain('if (isThreadLoading || isProfileLoading)');
+    expect(panel).not.toContain('if (!thread) return null;');
   });
 
   it("keeps user-stated relationship strength visual rather than a hidden XP multiplier", () => {

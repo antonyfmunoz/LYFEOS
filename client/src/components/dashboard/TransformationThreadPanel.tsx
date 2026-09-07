@@ -132,10 +132,10 @@ export function TransformationThreadPanel() {
   const [edgeInfluenceWeight, setEdgeInfluenceWeight] = useState("1");
   const [nextCapabilityId, setNextCapabilityId] = useState("");
   const [historyCapabilityId, setHistoryCapabilityId] = useState<number | null>(null);
-  const { data, isLoading } = useQuery<{ thread: TransformationThread | null }>({
+  const { data, isLoading: isThreadLoading } = useQuery<{ thread: TransformationThread | null }>({
     queryKey: ["/api/transformation-thread"],
   });
-  const { data: profile } = useQuery<{ onboardingCompleted?: boolean; completedOnboardingMissions?: number[] }>({
+  const { data: profile, isLoading: isProfileLoading } = useQuery<{ onboardingCompleted?: boolean; completedOnboardingMissions?: number[] }>({
     queryKey: ["/api/profile"],
   });
   const { data: capabilityData } = useQuery<{ capabilities: CapabilitySummary[]; note: string }>({
@@ -213,10 +213,14 @@ export function TransformationThreadPanel() {
     onError: (error: Error) => toast({ title: "Could not defer mission", description: error.message || "Your mission was not changed.", variant: "destructive" }),
   });
   const onboardingComplete = profile?.onboardingCompleted && (profile.completedOnboardingMissions?.length || 0) >= 8;
-  if (isLoading) {
+  // The dashboard appears beneath the app cover while these requests resolve. Keep the
+  // Thread region stable across loading, onboarding, initialization, and active states so
+  // the rest of the dashboard never jumps upward when an account has no Thread yet.
+  const threadPanelShellClassName = "mb-6 min-h-[calc(100vh-15rem)]";
+  if (isThreadLoading || isProfileLoading) {
     return (
       <section
-        className="mb-6 min-h-[calc(100vh-15rem)]"
+        className={threadPanelShellClassName}
         aria-label="Loading current Thread"
         aria-busy="true"
         data-tour="transformation-thread"
@@ -233,7 +237,7 @@ export function TransformationThreadPanel() {
   if (!thread && onboardingComplete) {
     const reusableCapabilities = capabilityData?.capabilities || [];
     return (
-      <section className="mb-6" data-tour="transformation-thread" data-testid="transformation-thread-initialization">
+      <section className={threadPanelShellClassName} data-tour="transformation-thread" data-testid="transformation-thread-initialization">
         <div className="glassmorphic rounded-xl p-4 neon-border">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -265,7 +269,27 @@ export function TransformationThreadPanel() {
     );
   }
 
-  if (!thread) return null;
+  if (!thread) {
+    const completedMissionCount = profile?.completedOnboardingMissions?.length || 0;
+    return (
+      <section className={threadPanelShellClassName} data-tour="transformation-thread" data-testid="transformation-thread-onboarding-gate">
+        <div className="glassmorphic rounded-xl p-4 neon-border">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-[0.16em] text-primary">
+                <Target className="h-4 w-4" /> Your transformation Thread
+              </div>
+              <p className="mt-2 text-sm text-muted-foreground">Complete onboarding missions to prepare your focused growth plan, starter missions, and connected skill map.</p>
+              <p className="mt-2 text-xs text-muted-foreground" data-testid="transformation-thread-onboarding-progress">{completedMissionCount}/8 onboarding missions complete</p>
+            </div>
+            <Link href="/onboarding" className="inline-flex h-9 shrink-0 items-center justify-center rounded-md border border-primary/50 bg-primary/20 px-3 text-sm font-medium text-primary transition-colors hover:bg-primary/30">
+              Continue onboarding <ChevronRight className="ml-2 h-4 w-4" />
+            </Link>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   const starterMissions = Array.isArray(thread.starterMissions) ? thread.starterMissions : [];
   const isDraft = thread.status === "draft";
@@ -284,7 +308,7 @@ export function TransformationThreadPanel() {
   const capabilitiesById = new Map((capabilityData?.capabilities || []).map((capability) => [capability.id, capability]));
 
   return (
-    <section className="mb-6" data-tour="transformation-thread" data-testid="transformation-thread-panel">
+    <section className={threadPanelShellClassName} data-tour="transformation-thread" data-testid="transformation-thread-panel">
       <div className="glassmorphic rounded-xl p-4 neon-border">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
