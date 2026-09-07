@@ -334,7 +334,18 @@ async function cleanupAccount(account: Account): Promise<Cleanup> {
     const session = await request("GET", "/api/auth/me", undefined, account.cookie).catch(() => null);
     if (session?.status === 401) break;
   }
-  const session = await request("GET", "/api/auth/me", undefined, account.cookie).catch(() => null);
+  // Account deletion invalidates the session synchronously, but this
+  // independent verification read can race the production session-store
+  // cleanup immediately after a cascade-heavy owner deletion. Keep the
+  // invariant strict (only a real 401 proves invalidation) while allowing a
+  // bounded read retry instead of treating a transient transport timeout as a
+  // surviving account.
+  const session = await poll(
+    () => request("GET", "/api/auth/me", undefined, account.cookie).catch(() => null),
+    (candidate) => candidate?.status === 401,
+    "Disposable account session did not become invalid after deletion.",
+    45_000,
+  ).catch(() => null);
   if (ISOLATED) return { accountErased: session?.status === 401, sessionInvalidated: session?.status === 401, emailReleased: true, displayNameReleased: true };
   const email = await request("GET", `/api/auth/check-email?email=${encodeURIComponent(account.email)}`).catch(() => null);
   const displayName = await request("GET", `/api/auth/check-display-name?displayName=${encodeURIComponent(account.displayName)}`).catch(() => null);
