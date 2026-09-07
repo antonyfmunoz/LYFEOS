@@ -135,6 +135,7 @@ describe("food catalog gateway", () => {
 
   it("supports a separately selected USDA FoodData Central nutrient source and preserves its provenance", async () => {
     expect(getFoodCatalogConfigs({ ...openFoodFactsEnv, ...usdaFoodDataEnv })).toEqual(expect.arrayContaining([expect.objectContaining({ kind: "open_food_facts" }), expect.objectContaining({ kind: "usda_fooddata_central" })]));
+    expect(getFoodCatalogConfigs({ ...openFoodFactsEnv, ...usdaFoodDataEnv }).map((config) => config.kind)).toEqual(["usda_fooddata_central", "open_food_facts"]);
     const food = {
       fdcId: 12345, dataType: "Foundation", description: "Oats, raw", brandOwner: "USDA", gtinUpc: "012345678905", publishedDate: "2026-08-01", servingSize: 40, servingSizeUnit: "g", householdServingFullText: "1/2 cup",
       foodNutrients: [{ nutrientId: 1008, nutrientName: "Energy", unitName: "KCAL", value: 379 }, { nutrientId: 1003, nutrientName: "Protein", unitName: "G", value: 13.15 }, { nutrientId: 1093, nutrientName: "Sodium, Na", unitName: "MG", value: 6 }],

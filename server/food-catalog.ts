@@ -107,12 +107,16 @@ export function getFoodCatalogConfigs(env: NodeJS.ProcessEnv = process.env): Cat
   if (!signingSecret) return [];
   const configs: CatalogConfig[] = [];
   if (baseUrl && token && validGatewayUrl(baseUrl)) configs.push({ kind: "gateway", baseUrl, token, signingSecret });
+  // Prefer the documented public-domain USDA source whenever both built-in
+  // sources are enabled. Community-catalog selection remains explicit in the
+  // UI so its independently governed reuse terms are never hidden behind a
+  // default chosen only by registration order.
+  const usdaApiKey = env.USDA_FOODDATA_API_KEY?.trim();
+  if (usdaApiKey && usdaApiKey.length >= 20 && usdaApiKey.length <= 300) configs.push({ kind: "usda_fooddata_central", signingSecret, apiKey: usdaApiKey });
   if (env.OPEN_FOOD_FACTS_ENABLED === "true") {
     const userAgent = env.OPEN_FOOD_FACTS_USER_AGENT?.trim();
     if (userAgent && userAgent.length >= 12 && userAgent.length <= 300) configs.push({ kind: "open_food_facts", signingSecret, userAgent });
   }
-  const usdaApiKey = env.USDA_FOODDATA_API_KEY?.trim();
-  if (usdaApiKey && usdaApiKey.length >= 20 && usdaApiKey.length <= 300) configs.push({ kind: "usda_fooddata_central", signingSecret, apiKey: usdaApiKey });
   return configs;
 }
 
