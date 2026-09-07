@@ -408,7 +408,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     // return its owner-scoped read before deciding whether a transport reset
     // was actually recovered. The reconciliation below remains exact-path and
     // successful-response backed.
-    await page.waitForTimeout(1_000);
+    await new Promise<void>((resolve) => setTimeout(resolve, 1_000));
     reconcileBoundedBackgroundReadRecovery(signals, successfulReads);
     assert(!hasUnexpectedBrowserSignals(signals), `${viewport.name} produced application errors: ${JSON.stringify(signals)}.`);
 
