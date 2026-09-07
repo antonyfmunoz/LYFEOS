@@ -243,11 +243,18 @@ async function reloadMessages(page: Page, signals: BrowserSignals): Promise<void
 }
 
 async function selectConversation(page: Page, signals: BrowserSignals, conversationId: string): Promise<void> {
-  const selector = `[data-testid="messages-conversation-${conversationId}"]`;
+  const listSelector = `[data-testid="messages-conversation-list-${conversationId}"]`;
+  const selectedSelector = `[data-testid="messages-conversation-${conversationId}"]`;
   await retryOnceAfterBoundedChunkRecovery(page, signals, async (attempt) => {
     if (attempt === 1) await loadMessagesRoute(page);
-    await page.waitForSelector(selector, { visible: true, timeout: 30_000 });
-    await clickSelector(page, selector);
+    // The list row is the state-changing control. The selected-conversation
+    // container is merely the detail surface and can be rendered for a
+    // previously auto-selected conversation after a reload. Targeting the row
+    // makes the browser qualification exercise the same explicit selection a
+    // user performs, then proves that the intended detail surface rendered.
+    await page.waitForSelector(listSelector, { visible: true, timeout: 30_000 });
+    await clickSelector(page, listSelector);
+    await page.waitForSelector(selectedSelector, { visible: true, timeout: 30_000 });
   });
 }
 
