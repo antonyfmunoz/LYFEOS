@@ -61,4 +61,17 @@ describe("route loading boundary", () => {
     expect(budget).toContain('{ label: "deferred Health feature chunk"');
     expect(budget).toContain("limit: 50_000");
   });
+
+  it("keeps the first Dashboard paint independent from secondary workspaces", () => {
+    const dashboard = readFileSync(resolve(process.cwd(), "client/src/pages/DashboardPage.tsx"), "utf8");
+    expect(dashboard).toContain("const TransformationThreadPanel = lazy(() => withChunkLoadTimeout(");
+    expect(dashboard).toContain("const LevelUpModal = lazy(() => withChunkLoadTimeout(");
+    expect(dashboard).toContain("const PageTutorial = lazy(() => withChunkLoadTimeout(");
+    expect(dashboard).toContain("const PWAInstallPrompt = lazy(() => withChunkLoadTimeout(");
+    expect(dashboard).toContain('min-h-[calc(100vh-15rem)]');
+    expect(dashboard).toContain("setDashboardEnhancementsReady(true)");
+    expect(dashboard).not.toContain("import EnhancedMissionWidget");
+    expect(dashboard).not.toContain("import PWAInstallPrompt from");
+    expect(dashboard).not.toContain("import { TransformationThreadPanel }");
+  });
 });

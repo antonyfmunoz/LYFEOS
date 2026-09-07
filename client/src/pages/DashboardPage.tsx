@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
+import React, { Suspense, lazy, useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import { 
   Calendar, BarChart, CalendarDays, Clock, Brain, AlarmClock, 
@@ -13,20 +13,36 @@ import { UserStats } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { MarkdownEditor } from '@/components/ui/markdown-editor';
 import { CustomTimePicker } from '@/components/ui/custom-time-picker';
-import PWAInstallPrompt from '@/components/PWAInstallPrompt';
-import EnhancedMissionWidget from '@/components/dashboard/EnhancedMissionWidget';
-import { TransformationThreadPanel } from '@/components/dashboard/TransformationThreadPanel';
-import { RelationshipCommitmentsPanel } from '@/components/dashboard/RelationshipCommitmentsPanel';
 import { useToast } from '@/hooks/use-toast';
 import { DraggableWidget, DraggableWidgetProps } from '@/components/ui/draggable-widget';
 import update from 'immutability-helper';
 import { useWidgetState } from '@/hooks/use-widget-state';
-import { LevelUpModal } from '@/components/dashboard/LevelUpModal';
-import PageTutorial, { TutorialStep } from '@/components/ui/PageTutorial';
+import type { TutorialStep } from '@/components/ui/PageTutorial';
 import { useTutorialStatus } from '@/hooks/use-tutorial';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { getLocalDateString } from '@/lib/utils';
+import { DeferredFeatureChunkBoundary } from '@/components/DeferredFeature';
+import { withChunkLoadTimeout } from '@/lib/runtimeRecovery';
+
+// Keep the first Dashboard paint focused on the daily command surface. These
+// richer, independently recoverable workspaces load immediately after that
+// paint without making the whole route wait on their code.
+const TransformationThreadPanel = lazy(() => withChunkLoadTimeout(
+  () => import('@/components/dashboard/TransformationThreadPanel').then(({ TransformationThreadPanel: Component }) => ({ default: Component })),
+));
+const RelationshipCommitmentsPanel = lazy(() => withChunkLoadTimeout(
+  () => import('@/components/dashboard/RelationshipCommitmentsPanel').then(({ RelationshipCommitmentsPanel: Component }) => ({ default: Component })),
+));
+const LevelUpModal = lazy(() => withChunkLoadTimeout(
+  () => import('@/components/dashboard/LevelUpModal').then(({ LevelUpModal: Component }) => ({ default: Component })),
+));
+const PageTutorial = lazy(() => withChunkLoadTimeout(
+  () => import('@/components/ui/PageTutorial'),
+));
+const PWAInstallPrompt = lazy(() => withChunkLoadTimeout(
+  () => import('@/components/PWAInstallPrompt'),
+));
 
 const DEFAULT_REFLECTION_PROMPTS = {
   wentWell: "What went well today?",
@@ -171,6 +187,13 @@ function PersistentDraggableWidget({ widgetId, ...props }: Omit<DraggableWidgetP
 export default function DashboardPage() {
   // Set the page title
   usePageTitle('Dashboard');
+  const [dashboardEnhancementsReady, setDashboardEnhancementsReady] = useState(false);
+
+  useEffect(() => {
+    // Let the command surface paint before loading optional install education.
+    const timer = window.setTimeout(() => setDashboardEnhancementsReady(true), 400);
+    return () => window.clearTimeout(timer);
+  }, []);
   
   useEffect(() => {
     localStorage.setItem("lyfeos-has-seen-dashboard", "true");
@@ -1653,31 +1676,43 @@ export default function DashboardPage() {
 
   return (
       <div className="dashboard-container pb-20">
-        <PageTutorial steps={DASHBOARD_TOUR_STEPS} storageKey="dashboard" isOpen={showTutorial} onComplete={handleTutorialComplete} onSkipAll={handleSkipAllTutorials} userId={user?.id} isLoading={isTutorialLoading} />
+        {showTutorial ? (
+          <DeferredFeatureChunkBoundary fallback={null}>
+            <Suspense fallback={null}>
+              <PageTutorial steps={DASHBOARD_TOUR_STEPS} storageKey="dashboard" isOpen={showTutorial} onComplete={handleTutorialComplete} onSkipAll={handleSkipAllTutorials} userId={user?.id} isLoading={isTutorialLoading} />
+            </Suspense>
+          </DeferredFeatureChunkBoundary>
+        ) : null}
         
         {/* Level-up modal - shows when user levels up */}
-        <LevelUpModal 
-          level={stats.experience.level} 
-          primaryColor={stats.primaryColor}
-          isOpen={isLevelUpModalOpen}
-          onClose={() => {
-            // Reset the level-up modal state
-            setIsLevelUpModalOpen(false);
-            
-            // Update stats to turn off the showLevelUp flag so it doesn't show again
-            if (stats?.experience?.showLevelUp) {
-              // Create an updated copy of stats with showLevelUp set to false
-              const updatedStats = {
-                ...stats,
-                experience: {
-                  ...stats.experience,
-                  showLevelUp: false
-                }
-              };
-              updateUserStats(updatedStats);
-            }
-          }}
-        />
+        {isLevelUpModalOpen ? (
+          <DeferredFeatureChunkBoundary fallback={null}>
+            <Suspense fallback={null}>
+              <LevelUpModal
+                level={stats.experience.level}
+                primaryColor={stats.primaryColor}
+                isOpen={isLevelUpModalOpen}
+                onClose={() => {
+                  // Reset the level-up modal state
+                  setIsLevelUpModalOpen(false);
+
+                  // Update stats to turn off the showLevelUp flag so it doesn't show again
+                  if (stats?.experience?.showLevelUp) {
+                    // Create an updated copy of stats with showLevelUp set to false
+                    const updatedStats = {
+                      ...stats,
+                      experience: {
+                        ...stats.experience,
+                        showLevelUp: false
+                      }
+                    };
+                    updateUserStats(updatedStats);
+                  }
+                }}
+              />
+            </Suspense>
+          </DeferredFeatureChunkBoundary>
+        ) : null}
         
         {/* Date Header - Cinematic HUD Style */}
         <section className="mb-6" data-tour="date-header">
@@ -1704,8 +1739,14 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        <TransformationThreadPanel />
-        <RelationshipCommitmentsPanel />
+        <DeferredFeatureChunkBoundary fallback={<section className="mb-6 min-h-[calc(100vh-15rem)]" aria-label="Current Thread unavailable"><div className="glassmorphic rounded-xl p-4 neon-border text-sm text-muted-foreground" role="alert">Your Thread could not load. Refresh LyfeOS to try again.</div></section>}>
+          <Suspense fallback={<section className="mb-6 min-h-[calc(100vh-15rem)]" aria-label="Loading current Thread" aria-busy="true"><div className="glassmorphic rounded-xl p-4 neon-border"><div className="h-3 w-32 animate-pulse rounded bg-primary/15" /><div className="mt-3 h-4 w-64 max-w-full animate-pulse rounded bg-primary/10" /><div className="mt-2 h-3 w-full max-w-2xl animate-pulse rounded bg-primary/10" /></div></section>}>
+            <TransformationThreadPanel />
+          </Suspense>
+        </DeferredFeatureChunkBoundary>
+        <DeferredFeatureChunkBoundary fallback={null}>
+          <Suspense fallback={null}><RelationshipCommitmentsPanel /></Suspense>
+        </DeferredFeatureChunkBoundary>
         
         {/* Draggable Widget Sections */}
         {widgets.map((widget, index) => (
@@ -1738,7 +1779,7 @@ export default function DashboardPage() {
           </div>
         ))}
 
-        <PWAInstallPrompt tutorialActive={isTutorialActive} tutorialLoading={isTutorialLoading} />
+        {dashboardEnhancementsReady ? <DeferredFeatureChunkBoundary fallback={null}><Suspense fallback={null}><PWAInstallPrompt tutorialActive={isTutorialActive} tutorialLoading={isTutorialLoading} /></Suspense></DeferredFeatureChunkBoundary> : null}
       </div>
   );
 }
