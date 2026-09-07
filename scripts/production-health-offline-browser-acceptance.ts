@@ -223,6 +223,14 @@ function captureSignals(page: Page, state: { intentionalOffline: boolean }): Sig
       signals.expectedOfflineFailures.push(`console ${detail}`);
       return;
     }
+    // Clerk reports the deliberately-offline deferred chunk through both the
+    // page-error and console-error channels. Accept only that exact
+    // Clerk-hosted signature while the fixture has explicitly taken the page
+    // offline; all LyfeOS chunk failures and all online errors stay strict.
+    if (state.intentionalOffline && isExpectedOfflineClerkChunkError(detail)) {
+      signals.expectedOfflineFailures.push(`console ${detail}`);
+      return;
+    }
     if ((state.intentionalOffline && detail.includes("ERR_INTERNET_DISCONNECTED")) || isExpectedOfflineSentryTelemetryError(detail)) {
       signals.expectedOfflineFailures.push(`console ${detail}`);
       return;
