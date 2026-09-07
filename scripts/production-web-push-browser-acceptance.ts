@@ -94,26 +94,43 @@ async function runBrowserLifecycle(account: Account): Promise<{ endpointHost: st
     const session = cookieParts(account.cookie);
     await page.setCookie({ name: session.name, value: session.value, domain: BASE_URL.hostname, path: "/" });
     await within("Profile load", page.goto(new URL("/profile", BASE_URL), { waitUntil: "domcontentloaded", timeout: 30_000 }));
+    await within("Browser service worker activation", page.evaluate(async () => {
+      await navigator.serviceWorker.ready;
+    }));
     console.error("web-push acceptance: browser session and service worker ready");
-    const result = await within("Browser push subscription lifecycle", page.evaluate(async () => {
+    let result: { savedStatus: number; savedError: string | null; testStatus: number; delivered: boolean; revokedStatus: number; revoked: boolean; unsubscribed: boolean; endpointHost: string; provider: string | null };
+    try {
+      result = await within("Browser push subscription lifecycle", page.evaluate(async () => {
+      (window as Window & { __lyfeosWebPushAcceptanceStage?: string }).__lyfeosWebPushAcceptanceStage = "loading configuration";
       const config = await fetch("/api/push/config").then(async (response) => ({ status: response.status, body: await response.json() }));
       if (config.status !== 200 || !config.body.configured || !config.body.publicKey) throw new Error("Web Push is not configured in this release.");
       const padding = "=".repeat((4 - config.body.publicKey.length % 4) % 4);
       const key = Uint8Array.from(atob((config.body.publicKey + padding).replace(/-/g, "+").replace(/_/g, "/")), (character) => character.charCodeAt(0));
+      (window as Window & { __lyfeosWebPushAcceptanceStage?: string }).__lyfeosWebPushAcceptanceStage = "checking browser subscription";
       const registration = await navigator.serviceWorker.ready;
       let subscription = await registration.pushManager.getSubscription();
-      if (!subscription) subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
+      if (!subscription) {
+        (window as Window & { __lyfeosWebPushAcceptanceStage?: string }).__lyfeosWebPushAcceptanceStage = "creating browser subscription";
+        subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
+      }
       const payload = subscription.toJSON();
       if (!payload.endpoint || !payload.keys?.p256dh || !payload.keys.auth) throw new Error("The browser returned an incomplete push subscription.");
+      (window as Window & { __lyfeosWebPushAcceptanceStage?: string }).__lyfeosWebPushAcceptanceStage = "saving browser subscription";
       const saved = await fetch("/api/push/subscriptions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ endpoint: payload.endpoint, expirationTime: payload.expirationTime ?? null, keys: payload.keys }) });
       const savedBody = await saved.json().catch(() => ({}));
+      (window as Window & { __lyfeosWebPushAcceptanceStage?: string }).__lyfeosWebPushAcceptanceStage = "sending test notification";
       const test = await fetch("/api/push/test", { method: "POST" });
       const testBody = await test.json().catch(() => ({}));
+      (window as Window & { __lyfeosWebPushAcceptanceStage?: string }).__lyfeosWebPushAcceptanceStage = "revoking browser subscription";
       const revoked = await fetch("/api/push/subscriptions", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ endpoint: payload.endpoint }) });
       const revokedBody = await revoked.json().catch(() => ({}));
       const unsubscribed = await subscription.unsubscribe();
       return { savedStatus: saved.status, savedError: typeof savedBody.error === "string" ? savedBody.error : null, testStatus: test.status, delivered: Boolean(testBody.delivered), revokedStatus: revoked.status, revoked: Boolean(revokedBody.revoked), unsubscribed, endpointHost: new URL(payload.endpoint).host, provider: config.body.provider as string | null };
-    }));
+      }), 90_000);
+    } catch (error) {
+      const stage = await page.evaluate(() => (window as Window & { __lyfeosWebPushAcceptanceStage?: string }).__lyfeosWebPushAcceptanceStage || "before lifecycle start").catch(() => "browser unavailable");
+      throw new Error(`${error instanceof Error ? error.message : String(error)} (stage: ${stage})`);
+    }
     assert(result.savedStatus === 201, `Push subscription returned ${result.savedStatus}${result.savedError ? `: ${result.savedError}` : ""}.`);
     assert(result.testStatus === 200 && result.delivered, `Push test delivery returned ${result.testStatus}.`);
     assert(result.revokedStatus === 200 && result.revoked && result.unsubscribed, "Push revocation did not complete in both LyfeOS and the browser.");

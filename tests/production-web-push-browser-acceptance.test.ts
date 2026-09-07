@@ -12,7 +12,10 @@ describe("production Web Push browser acceptance harness", () => {
     expect(workflow).toContain("run: npm run acceptance:production-web-push");
     expect(script).toContain('contract: "lyfeos.production-web-push-browser.v1"');
     expect(script).toContain('navigator.serviceWorker.ready');
+    expect(script).toContain('Browser service worker activation');
     expect(script).toContain('pushManager.subscribe');
+    expect(script).toContain('creating browser subscription');
+    expect(script).toContain('}), 90_000)');
     expect(script).toContain('"/api/push/subscriptions"');
     expect(script).toContain('"/api/push/test"');
     expect(script).toContain('subscription.unsubscribe()');
