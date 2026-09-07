@@ -254,6 +254,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
   let view: ViewResult | null = null;
   let cleanup: Cleanup = { viewport: viewport.name, accountErased: false, sessionInvalidated: false, emailReleased: false, displayNameReleased: false };
   let failure: unknown = null;
+  let stage = "creating disposable account";
   try {
     const registration = await request("POST", "/api/auth/complete-registration", { email: account.email, password: PASSWORD, displayName: account.displayName, termsAccepted: true });
     assert(registration.status === 201, `Registration returned ${registration.status}.`);
@@ -262,8 +263,10 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     assert(Number.isInteger(account.id) && account.id > 0 && account.cookie, "Registration did not create a disposable owner and session.");
     const onboarding = await request("PATCH", "/api/profile", { onboardingCompleted: true }, account.cookie);
     assert(onboarding.status === 200 && onboarding.body?.onboardingCompleted === true, `Onboarding setup returned ${onboarding.status}.`);
+    stage = "seeding owner-scoped AI-memory records";
     await seedThroughOwnedApis(account);
 
+    stage = "creating isolated browser context";
     context = await browser.createBrowserContext();
     const page = await context.newPage();
     const signals = captureSignals(page);
@@ -278,13 +281,16 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     }, { id: account.id, displayName: account.displayName });
     await page.setViewport(viewport.value);
     await page.setCacheEnabled(false);
+    stage = "loading Profile AI-memory settings";
     await page.goto(new URL("/profile", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
     await page.waitForSelector('[data-testid="ai-memory-settings"]', { visible: true, timeout: 60_000 });
+    stage = "confirming owner-scoped browser state";
     await page.waitForFunction(
       (expectedId) => Number(JSON.parse(localStorage.getItem("lyfeos_user") || "{}").id) === expectedId,
       { timeout: 30_000 },
       account.id,
     );
+    stage = "rendering initial AI-memory summaries";
     await waitForText(page, "ai-memory-chat-summary", "1 saved text conversations, 1 voice sessions, and 0 legacy messages.");
     await waitForText(page, "ai-memory-receipt-summary", "0 context-source receipts and 0 action receipts.");
     await waitForText(page, "ai-memory-profile-summary", "A generated assistant profile is stored.");
@@ -293,25 +299,37 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     const privateContentAbsent = !(await page.$eval('[data-testid="ai-memory-settings"]', (section, marker) => (section as HTMLElement).innerText.includes(marker), PRIVATE_MARKER));
     assert(privateContentAbsent, "The AI-memory control surface exposed private memory contents.");
 
+    stage = "updating chat retention";
     await selectPolicy(page, "ai-memory-retention-chats", "30");
+    stage = "updating context retention";
     await selectPolicy(page, "ai-memory-retention-context", "30");
+    stage = "updating action retention";
     await selectPolicy(page, "ai-memory-retention-actions", "90");
+    stage = "confirming retained summaries";
     await waitForText(page, "ai-memory-chat-summary", "1 saved text conversations, 1 voice sessions, and 0 legacy messages.");
     const retainedChatSummary = await textAt(page, "ai-memory-chat-summary");
     const retainedReceiptSummary = await textAt(page, "ai-memory-receipt-summary");
 
+    stage = "clearing chat memory";
     await clickMemoryAction(page, "ai-memory-clear-chat");
+    stage = "confirming cleared chat memory";
     await waitForText(page, "ai-memory-chat-summary", "0 saved text conversations, 0 voice sessions, and 0 legacy messages.");
+    stage = "resetting assistant profile";
     await clickMemoryAction(page, "ai-memory-reset-profile");
+    stage = "confirming assistant profile reset";
     await page.waitForFunction(() => (document.querySelector('[data-testid="ai-memory-persona-name"]') as HTMLInputElement | null)?.value === "NOVA", { timeout: 30_000 });
     await waitForText(page, "ai-memory-profile-summary", "No generated assistant profile is stored.");
+    stage = "clearing context receipts";
     await clickMemoryAction(page, "ai-memory-clear-context");
+    stage = "clearing action receipts";
     await clickMemoryAction(page, "ai-memory-clear-actions");
+    stage = "confirming cleared receipt summaries";
     await waitForText(page, "ai-memory-receipt-summary", "0 context-source receipts and 0 action receipts.");
     const personaResetName = await page.$eval('[data-testid="ai-memory-persona-name"]', (input) => (input as HTMLInputElement).value);
     const finalChatSummary = await textAt(page, "ai-memory-chat-summary");
     const finalReceiptSummary = await textAt(page, "ai-memory-receipt-summary");
     const rendered = await auditPage(page);
+    stage = "reading final owner-scoped AI-memory state";
     const memory = await request("GET", "/api/account/ai-memory", undefined, account.cookie);
     assert(memory.status === 200, `Final AI-memory read returned ${memory.status}.`);
     assert(memory.body.conversationCount === 0 && memory.body.voiceSessionCount === 0 && memory.body.legacyMessageCount === 0, "Rendered chat erasure did not reconcile to the owner API.");
@@ -337,7 +355,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
       signals,
     };
   } catch (error) {
-    failure = error;
+    failure = new Error(`${safeError(error)} (stage: ${stage})`);
   } finally {
     if (context) await context.close().catch(() => undefined);
     if (account.cookie) cleanup = await eraseAccount(account, viewport.name);
