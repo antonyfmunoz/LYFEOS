@@ -7,6 +7,7 @@ import {
   installFixtureUserStorageSeed,
   isExternalProviderTransportError,
   isIsolatedClerkBootstrapError,
+  reconcileBoundedBackgroundReadRecovery,
   reconcileBoundedChunkRecovery,
   retryOnceAfterBoundedChunkRecovery,
   type BrowserSignals,
@@ -182,6 +183,40 @@ describe("production browser signal reconciliation", () => {
     expect(captured.consoleErrors).toEqual([]);
     expect(captured.recoveredChunkLoads).toEqual([exactTimeout]);
     expect(hasUnexpectedBrowserSignals(captured)).toBe(false);
+  });
+
+  it("retains exact successful retries for bounded background hydration reads", () => {
+    const captured = signals([
+      "Failed to load resource: net::ERR_HTTP2_PROTOCOL_ERROR @ https://lyfeos.net/api/computed-stats",
+      "Failed to load resource: net::ERR_HTTP2_PROTOCOL_ERROR @ https://lyfeos.net/api/users/42/quests?tz=UTC",
+    ]);
+    captured.failedRequests.push(
+      "GET /api/computed-stats: net::ERR_HTTP2_PROTOCOL_ERROR",
+      "GET /api/users/42/quests: net::ERR_HTTP2_PROTOCOL_ERROR",
+    );
+
+    expect(reconcileBoundedBackgroundReadRecovery(captured, new Set([
+      "GET /api/computed-stats",
+      "GET /api/users/42/quests",
+    ]))).toEqual([
+      "GET /api/computed-stats",
+      "GET /api/users/42/quests",
+    ]);
+    expect(captured.consoleErrors).toEqual([]);
+    expect(captured.failedRequests).toEqual([]);
+    expect(captured.recoveredBackgroundReads).toEqual([
+      "GET /api/computed-stats",
+      "GET /api/users/42/quests",
+    ]);
+    expect(hasUnexpectedBrowserSignals(captured)).toBe(false);
+  });
+
+  it("does not excuse a background transport reset without the later successful read", () => {
+    const captured = signals(["Failed to load resource: net::ERR_HTTP2_PROTOCOL_ERROR @ https://lyfeos.net/api/computed-stats"]);
+    captured.failedRequests.push("GET /api/computed-stats: net::ERR_HTTP2_PROTOCOL_ERROR");
+
+    expect(reconcileBoundedBackgroundReadRecovery(captured, new Set())).toEqual([]);
+    expect(hasUnexpectedBrowserSignals(captured)).toBe(true);
   });
 
   it.each([

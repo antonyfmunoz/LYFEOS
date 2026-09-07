@@ -7,6 +7,7 @@ import puppeteer, { type Browser, type BrowserContext, type Page, type Viewport 
 import {
   acknowledgeBoundedChunkRecovery,
   hasUnexpectedBrowserSignals,
+  reconcileBoundedBackgroundReadRecovery,
   type BrowserSignals,
 } from "./lib/production-browser-signals";
 
@@ -129,7 +130,7 @@ async function activateHitTestedControl(page: Page, selector: string): Promise<v
   await page.click(selector);
 }
 
-function captureSignals(page: Page): Signals {
+function captureSignals(page: Page, successfulReads: Set<string>): Signals {
   const signals: Signals = { consoleErrors: [], pageErrors: [], failedRequests: [], serverErrors: [], recoveredChunkLoads: [] };
   page.on("console", (entry) => {
     if (entry.type() !== "error") return;
@@ -144,7 +145,10 @@ function captureSignals(page: Page): Signals {
     if (failed.url().startsWith(BASE_URL.origin)) signals.failedRequests.push(`${method} ${new URL(failed.url()).pathname}: ${errorText}`);
   });
   page.on("response", (response) => {
-    if (response.url().startsWith(BASE_URL.origin) && response.status() >= 500) signals.serverErrors.push(`${response.status()} ${new URL(response.url()).pathname}`);
+    if (!response.url().startsWith(BASE_URL.origin)) return;
+    const pathname = new URL(response.url()).pathname;
+    if (response.status() >= 500) signals.serverErrors.push(`${response.status()} ${pathname}`);
+    if (response.request().method() === "GET" && response.status() >= 200 && response.status() < 300) successfulReads.add(`GET ${pathname}`);
   });
   return signals;
 }
@@ -291,7 +295,8 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     stage = "open authenticated AI page";
     context = await browser.createBrowserContext();
     const page = await context.newPage();
-    const signals = captureSignals(page);
+    const successfulReads = new Set<string>();
+    const signals = captureSignals(page, successfulReads);
     const sessionCookie = cookieParts(account.cookie);
     await page.setCookie({ ...sessionCookie, url: BASE_URL.origin, path: "/", httpOnly: true, secure: true, sameSite: "Lax" });
     await page.evaluateOnNewDocument((fixtureUser) => {
@@ -399,6 +404,12 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     const rendered = await auditPage(page);
     assert(rendered.mainCount === 1 && rendered.duplicateIds.length === 0 && rendered.unlabeledControls.length === 0 && rendered.horizontalOverflowPx <= 2, `${viewport.name} failed Voice semantics or overflow checks.`);
     await acknowledgeBoundedChunkRecovery(page, signals);
+    // Give the bounded product retry window (250ms, then 500ms) time to
+    // return its owner-scoped read before deciding whether a transport reset
+    // was actually recovered. The reconciliation below remains exact-path and
+    // successful-response backed.
+    await page.waitForTimeout(1_000);
+    reconcileBoundedBackgroundReadRecovery(signals, successfulReads);
     assert(!hasUnexpectedBrowserSignals(signals), `${viewport.name} produced application errors: ${JSON.stringify(signals)}.`);
 
     view = {

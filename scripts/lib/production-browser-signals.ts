@@ -6,6 +6,13 @@ export type BrowserSignals = {
   failedRequests: string[];
   serverErrors: string[];
   recoveredChunkLoads: string[];
+  /**
+   * Exact, owner-safe background reads that first hit a transient edge
+   * transport reset and then received a successful retry response. This is
+   * intentionally optional so existing journeys remain fail-closed unless
+   * they explicitly collect and reconcile this evidence.
+   */
+  recoveredBackgroundReads?: string[];
 };
 
 export const CHUNK_RECOVERY_STORAGE_KEY = "lyfeos-chunk-recovery";
@@ -27,6 +34,23 @@ const SENTRY_BROWSER_INGEST = /https:\/\/o\d+\.ingest(?:\.[a-z0-9-]+)?\.sentry\.
 const POSTHOG_BROWSER_INGEST = /https:\/\/(?:[a-z0-9-]+\.)?i\.posthog\.com\/(?:e|batch)\//i;
 const ISOLATED_CLERK_BOOTSTRAP = /https:\/\/local\.lyfeos\.dev\/npm\/@clerk\/clerk-js@\d+(?:\.\d+){0,2}\/dist\/clerk(?:\.[a-z0-9-]+)*\.browser\.js(?:\?[^\s]*)?/i;
 const CLERK_BOOTSTRAP_TIMEOUT = /Clerk: Failed to load Clerk[\s\S]*code=["']failed_to_load_clerk_js_timeout["']/i;
+const RECOVERABLE_BACKGROUND_READ_PATHS = [
+  /^\/api\/computed-stats$/,
+  /^\/api\/users\/\d+\/mission-pages$/,
+  /^\/api\/users\/\d+\/quests$/,
+  /^\/api\/conversations$/,
+];
+const HTTP2_PROTOCOL_FAILURE = "net::ERR_HTTP2_PROTOCOL_ERROR";
+
+function isRecoverableBackgroundReadPath(pathname: string): boolean {
+  return RECOVERABLE_BACKGROUND_READ_PATHS.some((pattern) => pattern.test(pathname));
+}
+
+function backgroundFailurePath(entry: string, prefix: string): string | null {
+  if (!entry.startsWith(prefix) || !entry.endsWith(HTTP2_PROTOCOL_FAILURE)) return null;
+  const rawPath = entry.slice(prefix.length, -HTTP2_PROTOCOL_FAILURE.length).replace(/[:\s]+$/, "");
+  return isRecoverableBackgroundReadPath(rawPath) ? rawPath : null;
+}
 
 /**
  * Preserve the authenticated fixture hint across target-origin navigations.
@@ -102,6 +126,49 @@ export async function acknowledgeBoundedChunkRecovery(
   return reconcileBoundedChunkRecovery(signals, storedAt);
 }
 
+/**
+ * The app retries four specific, non-mutating workspace hydration reads in
+ * `fetchBackgroundRead`. Chromium still emits a console/request failure for a
+ * transient HTTP/2 stream reset before that retry succeeds. Keep that event
+ * visible unless the exact failed endpoint later returned a successful GET in
+ * the same document: this proves recovery rather than suppressing a failed
+ * read. No mutation, arbitrary endpoint, non-HTTP/2 failure, or missing
+ * response can enter this exception.
+ */
+export function reconcileBoundedBackgroundReadRecovery(
+  signals: BrowserSignals,
+  successfulReads: ReadonlySet<string>,
+): string[] {
+  const failedByPath = new Map<string, string>();
+  for (const entry of signals.failedRequests) {
+    const path = backgroundFailurePath(entry, "GET ");
+    if (!path || failedByPath.has(path)) return [];
+    failedByPath.set(path, entry);
+  }
+  if (failedByPath.size === 0 || (signals.recoveredBackgroundReads?.length || 0) > 0) return [];
+
+  const consoleByPath = new Map<string, string>();
+  for (const entry of signals.consoleErrors) {
+    const matched = entry.match(/^Failed to load resource: net::ERR_HTTP2_PROTOCOL_ERROR @ https?:\/\/[^/]+(\/api\/[^\s]+)$/);
+    const rawPath = matched?.[1] || null;
+    const path = rawPath ? rawPath.split("?", 1)[0] : null;
+    if (!path || !failedByPath.has(path)) continue;
+    if (consoleByPath.has(path)) return [];
+    consoleByPath.set(path, entry);
+  }
+
+  if (consoleByPath.size !== failedByPath.size) return [];
+  for (const path of failedByPath.keys()) {
+    if (!successfulReads.has(`GET ${path}`)) return [];
+  }
+
+  const recovered = [...failedByPath.keys()].sort().map((path) => `GET ${path}`);
+  signals.failedRequests = signals.failedRequests.filter((entry) => !failedByPath.has(backgroundFailurePath(entry, "GET ") || ""));
+  signals.consoleErrors = signals.consoleErrors.filter((entry) => ![...consoleByPath.values()].includes(entry));
+  signals.recoveredBackgroundReads = recovered;
+  return recovered;
+}
+
 async function waitForBoundedChunkRecoveryEvidence(
   page: Page,
   signals: BrowserSignals,
@@ -145,7 +212,11 @@ export async function retryOnceAfterBoundedChunkRecovery<T>(
 }
 
 export function hasUnexpectedBrowserSignals(signals: BrowserSignals): boolean {
-  return signals.recoveredChunkLoads.length > 1 || [
+  const recoveredBackgroundReads = signals.recoveredBackgroundReads || [];
+  return signals.recoveredChunkLoads.length > 1
+    || recoveredBackgroundReads.length > RECOVERABLE_BACKGROUND_READ_PATHS.length
+    || new Set(recoveredBackgroundReads).size !== recoveredBackgroundReads.length
+    || [
     signals.consoleErrors,
     signals.pageErrors,
     signals.failedRequests,
