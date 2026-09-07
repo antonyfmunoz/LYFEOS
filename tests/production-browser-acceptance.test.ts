@@ -103,6 +103,7 @@ describe("production browser acceptance custody", () => {
     expect(script).toContain('contract: "lyfeos.production-browser-acceptance.failure.v1"');
     expect(script).toContain("auditRouteWithEvidence");
     expect(script).toContain("route audit failed:");
+    expect(script).toContain("Failed route checks:");
     expect(script).toContain("retryableDocumentFailure");
     expect(script).toContain('await page.goto("about:blank"');
     expect(script).toContain("attemptCount: 2");

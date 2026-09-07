@@ -818,6 +818,21 @@ async function main(): Promise<void> {
   await writeSummary(report);
   console.log(`Wrote ${OUTPUT_FILE}`);
   console.log(`${report.summary.passed}/${report.summary.routes} route/viewport checks passed.`);
+  if (report.summary.failed > 0) {
+    // Keep failed-check logs immediately actionable when an artifact is not
+    // available yet. Deliberately omit browser signals and URLs: the artifact
+    // retains their full diagnostic detail, while this compact summary cannot
+    // expose session-bearing query data in CI output.
+    console.error(`Failed route checks: ${JSON.stringify(report.results.filter((result) => result.failures.length > 0).map((result) => ({
+      viewport: result.viewport,
+      route: result.route,
+      navigation: result.navigation,
+      attemptCount: result.attemptCount,
+      failures: result.failures,
+      recoveredFailures: result.recoveredFailures,
+      timings: result.timings,
+    })))}`);
+  }
 
   if (REQUIRE_AUTHENTICATED && !authenticatedExecuted) throw new Error("Authenticated acceptance did not execute.");
   if (report.summary.failed > 0) process.exitCode = 1;
