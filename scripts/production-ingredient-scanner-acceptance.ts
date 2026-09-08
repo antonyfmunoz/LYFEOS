@@ -7,18 +7,25 @@ const BASE_URL = new URL(process.env.LYFEOS_TEST_API_URL || "https://lyfeos.net"
 const SOURCE = process.env.LYFEOS_ACCEPTANCE_SOURCE || "";
 const HARNESS_SOURCE = process.env.LYFEOS_ACCEPTANCE_HARNESS_SOURCE || "";
 const PASSWORD = "TestPass123!";
+const REQUEST_TIMEOUT_MS = 30_000;
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
 }
 
 async function request(method: string, pathname: string, body?: unknown, cookie = "", headers: Record<string, string> = {}): Promise<ApiResult> {
-  const response = await fetch(new URL(pathname, BASE_URL), {
-    method,
-    headers: { "Content-Type": "application/json", ...(cookie ? { Cookie: cookie } : {}), ...headers },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-  return { status: response.status, body: await response.json().catch(() => ({})), cookie: (response.headers.get("set-cookie") || "").split(";", 1)[0] };
+  try {
+    const response = await fetch(new URL(pathname, BASE_URL), {
+      method,
+      headers: { "Content-Type": "application/json", ...(cookie ? { Cookie: cookie } : {}), ...headers },
+      body: body === undefined ? undefined : JSON.stringify(body),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
+    return { status: response.status, body: await response.json().catch(() => ({})), cookie: (response.headers.get("set-cookie") || "").split(";", 1)[0] };
+  } catch (error) {
+    const detail = error instanceof Error ? error.name : String(error);
+    throw new Error(`Ingredient-scanner request ${method} ${pathname} failed (${detail}).`);
+  }
 }
 
 async function registerDisposableAccount(account: Account): Promise<void> {
