@@ -366,7 +366,14 @@ async function main(): Promise<void> {
     await page.evaluate(() => {
       if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
     });
-    await new Promise((resolve) => setTimeout(resolve, 250));
+    // The Dashboard can paint before RootLayout's native shortcut effect has
+    // attached. Wait for the real document load and a settled client frame
+    // before sending one ordinary Ctrl+K interaction; do not retry the
+    // shortcut, because the assertion should still prove a single action.
+    await page.waitForFunction(() => document.readyState === "complete", { timeout: 30_000 });
+    await page.evaluate(() => new Promise<void>((resolve) => {
+      window.requestAnimationFrame(() => window.requestAnimationFrame(() => window.setTimeout(resolve, 500)));
+    }));
     const shortcutHandled = await page.evaluate(() => {
       const event = new KeyboardEvent("keydown", { key: "k", code: "KeyK", ctrlKey: true, bubbles: true, cancelable: true });
       window.dispatchEvent(event);

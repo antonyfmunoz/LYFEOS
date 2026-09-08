@@ -34,6 +34,9 @@ describe("production Search browser acceptance custody", () => {
       "queryDeepLinkPersisted",
       "reloadReconciled",
     ]) expect(script).toContain(invariant);
+    expect(script).toContain('document.readyState === "complete"');
+    expect(script).toContain("requestAnimationFrame(() => window.requestAnimationFrame");
+    expect(script).toContain("do not retry the");
     for (const kind of ["mission", "document", "spreadsheet", "canvas", "database", "relationship"]) expect(script).toContain(`"${kind}"`);
     expect(script).toContain("account/session/identifier erasure");
     expect(script).toContain("does not prove consented search telemetry");
