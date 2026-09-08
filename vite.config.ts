@@ -29,5 +29,17 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          // The default dependency graph emits each tree-shaken Lucide glyph
+          // as an individual module. On a cold browser/edge connection that
+          // turns a small interface into dozens of serialized resource
+          // requests. A single, still tree-shaken icon chunk preserves route
+          // splitting while making application startup materially less fragile.
+          if (id.includes("node_modules/lucide-react")) return "icons";
+        },
+      },
+    },
   },
 });

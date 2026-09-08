@@ -62,6 +62,10 @@ describe("route loading boundary", () => {
     expect(budget).toContain("limit: 100_000");
     expect(budget).toContain('{ label: "deferred Health feature chunk"');
     expect(budget).toContain("limit: 50_000");
+    const viteConfig = readFileSync(resolve(process.cwd(), "vite.config.ts"), "utf8");
+    expect(viteConfig).toContain("manualChunks(id)");
+    expect(viteConfig).toContain('id.includes("node_modules/lucide-react")');
+    expect(viteConfig).toContain('return "icons"');
   });
 
   it("keeps the first Dashboard paint independent from secondary workspaces", () => {
