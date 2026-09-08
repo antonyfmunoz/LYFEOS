@@ -130,6 +130,10 @@ async function runBrowserLifecycle(account: Account): Promise<{ endpointHost: st
       if (!subscription) {
         (window as Window & { __lyfeosWebPushAcceptanceStage?: string }).__lyfeosWebPushAcceptanceStage = "creating browser subscription";
         subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
+        // Chrome may return a subscription before its push-service registration is
+        // durable. Do not interpret an immediate provider 410 as an app delivery
+        // failure; wait briefly, then require the same real send and revocation.
+        await new Promise((resolve) => setTimeout(resolve, 5_000));
       }
       const payload = subscription.toJSON();
       if (!payload.endpoint || !payload.keys?.p256dh || !payload.keys.auth) throw new Error("The browser returned an incomplete push subscription.");
