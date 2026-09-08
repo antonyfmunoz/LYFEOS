@@ -13,6 +13,8 @@ describe("route loading boundary", () => {
     expect(app).toContain("const module = await withRouteChunkRecovery(loader);");
     expect(app).toContain("return { default: ResolvedRoute };");
     expect(app).toContain('<Suspense fallback={<RouteLoadingScreen />}>');
+    expect(app).toMatch(/function RouteLoadingScreen\(\)\s*\{[\s\S]*?hideAppPreloader\(\);[\s\S]*?<main[^>]*aria-labelledby="route-loading-heading"/);
+    expect(app).toContain('<h1 id="route-loading-heading" className="text-sm font-medium">Loading LyfeOS…</h1>');
     expect(app).not.toContain('import DashboardPage from "./pages/DashboardPage"');
   });
 

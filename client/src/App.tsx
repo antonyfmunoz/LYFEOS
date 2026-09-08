@@ -146,13 +146,22 @@ function OAuthLoadingScreen() {
 }
 
 function RouteLoadingScreen() {
+  useEffect(() => {
+    // The static signed-in cover exists only until React can render a truthful
+    // in-app loading state. Keeping it above Suspense makes a delayed route
+    // chunk look like a frozen, non-interactive page even though the shell is
+    // already alive. Reveal this accessible fallback as soon as it mounts;
+    // the route itself remains responsible for its normal loaded UI.
+    hideAppPreloader();
+  }, []);
+
   return (
-    <div className="min-h-[100dvh] flex items-center justify-center bg-background" role="status" aria-live="polite">
+    <main className="min-h-[100dvh] flex items-center justify-center bg-background" aria-labelledby="route-loading-heading">
       <div className="flex flex-col items-center gap-3 text-muted-foreground">
         <div className="h-7 w-7 rounded-full animate-spin border-2 border-primary border-t-transparent" />
-        <span className="text-sm">Loading LyfeOS…</span>
+        <h1 id="route-loading-heading" className="text-sm font-medium">Loading LyfeOS…</h1>
       </div>
-    </div>
+    </main>
   );
 }
 
