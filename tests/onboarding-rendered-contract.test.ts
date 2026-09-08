@@ -4,6 +4,7 @@ import fs from "node:fs";
 const onboarding = fs.readFileSync("client/src/pages/OnboardingPage.tsx", "utf8");
 const profile = fs.readFileSync("client/src/pages/ProfilePage.tsx", "utf8");
 const app = fs.readFileSync("client/src/App.tsx", "utf8");
+const acceptance = fs.readFileSync("scripts/production-onboarding-browser-acceptance.ts", "utf8");
 
 describe("rendered onboarding acceptance contract", () => {
   it("exposes stable, accessible controls without changing the visual flow", () => {
@@ -57,5 +58,12 @@ describe("rendered onboarding acceptance contract", () => {
     expect(onboarding.match(/const isInitialOnboarding = localStorage\.getItem\("lyfeos-pending-onboarding"\) === "true";/g)).toHaveLength(2);
     expect(onboarding.match(/if \(isInitialOnboarding \|\| !hasSeenDashboard\)/g)).toHaveLength(2);
     expect(onboarding).toContain('localStorage.setItem("lyfeos-ceremony-destination", "/dashboard")');
+  });
+
+  it("excuses only a teardown-aborted Sentry telemetry envelope, never an account write", () => {
+    expect(acceptance).toContain('url.pathname === "/api/sentry-tunnel"');
+    expect(acceptance).toContain('failure === "net::ERR_ABORTED"');
+    expect(acceptance).toContain("every account write");
+    expect(acceptance).toContain("evidence.failedSameOriginRequests.push");
   });
 });

@@ -511,6 +511,14 @@ async function runJourney(browser: Browser, viewport: ViewportCase): Promise<Jou
     const url = new URL(request.url());
     const failure = request.failure()?.errorText || "failed";
     const expectedNavigationAbort = request.method() === "GET" && failure === "net::ERR_ABORTED";
+    // A route transition after the fully verified account-erasure flow may
+    // cancel Sentry's fire-and-forget telemetry envelope. This exact
+    // observability transport is not a product mutation; every account write
+    // and every other same-origin failure remains a hard acceptance signal.
+    const expectedTelemetryAbort = request.method() === "POST"
+      && url.pathname === "/api/sentry-tunnel"
+      && failure === "net::ERR_ABORTED";
+    if (expectedTelemetryAbort) return;
     if (url.origin === BASE_URL.origin && !expectedNavigationAbort) evidence.failedSameOriginRequests.push(`${request.method()} ${url.pathname}: ${failure}`);
   });
   page.on("console", (entry) => {
