@@ -269,6 +269,8 @@ describe("production browser acceptance custody", () => {
     expect(coreLoopScript).toContain("async function waitForAuthoritativeMissionCompletion");
     expect(coreLoopScript).toContain('evidence: "authoritative_state_after_response_timeout"');
     expect(coreLoopScript).toContain("repeatedWriteAfterUncertainResponse: false");
+    expect(coreLoopScript).toContain("if (!completedBody.replayed && !completedBody.reconciled)");
+    expect(coreLoopScript).toContain('progressionAfterCompletion.activityExperience - progressionBefore.activityExperience === expectedActivityExperience');
     expect(coreLoopScript).toContain('waitForMissionToggle(page, true');
     expect(coreLoopScript).toContain('waitForMissionToggle(page, false');
     expect(coreLoopScript).toContain('button[aria-label="Skip this tutorial"]');

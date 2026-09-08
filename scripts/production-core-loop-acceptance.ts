@@ -1341,7 +1341,13 @@ async function main(): Promise<void> {
     await activateRenderedControl(page, '[data-testid="mission-timer-stop"]');
     const completedBody = await waitForMissionToggle(page, true, () => activateMissionControl(page, "done"));
     assert(completedBody.quest?.completed === true, "Rendered Mission Done control did not produce a completed Mission.");
-    assert(completedBody.xpAwarded === expectedActivityExperience, `Mission awarded ${completedBody.xpAwarded ?? "unknown"} activity XP instead of ${expectedActivityExperience}.`);
+    // A response lost after the server commits is reconciled through the
+    // canonical owner state. Its idempotent replay intentionally reports no
+    // *new* award, so the durable progression delta below is the authoritative
+    // proof in that transport-reconciliation path.
+    if (!completedBody.replayed && !completedBody.reconciled) {
+      assert(completedBody.xpAwarded === expectedActivityExperience, `Mission awarded ${completedBody.xpAwarded ?? "unknown"} activity XP instead of ${expectedActivityExperience}.`);
+    }
     progressionAfterCompletion = await readProgression(page);
     assert(progressionAfterCompletion.activityExperience - progressionBefore.activityExperience === expectedActivityExperience, "Completion did not produce the exact difficulty-adjusted activity XP delta.");
     assert(progressionAfterCompletion.capabilityExperience === progressionBefore.capabilityExperience, "Completion awarded capability XP before evidence review.");
