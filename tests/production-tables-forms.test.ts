@@ -64,4 +64,10 @@ describe("production Tables and Forms evidence custody", () => {
     expect(workflow).toContain("npm run acceptance:production-tables-forms");
     expect(workflow).toContain("LYFEOS_TABLES_FORMS_OUTPUT_DIR");
   });
+
+  it("excuses only a teardown-aborted Sentry telemetry envelope, never a Table or Form write", () => {
+    expect(acceptance).toContain('method === "POST" && url.origin === BASE_URL.origin && url.pathname === "/api/sentry-tunnel" && errorText.includes("ERR_ABORTED")');
+    expect(acceptance).toContain("Keep every product write and every other target-origin failure strict;");
+    expect(acceptance).toContain("signals.failedRequests.push(`${method} ${url.pathname}: ${errorText}`)");
+  });
 });

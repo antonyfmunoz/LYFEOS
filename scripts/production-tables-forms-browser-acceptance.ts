@@ -126,7 +126,13 @@ function captureSignals(page: Page, allowAnonymousAuthBoundary = false): Signals
     const method = failed.method();
     const errorText = failed.failure()?.errorText || "failed";
     if (["GET", "HEAD"].includes(method) && errorText.includes("ERR_ABORTED")) return;
-    if (failed.url().startsWith(BASE_URL.origin)) signals.failedRequests.push(`${method} ${new URL(failed.url()).pathname}: ${errorText}`);
+    const url = new URL(failed.url());
+    // A page transition can cancel the fire-and-forget telemetry envelope
+    // after the Table/Form action and its evidence have already completed.
+    // Keep every product write and every other target-origin failure strict;
+    // only this exact observability transport abort is non-actionable.
+    if (method === "POST" && url.origin === BASE_URL.origin && url.pathname === "/api/sentry-tunnel" && errorText.includes("ERR_ABORTED")) return;
+    if (url.origin === BASE_URL.origin) signals.failedRequests.push(`${method} ${url.pathname}: ${errorText}`);
   });
   page.on("response", (response) => {
     if (response.url().startsWith(BASE_URL.origin) && response.status() >= 500) signals.serverErrors.push(`${response.status()} ${new URL(response.url()).pathname}`);
