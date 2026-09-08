@@ -45,7 +45,7 @@ function foodPackageProductKey(receipt: { provider: { id: string }; item: { exte
 }
 
 export function registerIngredientScannerRoutes(app: Express): void {
-  app.get("/api/ingredient-scans", isAuthenticated, async (req: Request, res: Response) => {
+  app.get("/api/ingredient-scans", isAuthenticated, safeAsync(async (req: Request, res: Response) => {
     const userId = req.session.userId!;
     const [scans, preferences] = await Promise.all([
       db.select().from(ingredientScans)
@@ -64,25 +64,25 @@ export function registerIngredientScannerRoutes(app: Express): void {
       scans: scans.map((scan) => ({ ...scan, items: (itemsByScan.get(scan.id) || []).map((item) => ({ ...item, preference: preferenceByKey.get(item.normalizedKey) || null })) })),
       disclosure: "Ingredient review preserves label text. LyfeOS does not make a universal harmfulness, safety, allergy, diagnosis, or treatment claim. Items remain unclassified until backed by an explicit evidence policy or your own preference rule.",
     });
-  });
+  }));
 
-  app.get("/api/ingredient-preferences", isAuthenticated, async (req: Request, res: Response) => {
+  app.get("/api/ingredient-preferences", isAuthenticated, safeAsync(async (req: Request, res: Response) => {
     const preferences = await db.select().from(ingredientPreferenceRules)
       .where(eq(ingredientPreferenceRules.userId, req.session.userId!))
       .orderBy(desc(ingredientPreferenceRules.createdAt));
     return res.json({ preferences, disclosure: "These are your label-review preferences. A match is not a medical, allergy, treatment, or universal safety claim." });
-  });
+  }));
 
-  app.get("/api/food-review-preferences", isAuthenticated, async (req: Request, res: Response) => {
+  app.get("/api/food-review-preferences", isAuthenticated, safeAsync(async (req: Request, res: Response) => {
     const [preferences] = await db.select().from(foodReviewPreferences)
       .where(eq(foodReviewPreferences.userId, req.session.userId!)).limit(1);
     return res.json({
       preferences: { kosherPackageConfirmation: preferences?.kosherPackageConfirmation ?? false },
       disclosure: "This setting requires your confirmation of the printed mark on the exact package. It does not certify a product or replace an observance authority.",
     });
-  });
+  }));
 
-  app.put("/api/food-review-preferences", isAuthenticated, async (req: Request, res: Response) => {
+  app.put("/api/food-review-preferences", isAuthenticated, safeAsync(async (req: Request, res: Response) => {
     const parsed = foodReviewPreferencesSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: "Enter valid food-review preferences." });
     const [preferences] = await db.insert(foodReviewPreferences).values({
@@ -92,9 +92,9 @@ export function registerIngredientScannerRoutes(app: Express): void {
       set: { kosherPackageConfirmation: parsed.data.kosherPackageConfirmation, updatedAt: new Date() },
     }).returning();
     return res.json({ preferences: { kosherPackageConfirmation: preferences.kosherPackageConfirmation } });
-  });
+  }));
 
-  app.get("/api/food-package-confirmations", isAuthenticated, async (req: Request, res: Response) => {
+  app.get("/api/food-package-confirmations", isAuthenticated, safeAsync(async (req: Request, res: Response) => {
     const barcode = z.string().trim().regex(/^\d{8,14}$/).safeParse(req.query.barcode);
     if (!barcode.success) return res.status(400).json({ error: "Enter a valid product barcode." });
     const confirmations = await db.select().from(foodPackageConfirmations)
@@ -104,9 +104,9 @@ export function registerIngredientScannerRoutes(app: Express): void {
       confirmations,
       disclosure: "These are your private visual package-review records. They do not certify a product, establish current manufacturer status, or replace an observance authority. A changed catalog item version requires a fresh package review.",
     });
-  });
+  }));
 
-  app.post("/api/food-package-confirmations", isAuthenticated, async (req: Request, res: Response) => {
+  app.post("/api/food-package-confirmations", isAuthenticated, safeAsync(async (req: Request, res: Response) => {
     const parsed = packageConfirmationSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: "Enter a valid package confirmation." });
     const receipt = verifyConfiguredFoodCatalogToken(parsed.data.catalogLookupToken);
@@ -133,27 +133,27 @@ export function registerIngredientScannerRoutes(app: Express): void {
       confirmation,
       disclosure: "Saved your private visual confirmation for this versioned catalog product. LyfeOS did not save the image or OCR text, and this record is not a certification.",
     });
-  });
+  }));
 
-  app.delete("/api/food-package-confirmations/:id", isAuthenticated, async (req: Request, res: Response) => {
+  app.delete("/api/food-package-confirmations/:id", isAuthenticated, safeAsync(async (req: Request, res: Response) => {
     const id = Number(req.params.id);
     if (!Number.isInteger(id)) return res.status(400).json({ error: "Invalid package confirmation." });
     const [confirmation] = await db.delete(foodPackageConfirmations)
       .where(and(eq(foodPackageConfirmations.id, id), eq(foodPackageConfirmations.userId, req.session.userId!)))
       .returning({ id: foodPackageConfirmations.id });
     return confirmation ? res.status(204).send() : res.status(404).json({ error: "Package confirmation not found." });
-  });
+  }));
 
-  app.get("/api/ingredient-scans/lookup", isAuthenticated, async (req: Request, res: Response) => {
+  app.get("/api/ingredient-scans/lookup", isAuthenticated, safeAsync(async (req: Request, res: Response) => {
     const barcode = z.string().trim().regex(/^[A-Za-z0-9-]{4,64}$/).safeParse(req.query.barcode);
     if (!barcode.success) return res.status(400).json({ error: "Enter a valid barcode." });
     const [scan] = await db.select().from(ingredientScans).where(and(
       eq(ingredientScans.userId, req.session.userId!), eq(ingredientScans.barcode, barcode.data),
     )).orderBy(desc(ingredientScans.updatedAt)).limit(1);
     return res.json({ scan: scan || null, source: scan ? "your_private_history" : "not_found", disclosure: "This lookup searches only your own saved labels. No licensed or external product catalog was queried." });
-  });
+  }));
 
-  app.post("/api/ingredient-preferences", isAuthenticated, async (req: Request, res: Response) => {
+  app.post("/api/ingredient-preferences", isAuthenticated, safeAsync(async (req: Request, res: Response) => {
     const parsed = preferenceSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: "Enter a valid ingredient preference.", details: parsed.error.flatten() });
     const normalizedKey = normalizeIngredientKey(parsed.data.displayName);
@@ -166,14 +166,14 @@ export function registerIngredientScannerRoutes(app: Express): void {
       set: { displayName: parsed.data.displayName, preferenceType: parsed.data.preferenceType, note: parsed.data.note || null },
     }).returning();
     return res.status(201).json({ preference });
-  });
+  }));
 
-  app.delete("/api/ingredient-preferences/:id", isAuthenticated, async (req: Request, res: Response) => {
+  app.delete("/api/ingredient-preferences/:id", isAuthenticated, safeAsync(async (req: Request, res: Response) => {
     const id = Number(req.params.id);
     if (!Number.isInteger(id)) return res.status(400).json({ error: "Invalid ingredient preference." });
     const [preference] = await db.delete(ingredientPreferenceRules).where(and(eq(ingredientPreferenceRules.id, id), eq(ingredientPreferenceRules.userId, req.session.userId!))).returning({ id: ingredientPreferenceRules.id });
     return preference ? res.status(204).send() : res.status(404).json({ error: "Ingredient preference not found." });
-  });
+  }));
 
   app.post("/api/ingredient-scans", isAuthenticated, safeAsync(async (req: Request, res: Response) => {
     const parsed = scanSchema.safeParse(req.body);
