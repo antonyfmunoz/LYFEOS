@@ -25,6 +25,9 @@ describe("private ingredient label correction and reuse", () => {
 
   it("reparses a correction atomically and rejects stale writers", () => {
     const routes = source("server/routes/ingredient-scanner.ts");
+    expect(routes).toContain("const safeAsync");
+    expect(routes).toContain("Promise.resolve(handler(req, res, next)).catch(next)");
+    expect(routes).toContain('safeAsync(async (req: Request, res: Response) =>');
     expect(routes).toContain('app.patch("/api/ingredient-scans/:id"');
     expect(routes).toContain('req.header("x-lyfeos-expected-revision")');
     expect(routes).toContain("FOR UPDATE");

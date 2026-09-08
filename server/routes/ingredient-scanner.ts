@@ -1,4 +1,4 @@
-import type { Express, Request, Response } from "express";
+import type { Express, NextFunction, Request, Response } from "express";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { foodPackageConfirmations, foodReviewPreferences, ingredientPreferenceRules, ingredientScanItems, ingredientScans } from "@shared/schema";
@@ -30,6 +30,15 @@ const packageConfirmationSchema = z.object({
   markLabel: z.string().trim().min(1).max(120),
   confirmationMethod: z.enum(["visual_package_review", "ocr_hint_then_visual_review"]),
 });
+
+type AsyncRoute = (req: Request, res: Response, next: NextFunction) => Promise<unknown>;
+
+// Express 4 does not forward rejected async route promises to its error
+// middleware. Scanner writes are transactional and must become a traceable API
+// error, never an unhandled rejection that takes down the process.
+const safeAsync = (handler: AsyncRoute) => (req: Request, res: Response, next: NextFunction) => {
+  void Promise.resolve(handler(req, res, next)).catch(next);
+};
 
 function foodPackageProductKey(receipt: { provider: { id: string }; item: { externalId: string; barcode?: string | null } }): string {
   return `${receipt.provider.id}:${receipt.item.externalId}:${receipt.item.barcode || "no_barcode"}`;
@@ -166,7 +175,7 @@ export function registerIngredientScannerRoutes(app: Express): void {
     return preference ? res.status(204).send() : res.status(404).json({ error: "Ingredient preference not found." });
   });
 
-  app.post("/api/ingredient-scans", isAuthenticated, async (req: Request, res: Response) => {
+  app.post("/api/ingredient-scans", isAuthenticated, safeAsync(async (req: Request, res: Response) => {
     const parsed = scanSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: "Enter a valid ingredient label.", details: parsed.error.flatten() });
     const receipt = parsed.data.catalogLookupToken ? verifyConfiguredFoodCatalogToken(parsed.data.catalogLookupToken) : null;
@@ -197,9 +206,9 @@ export function registerIngredientScannerRoutes(app: Express): void {
       return { ...created, items: createdItems };
     });
     return res.status(201).json({ scan });
-  });
+  }));
 
-  app.patch("/api/ingredient-scans/:id", isAuthenticated, async (req: Request, res: Response) => {
+  app.patch("/api/ingredient-scans/:id", isAuthenticated, safeAsync(async (req: Request, res: Response) => {
     const id = Number(req.params.id);
     const parsed = scanSchema.safeParse(req.body);
     const expectedRevision = parseExpectedResourceRevision(req.header("x-lyfeos-expected-revision"));
@@ -230,12 +239,12 @@ export function registerIngredientScannerRoutes(app: Express): void {
     if (result.status === 404) return res.status(404).json({ error: "Ingredient scan not found." });
     if (result.status === 409) return res.status(409).json({ error: "This saved label changed after you opened it. Your correction was not applied.", currentRevision: result.currentRevision });
     return res.json({ scan: result.scan });
-  });
+  }));
 
   // Evidence refresh intentionally never changes the original label or a
   // person's private preference rules. It only re-applies the current
   // conservative identity catalog to the ingredients they previously saved.
-  app.post("/api/ingredient-scans/:id/evidence-review", isAuthenticated, async (req: Request, res: Response) => {
+  app.post("/api/ingredient-scans/:id/evidence-review", isAuthenticated, safeAsync(async (req: Request, res: Response) => {
     const id = Number(req.params.id);
     const expectedRevision = parseExpectedResourceRevision(req.header("x-lyfeos-expected-revision"));
     if (!Number.isInteger(id) || !expectedRevision.ok) return res.status(expectedRevision.ok ? 400 : expectedRevision.reason === "missing" ? 428 : 400).json({ error: expectedRevision.ok ? "Invalid ingredient review." : expectedRevision.reason === "missing" ? "Reload this saved label before refreshing evidence." : "Invalid expected label revision." });
@@ -256,9 +265,9 @@ export function registerIngredientScannerRoutes(app: Express): void {
     if (result.status === 404) return res.status(404).json({ error: "Ingredient scan not found." });
     if (result.status === 409) return res.status(409).json({ error: "This saved label changed after you opened it. Reload it before refreshing evidence.", currentRevision: result.currentRevision });
     return res.json({ scan: result.scan, refreshedItems: result.refreshedItems, disclosure: "LyfeOS refreshed only conservative evidence-linked ingredient identities. Your original label text and private preference rules were not changed." });
-  });
+  }));
 
-  app.delete("/api/ingredient-scans/:id", isAuthenticated, async (req: Request, res: Response) => {
+  app.delete("/api/ingredient-scans/:id", isAuthenticated, safeAsync(async (req: Request, res: Response) => {
     const id = Number(req.params.id);
     const expectedRevision = parseExpectedResourceRevision(req.header("x-lyfeos-expected-revision"));
     if (!Number.isInteger(id) || (!expectedRevision.ok && expectedRevision.reason === "invalid")) return res.status(400).json({ error: "Invalid ingredient scan." });
@@ -275,5 +284,5 @@ export function registerIngredientScannerRoutes(app: Express): void {
     if (result.status === 404) return res.status(404).json({ error: "Ingredient scan not found." });
     if (result.status === 409) return res.status(409).json({ error: "This saved label changed after you opened it. It was not deleted.", currentRevision: result.currentRevision });
     return res.status(204).send();
-  });
+  }));
 }
