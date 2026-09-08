@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { classifyIngredientEvidence, normalizeIngredientKey, parseIngredientLabel } from "../server/ingredient-scanner";
 
 describe("ingredient evidence catalog", () => {
@@ -23,5 +25,20 @@ describe("ingredient evidence catalog", () => {
     expect(parseIngredientLabel("Ingredients: oats, Red No. 40, natural flavors").map((entry) => entry.normalizedKey)).toEqual([
       "oats", "red_no_40", "natural_flavors",
     ]);
+  });
+
+  it("release-migrates every factual evidence identity emitted by the catalog", () => {
+    const migration = readFileSync(resolve(process.cwd(), "migrations/0158_ingredient_evidence_classifications.sql"), "utf8");
+    const release = readFileSync(resolve(process.cwd(), "server/release-migrate.ts"), "utf8");
+    for (const classification of [
+      "declared_major_allergen_label_term",
+      "declared_color_additive",
+      "declared_sulfiting_agent",
+      "declared_non_nutritive_sweetener",
+      "declared_caffeine_source",
+      "declared_partially_hydrogenated_oil",
+      "regulatory_identity",
+    ]) expect(migration).toContain(classification);
+    expect(release).toContain('id: "0158_ingredient_evidence_classifications"');
   });
 });
