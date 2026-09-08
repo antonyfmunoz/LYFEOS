@@ -94,8 +94,9 @@ describe("production Health offline browser acceptance custody", () => {
     expect(script).toContain("isTransientReadFailure");
   });
 
-  it("excuses only a teardown-aborted Sentry telemetry envelope, never a Health write", () => {
-    expect(script).toContain('method === "POST" && url.origin === BASE_URL.origin && url.pathname === "/api/sentry-tunnel" && detail.includes("ERR_ABORTED")');
+  it("excuses only a Sentry telemetry transport failure, never a Health write", () => {
+    expect(script).toContain('method === "POST" && url.origin === BASE_URL.origin && url.pathname === "/api/sentry-tunnel" && (detail.includes("ERR_ABORTED") || detail.includes("ERR_INTERNET_DISCONNECTED"))');
+    expect(script).toContain('/https:\\/\\/lyfeos\\.net\\/api\\/sentry-tunnel/i.test(message)');
     expect(script).toContain("Keep every canonical Health write and every other failed request strict.");
   });
 

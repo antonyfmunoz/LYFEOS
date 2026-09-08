@@ -98,7 +98,10 @@ function isExpectedOfflineClerkChunkError(message: string): boolean {
 }
 
 function isExpectedOfflineSentryTelemetryError(message: string): boolean {
-  return /ERR_INTERNET_DISCONNECTED/i.test(message) && /https:\/\/o\d+\.ingest\.[\w.-]+\.sentry\.io\/api\//i.test(message);
+  return /ERR_INTERNET_DISCONNECTED/i.test(message) && (
+    /https:\/\/o\d+\.ingest\.[\w.-]+\.sentry\.io\/api\//i.test(message)
+    || /https:\/\/lyfeos\.net\/api\/sentry-tunnel/i.test(message)
+  );
 }
 
 async function request(method: string, pathname: string, body?: unknown, cookie = "", headers: Record<string, string> = {}, timeoutMs = 30_000): Promise<ApiResult> {
@@ -253,7 +256,10 @@ function captureSignals(page: Page, state: { intentionalOffline: boolean }): Sig
     // A page transition can cancel a fire-and-forget observability envelope
     // after every Health mutation has already been reconciled and verified.
     // Keep every canonical Health write and every other failed request strict.
-    if (method === "POST" && url.origin === BASE_URL.origin && url.pathname === "/api/sentry-tunnel" && detail.includes("ERR_ABORTED")) return;
+    if (method === "POST" && url.origin === BASE_URL.origin && url.pathname === "/api/sentry-tunnel" && (detail.includes("ERR_ABORTED") || detail.includes("ERR_INTERNET_DISCONNECTED"))) {
+      signals.expectedOfflineFailures.push(detail.slice(0, 500));
+      return;
+    }
     if (state.intentionalOffline && detail.includes("ERR_INTERNET_DISCONNECTED")) {
       const matchingShellRead = url.origin === BASE_URL.origin ? offlineShellReadFailureForPath(url.pathname) : null;
       if (matchingShellRead) pendingOfflineShellReadFailures.add(matchingShellRead);
