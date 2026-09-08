@@ -16,12 +16,19 @@ export function webPushConfiguration(): { configured: boolean; publicKey: string
 }
 
 let configuredFingerprint = "";
-const TRANSIENT_PUSH_RETRY_DELAY_MS = 1_000;
+const DEFAULT_TRANSIENT_PUSH_RETRY_DELAY_MS = 5_000;
+const MAX_TRANSIENT_PUSH_RETRY_DELAY_MS = 60_000;
 
-function isTransientPushError(error: unknown): boolean {
-  if (!error || typeof error !== "object" || !("statusCode" in error)) return false;
+function transientPushRetryDelay(error: unknown): number | null {
+  if (!error || typeof error !== "object" || !("statusCode" in error)) return null;
   const statusCode = Number((error as { statusCode?: unknown }).statusCode);
-  return statusCode >= 500 && statusCode < 600;
+  if (statusCode < 500 || statusCode >= 600) return null;
+  const retryAfter = "headers" in error && error.headers && typeof error.headers === "object"
+    ? (error.headers as Record<string, unknown>)["retry-after"]
+    : undefined;
+  const seconds = typeof retryAfter === "string" ? Number(retryAfter) : Number(retryAfter);
+  if (Number.isFinite(seconds) && seconds >= 0) return Math.min(MAX_TRANSIENT_PUSH_RETRY_DELAY_MS, Math.max(1_000, seconds * 1_000));
+  return DEFAULT_TRANSIENT_PUSH_RETRY_DELAY_MS;
 }
 
 function configureProvider(): boolean {
@@ -50,8 +57,9 @@ export async function deliverWebPush(subscription: { endpoint: string; p256dh: s
   } catch (error) {
     // A provider 5xx is explicitly transient. Retry once only; terminal endpoint
     // failures and other errors remain visible to the caller without masking them.
-    if (!isTransientPushError(error)) throw error;
-    await new Promise<void>((resolve) => setTimeout(resolve, TRANSIENT_PUSH_RETRY_DELAY_MS));
+    const retryDelay = transientPushRetryDelay(error);
+    if (retryDelay === null) throw error;
+    await new Promise<void>((resolve) => setTimeout(resolve, retryDelay));
     await webpush.sendNotification(device, JSON.stringify({ data: payload }), options);
   }
 }
