@@ -457,7 +457,7 @@ async function auditRoute(page: Page, route: string, kind: RouteKind, viewportNa
       }
       const duplicateIds = [...ids.entries()].filter(([, count]) => count > 1).map(([id]) => id).sort();
 
-      const unlabeledControls = [...document.querySelectorAll<HTMLElement>("button,input,select,textarea")]
+      const unlabeledControls = [...document.querySelectorAll<HTMLElement>('a[href],button,input,select,textarea,[role="button"],[role="link"],[role="checkbox"],[role="switch"],[role="combobox"]')]
         .filter((element) => {
           if (element.getAttribute("aria-hidden") === "true") return false;
           if (element instanceof HTMLInputElement && element.type === "hidden") return false;
@@ -466,7 +466,8 @@ async function auditRoute(page: Page, route: string, kind: RouteKind, viewportNa
           const id = element.id;
           const label = id ? document.querySelector(`label[for="${CSS.escape(id)}"]`) : null;
           const wrappingLabel = element.closest("label");
-          const name = element.getAttribute("aria-label") || element.getAttribute("aria-labelledby") || element.getAttribute("title") || element.textContent?.trim();
+          const imageAlternative = element.querySelector("img[alt]")?.getAttribute("alt")?.trim();
+          const name = element.getAttribute("aria-label") || element.getAttribute("aria-labelledby") || element.getAttribute("title") || element.textContent?.trim() || imageAlternative;
           return !label && !wrappingLabel && !name;
         })
         .slice(0, 20)

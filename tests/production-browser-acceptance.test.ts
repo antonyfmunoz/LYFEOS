@@ -82,6 +82,7 @@ describe("production browser acceptance custody", () => {
     expect(script).toContain('contract: "lyfeos.production-browser-acceptance.v1"');
     expect(script).toContain("duplicateIds");
     expect(script).toContain("unlabeledControls");
+    expect(script).toContain('a[href],button,input,select,textarea');
     expect(script).toContain("firstTabReachedControl");
     expect(script).toContain("horizontalOverflowPx");
     expect(script).toContain("largestContentfulPaintMs");
