@@ -178,6 +178,8 @@ describe("food catalog gateway", () => {
     expect(ui).toContain("Manual foods remain available");
     expect(ui).toContain("Load more results");
     expect(ui).toContain("Food catalog data source");
+    expect(ui).toContain('data-testid="food-catalog-coverage-disclosure"');
+    expect(ui).toContain("Coverage varies by product and territory");
     expect(migration).toContain('"catalog_attribution_text"');
     expect(portionMigration).toContain('"catalog_grams_per_unit"');
     expect(release).toContain('id: "0104_food_catalog_gateway"');

@@ -95,40 +95,48 @@ async function main(): Promise<void> {
     await registerDisposableAccount(account);
     const status = await request("GET", "/api/food-catalog/status", undefined, account.cookie);
     assert(status.status === 200 && status.body?.available === true, `Food catalog status returned ${status.status}; a configured live catalog is required.`);
-    const providerId = status.body.defaultProviderId;
-    assert(typeof providerId === "string" && status.body.providers?.some((provider: any) => provider.id === providerId), "Food catalog did not disclose a valid default provider.");
+    const providers = Array.isArray(status.body?.providers) ? status.body.providers : [];
+    assert(providers.length > 0, "Food catalog did not disclose any configured providers.");
+    assert(typeof status.body.defaultProviderId === "string" && providers.some((provider: any) => provider.id === status.body.defaultProviderId), "Food catalog did not disclose a valid default provider.");
+    const qualifiedProviders: Array<{ providerId: string; datasetVersion: string; sourceKind: string; knownBarcodeChecked: boolean; nextPageChecked: boolean }> = [];
 
-    const search = await request("GET", `/api/food-catalog/search?query=oats&territory=US&locale=en-US&limit=10&providerId=${encodeURIComponent(providerId)}`, undefined, account.cookie);
-    assert(search.status === 200 && search.body?.provider?.id === providerId && Array.isArray(search.body?.items), `Live catalog search returned ${search.status}.`);
-    const item = search.body.items.find((candidate: any) => typeof candidate?.lookupToken === "string" && candidate?.nutrients?.some((nutrient: any) => nutrient?.nutrientKey === "energy_kcal"));
-    assert(item, "Live catalog search did not return an importable, energy-attributed food result.");
-    assert(item.evidence?.sourceKind && item.evidence?.measurementBasis && item.evidence?.recordUpdatedAt, "Live catalog result omitted source evidence.");
+    for (const provider of providers) {
+      const providerId = provider?.id;
+      assert(typeof providerId === "string" && providerId.length > 0, "Food catalog disclosed an invalid provider identity.");
+      assert(Array.isArray(provider.territories) && provider.territories.includes("US"), `Configured provider ${providerId} did not disclose US coverage for this production acceptance.`);
+      const search = await request("GET", `/api/food-catalog/search?query=oats&territory=US&locale=en-US&limit=10&providerId=${encodeURIComponent(providerId)}`, undefined, account.cookie);
+      assert(search.status === 200 && search.body?.provider?.id === providerId && Array.isArray(search.body?.items), `Live ${providerId} catalog search returned ${search.status}.`);
+      const item = search.body.items.find((candidate: any) => typeof candidate?.lookupToken === "string" && candidate?.nutrients?.some((nutrient: any) => nutrient?.nutrientKey === "energy_kcal"));
+      assert(item, `Live ${providerId} catalog search did not return an importable, energy-attributed food result.`);
+      assert(item.evidence?.sourceKind && item.evidence?.measurementBasis && item.evidence?.recordUpdatedAt, `Live ${providerId} catalog result omitted source evidence.`);
 
-    const imported = await request("POST", "/api/nutrition/foods/catalog-import", { lookupToken: item.lookupToken }, account.cookie);
-    assert(imported.status === 201 && imported.body?.replayed === false && imported.body?.food?.source === "catalog", `Explicit catalog import returned ${imported.status}.`);
-    assert(imported.body.food.catalogProviderId === providerId && imported.body.food.catalogExternalId === item.externalId && imported.body.food.catalogAttributionText, "Imported food did not retain provider attribution and external identity.");
-    const replay = await request("POST", "/api/nutrition/foods/catalog-import", { lookupToken: item.lookupToken }, account.cookie);
-    assert(replay.status === 200 && replay.body?.replayed === true && replay.body?.food?.id === imported.body.food.id, "Identical catalog import was not idempotent.");
+      const imported = await request("POST", "/api/nutrition/foods/catalog-import", { lookupToken: item.lookupToken }, account.cookie);
+      assert(imported.status === 201 && imported.body?.replayed === false && imported.body?.food?.source === "catalog", `Explicit ${providerId} catalog import returned ${imported.status}.`);
+      assert(imported.body.food.catalogProviderId === providerId && imported.body.food.catalogExternalId === item.externalId && imported.body.food.catalogAttributionText, `${providerId} import did not retain provider attribution and external identity.`);
+      const replay = await request("POST", "/api/nutrition/foods/catalog-import", { lookupToken: item.lookupToken }, account.cookie);
+      assert(replay.status === 200 && replay.body?.replayed === true && replay.body?.food?.id === imported.body.food.id, `Identical ${providerId} catalog import was not idempotent.`);
 
-    const invalidImport = await request("POST", "/api/nutrition/foods/catalog-import", { lookupToken: `${item.lookupToken}x` }, account.cookie);
-    assert(invalidImport.status === 400, "Tampered catalog receipt was not rejected.");
+      const invalidImport = await request("POST", "/api/nutrition/foods/catalog-import", { lookupToken: `${item.lookupToken}x` }, account.cookie);
+      assert(invalidImport.status === 400, `Tampered ${providerId} catalog receipt was not rejected.`);
 
-    let knownBarcodeChecked = false;
-    if (/^\d{8,14}$/.test(item.barcode || "")) {
-      const barcode = await request("GET", `/api/food-catalog/barcodes/${item.barcode}?providerId=${encodeURIComponent(providerId)}`, undefined, account.cookie);
-      assert(barcode.status === 200 && barcode.body?.found === true && barcode.body?.item?.externalId, `Known provider barcode lookup returned ${barcode.status}.`);
-      knownBarcodeChecked = true;
+      let knownBarcodeChecked = false;
+      if (/^\d{8,14}$/.test(item.barcode || "")) {
+        const barcode = await request("GET", `/api/food-catalog/barcodes/${item.barcode}?providerId=${encodeURIComponent(providerId)}`, undefined, account.cookie);
+        assert(barcode.status === 200 && barcode.body?.found === true && barcode.body?.item?.externalId, `Known ${providerId} barcode lookup returned ${barcode.status}.`);
+        knownBarcodeChecked = true;
+      }
+      const unknownBarcode = await findExplicitUnknownBarcode(providerId, account.cookie);
+      assert(unknownBarcode.status === 200 && unknownBarcode.body?.found === false && unknownBarcode.body?.item === null, `${providerId} unknown barcode did not fail closed as an explicit unknown.`);
+
+      let nextPageChecked = false;
+      if (typeof search.body.nextCursor === "string" && search.body.nextCursor.length >= 80) {
+        const next = await request("GET", `/api/food-catalog/search?cursor=${encodeURIComponent(search.body.nextCursor)}`, undefined, account.cookie);
+        assert(next.status === 200 && next.body?.provider?.id === providerId && next.body?.provider?.datasetVersion === search.body.provider?.datasetVersion, `${providerId} continuation returned ${next.status} or changed its source identity.`);
+        nextPageChecked = true;
+      }
+      qualifiedProviders.push({ providerId, datasetVersion: search.body.provider.datasetVersion, sourceKind: item.evidence.sourceKind, knownBarcodeChecked, nextPageChecked });
     }
-    const unknownBarcode = await findExplicitUnknownBarcode(providerId, account.cookie);
-    assert(unknownBarcode.status === 200 && unknownBarcode.body?.found === false && unknownBarcode.body?.item === null, "Unknown barcode did not fail closed as an explicit unknown.");
-
-    let nextPageChecked = false;
-    if (typeof search.body.nextCursor === "string" && search.body.nextCursor.length >= 80) {
-      const next = await request("GET", `/api/food-catalog/search?cursor=${encodeURIComponent(search.body.nextCursor)}`, undefined, account.cookie);
-      assert(next.status === 200 && next.body?.provider?.id === providerId && next.body?.provider?.datasetVersion === search.body.provider?.datasetVersion, `Catalog continuation returned ${next.status} or changed its source identity.`);
-      nextPageChecked = true;
-    }
-    console.log(JSON.stringify({ contract: "lyfeos.production-food-catalog.v1", passed: true, providerId, datasetVersion: search.body.provider.datasetVersion, sourceKind: item.evidence.sourceKind, knownBarcodeChecked, nextPageChecked }));
+    console.log(JSON.stringify({ contract: "lyfeos.production-food-catalog.v2", passed: true, providerCount: qualifiedProviders.length, providers: qualifiedProviders }));
   } finally {
     erased = await eraseAccount(account);
     console.error(`disposable account erased=${erased}`);
