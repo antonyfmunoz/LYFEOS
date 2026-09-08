@@ -32,9 +32,12 @@ export async function sendPushToUser(userId: number, payload: NotificationPayloa
       await db.update(pushSubscriptions).set({ lastSuccessAt: new Date(), failureCount: 0, lastFailureAt: null, updatedAt: new Date() }).where(and(eq(pushSubscriptions.id, subscription.id), eq(pushSubscriptions.userId, userId)));
     } catch (error) {
       const statusCode = typeof error === "object" && error && "statusCode" in error ? Number((error as { statusCode?: unknown }).statusCode) : 0;
+      const retryAfter = typeof error === "object" && error && "headers" in error && error.headers && typeof error.headers === "object"
+        ? (error.headers as Record<string, unknown>)["retry-after"]
+        : undefined;
       const terminal = statusCode === 404 || statusCode === 410;
       await db.update(pushSubscriptions).set({ status: terminal ? "expired" : (subscription.failureCount + 1 >= 5 ? "failed" : "active"), failureCount: sql`${pushSubscriptions.failureCount} + 1`, lastFailureAt: new Date(), updatedAt: new Date() }).where(and(eq(pushSubscriptions.id, subscription.id), eq(pushSubscriptions.userId, userId)));
-      logger.warn(`Web Push delivery failed for subscription ${subscription.id} with bounded status ${statusCode || "unknown"}`);
+      logger.warn(`Web Push delivery failed for subscription ${subscription.id} with bounded status ${statusCode || "unknown"} and retry-after ${typeof retryAfter === "string" ? retryAfter.slice(0, 32) : "absent"}`);
     }
   }
   return delivered;
