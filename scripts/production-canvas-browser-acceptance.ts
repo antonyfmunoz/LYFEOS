@@ -7,6 +7,7 @@ import puppeteer, { type Browser, type BrowserContext, type Page, type Viewport 
 import {
   acknowledgeBoundedChunkRecovery,
   hasUnexpectedBrowserSignals,
+  reconcileBoundedBackgroundReadRecovery,
   type BrowserSignals,
 } from "./lib/production-browser-signals";
 
@@ -117,7 +118,7 @@ function cookieParts(cookie: string): { name: string; value: string } {
   return { name: cookie.slice(0, separator), value: cookie.slice(separator + 1) };
 }
 
-function captureSignals(page: Page): Signals {
+function captureSignals(page: Page, successfulReads: Set<string>): Signals {
   const signals: Signals = { consoleErrors: [], pageErrors: [], failedRequests: [], serverErrors: [], recoveredChunkLoads: [] };
   page.on("console", (entry) => {
     if (entry.type() === "error") signals.consoleErrors.push(entry.text().slice(0, 500));
@@ -130,7 +131,10 @@ function captureSignals(page: Page): Signals {
     if (failed.url().startsWith(BASE_URL.origin)) signals.failedRequests.push(`${method} ${new URL(failed.url()).pathname}: ${errorText}`);
   });
   page.on("response", (response) => {
-    if (response.url().startsWith(BASE_URL.origin) && response.status() >= 500) signals.serverErrors.push(`${response.status()} ${new URL(response.url()).pathname}`);
+    if (!response.url().startsWith(BASE_URL.origin)) return;
+    const pathname = new URL(response.url()).pathname;
+    if (response.request().method() === "GET" && response.ok()) successfulReads.add(`GET ${pathname}`);
+    if (response.status() >= 500) signals.serverErrors.push(`${response.status()} ${pathname}`);
   });
   return signals;
 }
@@ -306,7 +310,8 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     stage = "render Canvas catalog and create through named controls";
     context = await browser.createBrowserContext();
     page = await context.newPage();
-    const signals = captureSignals(page);
+    const successfulReads = new Set<string>();
+    const signals = captureSignals(page, successfulReads);
     const session = cookieParts(owner.cookie);
     await page.setCookie({ ...session, url: BASE_URL.origin, path: "/", httpOnly: true, secure: true, sameSite: "Lax" });
     await page.evaluateOnNewDocument((fixtureUser) => {
@@ -472,6 +477,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     const catalogAudit = await auditPage(page, '[data-testid="canvas-page"]');
     assertCleanAudit(catalogAudit, `${viewport.name} Canvas catalog`);
     await acknowledgeBoundedChunkRecovery(page, signals);
+    reconcileBoundedBackgroundReadRecovery(signals, successfulReads);
     assert(!hasUnexpectedBrowserSignals(signals), `${viewport.name} Canvas journey produced application errors: ${JSON.stringify(signals)}.`);
     view = { viewport: viewport.name, catalogAndEditorRendered, governedTemplateReviewed, userTemplateCreatedAndApplied, nodeAndConnectionEditingReconciled, undoRedoReconciled, viewportControlsReconciled, localImportReviewedAndPersisted, immutableCreationRevisionReconciled, crossOwnerIsolationReconciled, multiTabConflictReconciled, staleSaveStoppedAsConflict, maximumDocumentRendered, renderedNodeCountAtLimit, reconciledSaveCreatedNewRevision, restoreCreatedNewImmutableRevision, catalogPersistenceRendered, editorAudit, catalogAudit, signals };
   } catch (error) {

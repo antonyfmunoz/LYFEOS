@@ -39,6 +39,8 @@ describe("production Canvas evidence custody", () => {
     expect(acceptance).toContain("onboardingCompleted: true");
     expect(acceptance).toContain('response.headers.get("retry-after")');
     expect(acceptance).toContain("Object.assign(account");
+    expect(acceptance).toContain("reconcileBoundedBackgroundReadRecovery(signals, successfulReads)");
+    expect(acceptance).toContain('successfulReads.add(`GET ${pathname}`)');
     expect(acceptance).toContain("human assistive-technology comprehension");
     expect(acceptance).toContain("physical-device pointer");
   });
