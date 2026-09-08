@@ -35,6 +35,9 @@ const POSTHOG_BROWSER_INGEST = /https:\/\/(?:[a-z0-9-]+\.)?i\.posthog\.com\/(?:e
 const ISOLATED_CLERK_BOOTSTRAP = /https:\/\/local\.lyfeos\.dev\/npm\/@clerk\/clerk-js@\d+(?:\.\d+){0,2}\/dist\/clerk(?:\.[a-z0-9-]+)*\.browser\.js(?:\?[^\s]*)?/i;
 const CLERK_BOOTSTRAP_TIMEOUT = /Clerk: Failed to load Clerk[\s\S]*code=["']failed_to_load_clerk_js_timeout["']/i;
 const RECOVERABLE_BACKGROUND_READ_PATHS = [
+  /^\/api\/profile$/,
+  /^\/api\/product-analytics$/,
+  /^\/api\/users\/\d+\/stats$/,
   /^\/api\/computed-stats$/,
   /^\/api\/users\/\d+\/mission-pages$/,
   /^\/api\/users\/\d+\/quests$/,
@@ -127,44 +130,47 @@ export async function acknowledgeBoundedChunkRecovery(
 }
 
 /**
- * The app retries four specific, non-mutating workspace hydration reads in
- * `fetchBackgroundRead`. Chromium still emits a console/request failure for a
- * transient HTTP/2 stream reset before that retry succeeds. Keep that event
- * visible unless the exact failed endpoint later returned a successful GET in
- * the same document: this proves recovery rather than suppressing a failed
- * read. No mutation, arbitrary endpoint, non-HTTP/2 failure, or missing
- * response can enter this exception.
+ * A small, reviewed set of non-mutating workspace hydration reads uses either
+ * `fetchBackgroundRead` or TanStack Query's bounded read retry. Chromium still
+ * emits console/request failures for each transient HTTP/2 stream reset before
+ * a retry succeeds. Keep those events visible unless every failed endpoint
+ * later returned a successful GET in the same document: this proves recovery
+ * rather than suppressing a failed read. No mutation, arbitrary endpoint,
+ * non-HTTP/2 failure, or missing response can enter this exception.
  */
 export function reconcileBoundedBackgroundReadRecovery(
   signals: BrowserSignals,
   successfulReads: ReadonlySet<string>,
 ): string[] {
-  const failedByPath = new Map<string, string>();
+  const failedPaths = new Set<string>();
   for (const entry of signals.failedRequests) {
     const path = backgroundFailurePath(entry, "GET ");
-    if (!path || failedByPath.has(path)) return [];
-    failedByPath.set(path, entry);
+    if (!path) return [];
+    failedPaths.add(path);
   }
-  if (failedByPath.size === 0 || (signals.recoveredBackgroundReads?.length || 0) > 0) return [];
+  if (failedPaths.size === 0 || (signals.recoveredBackgroundReads?.length || 0) > 0) return [];
 
-  const consoleByPath = new Map<string, string>();
+  const consolePaths = new Set<string>();
   for (const entry of signals.consoleErrors) {
     const matched = entry.match(/^Failed to load resource: net::ERR_HTTP2_PROTOCOL_ERROR @ https?:\/\/[^/]+(\/api\/[^\s]+)$/);
     const rawPath = matched?.[1] || null;
     const path = rawPath ? rawPath.split("?", 1)[0] : null;
-    if (!path || !failedByPath.has(path)) continue;
-    if (consoleByPath.has(path)) return [];
-    consoleByPath.set(path, entry);
+    if (!path || !failedPaths.has(path)) continue;
+    consolePaths.add(path);
   }
 
-  if (consoleByPath.size !== failedByPath.size) return [];
-  for (const path of failedByPath.keys()) {
+  if (consolePaths.size !== failedPaths.size) return [];
+  for (const path of failedPaths) {
     if (!successfulReads.has(`GET ${path}`)) return [];
   }
 
-  const recovered = [...failedByPath.keys()].sort().map((path) => `GET ${path}`);
-  signals.failedRequests = signals.failedRequests.filter((entry) => !failedByPath.has(backgroundFailurePath(entry, "GET ") || ""));
-  signals.consoleErrors = signals.consoleErrors.filter((entry) => ![...consoleByPath.values()].includes(entry));
+  const recovered = [...failedPaths].sort().map((path) => `GET ${path}`);
+  signals.failedRequests = signals.failedRequests.filter((entry) => !failedPaths.has(backgroundFailurePath(entry, "GET ") || ""));
+  signals.consoleErrors = signals.consoleErrors.filter((entry) => {
+    const matched = entry.match(/^Failed to load resource: net::ERR_HTTP2_PROTOCOL_ERROR @ https?:\/\/[^/]+(\/api\/[^\s]+)$/);
+    const path = matched?.[1]?.split("?", 1)[0];
+    return !path || !consolePaths.has(path);
+  });
   signals.recoveredBackgroundReads = recovered;
   return recovered;
 }

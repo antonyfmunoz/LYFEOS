@@ -10,13 +10,14 @@ import {
   hasUnexpectedBrowserSignals,
   isExternalProviderTransportError,
   isIsolatedClerkBootstrapError,
+  reconcileBoundedBackgroundReadRecovery,
   type BrowserSignals,
 } from "./lib/production-browser-signals";
 
 type ApiResult = { status: number; body: any; cookie: string; retryAfter: number };
 type Account = { id: number; email: string; displayName: string; cookie: string };
 type CollaborationBrowserSignals = BrowserSignals & { externalProviderErrors: string[] };
-type PageState = { context: BrowserContext; page: Page; signals: CollaborationBrowserSignals };
+type PageState = { context: BrowserContext; page: Page; signals: CollaborationBrowserSignals; successfulReads: Set<string> };
 type Cleanup = { accountErased: boolean; sessionInvalidated: boolean; emailReleased: boolean; displayNameReleased: boolean };
 type ViewAudit = {
   label: string;
@@ -127,7 +128,7 @@ function cookieParts(cookie: string): { name: string; value: string } {
   return { name: cookie.slice(0, separator), value: cookie.slice(separator + 1) };
 }
 
-function captureSignals(page: Page): CollaborationBrowserSignals {
+function captureSignals(page: Page, successfulReads: Set<string>): CollaborationBrowserSignals {
   const signals: CollaborationBrowserSignals = {
     consoleErrors: [],
     pageErrors: [],
@@ -171,7 +172,10 @@ function captureSignals(page: Page): CollaborationBrowserSignals {
     if (failed.url().startsWith(BASE_URL.origin)) signals.failedRequests.push(`${failed.method()} ${new URL(failed.url()).pathname}: ${errorText}`);
   });
   page.on("response", (response) => {
-    if (response.url().startsWith(BASE_URL.origin) && response.status() >= 500) signals.serverErrors.push(`${response.status()} ${new URL(response.url()).pathname}`);
+    const url = new URL(response.url());
+    if (url.origin !== BASE_URL.origin) return;
+    if (response.request().method() === "GET" && response.ok()) successfulReads.add(`GET ${url.pathname}`);
+    if (response.status() >= 500) signals.serverErrors.push(`${response.status()} ${url.pathname}`);
   });
   return signals;
 }
@@ -207,7 +211,8 @@ async function registerAccount(label: string, stamp: string): Promise<Account> {
 async function createPage(browser: Browser, account: Account, viewport: Viewport): Promise<PageState> {
   const context = await browser.createBrowserContext();
   const page = await context.newPage();
-  const signals = captureSignals(page);
+  const successfulReads = new Set<string>();
+  const signals = captureSignals(page, successfulReads);
   const session = cookieParts(account.cookie);
   await page.setCookie({ ...session, url: BASE_URL.origin, path: "/", httpOnly: true, secure: BASE_URL.protocol === "https:", sameSite: "Lax" });
   await page.evaluateOnNewDocument((fixtureUser) => {
@@ -215,7 +220,7 @@ async function createPage(browser: Browser, account: Account, viewport: Viewport
   }, { id: account.id, displayName: account.displayName });
   await page.setViewport(viewport);
   await page.setCacheEnabled(false);
-  return { context, page, signals };
+  return { context, page, signals, successfulReads };
 }
 
 async function dismissTutorial(page: Page): Promise<void> {
@@ -585,6 +590,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
 
     for (const pageState of pages) {
       await acknowledgeBoundedChunkRecovery(pageState.page, pageState.signals);
+      reconcileBoundedBackgroundReadRecovery(pageState.signals, pageState.successfulReads);
       journey.signals.push(pageState.signals);
     }
     for (const audit of journey.audits) {
@@ -601,6 +607,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
       await acknowledgeBoundedChunkRecovery(pageState.page, pageState.signals).catch((error) => {
         pageState.signals.pageErrors.push(`Signal reconciliation failed: ${safeError(error)}`.slice(0, 500));
       });
+      reconcileBoundedBackgroundReadRecovery(pageState.signals, pageState.successfulReads);
       journey.signals.push(pageState.signals);
     }
     for (const pageState of pages) await pageState.context.close().catch(() => undefined);

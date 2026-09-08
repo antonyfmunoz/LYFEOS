@@ -159,6 +159,7 @@ describe("production browser signal reconciliation", () => {
       "messages-browser-acceptance.ts",
       "production-projects-browser-acceptance.ts",
       "mission-safety-browser-acceptance.ts",
+      "collaboration-browser-acceptance.ts",
     ];
 
     for (const journey of journeys) {
@@ -209,6 +210,40 @@ describe("production browser signal reconciliation", () => {
       "GET /api/users/42/quests",
     ]);
     expect(hasUnexpectedBrowserSignals(captured)).toBe(false);
+  });
+
+  it("requires later success for every repeated, reviewed hydration read", () => {
+    const captured = signals([
+      "Failed to load resource: net::ERR_HTTP2_PROTOCOL_ERROR @ https://lyfeos.net/api/profile",
+      "Failed to load resource: net::ERR_HTTP2_PROTOCOL_ERROR @ https://lyfeos.net/api/profile",
+      "Failed to load resource: net::ERR_HTTP2_PROTOCOL_ERROR @ https://lyfeos.net/api/product-analytics",
+      "Failed to load resource: net::ERR_HTTP2_PROTOCOL_ERROR @ https://lyfeos.net/api/users/42/stats",
+    ]);
+    captured.failedRequests.push(
+      "GET /api/profile: net::ERR_HTTP2_PROTOCOL_ERROR",
+      "GET /api/profile: net::ERR_HTTP2_PROTOCOL_ERROR",
+      "GET /api/product-analytics: net::ERR_HTTP2_PROTOCOL_ERROR",
+      "GET /api/users/42/stats: net::ERR_HTTP2_PROTOCOL_ERROR",
+    );
+
+    expect(reconcileBoundedBackgroundReadRecovery(captured, new Set([
+      "GET /api/profile",
+      "GET /api/product-analytics",
+      "GET /api/users/42/stats",
+    ]))).toEqual([
+      "GET /api/product-analytics",
+      "GET /api/profile",
+      "GET /api/users/42/stats",
+    ]);
+    expect(hasUnexpectedBrowserSignals(captured)).toBe(false);
+  });
+
+  it("never excuses a later-successful read outside the reviewed hydration set", () => {
+    const captured = signals(["Failed to load resource: net::ERR_HTTP2_PROTOCOL_ERROR @ https://lyfeos.net/api/account/export"]);
+    captured.failedRequests.push("GET /api/account/export: net::ERR_HTTP2_PROTOCOL_ERROR");
+
+    expect(reconcileBoundedBackgroundReadRecovery(captured, new Set(["GET /api/account/export"]))).toEqual([]);
+    expect(hasUnexpectedBrowserSignals(captured)).toBe(true);
   });
 
   it("does not excuse a background transport reset without the later successful read", () => {
