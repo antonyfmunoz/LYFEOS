@@ -10,13 +10,6 @@ import type { InsertVisionGoal, InsertSmartReminder } from "@shared/schema";
 import { refreshProgressionState } from "../progression";
 
 export function registerGoalRoutes(app: Express): void {
-  // Delivery is deliberately unavailable until a provider, consent flow, and live acceptance pass exist.
-  const pushUnavailable = (_req: Request, res: Response) =>
-    res.status(503).json({ error: "Push notifications are not configured for this LyfeOS release." });
-  app.post("/api/push/subscribe", isAuthenticated, pushUnavailable);
-  app.delete("/api/push/subscribe", isAuthenticated, pushUnavailable);
-  app.post("/api/push/test", isAuthenticated, pushUnavailable);
-
   // Vision Goals CRUD
   app.get("/api/vision-goals/all", isAuthenticated, async (req: Request, res: Response) => {
     try {
