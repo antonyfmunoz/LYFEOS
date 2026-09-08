@@ -86,6 +86,9 @@ describe("production browser acceptance custody", () => {
     expect(script).toContain("horizontalOverflowPx");
     expect(script).toContain("largestContentfulPaintMs");
     expect(script).toContain("cumulativeLayoutShift");
+    expect(script).toContain("performanceDiagnostic");
+    expect(script).toContain("slowResources");
+    expect(script).toContain("responseStartMs");
     expect(script).toContain("failedRequests");
     expect(script).toContain("serverErrors");
     expect(script).toContain("consoleErrors");

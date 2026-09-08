@@ -25,6 +25,21 @@ type LayoutShiftDiagnostic = {
   sources: LayoutShiftSource[];
 };
 
+type PerformanceDiagnostic = {
+  navigation: {
+    requestStartMs: number | null;
+    responseStartMs: number | null;
+    domInteractiveMs: number | null;
+    domCompleteMs: number | null;
+  } | null;
+  slowResources: Array<{
+    destination: string;
+    initiatorType: string;
+    durationMs: number;
+    transferBytes: number | null;
+  }>;
+};
+
 type RouteResult = {
   kind: RouteKind;
   route: string;
@@ -39,6 +54,7 @@ type RouteResult = {
     largestContentfulPaintMs: number | null;
     cumulativeLayoutShift: number | null;
   };
+  performanceDiagnostic: PerformanceDiagnostic;
   layoutShiftSources: LayoutShiftDiagnostic[];
   accessibility: {
     duplicateIds: string[];
@@ -471,6 +487,27 @@ async function auditRoute(page: Page, route: string, kind: RouteKind, viewportNa
       const vitals = (window as typeof window & { __lyfeosAcceptanceVitals?: { cls: number; lcp: number | null; shifts: LayoutShiftDiagnostic[] } }).__lyfeosAcceptanceVitals;
       const documentWidth = Math.max(document.documentElement.scrollWidth, document.body?.scrollWidth || 0);
 
+      const slowResources = performance.getEntriesByType("resource")
+        .filter((entry): entry is PerformanceResourceTiming => entry instanceof PerformanceResourceTiming)
+        .map((entry) => {
+          let destination = "external";
+          try {
+            const resourceUrl = new URL(entry.name);
+            destination = resourceUrl.origin === window.location.origin ? resourceUrl.pathname : resourceUrl.origin;
+          } catch {
+            // Keep a sanitized category when the browser exposes an unexpected resource name.
+          }
+          return {
+            destination,
+            initiatorType: entry.initiatorType || "unknown",
+            durationMs: Math.round(entry.duration * 10) / 10,
+            transferBytes: Number.isFinite(entry.transferSize) ? entry.transferSize : null,
+          };
+        })
+        .filter((entry) => entry.durationMs >= 50)
+        .sort((left, right) => right.durationMs - left.durationMs)
+        .slice(0, 12);
+
       return {
         bodyText,
         title: document.title,
@@ -489,6 +526,15 @@ async function auditRoute(page: Page, route: string, kind: RouteKind, viewportNa
           firstContentfulPaintMs: fcp?.startTime ?? null,
           largestContentfulPaintMs: vitals?.lcp ?? null,
           cumulativeLayoutShift: vitals?.cls ?? null,
+        },
+        performanceDiagnostic: {
+          navigation: navigation ? {
+            requestStartMs: navigation.requestStart,
+            responseStartMs: navigation.responseStart,
+            domInteractiveMs: navigation.domInteractive,
+            domCompleteMs: navigation.domComplete,
+          } : null,
+          slowResources,
         },
         layoutShiftSources: vitals?.shifts ?? [],
       };
@@ -562,6 +608,10 @@ async function auditRoute(page: Page, route: string, kind: RouteKind, viewportNa
       finalPath,
       title: dom.title,
       timings: metrics,
+      performanceDiagnostic: navigation === "document" ? dom.performanceDiagnostic : {
+        navigation: null,
+        slowResources: [],
+      },
       layoutShiftSources: dom.layoutShiftSources,
       accessibility: {
         duplicateIds: dom.duplicateIds,
