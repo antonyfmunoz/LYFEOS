@@ -19,14 +19,18 @@ export default function HealthDataRights() {
   // a rapid keyboard/tap interaction followed immediately by Save from
   // serializing the previous render's values.
   const preferenceDraftRef = useRef({ aiContextEnabled: false, planningContextEnabled: false });
+  const preferencesInitializedRef = useRef(false);
+  const [preferencesInitialized, setPreferencesInitialized] = useState(false);
   const [confirmation, setConfirmation] = useState("");
   const [exportError, setExportError] = useState(false);
   useEffect(() => {
-    if (rights.data) {
+    if (rights.data && !preferencesInitializedRef.current) {
       const preferences = rights.data.preferences;
+      preferencesInitializedRef.current = true;
       preferenceDraftRef.current = preferences;
       setAiContextEnabled(preferences.aiContextEnabled);
       setPlanningContextEnabled(preferences.planningContextEnabled);
+      setPreferencesInitialized(true);
     }
   }, [rights.data]);
   const totalRecords = useMemo(() => Object.values(rights.data?.recordCounts || {}).reduce((sum, count) => sum + count, 0), [rights.data]);
@@ -53,9 +57,9 @@ export default function HealthDataRights() {
   return <section className="glassmorphic rounded-2xl p-6 mb-8 border border-primary/30" aria-labelledby="health-rights-heading" data-testid="health-data-rights">
     <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 id="health-rights-heading" className="font-orbitron text-lg text-primary flex items-center gap-2"><ShieldCheck className="h-5 w-5" />Health data & permissions</h2><p className="mt-1 text-sm text-muted-foreground">Your private health domain currently contains {totalRecords} direct records. Export, permission changes, and deletion create a minimal rights receipt.</p></div><Button size="sm" variant="outline" data-testid="health-data-export" onClick={download}><Download />Download health JSON</Button></div>
     <div className="mt-4 space-y-3 rounded-xl border border-muted/20 bg-background/20 p-4">
-      <label className="flex items-start gap-3 text-sm"><input className="mt-1" data-testid="health-ai-context-enabled" type="checkbox" checked={aiContextEnabled} onChange={(event) => { const next = event.target.checked; preferenceDraftRef.current = { ...preferenceDraftRef.current, aiContextEnabled: next }; setAiContextEnabled(next); }} /><span><span className="text-white">Allow health records as private AI context</span><span className="block text-xs text-muted-foreground">Off by default. This preference does not authorize diagnosis, external sharing, or automatic actions.</span></span></label>
-      <label className="flex items-start gap-3 text-sm"><input className="mt-1" data-testid="health-planning-context-enabled" type="checkbox" checked={planningContextEnabled} onChange={(event) => { const next = event.target.checked; preferenceDraftRef.current = { ...preferenceDraftRef.current, planningContextEnabled: next }; setPlanningContextEnabled(next); }} /><span><span className="text-white">Allow minimal planning context</span><span className="block text-xs text-muted-foreground">Off by default. Raw values, notes, biometrics, food, and lab records remain excluded from federation.</span></span></label>
-      <Button size="sm" data-testid="health-data-rights-save" disabled={preferences.isPending} onClick={() => preferences.mutate(preferenceDraftRef.current)}>Save health permissions</Button>
+      <label className="flex items-start gap-3 text-sm"><input className="mt-1" data-testid="health-ai-context-enabled" type="checkbox" disabled={!preferencesInitialized} checked={aiContextEnabled} onChange={(event) => { const next = event.target.checked; preferenceDraftRef.current = { ...preferenceDraftRef.current, aiContextEnabled: next }; setAiContextEnabled(next); }} /><span><span className="text-white">Allow health records as private AI context</span><span className="block text-xs text-muted-foreground">Off by default. This preference does not authorize diagnosis, external sharing, or automatic actions.</span></span></label>
+      <label className="flex items-start gap-3 text-sm"><input className="mt-1" data-testid="health-planning-context-enabled" type="checkbox" disabled={!preferencesInitialized} checked={planningContextEnabled} onChange={(event) => { const next = event.target.checked; preferenceDraftRef.current = { ...preferenceDraftRef.current, planningContextEnabled: next }; setPlanningContextEnabled(next); }} /><span><span className="text-white">Allow minimal planning context</span><span className="block text-xs text-muted-foreground">Off by default. Raw values, notes, biometrics, food, and lab records remain excluded from federation.</span></span></label>
+      <Button size="sm" data-testid="health-data-rights-save" disabled={!preferencesInitialized || preferences.isPending} onClick={() => preferences.mutate(preferenceDraftRef.current)}>Save health permissions</Button>
       {preferences.isSuccess ? <p className="text-xs text-primary" data-testid="health-data-rights-saved">Health permissions saved with a rights receipt.</p> : null}
       {preferences.error ? <p className="text-xs text-destructive" data-testid="health-data-rights-save-error">Health permissions could not be saved. Your existing permissions were left unchanged.</p> : null}
     </div>

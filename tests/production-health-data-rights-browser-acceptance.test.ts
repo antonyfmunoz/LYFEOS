@@ -49,9 +49,13 @@ describe("production Health data-rights browser acceptance custody", () => {
 
   it("persists the current consent draft even when a person toggles and saves quickly", () => {
     expect(rights).toContain("const preferenceDraftRef = useRef");
+    expect(rights).toContain("const preferencesInitializedRef = useRef(false)");
+    expect(rights).toContain("disabled={!preferencesInitialized}");
+    expect(rights).toContain("disabled={!preferencesInitialized || preferences.isPending}");
     expect(rights).toContain("preferenceDraftRef.current = { ...preferenceDraftRef.current, aiContextEnabled: next }");
     expect(rights).toContain("preferenceDraftRef.current = { ...preferenceDraftRef.current, planningContextEnabled: next }");
     expect(rights).toContain("preferences.mutate(preferenceDraftRef.current)");
     expect(rights).toContain('data-testid="health-data-rights-save-error"');
+    expect(script).toContain("Boolean(control && !control.disabled)");
   });
 });

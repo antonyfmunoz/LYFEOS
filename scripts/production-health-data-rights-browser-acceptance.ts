@@ -69,6 +69,10 @@ async function clickReady(page: Page, selector: string): Promise<void> {
 
 async function setCheckbox(page: Page, selector: string, expected: boolean): Promise<void> {
   await page.waitForSelector(selector, { visible: true, timeout: 45_000 });
+  await page.waitForFunction((target) => {
+    const control = document.querySelector<HTMLInputElement>(target);
+    return Boolean(control && !control.disabled);
+  }, { timeout: 45_000 }, selector);
   const current = await page.$eval(selector, (element) => (element as HTMLInputElement).checked);
   if (current !== expected) await page.click(selector);
   await page.waitForFunction((target, value) => {
