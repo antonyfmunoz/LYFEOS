@@ -16,6 +16,14 @@ export function webPushConfiguration(): { configured: boolean; publicKey: string
 }
 
 let configuredFingerprint = "";
+const TRANSIENT_PUSH_RETRY_DELAY_MS = 1_000;
+
+function isTransientPushError(error: unknown): boolean {
+  if (!error || typeof error !== "object" || !("statusCode" in error)) return false;
+  const statusCode = Number((error as { statusCode?: unknown }).statusCode);
+  return statusCode >= 500 && statusCode < 600;
+}
+
 function configureProvider(): boolean {
   const publicKey = process.env.WEB_PUSH_VAPID_PUBLIC_KEY?.trim();
   const privateKey = process.env.WEB_PUSH_VAPID_PRIVATE_KEY?.trim();
@@ -31,9 +39,19 @@ function configureProvider(): boolean {
 
 export async function deliverWebPush(subscription: { endpoint: string; p256dh: string; auth: string; expirationTime?: Date | null }, payload: WebPushPayload): Promise<void> {
   if (!configureProvider()) throw new Error("WEB_PUSH_NOT_CONFIGURED");
-  await webpush.sendNotification({
+  const device = {
     endpoint: subscription.endpoint,
     expirationTime: subscription.expirationTime?.getTime() ?? null,
     keys: { p256dh: subscription.p256dh, auth: subscription.auth },
-  }, JSON.stringify({ data: payload }), { TTL: 60 * 60, urgency: "normal", topic: payload.tag?.replace(/[^A-Za-z0-9_-]/g, "-").slice(0, 32) });
+  };
+  const options = { TTL: 60 * 60, urgency: "normal" as const, topic: payload.tag?.replace(/[^A-Za-z0-9_-]/g, "-").slice(0, 32) };
+  try {
+    await webpush.sendNotification(device, JSON.stringify({ data: payload }), options);
+  } catch (error) {
+    // A provider 5xx is explicitly transient. Retry once only; terminal endpoint
+    // failures and other errors remain visible to the caller without masking them.
+    if (!isTransientPushError(error)) throw error;
+    await new Promise<void>((resolve) => setTimeout(resolve, TRANSIENT_PUSH_RETRY_DELAY_MS));
+    await webpush.sendNotification(device, JSON.stringify({ data: payload }), options);
+  }
 }
