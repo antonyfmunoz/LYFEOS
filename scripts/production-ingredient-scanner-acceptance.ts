@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-type ApiResult = { status: number; body: any; cookie: string };
+type ApiResult = { status: number; body: any; cookie: string; retryAfterSeconds: number | null };
 type Account = { email: string; displayName: string; cookie: string };
 
 const BASE_URL = new URL(process.env.LYFEOS_TEST_API_URL || "https://lyfeos.net");
@@ -21,7 +21,12 @@ async function request(method: string, pathname: string, body?: unknown, cookie 
       body: body === undefined ? undefined : JSON.stringify(body),
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
-    return { status: response.status, body: await response.json().catch(() => ({})), cookie: (response.headers.get("set-cookie") || "").split(";", 1)[0] };
+    return {
+      status: response.status,
+      body: await response.json().catch(() => ({})),
+      cookie: (response.headers.get("set-cookie") || "").split(";", 1)[0],
+      retryAfterSeconds: Number.isFinite(Number(response.headers.get("retry-after"))) ? Number(response.headers.get("retry-after")) : null,
+    };
   } catch (error) {
     const detail = error instanceof Error ? error.name : String(error);
     throw new Error(`Ingredient-scanner request ${method} ${pathname} failed (${detail}).`);
@@ -29,10 +34,16 @@ async function request(method: string, pathname: string, body?: unknown, cookie 
 }
 
 async function registerDisposableAccount(account: Account): Promise<void> {
-  const registered = await request("POST", "/api/auth/complete-registration", {
-    email: account.email, password: PASSWORD, displayName: account.displayName, termsAccepted: true,
-  });
-  assert(registered.status === 201 && registered.cookie, `Registration returned ${registered.status}.`);
+  let registered: ApiResult | null = null;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    registered = await request("POST", "/api/auth/complete-registration", {
+      email: account.email, password: PASSWORD, displayName: account.displayName, termsAccepted: true,
+    });
+    if (registered.status === 201 || registered.status !== 429 || attempt === 1) break;
+    const waitSeconds = Math.min(61, Math.max(1, registered.retryAfterSeconds || 60));
+    await new Promise((resolve) => setTimeout(resolve, waitSeconds * 1_000 + 250));
+  }
+  assert(registered?.status === 201 && registered.cookie, `Registration returned ${registered?.status}.`);
   account.cookie = registered.cookie;
   const onboarding = await request("PATCH", "/api/profile", { onboardingCompleted: true }, account.cookie);
   assert(onboarding.status === 200, `Onboarding setup returned ${onboarding.status}.`);

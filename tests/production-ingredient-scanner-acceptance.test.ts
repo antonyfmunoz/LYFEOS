@@ -14,6 +14,9 @@ describe("production ingredient-scanner acceptance contract", () => {
     expect(script).toContain('"/api/account"');
     expect(script).toContain("AbortSignal.timeout(REQUEST_TIMEOUT_MS)");
     expect(script).toContain("Ingredient-scanner request ${method} ${pathname} failed");
+    expect(script).toContain('response.headers.get("retry-after")');
+    expect(script).toContain("registered.status === 201 || registered.status !== 429 || attempt === 1");
+    expect(script).toContain("waitSeconds * 1_000 + 250");
     expect(script).toContain('lyfeos.production-ingredient-scanner.v1');
     expect(manifest).toContain('"acceptance:production-ingredient-scanner"');
   });
