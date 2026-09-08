@@ -27,6 +27,7 @@ describe("production Web Push browser acceptance harness", () => {
     expect(script).toContain('response.headers.get("retry-after")');
     expect(script).toContain('registered.status !== 429 || attempt === 2');
     expect(script).toContain('Math.min(61, Math.max(1, registered.retryAfterSeconds || 60))');
+    expect(script).toContain('ignoreDefaultArgs: ["--disable-background-networking"]');
   });
 
   it("does not let a retired placeholder shadow the live test-delivery route", () => {

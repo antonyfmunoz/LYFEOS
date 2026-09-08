@@ -97,6 +97,12 @@ async function runBrowserLifecycle(account: Account): Promise<{ endpointHost: st
     browser = await puppeteer.launch({
       headless: true,
       executablePath: await findChromium(),
+      // Puppeteer disables Chrome background networking by default. That
+      // produces a syntactically valid PushSubscription whose FCM endpoint
+      // has never become durable, so the real provider correctly returns 410
+      // on the first send. Web Push acceptance must leave this browser service
+      // enabled to qualify an actual delivery rather than a mock subscription.
+      ignoreDefaultArgs: ["--disable-background-networking"],
       // GitHub-hosted Linux runners restrict Chrome's user namespaces. These
       // are an isolated disposable acceptance browser, not the application.
       args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--no-first-run", "--no-default-browser-check"],
