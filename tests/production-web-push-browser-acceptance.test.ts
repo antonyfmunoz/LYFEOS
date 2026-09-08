@@ -22,5 +22,8 @@ describe("production Web Push browser acceptance harness", () => {
     expect(script).toContain('confirmation: "DELETE MY ACCOUNT"');
     expect(script).toContain('Push test delivery returned');
     expect(script).toContain('"--no-sandbox"');
+    expect(script).toContain('response.headers.get("retry-after")');
+    expect(script).toContain('registered.status !== 429 || attempt === 2');
+    expect(script).toContain('Math.min(61, Math.max(1, registered.retryAfterSeconds || 60))');
   });
 });

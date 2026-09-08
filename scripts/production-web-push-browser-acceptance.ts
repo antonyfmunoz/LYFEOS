@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { access } from "node:fs/promises";
 import puppeteer, { type Browser } from "puppeteer-core";
 
-type ApiResult = { status: number; body: any; cookie: string };
+type ApiResult = { status: number; body: any; cookie: string; retryAfterSeconds: number | null };
 type Account = { email: string; displayName: string; cookie: string };
 
 const BASE_URL = new URL(process.env.LYFEOS_TEST_API_URL || "https://lyfeos.net");
@@ -34,6 +34,7 @@ async function request(method: string, pathname: string, body?: unknown, cookie 
     status: response.status,
     body: await response.json().catch(() => ({})),
     cookie: (response.headers.get("set-cookie") || "").split(";", 1)[0],
+    retryAfterSeconds: Number.isFinite(Number(response.headers.get("retry-after"))) ? Number(response.headers.get("retry-after")) : null,
   };
 }
 
@@ -60,16 +61,27 @@ function cookieParts(cookie: string): { name: string; value: string } {
 }
 
 async function registerDisposableAccount(account: Account): Promise<void> {
-  const registered = await request("POST", "/api/auth/complete-registration", {
-    email: account.email,
-    password: PASSWORD,
-    displayName: account.displayName,
-    termsAccepted: true,
-  });
-  assert(registered.status === 201 && registered.cookie, `Registration returned ${registered.status}.`);
-  account.cookie = registered.cookie;
-  const onboarding = await request("PATCH", "/api/profile", { onboardingCompleted: true }, account.cookie);
-  assert(onboarding.status === 200, `Onboarding setup returned ${onboarding.status}.`);
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const registered = await request("POST", "/api/auth/complete-registration", {
+      email: account.email,
+      password: PASSWORD,
+      displayName: account.displayName,
+      termsAccepted: true,
+    });
+    if (registered.status === 201 && registered.cookie) {
+      account.cookie = registered.cookie;
+      const onboarding = await request("PATCH", "/api/profile", { onboardingCompleted: true }, account.cookie);
+      assert(onboarding.status === 200, `Onboarding setup returned ${onboarding.status}.`);
+      return;
+    }
+    // The protected suite creates several independent disposable accounts in
+    // sequence. Honor only the server-provided registration throttle window;
+    // any other failure, or a throttling loop beyond this bounded retry, still
+    // fails the Web Push product evidence.
+    if (registered.status !== 429 || attempt === 2) throw new Error(`Registration returned ${registered.status}.`);
+    const waitSeconds = Math.min(61, Math.max(1, registered.retryAfterSeconds || 60));
+    await new Promise((resolve) => setTimeout(resolve, waitSeconds * 1_000 + 250));
+  }
 }
 
 async function eraseAccount(account: Account): Promise<boolean> {
