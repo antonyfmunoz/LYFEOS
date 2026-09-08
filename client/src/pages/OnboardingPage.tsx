@@ -624,6 +624,7 @@ export default function OnboardingPage() {
   
   const [currentMission, setCurrentMission] = useState(0);
   const restoredOnboardingPositionRef = useRef(false);
+  const reconciledProfilePositionRef = useRef(false);
   const missionStartTimeRef = useRef<Date>(new Date());
   const [continuedPastMission0, setContinuedPastMission0] = useState(() => {
     return localStorage.getItem("lyfeos-continued-past-mission0") === "true";
@@ -674,7 +675,12 @@ export default function OnboardingPage() {
     if (userProfile) {
       const existingCompleted = (userProfile as any)?.completedOnboardingMissions || [];
       setCompletedOnboardingMissions(existingCompleted);
-      
+
+      // Reconcile a returning account once, on entry. Re-running this after a
+      // Mission save races the rendered Continue control and can skip the
+      // newly opened Mission when the profile cache refreshes.
+      if (reconciledProfilePositionRef.current) return;
+      reconciledProfilePositionRef.current = true;
       const isPendingRegistration = !!sessionStorage.getItem("lyfeos-pending-registration");
       if (!isPendingRegistration && !showMissionCompleteRef.current && existingCompleted.length > 0 && !restoredOnboardingPositionRef.current) {
         const params = new URLSearchParams(window.location.search);

@@ -37,6 +37,9 @@ describe("rendered onboarding acceptance contract", () => {
     expect(onboarding).toContain("persistOnboardingPosition(currentMission + 1, 0)");
     expect(onboarding).toContain("setShowMissionComplete(missionComplete === true)");
     expect(onboarding).toContain("!restoredOnboardingPositionRef.current");
+    expect(onboarding).toContain("const reconciledProfilePositionRef = useRef(false);");
+    expect(onboarding).toContain("if (reconciledProfilePositionRef.current) return;");
+    expect(onboarding).toContain("reconciledProfilePositionRef.current = true;");
     expect(onboarding).toContain("await saveMissionData(currentMission)");
     expect(onboarding).toContain("await saveCompletedMission(currentMission)");
     expect(onboarding.indexOf("await saveCompletedMission(currentMission)")).toBeLessThan(onboarding.indexOf("persistOnboardingPosition(currentMission, currentStep, true)", onboarding.indexOf("await saveCompletedMission(currentMission)")));
