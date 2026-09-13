@@ -2,7 +2,7 @@ import { Link, useLocation } from "wouter";
 import { useLYFEOS } from "@/lib/context";
 import { useAuth } from "@/lib/authContext";
 import { usePageTitle } from "@/hooks/use-page-title";
-import { FileText, Clock, Tag, Calendar, Award, GripVertical, CheckSquare, BookOpen, GraduationCap, Target, Info, BarChart3, Users, FolderOpen } from "lucide-react";
+import { FileText, Clock, Tag, Calendar, Award, GripVertical, CheckSquare, BookOpen, GraduationCap, Target, Info, BarChart3, Users, FolderOpen, Heart } from "lucide-react";
 import { StatInfoDialog } from "@/components/ui/stat-info-dialog";
 import { useDrag, useDrop } from 'react-dnd';
 import { useState, useCallback, useRef, useEffect } from 'react';
@@ -126,6 +126,8 @@ const DraggableCategoryCard = ({ id, index, item, moveCategory, navigate }: Drag
       navigate('/knowledge-vault');
     } else if (item.id === "goals") {
       navigate('/goals-archive');
+    } else if (item.id === "health-log") {
+      navigate('/health-log');
     } else if (item.id === "analytics") {
       navigate('/tracker');
     } else if (item.id === "rolodex") {
@@ -257,6 +259,12 @@ export default function ChronilogPage() {
       title: "Journal", 
       icon: <BookOpen className="h-5 w-5 text-primary" />,
       description: "Your daily reflections, thoughts, and personal entries. Review past journal logs to track your growth over time."
+    },
+    {
+      id: "health-log",
+      title: "Health Log",
+      icon: <Heart className="h-5 w-5 text-primary" />,
+      description: "Your private history of nourishment, movement, recovery, and health records."
     },
     { 
       id: "knowledge", 

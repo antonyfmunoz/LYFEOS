@@ -18,20 +18,40 @@ describe("route loading boundary", () => {
     expect(app).not.toContain('import DashboardPage from "./pages/DashboardPage"');
   });
 
-  it("progressively loads below-the-fold Health modules without changing their order", () => {
+  it("progressively loads Health Log record workspaces and places body analysis in Tracker", () => {
     const health = readFileSync(resolve(process.cwd(), "client/src/pages/HealthDetailPage.tsx"), "utf8");
+    const tracker = readFileSync(resolve(process.cwd(), "client/src/pages/AnalyticsPage.tsx"), "utf8");
+    const profile = readFileSync(resolve(process.cwd(), "client/src/pages/ProfilePage.tsx"), "utf8");
     const nutrition = readFileSync(resolve(process.cwd(), "client/src/components/health/NutritionDiary.tsx"), "utf8");
     const nutritionReports = readFileSync(resolve(process.cwd(), "client/src/components/health/NutritionReportsPanel.tsx"), "utf8");
     const nutritionChart = readFileSync(resolve(process.cwd(), "client/src/components/health/NutritionTrendChart.tsx"), "utf8");
     const deferredFeature = readFileSync(resolve(process.cwd(), "client/src/components/DeferredFeature.tsx"), "utf8");
     expect(health).toContain('lazyHealthFeature(() => import("@/components/health/NutritionDiary"))');
     expect(health).toContain('lazyHealthFeature(() => import("@/components/health/WorkoutLog"))');
-    expect(health).toContain('lazyHealthFeature(() => import("@/components/health/HealthConnections"))');
+    expect(health).toContain('usePageTitle(view === "log" ? "Health Log" : "Health")');
+    expect(health).toContain('>View Health stats</Link>');
+    expect(health).toContain('>Open Tracker</Link>');
+    expect(profile).toContain('import HealthConnections from "@/components/health/HealthConnections"');
+    expect(profile).toContain('import HealthDataRights from "@/components/health/HealthDataRights"');
+    expect(profile).toContain('id="health-settings"');
     expect(health).toContain("return lazy(() => withChunkLoadTimeout(loader))");
     expect(health).toContain("<DeferredFeatureChunkBoundary fallback=");
     expect(health).toContain("Other Health workspaces remain available.");
-    expect(health).toContain('lazyHealthFeature(() => import("@/components/health/HealthTrendWorkbench"))');
+    expect(tracker).toContain('import HealthTrendWorkbench from "@/components/health/HealthTrendWorkbench"');
+    expect(tracker).toContain('import WorkoutAnalytics from "@/components/health/WorkoutAnalytics"');
+    expect(tracker).toContain('data-testid="tracker-health-lens"');
+    expect(tracker).toContain('const TRACKER_DOMAINS');
+    expect(tracker).toContain('{ id: "health", label: "Health" }');
+    expect(tracker).toContain('setActiveDomain(domain.id)');
+    expect(tracker).toContain("Health record trends");
+    expect(tracker).toContain('data-testid="tracker-capabilities-lens"');
+    expect(tracker).toContain('CapabilityConstellation nodes={nodes} edges={edges}');
+    expect(tracker).toContain('aria-label="Zoom in capability map"');
+    expect(tracker).toContain('queryKey: ["/api/capabilities"]');
     expect(health).toContain('rootMargin: "600px 0px"');
+    expect(health).toContain('document.getElementById("main-content")');
+    expect(health).toContain('scrollRoot?.addEventListener("scroll", activateWhenNear, { passive: true });');
+    expect(health).toContain('document.addEventListener("scroll", activateWhenNear, { capture: true, passive: true });');
     expect(health).toContain('const [isOnline, setIsOnline] = useState(() => typeof navigator === "undefined" || navigator.onLine);');
     expect(health).toContain('if (ready || !isOnline) return;');
     expect(health).toContain('entry.isIntersecting && navigator.onLine');
@@ -74,7 +94,8 @@ describe("route loading boundary", () => {
     expect(dashboard).toContain("const LevelUpModal = lazy(() => withChunkLoadTimeout(");
     expect(dashboard).toContain("const PageTutorial = lazy(() => withChunkLoadTimeout(");
     expect(dashboard).toContain("const PWAInstallPrompt = lazy(() => withChunkLoadTimeout(");
-    expect(dashboard).toContain('min-h-[calc(100vh-15rem)]');
+    expect(dashboard).toContain('<DeferredFeatureChunkBoundary fallback={null}>');
+    expect(dashboard).toContain('<TransformationThreadPanel />');
     expect(dashboard).toContain("setDashboardEnhancementsReady(true)");
     expect(dashboard).not.toContain("import EnhancedMissionWidget");
     expect(dashboard).not.toContain("import PWAInstallPrompt from");

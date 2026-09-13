@@ -88,6 +88,9 @@ import { useReverification, useUser } from "@clerk/clerk-react";
 import PushNotificationSettings from "@/components/profile/PushNotificationSettings";
 import CollaborationSettings from "@/components/profile/CollaborationSettings";
 import ExtensionSettings from "@/components/profile/ExtensionSettings";
+import HealthPreferences from "@/components/health/HealthPreferences";
+import HealthConnections from "@/components/health/HealthConnections";
+import HealthDataRights from "@/components/health/HealthDataRights";
 import {
   defaultGoogleIntegrationPermissions,
   defaultGoogleAccountPermissionPreferences,
@@ -2723,6 +2726,17 @@ export default function ProfilePage() {
 
             {/* Connected Apps / Integrations */}
             <IntegrationsSection userId={user?.id} />
+
+            <section id="health-settings" className="mb-4 scroll-mt-6" aria-labelledby="health-settings-heading">
+              <div className="mb-3 px-1">
+                <h2 id="health-settings-heading" className="flex items-center gap-2 font-orbitron text-lg text-primary"><Heart className="h-5 w-5" />Health settings & privacy</h2>
+                <p className="mt-1 text-xs text-muted-foreground">Manage Health units, calendar context, explicit connections, and your Health-record rights here—not inside your chronological Health Log.</p>
+              </div>
+              <HealthPreferences />
+              <HealthConnections />
+              <HealthDataRights />
+            </section>
+
 
             {/* Blue Light Filter */}
             <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">

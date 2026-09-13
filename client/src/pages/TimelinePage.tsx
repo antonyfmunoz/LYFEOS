@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useLocation } from 'wouter';
-import { ArrowLeft, CalendarClock, ZoomIn, ZoomOut, ChevronDown, ChevronRight, Info, Calendar, Clock, Rocket, Target, CheckSquare, Check } from 'lucide-react';
+import { ArrowLeft, CalendarClock, ZoomIn, ZoomOut, ChevronDown, ChevronRight, Info, Calendar, Clock, Rocket, Target, CheckSquare, Check, Heart } from 'lucide-react';
 import { ObsidianMarkdown } from '@/components/ui/obsidian-markdown';
 import { Quest } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,7 @@ const ONBOARDING_MISSIONS = [
   { id: 5, title: "Baselines & States", description: "Establish your baseline stats and current life state for accurate tracking." },
   { id: 6, title: "History & Roots", description: "Record your background and personal history to inform your growth trajectory." },
   { id: 7, title: "Systems & Rituals", description: "Set up your daily rituals and recurring systems for consistent progress." },
+  { id: 8, title: "Systems & Integrations", description: "Decide when to review optional connections and their permissions." },
 ];
 
 function getOnboardingDescription(title: string, dbDescription: string): string {
@@ -48,7 +49,7 @@ interface VisionGoal {
   createdAt: Date;
 }
 
-type TimelineItemType = 'mission' | 'event';
+type TimelineItemType = 'mission' | 'event' | 'health';
 
 interface TimelineItem {
   id: string;
@@ -59,6 +60,13 @@ interface TimelineItem {
   type: TimelineItemType;
   quest?: Quest;
   visionGoal?: VisionGoal;
+  healthType?: string;
+  healthSource?: string;
+}
+
+interface HealthTimelineResponse {
+  events: Array<{ id: string; type: string; occurredAt: string; title: string; detail: string; source: string }>;
+  disclosure: string;
 }
 
 type ZoomLevel = 'life' | 'year' | 'month' | 'week' | 'day';
@@ -173,6 +181,11 @@ export default function TimelinePage() {
     queryKey: ['/api/user-categories'],
     enabled: !!user,
   });
+  const { data: healthTimeline } = useQuery<HealthTimelineResponse>({
+    queryKey: ['/api/health-fitness/timeline', { days: 90 }],
+    queryFn: () => apiRequest('/api/health-fitness/timeline?days=90'),
+    enabled: !!user,
+  });
 
   const [activeView, setActiveView] = useState<'history' | 'roadmap'>('history');
   const [zoomLevel, setZoomLevel] = useState<ZoomLevel>('life');
@@ -225,8 +238,23 @@ export default function TimelinePage() {
       });
     });
 
+    healthTimeline?.events.forEach((event) => {
+      const d = new Date(event.occurredAt);
+      if (Number.isNaN(d.getTime())) return;
+      items.push({
+        id: `health-${event.id}`,
+        rawDate: d,
+        time: `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`,
+        title: event.title,
+        description: event.detail,
+        type: 'health',
+        healthType: event.type,
+        healthSource: event.source,
+      });
+    });
+
     return items;
-  }, [missionPages, quests]);
+  }, [missionPages, quests, healthTimeline]);
 
   const nodes: TimelineNode[] = useMemo(() => {
     if (timelineItems.length === 0) return [];
@@ -799,6 +827,17 @@ export default function TimelinePage() {
                     />
 
                     {zoomLevel === 'day' ? (() => {
+                      const hItem = node.items[0];
+                      if (hItem?.type === 'health') {
+                        return (
+                          <div className="ml-2 glassmorphic rounded-xl border border-primary/15 p-4">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex min-w-0 gap-3"><div className="mt-0.5 rounded-lg border border-primary/20 bg-primary/10 p-2"><Heart className="h-4 w-4 text-primary" /></div><div><p className="text-xs font-mono uppercase tracking-[0.1em] text-primary">Health record · {hItem.healthType?.replaceAll('_', ' ') || 'record'}</p><h3 className="mt-1 text-sm font-medium text-foreground">{hItem.title}</h3><p className="mt-1 text-xs leading-relaxed text-muted-foreground">{hItem.description}</p><p className="mt-2 text-[11px] text-muted-foreground">Source: {hItem.healthSource?.replaceAll('_', ' ') || 'not recorded'}. This is a private record, not a medical conclusion.</p></div></div>
+                              <button type="button" onClick={() => navigate('/health-log')} className="shrink-0 rounded-md border border-primary/25 px-2 py-1 text-[11px] text-primary hover:bg-primary/10">Health Log</button>
+                            </div>
+                          </div>
+                        );
+                      }
                       const hQuest = node.items[0]?.quest;
                       const hLinkedObjective = hQuest?.visionGoalId
                         ? visionGoals.find(g => g.id === hQuest?.visionGoalId)

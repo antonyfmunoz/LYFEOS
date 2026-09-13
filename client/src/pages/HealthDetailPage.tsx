@@ -8,8 +8,6 @@ import { usePageTitle } from "@/hooks/use-page-title";
 import AIStatTip from "@/components/stats/AIStatTip";
 import DailyHealthLog from "@/components/health/DailyHealthLog";
 import { useHealthOfflineSync } from "@/hooks/useHealthOfflineSync";
-import HealthPreferences from "@/components/health/HealthPreferences";
-import { healthTrackingDomains, type HealthTrackingDomain } from "@/components/health/HealthPreferences";
 import OfflineHealthQueueStatus from "@/components/health/OfflineHealthQueueStatus";
 import { ArrowLeft, Award, Heart, Activity, Target, Flame, Loader2, TrendingUp, Brain, Zap, Smile } from "lucide-react";
 import { LineChart, Line, ScatterChart, Scatter, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
@@ -28,20 +26,12 @@ const RecoveryRoutines = lazyHealthFeature(() => import("@/components/health/Rec
 const HealthMetricsLedger = lazyHealthFeature(() => import("@/components/health/HealthMetricsLedger"));
 const IngredientScanner = lazyHealthFeature(() => import("@/components/health/IngredientScanner"));
 const GroceryIntelligence = lazyHealthFeature(() => import("@/components/health/GroceryIntelligence"));
-const CapabilityEvidencePanel = lazyHealthFeature(() => import("@/components/health/CapabilityEvidencePanel"));
+const FoodCompass = lazyHealthFeature(() => import("@/components/health/FoodCompass"));
 const SleepLog = lazyHealthFeature(() => import("@/components/health/SleepLog"));
-const HealthTimeline = lazyHealthFeature(() => import("@/components/health/HealthTimeline"));
 const ExerciseLibrary = lazyHealthFeature(() => import("@/components/health/ExerciseLibrary"));
 const TrainingPrograms = lazyHealthFeature(() => import("@/components/health/TrainingPrograms"));
-const WorkoutAnalytics = lazyHealthFeature(() => import("@/components/health/WorkoutAnalytics"));
 const SupplementSchedules = lazyHealthFeature(() => import("@/components/health/SupplementSchedules"));
 const MealPlanner = lazyHealthFeature(() => import("@/components/health/MealPlanner"));
-const HealthTrendWorkbench = lazyHealthFeature(() => import("@/components/health/HealthTrendWorkbench"));
-const HealthDataRights = lazyHealthFeature(() => import("@/components/health/HealthDataRights"));
-const HealthConnections = lazyHealthFeature(() => import("@/components/health/HealthConnections"));
-const HealthProgression = lazyHealthFeature(() => import("@/components/health/HealthProgression"));
-const HealthAssistant = lazyHealthFeature(() => import("@/components/health/HealthAssistant"));
-const ActivitySignals = lazyHealthFeature(() => import("@/components/health/ActivitySignals"));
 
 function DeferredHealthSection({ children, label, targetId }: { children: ReactNode; label: string; targetId?: string }) {
   const target = useRef<HTMLDivElement>(null);
@@ -66,15 +56,46 @@ function DeferredHealthSection({ children, label, targetId }: { children: ReactN
     // Keep the section dormant and let the normal intersection check load it
     // once the browser reconnects.
     if (ready || !isOnline) return;
+    // The browser resolves an initial fragment before React has rendered this
+    // deferred target. Honour a direct workspace link immediately rather than
+    // leaving its placeholder dormant until the user scrolls.
+    if (targetId && window.location.hash === `#${targetId}`) { setReady(true); return; }
     if (!target.current || typeof IntersectionObserver === "undefined") { setReady(true); return; }
-    const observer = new IntersectionObserver(([entry]) => {
+    let observer: IntersectionObserver | null = null;
+    const activateWhenNear = () => {
+      const element = target.current;
+      if (!element || !navigator.onLine) return;
+      const bounds = element.getBoundingClientRect();
+      if (bounds.top <= window.innerHeight + 600 && bounds.bottom >= -600) {
+        observer?.disconnect();
+        setReady(true);
+      }
+    };
+    observer = new IntersectionObserver(([entry]) => {
       if (entry.isIntersecting && navigator.onLine) {
         setReady(true);
-        observer.disconnect();
+        observer?.disconnect();
       }
     }, { rootMargin: "600px 0px" });
     observer.observe(target.current);
-    return () => observer.disconnect();
+    // Health scrolls inside RootLayout's main region. Keep an explicit
+    // proximity fallback so programmatic deep links and nested scrolling
+    // activate a deferred workspace even when an embedded browser misses an
+    // IntersectionObserver update.
+    const scrollRoot = document.getElementById("main-content");
+    scrollRoot?.addEventListener("scroll", activateWhenNear, { passive: true });
+    // `scrollIntoView` can select an ancestor other than the expected main
+    // region in embedded browsers. A capture listener sees that scroll too,
+    // so a directly selected workspace never remains a blank placeholder.
+    document.addEventListener("scroll", activateWhenNear, { capture: true, passive: true });
+    window.addEventListener("resize", activateWhenNear, { passive: true });
+    requestAnimationFrame(activateWhenNear);
+    return () => {
+      observer?.disconnect();
+      scrollRoot?.removeEventListener("scroll", activateWhenNear);
+      document.removeEventListener("scroll", activateWhenNear, true);
+      window.removeEventListener("resize", activateWhenNear);
+    };
   }, [isOnline, ready]);
   return <div ref={target} id={targetId} className="scroll-mt-6">{ready ? <DeferredFeatureChunkBoundary fallback={<div className="glassmorphic mb-8 min-h-32 rounded-2xl border border-destructive/30 p-6 text-sm" role="alert"><p className="font-medium">The {label} workspace could not load.</p><p className="mt-1 text-xs text-muted-foreground">Other Health workspaces remain available. Reload the latest LyfeOS version to retry this workspace.</p><button type="button" className="mt-3 rounded-md border border-primary/30 px-3 py-1.5 text-xs text-primary" onClick={() => window.location.reload()}>Reload LyfeOS</button></div>}><Suspense fallback={<div className="glassmorphic mb-8 min-h-32 rounded-2xl border border-primary/20 p-6 text-sm text-muted-foreground" role="status">Loading {label}…</div>}>{children}</Suspense></DeferredFeatureChunkBoundary> : <div className="mb-8 min-h-32" aria-hidden="true" />}</div>;
 }
@@ -97,16 +118,6 @@ function getScoreBg(score: number): string {
   return "bg-primary/5";
 }
 
-function getHealthGlow(pct: number): string {
-  if (pct >= 75) return "shadow-[0_0_40px_hsl(var(--primary)/0.3)]";
-  if (pct >= 40) return "shadow-[0_0_30px_hsl(var(--primary)/0.25)]";
-  return "shadow-[0_0_25px_hsl(var(--primary)/0.2)]";
-}
-
-function getGradientColors(pct: number): string {
-  return "bg-primary";
-}
-
 type HealthPracticeProgression = {
   practiceXp: number;
   rank: { level: number; name: string; minimumXp: number };
@@ -115,15 +126,26 @@ type HealthPracticeProgression = {
   disclosure: string;
 };
 
-export default function HealthDetailPage() {
+type HealthLogSection = "records" | "nourishment" | "movement" | "recovery";
+type HealthLogTool = "daily-check-in" | "body-progress" | "metrics" | "supplements" | "nutrition-diary" | "meal-planning" | "ingredient-review" | "grocery-intelligence" | "food-compass" | "exercise-library" | "workout-log" | "training-programs" | "sleep-log" | "recovery-log" | "recovery-routines";
+
+const healthLogSections: Array<{ id: HealthLogSection; title: string; description: string }> = [
+  { id: "records", title: "Records", description: "Daily state, measurements, and health metrics you choose to keep." },
+  { id: "nourishment", title: "Nourishment", description: "Food, hydration, supplements, planning, and ingredient review." },
+  { id: "movement", title: "Movement", description: "Training records, programs, and exercise reference material." },
+  { id: "recovery", title: "Recovery", description: "Sleep, restorative practices, and recovery observations." },
+];
+
+export default function HealthDetailPage({ view = "status" }: { view?: "status" | "log" }) {
   useHealthOfflineSync();
-  usePageTitle("Health - LYFEOS");
+  usePageTitle(view === "log" ? "Health Log" : "Health");
   const { user } = useAuth();
   const { stats, computedStats } = useLYFEOS();
   const [days, setDays] = useState(30);
+  const [activeHealthLogSection, setActiveHealthLogSection] = useState<HealthLogSection | null>(null);
+  const [activeHealthLogTool, setActiveHealthLogTool] = useState<HealthLogTool | null>(null);
   const [importedNutritionFoodId, setImportedNutritionFoodId] = useState<number | null>(null);
   const [manualNutritionFoodRequest, setManualNutritionFoodRequest] = useState<{ name: string } | null>(null);
-  const healthProfile = useQuery<{ profile: { trackedDomains?: HealthTrackingDomain[] } | null }>({ queryKey: ["/api/health-fitness/profile"], queryFn: () => apiRequest("/api/health-fitness/profile"), enabled: !!user });
   const healthProgression = useQuery<{ progression: HealthPracticeProgression }>({
     queryKey: ["/api/health-progression"],
     // The home surface only needs the current ledger snapshot. Reconciliation
@@ -152,9 +174,6 @@ export default function HealthDetailPage() {
   const healthPct = recordedPractice?.nextRank
     ? Math.max(0, Math.min(100, Math.round(((recordedPractice.practiceXp - recordedPractice.rank.minimumXp) / (recordedPractice.nextRank.minimumXp - recordedPractice.rank.minimumXp)) * 100)))
     : recordedPractice ? 100 : 0;
-  const healthGlow = getHealthGlow(healthPct);
-  const gradientColors = getGradientColors(healthPct);
-
   const completedMissions = data?.summary?.completedMissions ?? computedStats?.completedMissions ?? 0;
   const currentStreak = data?.summary?.currentStreak ?? stats.streakDays ?? 0;
   const categoryStats = data?.categoryStats ?? {};
@@ -191,8 +210,141 @@ export default function HealthDetailPage() {
 
   const dayOptions = [7, 14, 30, 90];
 
+  const healthLogTools = activeHealthLogSection === "records" ? [
+    { id: "daily-check-in" as const, title: "Daily check-in", description: "Hydration, daily state, and the records used across LyfeOS." },
+    { id: "body-progress" as const, title: "Body progress", description: "Record and correct your chosen body measurements." },
+    { id: "metrics" as const, title: "Health metrics", description: "Maintain your private metric ledger." },
+  ] : activeHealthLogSection === "nourishment" ? [
+    { id: "nutrition-diary" as const, title: "Nutrition diary", description: "Log food and review your saved history." },
+    { id: "supplements" as const, title: "Supplement schedules", description: "Plan and log supplement routines." },
+    { id: "meal-planning" as const, title: "Meal planning", description: "Plan meals from your own record." },
+    { id: "ingredient-review" as const, title: "Ingredient review", description: "Review a product before you decide to save it." },
+    { id: "grocery-intelligence" as const, title: "Grocery intelligence", description: "Private planning support, never a purchase or inventory claim." },
+    { id: "food-compass" as const, title: "Food Compass", description: "Public local-food discovery with source disclosure." },
+  ] : activeHealthLogSection === "movement" ? [
+    { id: "workout-log" as const, title: "Workout log", description: "Record completed training and its supporting details." },
+    { id: "training-programs" as const, title: "Training programs", description: "Organize a training plan without creating a second mission system." },
+    { id: "exercise-library" as const, title: "Exercise library", description: "Browse and maintain exercise reference material." },
+  ] : activeHealthLogSection === "recovery" ? [
+    { id: "sleep-log" as const, title: "Sleep log", description: "The same daily sleep and wake record used on Dashboard, plus detailed sessions." },
+    { id: "recovery-log" as const, title: "Recovery log", description: "Record restorative activities and observations." },
+    { id: "recovery-routines" as const, title: "Recovery routines", description: "Keep chosen recovery practices and their history." },
+  ] : [];
+
+  const openHealthLogSection = (section: HealthLogSection) => { setActiveHealthLogSection(section); setActiveHealthLogTool(null); };
+  const healthLogWorkspace = (() => {
+    switch (activeHealthLogTool) {
+      case "daily-check-in": return <DailyHealthLog />;
+      case "body-progress": return <DeferredHealthSection label="body progress" targetId="health-section-body"><BodyProgress /></DeferredHealthSection>;
+      case "metrics": return <DeferredHealthSection label="health metrics" targetId="health-section-metrics"><HealthMetricsLedger /></DeferredHealthSection>;
+      case "supplements": return <DeferredHealthSection label="supplement schedules" targetId="health-section-supplements"><SupplementSchedules /></DeferredHealthSection>;
+      case "nutrition-diary": return <DeferredHealthSection label="nutrition diary" targetId="health-section-nutrition"><NutritionDiary importedFoodId={importedNutritionFoodId} onImportedFoodHandled={() => setImportedNutritionFoodId(null)} manualFoodRequest={manualNutritionFoodRequest} onManualFoodHandled={() => setManualNutritionFoodRequest(null)} /></DeferredHealthSection>;
+      case "meal-planning": return <DeferredHealthSection label="meal planning" targetId="health-section-planning"><MealPlanner /></DeferredHealthSection>;
+      case "ingredient-review": return <DeferredHealthSection label="ingredient scanner" targetId="health-section-ingredient-review"><IngredientScanner onCatalogFoodImported={setImportedNutritionFoodId} onManualFoodRequested={(name) => setManualNutritionFoodRequest({ name })} /></DeferredHealthSection>;
+      case "grocery-intelligence": return <DeferredHealthSection label="grocery intelligence"><GroceryIntelligence /></DeferredHealthSection>;
+      case "food-compass": return <DeferredHealthSection label="Food Compass local discovery" targetId="health-section-food-compass"><FoodCompass /></DeferredHealthSection>;
+      case "exercise-library": return <DeferredHealthSection label="exercise library"><ExerciseLibrary /></DeferredHealthSection>;
+      case "workout-log": return <DeferredHealthSection label="workout log" targetId="health-section-training"><WorkoutLog /></DeferredHealthSection>;
+      case "training-programs": return <DeferredHealthSection label="training programs"><TrainingPrograms /></DeferredHealthSection>;
+      case "sleep-log": return <DeferredHealthSection label="sleep records" targetId="health-section-sleep"><SleepLog /></DeferredHealthSection>;
+      case "recovery-log": return <DeferredHealthSection label="recovery log" targetId="health-section-recovery"><RecoveryLog /></DeferredHealthSection>;
+      case "recovery-routines": return <DeferredHealthSection label="recovery routines"><RecoveryRoutines /></DeferredHealthSection>;
+      default: return null;
+    }
+  })();
+
+  if (view === "log") {
+    return (
+      <div className="health-page mx-auto max-w-5xl py-8 px-4" data-testid="health-log-page">
+        <div className="mb-6">
+          <Link href="/chronilog" className="inline-flex items-center gap-2 bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30 font-mono text-xs rounded-md px-3 py-2 transition-colors">
+            <ArrowLeft className="h-4 w-4" />
+            <span>Back</span>
+          </Link>
+        </div>
+
+        <div className="mb-8">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <Heart className="h-9 w-9 text-primary" />
+              <div>
+                <h1 className="text-3xl font-orbitron text-primary">Health Log</h1>
+                <p className="mt-1 text-sm text-muted-foreground">Your private record of nourishment, movement, recovery, and health records.</p>
+              </div>
+            </div>
+            <Link href="/health" className="rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-xs text-primary hover:bg-primary/20">View Health stats</Link>
+          </div>
+        </div>
+
+        {activeHealthLogTool ? <>
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3"><div><button type="button" onClick={() => setActiveHealthLogTool(null)} className="text-xs text-primary hover:underline">← Back to {healthLogSections.find((section) => section.id === activeHealthLogSection)?.title}</button><h2 className="mt-2 font-orbitron text-xl text-primary">{healthLogTools.find((tool) => tool.id === activeHealthLogTool)?.title}</h2></div><Link href="/tracker" className="rounded-md border border-primary/30 px-3 py-2 text-xs text-primary hover:bg-primary/10">Explore in Tracker</Link></div>
+          <OfflineHealthQueueStatus />
+          {healthLogWorkspace}
+        </> : activeHealthLogSection ? <>
+          <div className="mb-5"><button type="button" onClick={() => setActiveHealthLogSection(null)} className="text-xs text-primary hover:underline">← All Health Log areas</button><h2 className="mt-2 font-orbitron text-xl text-primary">{healthLogSections.find((section) => section.id === activeHealthLogSection)?.title}</h2><p className="mt-1 text-sm text-muted-foreground">Choose a focused workspace. Charts and relationships remain in Tracker.</p></div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{healthLogTools.map((tool) => <button key={tool.id} type="button" onClick={() => setActiveHealthLogTool(tool.id)} className="rounded-xl border border-primary/15 bg-card/40 p-4 text-left transition-colors hover:border-primary/45 hover:bg-primary/5"><h3 className="text-sm font-medium text-foreground">{tool.title}</h3><p className="mt-1 text-xs leading-relaxed text-muted-foreground">{tool.description}</p><span className="mt-3 inline-block text-xs text-primary">Open →</span></button>)}</div>
+        </> : <>
+          <div className="grid gap-3 sm:grid-cols-2">{healthLogSections.map((section) => <button key={section.id} type="button" onClick={() => openHealthLogSection(section.id)} className="rounded-xl border border-primary/15 bg-card/40 p-5 text-left transition-colors hover:border-primary/45 hover:bg-primary/5"><h2 className="font-orbitron text-lg text-primary">{section.title}</h2><p className="mt-2 text-sm leading-relaxed text-muted-foreground">{section.description}</p><span className="mt-4 inline-block text-xs text-primary">Open {section.title} →</span></button>)}</div>
+          <section className="mt-6 rounded-xl border border-primary/15 bg-primary/5 p-4"><h2 className="font-orbitron text-base text-primary">System views and settings</h2><p className="mt-1 text-sm text-muted-foreground">Tracker shows patterns and progress. Profile owns health preferences, connected services, and data controls.</p><div className="mt-3 flex flex-wrap gap-2"><Link href="/tracker" className="rounded-md border border-primary/30 px-3 py-2 text-xs text-primary hover:bg-primary/10">Open Tracker</Link><Link href="/profile#health-settings" className="rounded-md border border-primary/30 px-3 py-2 text-xs text-primary hover:bg-primary/10">Health settings & privacy</Link></div></section>
+        </>}
+      </div>
+    );
+  }
+
+  const recordedCheckIns = moodTrend.length;
+  const averageMood = recordedCheckIns > 0 ? moodTrend.reduce((total: number, entry: { average?: number }) => total + (entry.average ?? 0), 0) / recordedCheckIns : null;
+
+  // Health is deliberately a status surface. The workspaces that create and
+  // correct records live in Health Log; Tracker owns cross-domain analysis.
   return (
-    <div className="mx-auto max-w-5xl py-8 px-4" data-testid="health-page">
+    <div className="health-page mx-auto max-w-5xl px-4 py-8" data-testid="health-page">
+      <div className="mb-6">
+        <Link href="/profile" className="inline-flex items-center gap-2 rounded-md border border-primary/50 bg-primary/20 px-3 py-2 font-mono text-xs text-primary transition-colors hover:bg-primary/30">
+          <ArrowLeft className="h-4 w-4" />
+          <span>Back</span>
+        </Link>
+      </div>
+
+      <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <Heart className="h-9 w-9 text-primary" />
+          <div><h1 className="font-orbitron text-3xl text-primary">Health</h1><p className="mt-1 text-sm text-muted-foreground">Current records and selected self-reported trends.</p></div>
+        </div>
+        <div className="flex items-center gap-1 rounded-lg border border-muted/20 bg-background/40 p-1" aria-label="Health status period">
+          {dayOptions.map((d) => <button key={d} type="button" onClick={() => setDays(d)} className={`rounded-md px-3 py-1.5 font-mono text-xs transition-colors ${days === d ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-primary"}`}>{d}d</button>)}
+        </div>
+      </header>
+
+      <section className="mb-6 rounded-xl border border-primary/20 bg-primary/5 p-4">
+        <h2 className="font-orbitron text-lg text-primary">Health status</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Add, correct, or review entries in Health Log. Use Tracker for longer-term patterns and relationships; neither view makes a medical conclusion.</p>
+        <div className="mt-3 flex flex-wrap gap-2"><Link href="/health-log" className="rounded-md border border-primary/30 px-3 py-2 text-xs text-primary hover:bg-primary/10">Open Health Log</Link><Link href="/tracker" className="rounded-md border border-primary/30 px-3 py-2 text-xs text-primary hover:bg-primary/10">Open Tracker</Link></div>
+      </section>
+
+      <section className="glassmorphic mb-6 rounded-2xl border border-primary/30 p-5">
+        <div className="flex flex-wrap items-start justify-between gap-4"><div><h2 className="flex items-center gap-2 font-orbitron text-lg text-primary"><Activity className="h-5 w-5" />Records progress</h2><p className="mt-1 max-w-2xl text-sm text-muted-foreground">Progress reflects the factual or self-reported records you choose to keep. It is not a health score, diagnosis, or prediction.</p></div><span className="font-mono text-2xl font-bold text-primary">{healthPct}%</span></div>
+        <div className="mt-5 h-3 overflow-hidden rounded-full border border-muted/10 bg-muted/20"><div className="h-full rounded-full bg-primary transition-all duration-700" style={{ width: `${healthPct}%` }} /></div>
+        <div className="mt-2 flex justify-between font-mono text-xs text-muted-foreground"><span>{recordedPractice ? `Level ${recordedPractice.rank.level} · ${recordedPractice.rank.name}` : "No record milestone yet"}</span><span>{recordedPractice?.nextRank ? `${Math.max(0, recordedPractice.nextRank.minimumXp - recordedPractice.practiceXp)} records to next milestone` : "Current milestone reached"}</span></div>
+      </section>
+
+      {isLoading ? <div className="flex items-center justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div> : <>
+        <section className="mb-6 grid gap-3 sm:grid-cols-3" aria-label="Current health record summary">
+          <div className="rounded-xl border border-primary/15 bg-card/40 p-4"><p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Average self-report</p><p className="mt-2 font-mono text-2xl text-primary">{averageMood === null ? "—" : `${averageMood.toFixed(1)} / 10`}</p><p className="mt-1 text-xs text-muted-foreground">From the check-ins in this period</p></div>
+          <div className="rounded-xl border border-primary/15 bg-card/40 p-4"><p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Check-ins</p><p className="mt-2 font-mono text-2xl text-primary">{recordedCheckIns}</p><p className="mt-1 text-xs text-muted-foreground">Recorded in the last {days} days</p></div>
+          <div className="rounded-xl border border-primary/15 bg-card/40 p-4"><p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Sleep observations</p><p className="mt-2 font-mono text-2xl text-primary">{sleepWellnessDataQuality.coveragePercent}%</p><p className="mt-1 text-xs text-muted-foreground">{sleepWellnessDataQuality.observations}/{sleepWellnessDataQuality.availableDays} complete days</p></div>
+        </section>
+
+        {moodTrend.length > 0 ? <section className="glassmorphic mb-6 rounded-2xl border border-primary/30 p-5"><div className="flex flex-wrap items-baseline justify-between gap-2"><h2 className="flex items-center gap-2 font-orbitron text-lg text-primary"><TrendingUp className="h-5 w-5" />Self-reported state</h2><span className="font-mono text-xs text-muted-foreground">Past {days} days</span></div><p className="mt-1 text-sm text-muted-foreground">Mental, physical, and emotional check-ins are shown separately so a single average never hides the record.</p><div className="mt-4 h-64"><ResponsiveContainer width="100%" height="100%"><LineChart data={moodTrend} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}><CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" /><XAxis dataKey="date" tick={{ fill: "#9ca3af", fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(value: string) => new Date(`${value}T00:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" })} /><YAxis tick={{ fill: "#9ca3af", fontSize: 11 }} tickLine={false} axisLine={false} domain={[0, 10]} /><Tooltip contentStyle={{ backgroundColor: "rgba(0,0,0,0.9)", border: "1px solid hsl(var(--primary) / 0.3)", borderRadius: 8 }} labelFormatter={(value: string) => new Date(`${value}T00:00:00`).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })} /><Line type="monotone" dataKey="mental" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} name="Mental" /><Line type="monotone" dataKey="physical" stroke="hsl(var(--primary) / 0.7)" strokeWidth={2} dot={false} name="Physical" /><Line type="monotone" dataKey="emotional" stroke="hsl(var(--primary) / 0.5)" strokeWidth={2} dot={false} name="Emotional" /></LineChart></ResponsiveContainer></div></section> : <section className="mb-6 rounded-xl border border-dashed border-primary/25 bg-card/30 p-5"><h2 className="font-orbitron text-lg text-primary">No self-reported trend yet</h2><p className="mt-1 text-sm text-muted-foreground">When you add a daily check-in in Health Log, the selected period will show the records here. Missing days remain missing.</p><Link href="/health-log" className="mt-3 inline-block text-xs text-primary hover:underline">Open daily check-in →</Link></section>}
+
+        <section className="rounded-xl border border-primary/15 bg-card/40 p-4"><h2 className="font-orbitron text-base text-primary">Explore carefully</h2><p className="mt-1 text-sm text-muted-foreground">Tracker can compare your chosen records across time and domains, with coverage and uncertainty visible. It does not infer causation from a pattern.</p><Link href="/tracker" className="mt-3 inline-block text-xs text-primary hover:underline">Explore body analysis in Tracker →</Link></section>
+      </>}
+    </div>
+  );
+
+  /* Legacy Health status layout removed from the rendered app. */
+  /*
+  return (
+    <div className="health-page mx-auto max-w-5xl py-8 px-4" data-testid="health-page">
       <div className="mb-6">
         <Link href="/profile" className="inline-flex items-center gap-2 bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30 font-mono text-xs rounded-md px-3 py-2 transition-colors">
           <ArrowLeft className="h-4 w-4" />
@@ -229,60 +381,14 @@ export default function HealthDetailPage() {
         </div>
       </div>
 
-      <DailyHealthLog />
+      <div className="mb-8 rounded-xl border border-primary/20 bg-primary/5 p-4">
+        <h2 className="font-orbitron text-lg text-primary">Health status</h2>
+        <p className="mt-1 text-sm text-muted-foreground">A focused view of your current records and selected trends. Use Health Log to add or review records, and Tracker to explore patterns.</p>
+        <div className="mt-3 flex flex-wrap gap-2"><Link href="/health-log" className="rounded-md border border-primary/30 px-3 py-2 text-xs text-primary hover:bg-primary/10">Open Health Log</Link><Link href="/tracker" className="rounded-md border border-primary/30 px-3 py-2 text-xs text-primary hover:bg-primary/10">Open Tracker</Link></div>
+      </div>
 
-      <HealthPreferences />
-
-      {(healthProfile.data?.profile?.trackedDomains ?? healthTrackingDomains).length ? <nav className="mb-8 flex flex-wrap gap-2 rounded-xl border border-primary/20 bg-primary/5 p-3" aria-label="Selected Health workspace shortcuts">{(healthProfile.data?.profile?.trackedDomains ?? healthTrackingDomains).map((domain) => <a key={domain} href={`#health-section-${domain}`} className="rounded-md border border-primary/20 bg-background/30 px-2 py-1 text-xs capitalize text-primary hover:bg-primary/10">{domain}</a>)}</nav> : <p className="mb-8 rounded-xl border border-muted/20 bg-background/20 p-3 text-xs text-muted-foreground">No Health workspace shortcuts selected. Every workspace remains available below, and you can add shortcuts in Health units &amp; calendar context.</p>}
-
-      <OfflineHealthQueueStatus />
-
-      <DeferredHealthSection label="supplement schedules" targetId="health-section-supplements"><SupplementSchedules /></DeferredHealthSection>
-
-      <DeferredHealthSection label="sleep records" targetId="health-section-sleep"><SleepLog /></DeferredHealthSection>
-
-      <DeferredHealthSection label="health timeline"><HealthTimeline /></DeferredHealthSection>
-
-      <DeferredHealthSection label="activity signals" targetId="health-section-activity"><ActivitySignals /></DeferredHealthSection>
-
-      <DeferredHealthSection label="capability evidence"><CapabilityEvidencePanel /></DeferredHealthSection>
-
-      <DeferredHealthSection label="nutrition diary" targetId="health-section-nutrition"><NutritionDiary importedFoodId={importedNutritionFoodId} onImportedFoodHandled={() => setImportedNutritionFoodId(null)} manualFoodRequest={manualNutritionFoodRequest} onManualFoodHandled={() => setManualNutritionFoodRequest(null)} /></DeferredHealthSection>
-
-      <DeferredHealthSection label="meal planning" targetId="health-section-planning"><MealPlanner /></DeferredHealthSection>
-
-      <DeferredHealthSection label="ingredient scanner"><IngredientScanner onCatalogFoodImported={setImportedNutritionFoodId} onManualFoodRequested={(name) => setManualNutritionFoodRequest({ name })} /></DeferredHealthSection>
-
-      <DeferredHealthSection label="grocery intelligence"><GroceryIntelligence /></DeferredHealthSection>
-
-      <DeferredHealthSection label="exercise library"><ExerciseLibrary /></DeferredHealthSection>
-
-      <DeferredHealthSection label="workout log" targetId="health-section-training"><WorkoutLog /></DeferredHealthSection>
-
-      <DeferredHealthSection label="workout analytics"><WorkoutAnalytics /></DeferredHealthSection>
-
-      <DeferredHealthSection label="training programs"><TrainingPrograms /></DeferredHealthSection>
-
-      <DeferredHealthSection label="body progress" targetId="health-section-body"><BodyProgress /></DeferredHealthSection>
-
-      <DeferredHealthSection label="recovery log" targetId="health-section-recovery"><RecoveryLog /></DeferredHealthSection>
-      <DeferredHealthSection label="recovery routines"><RecoveryRoutines /></DeferredHealthSection>
-
-      <DeferredHealthSection label="health metrics" targetId="health-section-metrics"><HealthMetricsLedger /></DeferredHealthSection>
-
-      <DeferredHealthSection label="health trends" targetId="health-section-trends"><HealthTrendWorkbench /></DeferredHealthSection>
-
-      <DeferredHealthSection label="private health-record assistant"><HealthAssistant /></DeferredHealthSection>
-
-      <DeferredHealthSection label="health progression"><HealthProgression /></DeferredHealthSection>
-
-      <DeferredHealthSection label="health connections" targetId="health-section-connections"><HealthConnections /></DeferredHealthSection>
-
-      <DeferredHealthSection label="health data controls" targetId="health-section-data-rights"><HealthDataRights /></DeferredHealthSection>
-
-      <div className={`glassmorphic rounded-2xl p-8 mb-8 border border-primary/30 relative overflow-hidden ${healthGlow}`}>
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/3 pointer-events-none" />
-        <div className={`absolute top-0 left-0 w-full h-1 ${gradientColors}`} />
+      <div className="glassmorphic relative mb-8 overflow-hidden rounded-2xl border border-primary/30 p-8">
+        <div className="absolute left-0 top-0 h-1 w-full bg-primary" />
 
         <div className="relative z-10">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
@@ -324,7 +430,7 @@ export default function HealthDetailPage() {
 
           <div className="mt-6 w-full bg-muted/20 h-4 rounded-full overflow-hidden border border-muted/10">
             <div
-              className={`h-full rounded-full ${gradientColors} transition-all duration-1000 ease-out`}
+              className="h-full rounded-full bg-primary transition-all duration-1000 ease-out"
               style={{ width: `${healthPct}%` }}
             >
             </div>
@@ -679,4 +785,5 @@ export default function HealthDetailPage() {
       )}
     </div>
   );
+  */
 }

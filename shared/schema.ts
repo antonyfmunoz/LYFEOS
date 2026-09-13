@@ -3579,6 +3579,75 @@ export const groceryShoppingItems = pgTable("grocery_shopping_items", {
   index("grocery_shopping_items_user_pantry_idx").on(table.userId, table.pantryItemId),
 ]);
 
+// Food Compass is a private, owner-curated local-food action layer. A saved
+// place is never presented as a vetted public listing merely because its name
+// or coordinates exist here: source and verification fields travel with every
+// place and offer so unknown availability remains visible to the owner.
+export const foodCompassPlaces = pgTable("food_compass_places", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  placeType: text("place_type").notNull(), // farm | market | grocery | restaurant | producer | other
+  address: text("address"),
+  city: text("city"),
+  region: text("region"),
+  postalCode: text("postal_code"),
+  latitude: real("latitude"),
+  longitude: real("longitude"),
+  websiteUrl: text("website_url"),
+  sourceName: text("source_name").notNull(),
+  sourceUrl: text("source_url"),
+  sourceUpdatedOn: date("source_updated_on"),
+  verifiedOn: date("verified_on"),
+  notes: text("notes"),
+  status: text("status").notNull().default("active"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("food_compass_places_user_status_updated_idx").on(table.userId, table.status, table.updatedAt),
+  index("food_compass_places_user_type_idx").on(table.userId, table.placeType),
+]);
+
+// Offers belong to the owner's saved place record. They are observations or
+// source-backed entries, not inventory guarantees or LyfeOS checkout records.
+export const foodCompassOffers = pgTable("food_compass_offers", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  placeId: integer("place_id").notNull().references(() => foodCompassPlaces.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  category: text("category"),
+  price: real("price"),
+  currency: text("currency").notNull().default("USD"),
+  availabilityStatus: text("availability_status").notNull().default("unknown"), // available | limited | unavailable | unknown
+  fulfillmentMode: text("fulfillment_mode").notNull().default("unknown"), // pickup | delivery | shipping | in_store | unknown
+  externalActionUrl: text("external_action_url"),
+  sourceName: text("source_name").notNull(),
+  sourceUrl: text("source_url"),
+  sourceUpdatedOn: date("source_updated_on"),
+  verifiedOn: date("verified_on"),
+  notes: text("notes"),
+  status: text("status").notNull().default("active"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("food_compass_offers_user_status_updated_idx").on(table.userId, table.status, table.updatedAt),
+  index("food_compass_offers_place_status_idx").on(table.placeId, table.status),
+  index("food_compass_offers_user_fulfillment_idx").on(table.userId, table.fulfillmentMode),
+]);
+
+// Correction reports remain private owner feedback. They do not publish,
+// change, or remove a place or offer automatically.
+export const foodCompassCorrectionReports = pgTable("food_compass_correction_reports", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  placeId: integer("place_id").references(() => foodCompassPlaces.id, { onDelete: "set null" }),
+  offerId: integer("offer_id").references(() => foodCompassOffers.id, { onDelete: "set null" }),
+  reportType: text("report_type").notNull(), // stale | correction | closed | missing
+  note: text("note"),
+  evidenceUrl: text("evidence_url"),
+  status: text("status").notNull().default("open"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [index("food_compass_correction_reports_user_created_idx").on(table.userId, table.createdAt)]);
 // Receipt drafts retain the exact text supplied by the owner until they either
 // apply reviewed rows or the owner deletes the draft. They are not training
 // data, public reviews, or an assertion that parsed rows are accurate.

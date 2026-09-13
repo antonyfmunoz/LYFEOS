@@ -180,6 +180,14 @@ input[type="range"].theme-slider::-moz-range-thumb {
     @apply bg-card backdrop-blur-none border border-border/50 shadow-sm;
   }
   
+  /* Health is a dense form workspace. Opaque surfaces avoid backdrop-filter
+     artifacts along the trailing edge of its stacked record cards. */
+  .health-page .glassmorphic {
+    @apply bg-card shadow-none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
   .light-theme input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
   .light-theme textarea,
   .light-theme select,

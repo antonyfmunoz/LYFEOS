@@ -5,7 +5,7 @@ const script = fs.readFileSync("scripts/production-health-data-rights-browser-ac
 const workflow = fs.readFileSync(".github/workflows/production-browser-acceptance.yml", "utf8");
 const packageJson = fs.readFileSync("package.json", "utf8");
 const rights = fs.readFileSync("client/src/components/health/HealthDataRights.tsx", "utf8");
-const healthPage = fs.readFileSync("client/src/pages/HealthDetailPage.tsx", "utf8");
+const profilePage = fs.readFileSync("client/src/pages/ProfilePage.tsx", "utf8");
 
 describe("production Health data-rights browser acceptance custody", () => {
   it("binds the immutable deployed runtime to a disposable desktop/mobile journey", () => {
@@ -29,8 +29,9 @@ describe("production Health data-rights browser acceptance custody", () => {
     expect(script).toContain("deletedHealthDomain");
     expect(script).toContain("rightsReceiptRetained");
     expect(script).toContain("loadHealthDataRights");
-    expect(script).toContain("Health workspaces intentionally defer their chunks");
-    expect(script).toContain("#health-section-data-rights");
+    expect(script).toContain("Health settings and data rights belong to Profile");
+    expect(script).toContain("#health-settings");
+    expect(script).toContain('new URL("/profile", BASE_URL)');
     expect(script).toContain("human file-save destination");
     expect(script).toContain("legal retention-policy approval");
     expect(script).toContain("provider-token revoke");
@@ -42,9 +43,11 @@ describe("production Health data-rights browser acceptance custody", () => {
     expect(script).toContain("The Health permission save response did not acknowledge both explicit consents.");
   });
 
-  it("uses semantic hooks without changing the Health data-rights layout", () => {
+  it("uses semantic hooks while Profile owns the Health data-rights settings surface", () => {
     for (const hook of ["health-data-rights", "health-data-export", "health-ai-context-enabled", "health-planning-context-enabled", "health-data-rights-save", "health-data-rights-saved", "health-data-deletion-confirmation", "health-data-delete", "health-data-deletion-complete"]) expect(rights).toContain(`data-testid=\"${hook}\"`);
-    expect(healthPage).toContain('targetId="health-section-data-rights"');
+    expect(profilePage).toContain('import HealthDataRights from "@/components/health/HealthDataRights"');
+    expect(profilePage).toContain('<HealthDataRights />');
+    expect(profilePage).toContain('id="health-settings"');
   });
 
   it("persists the current consent draft even when a person toggles and saves quickly", () => {

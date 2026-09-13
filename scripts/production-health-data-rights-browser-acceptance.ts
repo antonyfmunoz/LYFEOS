@@ -82,17 +82,16 @@ async function setCheckbox(page: Page, selector: string, expected: boolean): Pro
 }
 
 async function loadHealthDataRights(page: Page): Promise<void> {
-  // Health workspaces intentionally defer their chunks by viewport proximity.
-  // Scroll the stable section anchor into view, rather than guessing at a page
-  // height which changes as earlier deferred sections expand.
-  await page.waitForSelector("#health-section-data-rights", { visible: true, timeout: 30_000 });
-  await page.$eval("#health-section-data-rights", (element) => element.scrollIntoView({ block: "center" }));
+  // Health settings and data rights belong to Profile, rather than the
+  // chronological Health Log. Scroll the stable Profile anchor into view.
+  await page.waitForSelector("#health-settings", { visible: true, timeout: 30_000 });
+  await page.$eval("#health-settings", (element) => element.scrollIntoView({ block: "center" }));
   await page.waitForSelector('[data-testid="health-data-rights"]', { visible: true, timeout: 30_000 });
 }
 
 async function auditPage(page: Page): Promise<Audit> {
   return page.evaluate(() => {
-    const scope = document.querySelector<HTMLElement>('[data-testid="health-page"]'); if (!scope) throw new Error("Health acceptance scope is not rendered.");
+    const scope = document.querySelector<HTMLElement>("#health-settings"); if (!scope) throw new Error("Profile Health settings scope is not rendered.");
     const ids = new Map<string, number>(); for (const element of document.querySelectorAll<HTMLElement>("[id]")) ids.set(element.id, (ids.get(element.id) || 0) + 1);
     const invalidLabelReferences = [...scope.querySelectorAll<HTMLElement>("[aria-labelledby]")].filter((element) => (element.getAttribute("aria-labelledby") || "").split(/\s+/).some((id) => id && !document.getElementById(id))).map((element) => element.getAttribute("data-testid") || element.tagName.toLowerCase());
     const unlabeledControls = [...scope.querySelectorAll<HTMLElement>("button,input,select,textarea,[role=button]")].filter((element) => { if (element.getAttribute("aria-hidden") === "true" || (element instanceof HTMLInputElement && element.type === "hidden")) return false; const style = getComputedStyle(element); if (style.display === "none" || style.visibility === "hidden" || element.getClientRects().length === 0) return false; const label = element.id ? scope.querySelector(`label[for="${CSS.escape(element.id)}"]`) : null; const name = element.getAttribute("aria-label") || element.getAttribute("aria-labelledby") || element.getAttribute("title") || element.textContent?.trim(); return !label && !element.closest("label") && !name; }).map((element) => element.getAttribute("data-testid") || element.tagName.toLowerCase()).slice(0, 20);
@@ -118,7 +117,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     const hydration = await request("POST", "/api/health-fitness/hydration", { quantity: 321.5, inputUnit: "ml", occurredAt: new Date().toISOString(), note: "rights acceptance fixture" }, account.cookie, { "x-lyfeos-mutation-id": randomUUID() }); assert(hydration.status === 201, `Fixture hydration returned ${hydration.status}.`);
     context = await browser.createBrowserContext(); const page = await context.newPage(); const signals = captureSignals(page); const session = cookieParts(account.cookie);
     await page.setCookie({ ...session, url: BASE_URL.origin, path: "/", httpOnly: true, secure: true, sameSite: "Lax" }); await page.setViewport(viewport.value); await page.setCacheEnabled(false);
-    stage = "navigate to Health"; await page.goto(new URL("/health", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 }); await page.waitForSelector('[data-testid="health-page"]', { visible: true, timeout: 60_000 });
+    stage = "navigate to Profile Health settings"; await page.goto(new URL("/profile", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 }); await page.waitForSelector("#health-settings", { visible: true, timeout: 60_000 });
     stage = "load Health data controls"; await loadHealthDataRights(page);
     stage = "save explicit Health data permissions"; await setCheckbox(page, '[data-testid="health-ai-context-enabled"]', true); await setCheckbox(page, '[data-testid="health-planning-context-enabled"]', true); const preferenceResponse = page.waitForResponse((response) => new URL(response.url()).pathname === "/api/health-data/preferences" && response.request().method() === "PATCH", { timeout: 30_000 }); await clickReady(page, '[data-testid="health-data-rights-save"]'); const savedPreferenceResponse = await preferenceResponse; const savedPreferenceBody = await savedPreferenceResponse.json().catch(() => ({})); assert(savedPreferenceResponse.status() === 200 && savedPreferenceBody?.preferences?.aiContextEnabled === true && savedPreferenceBody?.preferences?.planningContextEnabled === true, "The Health permission save response did not acknowledge both explicit consents."); await page.waitForSelector('[data-testid="health-data-rights-saved"]', { visible: true, timeout: 30_000 });
     const savedRights = await request("GET", "/api/health-data/rights", undefined, account.cookie); const preferencesSaved = savedRights.status === 200 && savedRights.body?.preferences?.aiContextEnabled === true && savedRights.body?.preferences?.planningContextEnabled === true; assert(preferencesSaved, "Health permission settings did not persist through the UI.");

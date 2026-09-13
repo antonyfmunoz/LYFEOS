@@ -103,7 +103,7 @@ describe("health and fitness foundation", () => {
   it("assembles an owner-scoped factual health timeline without causal or readiness claims", () => {
     const routes = readFileSync(resolve(process.cwd(), "server/routes/health-fitness.ts"), "utf8");
     const client = readFileSync(resolve(process.cwd(), "client/src/components/health/HealthTimeline.tsx"), "utf8");
-    const healthPage = readFileSync(resolve(process.cwd(), "client/src/pages/HealthDetailPage.tsx"), "utf8");
+    const timelinePage = readFileSync(resolve(process.cwd(), "client/src/pages/TimelinePage.tsx"), "utf8");
     expect(routes).toContain('app.get("/api/health-fitness/timeline", isAuthenticated');
     expect(routes).toContain("eq(nutritionDiaryEntries.userId, userId)");
     expect(routes).toContain('status: matching.length ? "recorded" as const : "not_recorded_in_period" as const');
@@ -112,9 +112,10 @@ describe("health and fitness foundation", () => {
     expect(client).toContain("Automatically assembled from records you already added in Health");
     expect(client).toContain("It does not mean the activity did not happen and is not a health judgment");
     expect(client).toContain('href={`#${destinations[event.type]}`}');
-    expect(healthPage).toContain("<HealthTimeline />");
-    expect(healthPage).toContain('targetId="health-section-nutrition"');
-    expect(healthPage).toContain('targetId="health-section-training"');
+    expect(timelinePage).toContain("queryKey: ['/api/health-fitness/timeline', { days: 90 }]");
+    expect(timelinePage).toContain("type: 'health'");
+    expect(timelinePage).toContain("Health record · {hItem.healthType?.replaceAll('_', ' ') || 'record'}");
+    expect(timelinePage).toContain("This is a private record, not a medical conclusion.");
   });
 
   it("keeps health records in the migration, release runner, export, and deletion paths", () => {
@@ -347,6 +348,7 @@ describe("health and fitness foundation", () => {
     expect(diary).toContain("importedFoodId");
     expect(diary).toContain("manualFoodRequest");
     expect(diary).toContain("setExpanded(true)");
+    expect(diary).toContain("if (expanded) void foods.refetch()");
     expect(healthPage).toContain('"health-section-nutrition"');
   });
 
