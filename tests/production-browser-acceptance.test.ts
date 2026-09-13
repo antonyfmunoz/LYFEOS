@@ -189,7 +189,7 @@ describe("production browser acceptance custody", () => {
     expect(onboardingScript).toContain('"/api/auth/check-display-name"');
     expect(onboardingScript).toContain('"/api/auth/me"');
     expect(onboardingScript).toContain('"/api/transformation-thread"');
-    expect(onboardingScript).toContain('completedMissionIds.join(",") === "0,1,2,3,4,5,6,7"');
+    expect(onboardingScript).toContain('completedMissionIds.join(",") === "0,1,2,3,4,5,6,7,8"');
     expect(onboardingScript).toContain("waitForPersistedOnboardingPosition");
     expect(onboardingScript).toContain("evidence.progressSurvivedReload = true");
     expect(onboardingScript).toContain('page.on("pageerror"');

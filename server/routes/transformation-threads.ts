@@ -1,5 +1,5 @@
 import type { Express, Request, Response } from "express";
-import { and, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../db";
 import { storage } from "../storage";
@@ -13,6 +13,9 @@ import { prepareMissionCreation } from "../mission-lifecycle";
 import { buildPlanningContextSnapshot, type PlanningContextSnapshot } from "../context-snapshot";
 import { buildMissionSupportPlan, calibrateMissionDifficulty, missionFitsResources, selectNextPracticeMission, type PracticeMissionCandidate } from "../transformation-intelligence";
 import { buildMissionUnlockResult } from "../mission-unlock-result";
+import { reconcileThreadContinuation } from "../transformation-thread-continuation";
+import { logger } from "../utils";
+import { MIN_TRANSFORMATION_THREAD_COMPLETION_DAYS } from "../transformation-thread-policy";
 
 type StarterMission = {
   title: string;
@@ -20,6 +23,7 @@ type StarterMission = {
   category: string;
   experienceReward: number;
   rationale: string;
+  dayOffset: 0 | 1 | 2;
   skillContributions: Array<{ key: string; experienceAmount: number }>;
 };
 
@@ -35,8 +39,10 @@ type SkillBlueprint = {
   edges: Array<{ sourceKey: string; targetKey: string; relationship: string }>;
 };
 
-const REQUIRED_ONBOARDING_MISSIONS = Array.from({ length: 8 }, (_, id) => id);
-const MIN_COMPLETION_DAYS = 28;
+// The final integration mission records a deliberate private-by-default choice.
+// "Not now" satisfies it; no external connection is required or created.
+const REQUIRED_ONBOARDING_MISSIONS = Array.from({ length: 9 }, (_, id) => id);
+const MIN_COMPLETION_DAYS = MIN_TRANSFORMATION_THREAD_COMPLETION_DAYS;
 
 function cleanText(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
@@ -44,6 +50,61 @@ function cleanText(value: unknown): string {
 
 function shorten(value: string, maxLength = 72): string {
   return value.length > maxLength ? `${value.slice(0, maxLength - 1).trimEnd()}…` : value;
+}
+
+function firstDeclaredItem(value: unknown): string {
+  if (Array.isArray(value)) {
+    const item = value.find((candidate): candidate is string => typeof candidate === "string" && candidate.trim().length > 0);
+    return item ? item.trim() : "";
+  }
+  return typeof value === "string" ? value.split(/[\n,;]+/).map((item) => item.trim()).find(Boolean) || "" : "";
+}
+
+function localCalendarDate(timeZone: unknown, dayOffset: number): string {
+  const normalizedTimeZone = cleanText(timeZone) || "UTC";
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: normalizedTimeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(new Date());
+    const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+    const base = new Date(Date.UTC(Number(values.year), Number(values.month) - 1, Number(values.day) + dayOffset));
+    return base.toISOString().slice(0, 10);
+  } catch {
+    const fallback = new Date();
+    fallback.setUTCDate(fallback.getUTCDate() + dayOffset);
+    return fallback.toISOString().slice(0, 10);
+  }
+}
+
+const LEGACY_STARTER_REPAIR_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+
+/** Repairs only a recent, untouched pre-schedule starter set. */
+export async function reconcileLegacyThreadStarterSchedule(userId: number): Promise<number> {
+  const [thread] = await db.select().from(transformationThreads)
+    .where(and(eq(transformationThreads.userId, userId), eq(transformationThreads.status, "active")))
+    .orderBy(desc(transformationThreads.updatedAt)).limit(1);
+  if (!thread?.activatedAt || Date.now() - thread.activatedAt.getTime() > LEGACY_STARTER_REPAIR_WINDOW_MS) return 0;
+  const starters = await db.select({ id: quests.id, sortOrder: quests.sortOrder, completed: quests.completed, startDate: quests.startDate, endDate: quests.endDate, deletedAt: quests.deletedAt })
+    .from(quests).where(and(eq(quests.userId, userId), eq(quests.transformationThreadId, thread.id), eq(quests.planningDecisionSource, "system"), isNull(quests.deletedAt)));
+  const untouchedStarterSet = starters.length === 3
+    && starters.every((mission) => !mission.completed && !mission.startDate && !mission.endDate && !mission.deletedAt)
+    && [0, 1, 2].every((sortOrder) => starters.some((mission) => mission.sortOrder === sortOrder));
+  if (!untouchedStarterSet) return 0;
+  const profile = await storage.getUserProfile(userId);
+  const sourceSnapshot = thread.sourceSnapshot && typeof thread.sourceSnapshot === "object" ? thread.sourceSnapshot as { timeZone?: unknown } : {};
+  const timeZone = cleanText(profile?.timezone) || cleanText(sourceSnapshot.timeZone) || "UTC";
+  let repaired = 0;
+  for (const mission of starters.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))) {
+    const dayOffset = mission.sortOrder === 0 || mission.sortOrder === 1 || mission.sortOrder === 2 ? mission.sortOrder : 0;
+    const scheduledDate = localCalendarDate(timeZone, dayOffset);
+    const [updated] = await db.update(quests).set({ startDate: scheduledDate, endDate: scheduledDate, dueDate: scheduledDate, timezone: timeZone, updatedAt: new Date() })
+      .where(and(eq(quests.id, mission.id), eq(quests.userId, userId), isNull(quests.startDate))).returning({ id: quests.id });
+    if (updated) repaired += 1;
+  }
+  return repaired;
 }
 
 type FocusCapability = Pick<typeof personalCapabilities.$inferSelect, "id" | "name" | "description">;
@@ -121,7 +182,9 @@ function buildSkillBlueprint(profile: Awaited<ReturnType<typeof storage.getUserP
 function buildStarterMissions(profile: Awaited<ReturnType<typeof storage.getUserProfile>>, context: PlanningContextSnapshot, focusOverride?: string): StarterMission[] {
   const focus = cleanText(focusOverride) || cleanText(profile?.desiredTrait) || cleanText(profile?.primaryCraft) || cleanText(profile?.vision90Day) || "your next 90 days";
   const vision = cleanText(profile?.vision90Day);
+  const visionMetric = cleanText(profile?.vision90DayMetric);
   const craft = focusOverride ? "" : cleanText(profile?.primaryCraft);
+  const declaredSkill = firstDeclaredItem(profile?.skillsToAcquire);
   const habit = cleanText(profile?.lockedHabit);
   const capacity = (profile?.weeklyCapacity as { hours?: unknown } | null)?.hours;
   const capacityText = typeof capacity === "number" || typeof capacity === "string" ? String(capacity).trim() : "";
@@ -133,23 +196,31 @@ function buildStarterMissions(profile: Awaited<ReturnType<typeof storage.getUser
 
   return [
     {
-      title: "Define the proof of progress",
-      description: vision
-        ? `Write the observable evidence that will show progress toward: ${shorten(vision, 160)}`
-        : `Write the observable evidence that will show progress in ${shorten(focus)}.`,
+      title: visionMetric ? `Establish the baseline for ${shorten(visionMetric, 52)}` : "Establish the current proof point",
+      description: visionMetric
+        ? `Record the current starting point for the 90-day measure you chose: ${shorten(visionMetric, 160)}. This creates a factual baseline for ${vision ? shorten(vision, 120) : shorten(focus, 120)}.`
+        : vision
+          ? `Record the observable evidence you will use to judge progress toward: ${shorten(vision, 160)}`
+          : `Record the observable evidence you will use to judge progress in ${shorten(focus)}.`,
       category: "planning",
       experienceReward: 20,
-      rationale: "Creates a user-owned definition of progress before execution begins.",
+      rationale: visionMetric
+        ? "Starts from the 90-day measure the member already declared during onboarding instead of asking them to invent a new target."
+        : "Creates a user-owned proof point before execution begins.",
+      dayOffset: 0,
       skillContributions: [{ key: "calibration", experienceAmount: 20 }],
     },
     {
       title: craft ? `Advance ${shorten(craft, 52)}` : `Take one focused step in ${shorten(focus, 52)}`,
       description: craft
-        ? `Choose and complete one focused action that advances your ${shorten(craft, 120)} practice. ${scopeGuidance}`
+        ? `Complete one bounded practice block for ${shorten(craft, 120)}${declaredSkill ? `, centered on ${shorten(declaredSkill, 100)}` : ""}. ${scopeGuidance}`
         : `Choose one concrete action that advances ${shorten(focus, 120)}. ${scopeGuidance}`,
       category: craft ? "learning" : "personal",
       experienceReward: 30,
-      rationale: "Turns the selected focus into a concrete, editable first action.",
+      rationale: declaredSkill
+        ? "Uses the declared skill acquisition direction to make the first practice step concrete and editable."
+        : "Turns the selected focus into a concrete, editable first action.",
+      dayOffset: 1,
       skillContributions: [
         { key: "primary", experienceAmount: 30 },
       ],
@@ -164,6 +235,7 @@ function buildStarterMissions(profile: Awaited<ReturnType<typeof storage.getUser
       category: "personal",
       experienceReward: 20,
       rationale: "Connects the plan to the user's stated ritual or available capacity.",
+      dayOffset: 2,
       skillContributions: [{ key: "capacity", experienceAmount: 20 }],
     },
   ];
@@ -181,6 +253,7 @@ function buildThread(profile: Awaited<ReturnType<typeof storage.getUserProfile>>
     vision90Day: vision || null,
     weeklyCapacity: profile?.weeklyCapacity || {},
     lockedHabit: cleanText(profile?.lockedHabit) || null,
+    timeZone: cleanText(profile?.timezone) || null,
     primaryValues,
     planningContext,
     primaryCapabilityId: focusCapability?.id || null,
@@ -342,6 +415,15 @@ export function registerTransformationThreadRoutes(app: Express): void {
 
   app.get("/api/transformation-thread", isAuthenticated, async (req: Request, res: Response) => {
     const userId = req.session.userId!;
+    try {
+      await reconcileThreadContinuation(userId);
+    } catch (continuationError) {
+      // Planning recovery must not hide the user's existing Thread workspace.
+      logger.error("Could not reconcile the next Thread mission", {
+        userId,
+        error: continuationError instanceof Error ? continuationError.message : "unknown",
+      });
+    }
     const [thread] = await db
       .select()
       .from(transformationThreads)
@@ -539,7 +621,7 @@ export function registerTransformationThreadRoutes(app: Express): void {
             title: recommendedMission?.title || `Practice ${recommendedSkill.name}`,
             description: recommendedMission
               ? `${recommendationFitsCapacity ? "This mission fits your currently available capacity." : "This is the next linked mission, but its listed cost exceeds your currently available capacity—defer, reduce, or revise it before beginning."} Complete it, then record what you observed.`
-              : `Create one real-world mission for this unlocked skill and define the evidence you will record.`,
+              : `LyfeOS will prepare the next bounded, evidence-backed practice step after the current Thread work has been completed and positively reviewed.`,
             fitsCurrentCapacity: recommendationFitsCapacity,
             planningContext: currentPlanningContext,
             difficultyCalibration,
@@ -558,7 +640,7 @@ export function registerTransformationThreadRoutes(app: Express): void {
             },
             selectionBasis: recommendedMission
               ? "This mission is explicitly linked to the recommended capability and is the closest available fit to the evidence-calibrated scope."
-              : "No unfinished mission is explicitly linked to this capability. Create one and declare its proof before practice begins.",
+              : "No compatible open Thread mission is available yet. LyfeOS does not create a new step from a checkmark alone; it waits for the current Thread work and its evidence reviews to be complete.",
           } : null,
         },
         progression,
@@ -811,15 +893,19 @@ export function registerTransformationThreadRoutes(app: Express): void {
         .from(skillNodes)
         .where(and(eq(skillNodes.userId, userId), eq(skillNodes.transformationThreadId, thread.id)));
       const skillIdsByKey = new Map(threadSkills.map((skill) => [skill.key, skill.id]));
-      const today = new Date().toISOString().slice(0, 10);
+      const sourceSnapshot = thread.sourceSnapshot && typeof thread.sourceSnapshot === "object" ? thread.sourceSnapshot as { timeZone?: unknown } : {};
       const preparedStarterMissions = await Promise.all(starterMissions.map((mission, index) => prepareMissionCreation({
+        ...(() => {
+          const dayOffset = mission.dayOffset === 0 || mission.dayOffset === 1 || mission.dayOffset === 2 ? mission.dayOffset : Math.min(index, 2);
+          const scheduledDate = localCalendarDate(sourceSnapshot.timeZone, dayOffset);
+          return { startDate: scheduledDate, endDate: scheduledDate, dueDate: scheduledDate, timezone: cleanText(sourceSnapshot.timeZone) || null };
+        })(),
         userId,
         title: mission.title,
         description: mission.description,
         category: mission.category,
         experienceReward: mission.experienceReward,
         transformationThreadId: thread.id,
-        dueDate: index === 0 ? today : null,
         sortOrder: index,
         linkedItems: [{ type: "transformation-thread", id: thread.id, rationale: mission.rationale }],
       }, { source: "system" })));

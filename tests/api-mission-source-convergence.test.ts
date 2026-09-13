@@ -92,7 +92,7 @@ describeApi("canonical Mission source convergence", () => {
     expect(receipts.rows.every((row) => row.metadata.source === "inbox")).toBe(true);
   });
 
-  it("keeps UI, onboarding, and automatic To-Do origins distinct while sharing canonical receipts", async () => {
+  it("keeps UI and onboarding Missions distinct from automatic archived To-Do records", async () => {
     const uiMutationId = `source-ui-${stamp}`;
     const uiPayload = { userId, title: "Create from the Mission UI", description: "Source convergence proof", category: "general", completed: false };
     const uiCreated = await request("POST", "/api/quests", uiPayload, cookie, { "x-lyfeos-mutation-id": uiMutationId });
@@ -128,7 +128,18 @@ describeApi("canonical Mission source convergence", () => {
     expect(secondList.status).toBe(200);
     const todoMissions = secondList.data.quests.filter((quest: any) => quest.title === todoTitle);
     expect(todoMissions).toHaveLength(1);
-    expect(todoMissions[0]).toMatchObject({ category: "todo", planningDecisionSource: "todo", completed: false });
+    expect(todoMissions[0]).toMatchObject({ category: "todo", planningDecisionSource: "todo", completed: false, experienceReward: 0 });
+    expect(todoMissions[0].completedAt).toBeNull();
+    expect(todoMissions[0].description).toContain("unscheduled someday-Mission");
+
+    const historicalRow = await pool.query(
+      `SELECT "completed", "completed_at", "deleted_at" FROM "quests" WHERE "id" = $1 AND "user_id" = $2`,
+      [todoMissions[0].id, userId],
+    );
+    expect(historicalRow.rows).toHaveLength(1);
+    expect(historicalRow.rows[0].completed).toBe(false);
+    expect(historicalRow.rows[0].completed_at).toBeNull();
+    expect(historicalRow.rows[0].deleted_at).toBeNull();
 
     const expected = [
       { id: uiCreated.data.quest.id, source: "ui" },
@@ -169,6 +180,29 @@ describeApi("canonical Mission source convergence", () => {
     expect(first.data.page.questId).toBe(uiMissionId);
     const rows = await pool.query(`SELECT "id", "quest_id", "slug" FROM "mission_pages" WHERE "quest_id" = $1`, [uiMissionId]);
     expect(rows.rows).toEqual([{ id: first.data.page.id, quest_id: uiMissionId, slug: payload.slug }]);
+  });
+
+  it("restores a freshly terminated Mission through the 24-hour Terminated bin", async () => {
+    const created = await request("POST", "/api/quests", {
+      userId,
+      title: `Restore from Terminated ${stamp}`,
+      description: "Termination recovery proof",
+      category: "general",
+      completed: false,
+    }, cookie);
+    expect(created.status).toBe(201);
+    const missionId = created.data.quest.id;
+
+    expect((await request("DELETE", `/api/quests/${missionId}`, undefined, cookie)).status).toBe(200);
+    const terminated = await request("GET", "/api/quests/archived", undefined, cookie);
+    expect(terminated.status).toBe(200);
+    expect(terminated.data).toEqual(expect.arrayContaining([expect.objectContaining({ id: missionId })]));
+
+    const restored = await request("POST", `/api/quests/${missionId}/restore`, undefined, cookie);
+    expect(restored.status).toBe(200);
+    expect(restored.data).toMatchObject({ id: missionId, deletedAt: null });
+    const active = await request("GET", `/api/users/${userId}/quests?tz=UTC`, undefined, cookie);
+    expect(active.data.quests).toEqual(expect.arrayContaining([expect.objectContaining({ id: missionId, deletedAt: null })]));
   });
 
   it("routes an approved AI Mission and a replayed automation follow-up through the same authority", async () => {
@@ -242,7 +276,7 @@ describeApi("canonical Mission source convergence", () => {
   });
 
   it("creates one transaction-bound Thread starter set with explicit system provenance", async () => {
-    const profile = await request("PATCH", "/api/profile", { completedOnboardingMissions: [0, 1, 2, 3, 4, 5, 6, 7] }, cookie);
+    const profile = await request("PATCH", "/api/profile", { completedOnboardingMissions: [0, 1, 2, 3, 4, 5, 6, 7, 8] }, cookie);
     expect(profile.status).toBe(200);
     const initialized = await request("POST", "/api/transformation-thread/initialize", {}, cookie);
     expect([200, 201]).toContain(initialized.status);
@@ -255,11 +289,16 @@ describeApi("canonical Mission source convergence", () => {
     expect(replayedActivation.data.createdMissions).toBe(0);
 
     const starters = await pool.query(
-      `SELECT "id", "planning_decision_source" FROM "quests" WHERE "user_id" = $1 AND "transformation_thread_id" = $2 ORDER BY "id"`,
+      `SELECT "id", "planning_decision_source", "start_date", "end_date", "due_date" FROM "quests" WHERE "user_id" = $1 AND "transformation_thread_id" = $2 ORDER BY "id"`,
       [userId, threadId],
     );
     expect(starters.rows).toHaveLength(activated.data.createdMissions);
     expect(starters.rows.every((row) => row.planning_decision_source === "system")).toBe(true);
+    expect(starters.rows).toHaveLength(3);
+    expect(starters.rows.every((row) => /^\d{4}-\d{2}-\d{2}$/.test(row.start_date || "") && row.start_date === row.end_date && row.start_date === row.due_date)).toBe(true);
+    const scheduledDays = starters.rows.map((row) => Date.parse(`${row.start_date}T12:00:00Z`) / 86_400_000);
+    expect(scheduledDays[1] - scheduledDays[0]).toBe(1);
+    expect(scheduledDays[2] - scheduledDays[1]).toBe(1);
     const receipts = await pool.query(
       `SELECT count(*)::int AS "count" FROM "user_activity_events"
        WHERE "user_id" = $1 AND "event_type" = 'mission_created' AND "metadata"->>'source' = 'system'

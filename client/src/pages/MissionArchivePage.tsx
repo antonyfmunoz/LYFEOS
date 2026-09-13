@@ -18,6 +18,7 @@ const ONBOARDING_MISSIONS = [
   { title: "Baselines & States", description: "Establish your baseline stats and current life state for accurate tracking." },
   { title: "History & Roots", description: "Record your background and personal history to inform your growth trajectory." },
   { title: "Systems & Rituals", description: "Set up your daily rituals and recurring systems for consistent progress." },
+  { title: "Systems & Integrations", description: "Review optional connections when you are ready; no access is granted during onboarding." },
 ];
 
 const categoryDescriptions: Record<string, string> = {

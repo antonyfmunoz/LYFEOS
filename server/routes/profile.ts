@@ -15,7 +15,7 @@ import { eq, desc, and, gte, asc, sql } from "drizzle-orm";
 import { recordTransformationThreadEvidence } from "../transformation-thread-evidence";
 import { queueCoordinationContext } from "../cross-product";
 import { convertTodoIdeasToMissions } from "../todo-idea-conversion";
-import { localMidnight } from "../todo-idea-parsing";
+import { localEndOfDay } from "../todo-idea-parsing";
 import { sleepDurationMinutes } from "../health-fitness";
 import { missionExperience } from "@shared/progression";
 import { LYFEOS_DATA_RIGHTS } from "@shared/data-rights";
@@ -1206,6 +1206,27 @@ Generate the complete affirmation now:`;
       return res.status(500).json({ error: "Failed to fetch daily logs" });
     }
   });
+
+  // Reconcile closed-day To-Do Ideas when the user opens a new daily dashboard.
+  // This is idempotent and preserves the historical archive behavior even if
+  // the member leaves the preceding dashboard without another edit.
+  app.post("/api/users/:userId/daily-logs/reconcile-todo-ideas", isOwner, async (req: Request, res: Response) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) return res.status(400).json({ error: "Invalid user ID" });
+      const parsed = z.object({ currentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) }).safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "A valid current date is required." });
+      const result = await convertTodoIdeasToMissions({
+        userId,
+        includeLog: (logDate) => logDate < parsed.data.currentDate,
+        archivedAtForLog: localEndOfDay,
+      });
+      return res.status(200).json(result);
+    } catch (error) {
+      logger.error("Error reconciling closed-day todoIdeas:", error);
+      return res.status(500).json({ error: "Could not reconcile closed-day To-Do Ideas." });
+    }
+  });
   
   // Create a new daily log entry
   app.post("/api/users/:userId/daily-logs", isOwner, async (req: Request, res: Response) => {
@@ -1311,8 +1332,8 @@ Generate the complete affirmation now:`;
         });
       }
       
-      // Convert the immediately preceding day's captured ideas; mission-list
-      // loading provides recovery for any older unconverted day.
+      // Archive the immediately preceding day's captured ideas; mission-list
+      // loading provides recovery for any older unreconciled day.
       try {
         const [year, month, day] = date.split('-').map(Number);
         const previousDay = new Date(year, month - 1, day - 1);
@@ -1320,13 +1341,13 @@ Generate the complete affirmation now:`;
         const result = await convertTodoIdeasToMissions({
           userId,
           includeLog: (logDate) => logDate === previousDateStr,
-          createdAtForLog: () => localMidnight(date),
+          archivedAtForLog: localEndOfDay,
         });
         if (result.logsProcessed > 0) {
-          logger.debug(`Created ${result.created} missions from the previous day's todo ideas for user ${userId} (${result.duplicatesSkipped} duplicates skipped)`);
+          logger.debug(`Archived ${result.created} previous-day todo ideas for user ${userId} (${result.duplicatesSkipped} duplicates skipped)`);
         }
       } catch (todoError) {
-        logger.error("Error converting todoIdeas to quests:", todoError);
+        logger.error("Error archiving todoIdeas:", todoError);
       }
       
       return res.status(200).json({ log: savedLog, message: "Daily log saved successfully" });

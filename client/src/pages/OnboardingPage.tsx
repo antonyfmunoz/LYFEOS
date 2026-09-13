@@ -24,6 +24,7 @@ const MISSIONS = [
   { id: 5, title: "Baselines & States", questions: 14, xp: 70, description: "Establish your baseline health, habits, and mental states" },
   { id: 6, title: "History & Roots", questions: 5, xp: 50, description: "Explore your roots, upbringing, and formative experiences" },
   { id: 7, title: "Systems & Rituals", questions: 10, xp: 65, description: "Design your ideal rituals, routines, and personal systems" },
+  { id: 8, title: "Systems & Integrations", questions: 1, xp: 25, description: "Choose how and when LyfeOS connects to the tools you already use" },
 ];
 
 type Archetype = "warrior" | "architect" | "creator" | "monarch" | "oracle" | "alchemist";
@@ -645,7 +646,7 @@ export default function OnboardingPage() {
     if (resumeData) {
       try {
         const { mission, step, missionComplete } = JSON.parse(resumeData);
-        if (typeof mission === "number" && mission >= 0 && mission <= 7) {
+        if (typeof mission === "number" && mission >= 0 && mission < MISSIONS.length) {
           restoredOnboardingPositionRef.current = true;
           setCurrentMission(mission);
           setCurrentStep(step || 0);
@@ -663,7 +664,7 @@ export default function OnboardingPage() {
     const missionParam = params.get("mission");
     if (missionParam !== null) {
       const missionNum = parseInt(missionParam, 10);
-      if (!isNaN(missionNum) && missionNum >= 0 && missionNum <= 7) {
+      if (!isNaN(missionNum) && missionNum >= 0 && missionNum < MISSIONS.length) {
         setCurrentMission(missionNum);
         setCurrentStep(0);
         missionStartTimeRef.current = new Date();
@@ -1150,6 +1151,7 @@ export default function OnboardingPage() {
       case 5: return 15;
       case 6: return 6;
       case 7: return 11;
+      case 8: return 2;
       default: return 1;
     }
   }
@@ -1266,6 +1268,7 @@ export default function OnboardingPage() {
         case 10: return creativeOutlets.length > 0;
       }
     }
+    if (currentMission === 8) return true;
     return true;
   };
   
@@ -1380,7 +1383,9 @@ export default function OnboardingPage() {
       } catch (err) {
         console.error("Error saving profile:", err);
       }
-      navigate("/missions");
+      // Onboarding establishes context; it should hand the member into the
+      // day, not into a separate work-management screen.
+      navigate("/dashboard");
     }
   };
 
@@ -1445,7 +1450,7 @@ export default function OnboardingPage() {
       navigate("/ceremony");
     } else if (isFinalMission) {
       localStorage.setItem("lyfeos-ceremony-mode", "update");
-      localStorage.setItem("lyfeos-ceremony-destination", "/missions");
+      localStorage.setItem("lyfeos-ceremony-destination", "/dashboard");
 
       setShowMissionComplete(false);
       setIsLoading(true);
@@ -1468,7 +1473,7 @@ export default function OnboardingPage() {
         method: "PATCH",
         body: JSON.stringify({ onboardingCompleted: true }),
       }).catch(err => console.error("Error saving:", err));
-      navigate("/missions");
+      navigate("/dashboard");
     }
   };
   
@@ -1578,6 +1583,11 @@ export default function OnboardingPage() {
           signatureExpression,
           creativeOutlets,
         };
+      case 8:
+        // Connection choices remain in Profile where every permission and
+        // provider scope can be inspected or changed. Completing onboarding
+        // never creates a connection or grants access.
+        return {};
       default:
         return {};
     }
@@ -2094,6 +2104,18 @@ export default function OnboardingPage() {
       default: return null;
     }
   };
+
+  const renderMission8 = () => {
+    if (currentStep === 0) return renderMissionStartPage();
+    return (
+      <div className="space-y-5 text-center">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-primary/30 bg-primary/10 text-primary">↔</div>
+        <div><h3 className="text-lg font-medium">Your system stays yours</h3><p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">LyfeOS can be useful with no connected services. When you are ready, Profile lets you review each optional connection, its exact permissions, and its data controls before anything is enabled.</p></div>
+        <div className="rounded-xl border border-primary/15 bg-background/30 p-4 text-left text-sm text-muted-foreground"><p className="font-medium text-foreground">Not now is a complete choice.</p><p className="mt-1">Initialize your system without connecting anything. You can revisit integrations later without repeating onboarding.</p></div>
+        <p className="text-xs text-muted-foreground">No wearable, health-provider, or marketplace connection is created here.</p>
+      </div>
+    );
+  };
   
   const renderMissionContent = () => {
     switch (currentMission) {
@@ -2105,6 +2127,7 @@ export default function OnboardingPage() {
       case 5: return renderMission5();
       case 6: return renderMission6();
       case 7: return renderMission7();
+      case 8: return renderMission8();
       default: return null;
     }
   };

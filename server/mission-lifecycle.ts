@@ -581,7 +581,23 @@ export async function applyReviewedMissionProgression(input: { questId: number; 
       });
     }
     const progression = await refreshProgressionState(quest.userId, `mission:${quest.id}:evidence-reviewed`);
-    return { skillExperienceAwarded, applied: true, progression };
+    let continuation: { created: boolean; questId?: number; reason: string } | null = null;
+    if (quest.transformationThreadId) {
+      try {
+        const { prepareThreadContinuationAfterReview } = await import("./transformation-thread-continuation");
+        continuation = await prepareThreadContinuationAfterReview({ userId: quest.userId, reviewedQuestId: quest.id });
+      } catch (continuationError) {
+        // A positive review and its recorded evidence stay authoritative even
+        // if a follow-on planning aid is temporarily unavailable. The Thread
+        // read safely retries through the same stable lifecycle key.
+        logger.error("Could not prepare the next Thread mission after review", {
+          questId: quest.id,
+          userId: quest.userId,
+          error: continuationError instanceof Error ? continuationError.message : "unknown",
+        });
+      }
+    }
+    return { skillExperienceAwarded, applied: true, progression, continuation };
   } catch (error) {
     await db.update(missionContracts)
       .set({ progressionAppliedAt: null, progressionRevision: sql`GREATEST(0, ${missionContracts.progressionRevision} - 1)`, updatedAt: new Date() })

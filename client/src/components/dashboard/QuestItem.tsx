@@ -97,6 +97,7 @@ const ONBOARDING_DESCRIPTIONS: Record<string, string> = {
   "Baselines & States": "Establish your baseline stats and current life state for accurate tracking.",
   "History & Roots": "Record your background and personal history to inform your growth trajectory.",
   "Systems & Rituals": "Set up your daily rituals and recurring systems for consistent progress.",
+  "Systems & Integrations": "Review optional connections when you are ready; no access is granted during onboarding.",
 };
 
 export default function QuestItem({ quest, index, section, onToggle, onDelete, onEdit, onStart, onResume, onDone, onUndo, onRestart, onMoveQuest, elapsedSeconds, breakSeconds, isTimerActive, timerBlocked }: QuestItemProps) {
@@ -108,6 +109,7 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
   const { runWithApproval } = useIntegrationActionApproval();
   const { refetchQuests } = useLYFEOS();
   const { title, description, completed, energyCost, attentionCost, timeCost, experienceReward, startDate, startTime, endDate, endTime, notificationEnabled, difficulty, category, visionGoalId } = quest;
+  const isHistoricalIdea = quest.planningDecisionSource === "todo" && category === "todo";
   const rawLinkedItems = (quest.linkedItems as { type: "document" | "folder"; id: number; title: string }[]) || [];
 
   const { data: allVisionGoals = [] } = useQuery<{ id: number; category: string; title: string }[]>({
@@ -215,6 +217,7 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
 
   const hasSchedule = startDate || startTime || endDate || endTime;
   const hasBeenStarted = elapsedSeconds !== undefined || isTimerActive;
+  const isUndatedArchiveMission = section === "inbox" && !startDate;
   const googleCalendarLink = quest.externalLinks?.find((link) => link.provider === "google_calendar") || null;
   const canSyncToGoogleCalendar = category !== "onboarding" && Boolean(startDate);
   const syncToGoogleCalendar = async () => {
@@ -260,7 +263,7 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
         )}
         <div className="ml-2 flex-grow">
           <div className="flex justify-between items-start">
-            <h3 className={`font-medium ${completed ? "text-muted-foreground line-through" : ""}`}>
+            <h3 className={`font-medium ${completed && !isHistoricalIdea ? "text-muted-foreground line-through" : ""}`}>
               {title.replace(/^Onboarding:\s*/, '')}
               {quest.isRitualized && (
                 <Repeat className="inline-block ml-1.5 h-3 w-3 text-primary opacity-70" />
@@ -270,6 +273,11 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
               )}
             </h3>
             <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+              {isHistoricalIdea && (
+                <span className="text-[10px] font-mono h-6 px-1.5 inline-flex items-center justify-center rounded border border-muted-foreground/30 text-muted-foreground">
+                  Saved idea
+                </span>
+              )}
               <button
                 type="button"
                 aria-label={`${showDescription ? "Hide" : "Show"} details for ${title.replace(/^Onboarding:\s*/, '')}`}
@@ -309,7 +317,7 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
               )}
             </div>
           </div>
-          {category !== "event" && (
+          {!isHistoricalIdea && category !== "event" && (
             <div className={`flex items-center gap-3 mt-1 flex-wrap ${completed ? "opacity-50" : ""}`}>
               <span className="text-primary text-xs font-mono whitespace-nowrap">-{formatStatCost(attentionCost)} AT</span>
               <span className="text-primary text-xs font-mono whitespace-nowrap">-{formatStatCost(timeCost)} TT</span>
@@ -362,6 +370,9 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
               )}
             </div>
           )}
+          {isHistoricalIdea && (
+            <p className="mt-1 text-xs text-muted-foreground">Archived automatically from the day’s To-Do Ideas. It is an unscheduled someday-Mission, not completed work.</p>
+          )}
           {showDescription && (
             <div className={`text-sm mt-2 p-2 rounded-lg bg-primary/5 border border-primary/10 space-y-1.5 ${completed ? "opacity-50" : ""}`}>
               {(() => {
@@ -371,7 +382,7 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
                 const displayDesc = onboardingDesc || description;
                 return displayDesc ? (
                   <p className="text-muted-foreground text-xs">
-                    <span className="text-primary font-mono">Mission Description:</span> {displayDesc}
+                    <span className="text-primary font-mono">{isHistoricalIdea ? "Capture source:" : "Mission Description:"}</span> {displayDesc}
                   </p>
                 ) : null;
               })()}
@@ -380,7 +391,7 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
                   <span className="text-primary font-mono">Mission Objective — {categoryLabels[linkedObjective.category] || linkedObjective.category} Vision:</span> {linkedObjective.title}
                 </p>
               )}
-              {category && category !== "general" && category !== "onboarding" && (
+              {!isHistoricalIdea && category && category !== "general" && category !== "onboarding" && (
                 <p className="text-muted-foreground text-xs">
                   <span className="text-primary font-mono">Mission Type — <span className="capitalize">{userCategories.find(uc => uc.value === category)?.label || category.replace(/_/g, ' ')}</span>:</span> {
                     ({
@@ -404,15 +415,17 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
                   }
                 </p>
               )}
-              <p className="text-muted-foreground text-xs">
-                <span className="text-primary font-mono">Mission Difficulty — Rank {difficulty || 'D'}:</span> {
-                  (difficulty || 'D') === 'S' ? 'Extreme effort. Multi-day or life-changing.' :
-                  (difficulty || 'D') === 'A' ? 'High effort. Significant commitment.' :
-                  (difficulty || 'D') === 'B' ? 'Moderate effort. Requires focus and planning.' :
-                  (difficulty || 'D') === 'C' ? 'Light effort. Simple but requires attention.' :
-                  'Minimal effort. Quick and easy.'
-                }
-              </p>
+              {!isHistoricalIdea && (
+                <p className="text-muted-foreground text-xs">
+                  <span className="text-primary font-mono">Mission Difficulty — Rank {difficulty || 'D'}:</span> {
+                    (difficulty || 'D') === 'S' ? 'Extreme effort. Multi-day or life-changing.' :
+                    (difficulty || 'D') === 'A' ? 'High effort. Significant commitment.' :
+                    (difficulty || 'D') === 'B' ? 'Moderate effort. Requires focus and planning.' :
+                    (difficulty || 'D') === 'C' ? 'Light effort. Simple but requires attention.' :
+                    'Minimal effort. Quick and easy.'
+                  }
+                </p>
+              )}
               {(() => {
                 const rg = quest.ritualGroup as string | null | undefined;
                 if (!rg) return null;
@@ -449,7 +462,7 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
               )}
             </div>
           )}
-          {!completed && (
+          {!completed && !isHistoricalIdea && !isUndatedArchiveMission && (
             <div className="flex items-center gap-2 mt-2">
               {canSyncToGoogleCalendar && (
                 <button

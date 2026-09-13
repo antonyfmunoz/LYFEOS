@@ -68,6 +68,7 @@ const ONBOARDING_MISSIONS = [
   { id: 5, title: "Baselines & States", xp: 70, difficulty: "D", duration: 7, energyCost: 7, attentionCost: 7, timeCost: 7, description: "Establish your baseline stats and current life state for accurate tracking." },
   { id: 6, title: "History & Roots", xp: 50, difficulty: "D", duration: 5, energyCost: 5, attentionCost: 5, timeCost: 5, description: "Record your background and personal history to inform your growth trajectory." },
   { id: 7, title: "Systems & Rituals", xp: 65, difficulty: "D", duration: 7, energyCost: 7, attentionCost: 7, timeCost: 7, description: "Set up your daily rituals and recurring systems for consistent progress." },
+  { id: 8, title: "Systems & Integrations", xp: 25, difficulty: "D", duration: 3, energyCost: 2, attentionCost: 2, timeCost: 3, description: "Review optional system connections without granting access during onboarding." },
 ];
 
 interface UserCategoryOption {
@@ -1049,13 +1050,13 @@ export default function QuestsPage() {
     {
       target: "[data-tour='today-missions']",
       title: "Today's",
-      description: "Your active missions for today appear here. Check them off as you complete them to earn XP. You can also start a focus timer on any mission.",
+      description: "Only active missions dated today appear here. Check them off as you complete them to earn XP.",
       position: "bottom",
     },
     {
       target: "[data-tour='upcoming-missions']",
       title: "Future",
-      description: "Missions scheduled for future dates show up here. They'll automatically move to Today when the day arrives.",
+      description: "Only the next three calendar days appear here. Longer-range and undated missions stay in Archive until they are closer.",
       position: "top",
     },
     {
@@ -1067,7 +1068,7 @@ export default function QuestsPage() {
     {
       target: "[data-tour='inbox-missions']",
       title: "Archived",
-      description: "Missions created from your to-do ideas. Review and prioritize them, or drag them to Today or Future when you're ready to commit.",
+      description: "Saved To-Do Ideas and other unscheduled Missions are kept here until you deliberately give them a date.",
       position: "top",
     },
     {
@@ -1203,6 +1204,9 @@ export default function QuestsPage() {
   
   const { todayMissions, upcomingMissions, completedMissions, inboxMissions } = useMemo(() => {
     const active = quests.filter(q => !q.completed);
+    const futureWindowEnd = new Date(`${today}T00:00:00`);
+    futureWindowEnd.setDate(futureWindowEnd.getDate() + 3);
+    const futureWindowEndDate = formatDateStr(futureWindowEnd);
     
     const completed = quests.filter(q => {
       if (!q.completed || !q.completedAt) return false;
@@ -1211,20 +1215,24 @@ export default function QuestsPage() {
       return completedLocalDate === today;
     });
     
-    const inboxItems = active.filter(q => q.category === 'todo');
+    const inboxItems = active.filter(q => q.category !== 'onboarding' && (
+      q.category === 'todo' ||
+      !q.startDate ||
+      q.startDate < today ||
+      q.startDate > futureWindowEndDate
+    ));
 
     const todayItems = active.filter(q => {
       if (q.category === 'todo') return false;
       if (q.category === 'onboarding') return false;
-      if (!q.startDate) return true;
-      return q.startDate <= today;
+      return q.startDate === today;
     });
     
     const upcomingItems = active.filter(q => {
       if (q.category === 'todo') return false;
       if (q.category === 'onboarding') return false;
       if (!q.startDate) return false;
-      return q.startDate > today;
+      return q.startDate > today && q.startDate <= futureWindowEndDate;
     });
     
     const sortByOrder = (a: Quest, b: Quest) => ((a as any).sortOrder ?? 0) - ((b as any).sortOrder ?? 0);
@@ -1530,9 +1538,9 @@ export default function QuestsPage() {
       setEditFormData(defaultFormData);
       setEditingQuest(null);
       setIsEditOpen(false);
-      toast({ title: "Mission archived", description: "It can be restored from Archived Missions for 24 hours." });
+      toast({ title: "Mission terminated", description: "It can be restored from Terminated for 24 hours." });
     } catch {
-      toast({ title: "Mission archive failed", description: "The mission was not changed.", variant: "destructive" });
+      toast({ title: "Mission termination failed", description: "The mission was not changed.", variant: "destructive" });
     }
   };
 
@@ -5277,8 +5285,8 @@ export default function QuestsPage() {
                     </button>
                   }
                   title="Archived"
-                  description="Missions created from your to-do ideas. Edit to schedule or complete them directly."
-                  additionalInfo="These missions were automatically generated from ideas you captured. Review and prioritize them as needed."
+                  description="Saved To-Do Ideas, undated Missions, overdue Missions, and Missions more than three days away live here, separate from the active short-term schedule and from the 24-hour Terminated bin."
+                  additionalInfo="A saved idea earns no XP. Move any archived Mission to Today or Future when you deliberately want it in the active short-term schedule."
                   hideMoreDetails
                 />
               </div>
@@ -5420,7 +5428,7 @@ export default function QuestsPage() {
                 })}
                 {filteredInboxMissions.length === 0 && (
                   <div className="glassmorphic rounded-xl p-6 text-center neon-border">
-                    <p className="text-muted-foreground">No archived missions. Drag a mission here to archive it.</p>
+                    <p className="text-muted-foreground">No archived records yet. Closed-day To-Do Ideas, undated Missions, and longer-range Missions will appear here.</p>
                   </div>
                 )}
               </div>

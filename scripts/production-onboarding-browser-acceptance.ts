@@ -52,7 +52,7 @@ const VIEWPORTS: ViewportCase[] = [
   { name: "desktop", width: 1440, height: 900, deviceScaleFactor: 1 },
   { name: "mobile", width: 390, height: 844, deviceScaleFactor: 2 },
 ];
-const TOTAL_ONBOARDING_STEPS = [6, 55, 22, 9, 13, 15, 6, 11].reduce((sum, value) => sum + value, 0);
+const TOTAL_ONBOARDING_STEPS = [6, 55, 22, 9, 13, 15, 6, 11, 2].reduce((sum, value) => sum + value, 0);
 
 const journeys: JourneyEvidence[] = [];
 let fatalError: string | null = null;
@@ -338,8 +338,8 @@ async function advanceRenderedOnboardingStep(page: Page, mission: number, step: 
 
 async function advanceFullOnboarding(page: Page, username: string, evidence: JourneyEvidence): Promise<void> {
   let advancedSteps = 0;
-  for (let mission = 0; mission < 8; mission++) {
-    const expectedSteps = [6, 55, 22, 9, 13, 15, 6, 11][mission];
+  for (let mission = 0; mission < 9; mission++) {
+    const expectedSteps = [6, 55, 22, 9, 13, 15, 6, 11, 2][mission];
     for (let step = 0; step < expectedSteps; step++) {
       const state = await currentOnboardingStep(page);
       assert(state.mission === mission && state.step === step, `Expected onboarding Mission ${mission} step ${step}, found ${state.mission}/${state.step}.`);
@@ -367,7 +367,7 @@ async function advanceFullOnboarding(page: Page, username: string, evidence: Jou
         await page.waitForFunction(() => document.body.innerText.includes("Mission Complete!"), { timeout: 30_000 });
         await waitForMissionReceipt(page, mission);
         evidence.completedMissionIds.push(mission);
-        if (mission < 7) {
+        if (mission < 8) {
           await page.click('[data-testid="onboarding-continue"]');
           await waitForOnboardingStep(page, mission + 1, 0);
         }
@@ -598,7 +598,7 @@ async function writeReport(): Promise<void> {
       && journey.verificationScreenAbsent
       && journey.registrationDisclosureVersionExact
       && journey.progressSurvivedReload
-      && journey.completedMissionIds.join(",") === "0,1,2,3,4,5,6,7"
+      && journey.completedMissionIds.join(",") === "0,1,2,3,4,5,6,7,8"
       && journey.onboardingCompleted
       && journey.activeThread
       && journey.sessionEstablished

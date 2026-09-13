@@ -10,11 +10,12 @@ import { allocateSkillExperience, buildSkillGraph } from "../skill-graph";
 import { missionExperience } from "@shared/progression";
 import { createMissionLifecycleResult, deferMissionLifecycle, MissionLifecycleError, setMissionCompletionLifecycle, toggleMissionLifecycle, updateMissionLifecycle } from "../mission-lifecycle";
 import { convertTodoIdeasToMissions } from "../todo-idea-conversion";
-import { localMidnight } from "../todo-idea-parsing";
+import { localEndOfDay } from "../todo-idea-parsing";
 import { refreshProgressionState } from "../progression";
 import { calendarDateDistance, isCalendarDate } from "@shared/calendar";
 import { parseExpectedResourceRevision } from "../revision-concurrency";
 import { missionMutationId, missionMutationPayloadHash } from "../mission-mutation-integrity";
+import { reconcileLegacyThreadStarterSchedule } from "./transformation-threads";
 
 declare module "express-session" {
   interface SessionData {
@@ -229,14 +230,10 @@ export function registerQuestRoutes(app: Express): void {
           await convertTodoIdeasToMissions({
             userId,
             includeLog: (date) => date < todayStr,
-            createdAtForLog: (date) => {
-              const createdAt = localMidnight(date);
-              createdAt.setDate(createdAt.getDate() + 1);
-              return createdAt;
-            },
+            archivedAtForLog: localEndOfDay,
           });
         } catch (todoError) {
-          logger.error("Error auto-converting todoIdeas before Calendar read", { userId, error: todoError instanceof Error ? todoError.message : "unknown" });
+          logger.error("Error auto-archiving todoIdeas before Calendar read", { userId, error: todoError instanceof Error ? todoError.message : "unknown" });
         }
       }
       const conditions = [
@@ -328,7 +325,8 @@ export function registerQuestRoutes(app: Express): void {
         logger.error("Error purging expired archived quests:", purgeError);
       }
       
-      // Recover any idea capture not converted on the day after it was recorded.
+      // Recover any closed-day idea capture that has not yet reached the
+      // durable historical Mission Archive.
       try {
         const clientTz = req.query.tz as string || 'UTC';
         const nowInTz = new Date(new Date().toLocaleString('en-US', { timeZone: clientTz }));
@@ -336,17 +334,23 @@ export function registerQuestRoutes(app: Express): void {
         const result = await convertTodoIdeasToMissions({
           userId,
           includeLog: (date) => date < todayStr,
-          createdAtForLog: (date) => {
-            const createdAt = localMidnight(date);
-            createdAt.setDate(createdAt.getDate() + 1);
-            return createdAt;
-          },
+          archivedAtForLog: localEndOfDay,
         });
         if (result.logsProcessed > 0) {
-          logger.debug(`Auto-converted ${result.created} todoIdeas across ${result.logsProcessed} daily logs for user ${userId} (${result.duplicatesSkipped} duplicates skipped)`);
+          logger.debug(`Auto-archived ${result.created} todoIdeas across ${result.logsProcessed} daily logs for user ${userId} (${result.duplicatesSkipped} duplicates skipped)`);
         }
       } catch (todoError) {
-        logger.error("Error auto-converting todoIdeas:", todoError);
+        logger.error("Error auto-archiving todoIdeas:", todoError);
+      }
+
+      // A narrowly-scoped recovery for a recent Thread starter sequence made
+      // before generated missions received calendar dates. It will never move
+      // a mission that a member has already scheduled, completed or removed.
+      try {
+        const repaired = await reconcileLegacyThreadStarterSchedule(userId);
+        if (repaired > 0) logger.info(`Restored calendar dates for ${repaired} untouched Thread starter missions for user ${userId}`);
+      } catch (threadRepairError) {
+        logger.error("Error restoring legacy Thread starter schedule:", threadRepairError);
       }
       
       const quests = await storage.getQuests(userId);
@@ -365,6 +369,7 @@ export function registerQuestRoutes(app: Express): void {
     "Onboarding: Baselines & States": 5,
     "Onboarding: History & Roots": 6,
     "Onboarding: Systems & Rituals": 7,
+    "Onboarding: Systems & Integrations": 8,
   };
 
   async function syncOnboardingProfile(userId: number, questTitle: string) {
@@ -636,7 +641,10 @@ export function registerQuestRoutes(app: Express): void {
       }
       
       await storage.deleteQuest(questId);
-      await refreshProgressionState(quest.userId, "mission_archived");
+      // The termination itself is durable now. Reconcile aggregate progression
+      // after responding so moving a Mission to Terminated is immediate.
+      void refreshProgressionState(quest.userId, "mission_terminated")
+        .catch((error) => logger.error("Could not refresh progression after mission termination", error));
       return res.status(200).json({ success: true });
     } catch (error) {
       logger.error("Error deleting quest:", error);
@@ -663,15 +671,21 @@ export function registerQuestRoutes(app: Express): void {
       if (isNaN(questId)) {
         return res.status(400).json({ error: "Invalid quest ID" });
       }
-      const quest = await storage.getQuest(questId);
+      // `storage.getQuest` deliberately excludes terminated rows. Restore must
+      // instead confirm ownership of a currently terminated Mission.
+      const [quest] = await db.select().from(questsTable).where(and(
+        eq(questsTable.id, questId),
+        eq(questsTable.userId, req.session.userId!),
+        isNotNull(questsTable.deletedAt),
+      )).limit(1);
       if (!quest) {
         return res.status(404).json({ error: "Quest not found" });
       }
-      if (quest.userId !== req.session.userId) {
-        return res.status(403).json({ error: "Not authorized" });
-      }
       const restored = await storage.restoreQuest(questId);
-      await refreshProgressionState(quest.userId, "mission_restored");
+      // The restored Mission is already committed; keep the UI responsive
+      // while aggregate progression catches up in the background.
+      void refreshProgressionState(quest.userId, "mission_restored")
+        .catch((error) => logger.error("Could not refresh progression after mission restore", error));
       return res.status(200).json(publicMission(restored));
     } catch (error) {
       logger.error("Error restoring quest:", error);

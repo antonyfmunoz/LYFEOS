@@ -19,6 +19,7 @@ describe("isolated rendered successor-focus evidence custody", () => {
     expect(script).toContain('async function activateRenderedControl');
     expect(script).toContain('activateRenderedControl(page, \'[data-testid="prepare-thread-focus"]\')');
     expect(script).toContain('activateRenderedControl(page, \'[data-testid="activate-thread-plan"]\')');
+    expect(script).toContain('activateRenderedControl(page, \'button[aria-controls="transformation-thread-workspace"]\')');
     expect(script).toContain('async function dismissBlockingTutorial');
     expect(script).toContain('button[aria-label="Skip this tutorial"]');
     expect(script).toContain('Number(graphPrimary?.threadExperience) === 0');
