@@ -796,6 +796,32 @@ async function activateRenderedControl(page: Page, selector: string): Promise<vo
   }, selector);
 }
 
+async function showSyntheticMissionInList(page: Page, includeCompleted: boolean): Promise<void> {
+  assert(missionId !== null, "Cannot reveal a synthetic Mission without its identifier.");
+  const cardSelector = `[data-testid="mission-card-${missionId}"]`;
+  await page.goto(new URL("/missions", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
+  await page.waitForFunction(() => Array.from(document.querySelectorAll<HTMLButtonElement>('button[aria-pressed]'))
+    .some((button) => button.textContent?.trim() === "List"), { timeout: 30_000 });
+  await page.evaluate(() => {
+    const listButton = Array.from(document.querySelectorAll<HTMLButtonElement>('button[aria-pressed]'))
+      .find((button) => button.textContent?.trim() === "List");
+    if (!listButton) throw new Error("The rendered Mission List control was unavailable.");
+    listButton.click();
+  });
+  await page.waitForFunction(() => Array.from(document.querySelectorAll<HTMLButtonElement>('button[aria-pressed]'))
+    .some((button) => button.textContent?.trim() === "List" && button.getAttribute("aria-pressed") === "true"), { timeout: 30_000 });
+  if (includeCompleted) {
+    await page.waitForFunction(() => Array.from(document.querySelectorAll<HTMLButtonElement>("button"))
+      .some((button) => button.textContent?.trim() === "Show completed" || button.textContent?.trim() === "Hide completed"), { timeout: 30_000 });
+    await page.evaluate(() => {
+      const showCompleted = Array.from(document.querySelectorAll<HTMLButtonElement>("button"))
+        .find((button) => button.textContent?.trim() === "Show completed");
+      showCompleted?.click();
+    });
+  }
+  await page.waitForSelector(cardSelector, { visible: true, timeout: 30_000 });
+}
+
 async function waitForRenderedControlEnabled(page: Page, selector: string): Promise<void> {
   await page.waitForFunction((controlSelector) => {
     const control = document.querySelector<HTMLButtonElement>(controlSelector);
@@ -1334,8 +1360,7 @@ async function main(): Promise<void> {
     // measures Mission semantics instead of harness traffic volume.
     await waitForApiBudget(page, 45);
     await page.setViewport({ width: 1440, height: 900, deviceScaleFactor: 1 });
-    await page.goto(new URL("/missions", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
-    await page.waitForSelector(`[data-testid="mission-card-${missionId}"]`, { visible: true, timeout: 30_000 });
+    await showSyntheticMissionInList(page, false);
     await activateMissionControl(page, "start");
     await page.waitForSelector('[data-testid="mission-timer-stop"]', { visible: true, timeout: 30_000 });
     await activateRenderedControl(page, '[data-testid="mission-timer-stop"]');
@@ -1414,7 +1439,7 @@ async function main(): Promise<void> {
     // final rendered mutation so Undo is measuring reversal semantics rather
     // than the acceptance harness's own traffic volume.
     await waitForApiBudget(page, 80);
-    await page.goto(new URL("/missions", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
+    await showSyntheticMissionInList(page, true);
     const reopenedBody = await waitForMissionToggle(page, false, () => activateMissionControl(page, "undo"));
     assert(reopenedBody.quest?.completed === false, "Rendered Mission Undo control did not reopen the Mission.");
     progressionAfterReopen = await readProgression(page);
