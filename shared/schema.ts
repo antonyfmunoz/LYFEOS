@@ -816,9 +816,12 @@ export const missionEvidence = pgTable("mission_evidence", {
   sourceReference: text("source_reference"),
   summary: text("summary").notNull(),
   confidence: text("confidence").notNull().default("self_reported"), // self_reported | low | medium | high | provider_record
+  supersedesEvidenceId: integer("supersedes_evidence_id"),
+  correctionReason: text("correction_reason"),
   submittedAt: timestamp("submitted_at").notNull().defaultNow(),
 }, (table) => [
   index("mission_evidence_contract_submitted_idx").on(table.missionContractId, table.submittedAt),
+  index("mission_evidence_supersedes_idx").on(table.supersedesEvidenceId),
 ]);
 
 // Human review access is capability-scoped: the owner creates an expiring,

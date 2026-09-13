@@ -3624,6 +3624,14 @@ const migrations = [
         CHECK ("evidence_strength" IN ('unverified', 'source_supplied', 'curated', 'regulatory_identity'));
     `,
   },
+  {
+    id: "0161_mission_evidence_corrections",
+    sql: `
+      ALTER TABLE "mission_evidence" ADD COLUMN IF NOT EXISTS "supersedes_evidence_id" integer REFERENCES "mission_evidence"("id") ON DELETE SET NULL;
+      ALTER TABLE "mission_evidence" ADD COLUMN IF NOT EXISTS "correction_reason" text;
+      CREATE INDEX IF NOT EXISTS "mission_evidence_supersedes_idx" ON "mission_evidence" ("supersedes_evidence_id");
+    `,
+  },
 ];
 
 async function run(): Promise<void> {

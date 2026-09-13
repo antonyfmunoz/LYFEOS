@@ -37,6 +37,9 @@ type MissionContractBundle = {
     sourceReference: string | null;
     summary: string;
     confidence: "self_reported" | "low" | "medium" | "high" | "provider_record";
+    supersedesEvidenceId: number | null;
+    correctionReason: string | null;
+    supersededByCorrection: boolean;
     provenance: null | {
       domain: "health";
       provider: string;
@@ -174,6 +177,8 @@ export default function MissionDetailPage() {
   const [evidenceSourceReference, setEvidenceSourceReference] = useState("");
   const [evidenceConfidence, setEvidenceConfidence] = useState<"self_reported" | "low" | "medium" | "high">("self_reported");
   const [providerSourceRecordId, setProviderSourceRecordId] = useState("");
+  const [correctionTarget, setCorrectionTarget] = useState<number | null>(null);
+  const [correctionReason, setCorrectionReason] = useState("");
   const [reviewSummary, setReviewSummary] = useState("");
   const [evidenceChecks, setEvidenceChecks] = useState<Record<string, boolean>>({});
   const [prerequisiteQuestId, setPrerequisiteQuestId] = useState("");
@@ -363,6 +368,17 @@ export default function MissionDetailPage() {
         : { sourceType: evidenceSourceType, sourceReference: evidenceSourceReference || null, summary: evidenceSummary, confidence: evidenceConfidence }),
     }),
     onSuccess: () => { setEvidenceSummary(""); setEvidenceSourceReference(""); setProviderSourceRecordId(""); refreshContract(); toast({ title: "Evidence added", description: "Your proof is attached to this mission." }); },
+  });
+  const correctEvidence = useMutation({
+    mutationFn: () => apiRequest(`/api/quests/${questId}/evidence/${correctionTarget}/corrections`, {
+      method: "POST",
+      body: JSON.stringify({ sourceType: evidenceSourceType, sourceReference: evidenceSourceReference || null, summary: evidenceSummary, confidence: evidenceConfidence, correctionReason }),
+    }),
+    onSuccess: () => {
+      setCorrectionTarget(null); setCorrectionReason(""); setEvidenceSummary(""); setEvidenceSourceReference("");
+      refreshContract(); toast({ title: "Evidence correction recorded", description: "The original evidence remains in the mission history." });
+    },
+    onError: (error: Error) => toast({ title: "Evidence correction not recorded", description: error.message, variant: "destructive" }),
   });
   const reviewMission = useMutation({
     mutationFn: (decision: "meets_evidence" | "revisions_needed") => apiRequest(`/api/quests/${questId}/reviews`, {
@@ -834,7 +850,7 @@ export default function MissionDetailPage() {
                     <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">{contractQuery.data.unlockResult.disclosure}</p>
                   </div> : null}
                   <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                    {contractQuery.data.evidence.map((item) => <span key={item.id} className="rounded border border-primary/20 px-2 py-1">Evidence ({item.sourceType.replaceAll("_", " ")} · {item.confidence.replaceAll("_", " ")}): {item.summary}{item.sourceReference ? " · reference attached" : ""}{item.provenance ? ` · ${item.provenance.provider} ${item.provenance.recordType} · ${item.provenance.status.replaceAll("_", " ")}` : ""}</span>)}
+                    {contractQuery.data.evidence.map((item) => <div key={item.id} className="flex items-center gap-1 rounded border border-primary/20 px-2 py-1">Evidence ({item.sourceType.replaceAll("_", " ")} · {item.confidence.replaceAll("_", " ")}): {item.summary}{item.sourceReference ? " · reference attached" : ""}{item.supersedesEvidenceId ? ` · correction of evidence #${item.supersedesEvidenceId}` : ""}{item.supersededByCorrection ? " · corrected by a later record" : ""}{item.provenance ? ` · ${item.provenance.provider} ${item.provenance.recordType} · ${item.provenance.status.replaceAll("_", " ")}` : ""}{item.sourceType !== "provider" ? <Button size="sm" variant="ghost" className="h-6 px-1 text-[10px]" onClick={() => { setCorrectionTarget(item.id); setCorrectionReason(""); setEvidenceSourceType(item.sourceType as "self_report" | "artifact" | "observation"); setEvidenceSourceReference(item.sourceReference || ""); setEvidenceConfidence(item.confidence === "provider_record" ? "self_reported" : item.confidence); setEvidenceSummary(""); }}>Correct</Button> : null}</div>)}
                     {contractQuery.data.reviews.map((item) => <span key={item.id} className="rounded border border-primary/20 px-2 py-1">{item.reviewerType === "human" ? "Human review" : "Self-review"}: {item.decision.replaceAll("_", " ")}</span>)}
                   </div>
                   <div className={`grid gap-2 ${evidenceSourceType === "provider" ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
@@ -842,7 +858,7 @@ export default function MissionDetailPage() {
                       <option value="self_report">self report</option>
                       <option value="artifact">artifact</option>
                       <option value="observation">observation</option>
-                      <option value="provider">provider record</option>
+                      <option value="provider" disabled={correctionTarget !== null}>provider record</option>
                     </select>
                     {evidenceSourceType === "provider" ? <select aria-label="Imported provider record" value={providerSourceRecordId} onChange={(event) => setProviderSourceRecordId(event.target.value)} className="h-9 rounded-md border border-primary/20 bg-background/40 px-2 text-sm text-foreground">
                       <option value="">Choose an imported record…</option>
@@ -859,9 +875,9 @@ export default function MissionDetailPage() {
                   </div>
                   {evidenceSourceType === "provider" ? <p className="text-[11px] leading-relaxed text-muted-foreground">{providerRecordsQuery.data?.disclosure || "Loading current imported records…"}{providerRecordsQuery.data && !providerRecordsQuery.data.records.length ? <> No imported records are available. <Link href="/health" className="text-primary underline">Open Health connections</Link>.</> : null}</p> : <p className="text-[11px] text-muted-foreground">Source and confidence are review context you provide; LyfeOS does not infer proof quality from them.</p>}
                   <Textarea data-testid="mission-evidence-summary" aria-label="Mission evidence summary" value={evidenceSummary} onChange={(event) => setEvidenceSummary(event.target.value)} placeholder="Add a concise description of the proof you produced…" className="min-h-20" />
-                  <Button data-testid="mission-evidence-add" size="sm" variant="outline" disabled={evidenceSummary.trim().length < 3 || (evidenceSourceType === "provider" && !providerSourceRecordId) || addEvidence.isPending} onClick={() => addEvidence.mutate()}>
+                  {correctionTarget !== null ? <><Textarea aria-label="Evidence correction reason" value={correctionReason} onChange={(event) => setCorrectionReason(event.target.value)} placeholder="What needs correcting, and why?" className="min-h-16" /><div className="flex gap-2"><Button size="sm" variant="outline" disabled={evidenceSummary.trim().length < 3 || correctionReason.trim().length < 3 || correctEvidence.isPending} onClick={() => correctEvidence.mutate()}>{correctEvidence.isPending ? "Recording…" : "Record evidence correction"}</Button><Button size="sm" variant="ghost" onClick={() => { setCorrectionTarget(null); setCorrectionReason(""); }}>Cancel correction</Button></div></> : <Button data-testid="mission-evidence-add" size="sm" variant="outline" disabled={evidenceSummary.trim().length < 3 || (evidenceSourceType === "provider" && !providerSourceRecordId) || addEvidence.isPending} onClick={() => addEvidence.mutate()}>
                     {addEvidence.isPending ? "Adding…" : "Add evidence"}
-                  </Button>
+                  </Button>}
                   {contractQuery.data.contract.reviewMode === "human" ? <div className="border-t border-primary/10 pt-3 space-y-2">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div>
