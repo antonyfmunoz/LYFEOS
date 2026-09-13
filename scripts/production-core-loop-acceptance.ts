@@ -820,13 +820,23 @@ async function showSyntheticMissionInList(page: Page, includeCompleted: boolean)
   await page.waitForFunction(() => Array.from(document.querySelectorAll<HTMLButtonElement>('button[aria-pressed]'))
     .some((button) => button.textContent?.trim() === "List" && button.getAttribute("aria-pressed") === "true"), { timeout: 30_000 });
   if (includeCompleted) {
-    await page.waitForFunction(() => Array.from(document.querySelectorAll<HTMLButtonElement>("button"))
-      .some((button) => button.textContent?.trim() === "Show completed" || button.textContent?.trim() === "Hide completed"), { timeout: 30_000 });
     await page.evaluate(() => {
-      const showCompleted = Array.from(document.querySelectorAll<HTMLButtonElement>("button"))
-        .find((button) => button.textContent?.trim() === "Show completed");
-      showCompleted?.click();
+      const completedToggle = Array.from(document.querySelectorAll<HTMLButtonElement>("button"))
+        .find((button) => {
+          const label = button.textContent?.trim();
+          if (label !== "Show completed" && label !== "Hide completed") return false;
+          const style = getComputedStyle(button);
+          return style.display !== "none" && style.visibility !== "hidden" && button.getClientRects().length > 0;
+        });
+      if (!completedToggle) throw new Error("The visible Mission List completed toggle was unavailable.");
+      if (completedToggle.textContent?.trim() === "Show completed") completedToggle.click();
     });
+    await page.waitForFunction(() => Array.from(document.querySelectorAll<HTMLButtonElement>("button"))
+      .some((button) => {
+        if (button.textContent?.trim() !== "Hide completed") return false;
+        const style = getComputedStyle(button);
+        return style.display !== "none" && style.visibility !== "hidden" && button.getClientRects().length > 0;
+      }), { timeout: 30_000 });
   }
   await page.waitForSelector(cardSelector, { visible: true, timeout: 30_000 });
 }

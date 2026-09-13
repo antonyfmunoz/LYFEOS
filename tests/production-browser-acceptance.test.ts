@@ -239,7 +239,8 @@ describe("production browser acceptance custody", () => {
     expect(coreLoopScript).toContain("async function activateRenderedControl");
     expect(coreLoopScript).toContain("async function showSyntheticMissionInList");
     expect(coreLoopScript).toContain('button.textContent?.trim() === "List"');
-    expect(coreLoopScript).toContain('button.textContent?.trim() === "Show completed"');
+    expect(coreLoopScript).toContain("The visible Mission List completed toggle was unavailable.");
+    expect(coreLoopScript).toContain('button.getClientRects().length > 0');
     expect(coreLoopScript).toContain("async function browserApiRequest");
     expect(coreLoopScript).toContain("async function ensureAcceptanceThread");
     expect(coreLoopScript).toContain('browserApiRequest(page, "/api/transformation-thread/initialize", "POST", {})');
