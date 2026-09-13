@@ -3,7 +3,7 @@ import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { foodPackageConfirmations, foodReviewPreferences, ingredientPreferenceRules, ingredientScanItems, ingredientScans } from "@shared/schema";
 import { db } from "../db";
-import { classifyIngredientEvidence, normalizeIngredientKey, parseIngredientLabel } from "../ingredient-scanner";
+import { classifyIngredientEvidence, normalizeIngredientKey, parseIngredientLabel, summarizeIngredientLabelSignals } from "../ingredient-scanner";
 import { isAuthenticated } from "./middleware";
 import { parseExpectedResourceRevision } from "../revision-concurrency";
 import { verifyConfiguredFoodCatalogToken } from "../food-catalog";
@@ -44,13 +44,17 @@ function foodPackageProductKey(receipt: { provider: { id: string }; item: { exte
   return `${receipt.provider.id}:${receipt.item.externalId}:${receipt.item.barcode || "no_barcode"}`;
 }
 
+function scanWithLabelSignals<T extends { items: Array<{ classification: string }> }>(scan: T) {
+  return { ...scan, labelSignals: summarizeIngredientLabelSignals(scan.items) };
+}
+
 export function registerIngredientScannerRoutes(app: Express): void {
   app.get("/api/ingredient-scans", isAuthenticated, safeAsync(async (req: Request, res: Response) => {
     const userId = req.session.userId!;
     const [scans, preferences] = await Promise.all([
       db.select().from(ingredientScans)
       .where(eq(ingredientScans.userId, req.session.userId!))
-      .orderBy(desc(ingredientScans.createdAt)).limit(50),
+      .orderBy(desc(ingredientScans.favorite), desc(ingredientScans.createdAt)).limit(50),
       db.select().from(ingredientPreferenceRules).where(eq(ingredientPreferenceRules.userId, userId)),
     ]);
     const ids = scans.map((scan) => scan.id);
@@ -61,7 +65,7 @@ export function registerIngredientScannerRoutes(app: Express): void {
     for (const item of items) itemsByScan.set(item.scanId, [...(itemsByScan.get(item.scanId) || []), item]);
     const preferenceByKey = new Map(preferences.map((preference) => [preference.normalizedKey, preference]));
     return res.json({
-      scans: scans.map((scan) => ({ ...scan, items: (itemsByScan.get(scan.id) || []).map((item) => ({ ...item, preference: preferenceByKey.get(item.normalizedKey) || null })) })),
+      scans: scans.map((scan) => scanWithLabelSignals({ ...scan, items: (itemsByScan.get(scan.id) || []).map((item) => ({ ...item, preference: preferenceByKey.get(item.normalizedKey) || null })) })),
       disclosure: "Ingredient review preserves label text. LyfeOS does not make a universal harmfulness, safety, allergy, diagnosis, or treatment claim. Items remain unclassified until backed by an explicit evidence policy or your own preference rule.",
     });
   }));
@@ -175,6 +179,25 @@ export function registerIngredientScannerRoutes(app: Express): void {
     return preference ? res.status(204).send() : res.status(404).json({ error: "Ingredient preference not found." });
   }));
 
+  app.patch("/api/ingredient-scans/:id/favorite", isAuthenticated, safeAsync(async (req: Request, res: Response) => {
+    const id = Number(req.params.id);
+    const parsed = z.object({ favorite: z.boolean() }).safeParse(req.body);
+    const expectedRevision = parseExpectedResourceRevision(req.header("x-lyfeos-expected-revision"));
+    if (!Number.isInteger(id) || !parsed.success || !expectedRevision.ok) return res.status(expectedRevision.ok ? 400 : expectedRevision.reason === "missing" ? 428 : 400).json({ error: expectedRevision.ok ? "Enter a valid saved-label favorite." : "Reload this saved label before changing its favorite state." });
+    const userId = req.session.userId!;
+    const result = await db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT id FROM ingredient_scans WHERE id = ${id} AND user_id = ${userId} FOR UPDATE`);
+      const [current] = await tx.select().from(ingredientScans).where(and(eq(ingredientScans.id, id), eq(ingredientScans.userId, userId))).limit(1);
+      if (!current) return { status: 404 as const };
+      if (current.revision !== expectedRevision.revision) return { status: 409 as const, currentRevision: current.revision };
+      const [scan] = await tx.update(ingredientScans).set({ favorite: parsed.data.favorite, revision: current.revision + 1, updatedAt: new Date() }).where(and(eq(ingredientScans.id, id), eq(ingredientScans.userId, userId))).returning();
+      return { status: 200 as const, scan };
+    });
+    if (result.status === 404) return res.status(404).json({ error: "Ingredient scan not found." });
+    if (result.status === 409) return res.status(409).json({ error: "This saved label changed after you opened it. The favorite change was not applied.", currentRevision: result.currentRevision });
+    return res.json({ scan: result.scan, disclosure: "Favorite labels are private bookmarks. They do not change the package facts, source evidence, or any health conclusion." });
+  }));
+
   app.post("/api/ingredient-scans", isAuthenticated, safeAsync(async (req: Request, res: Response) => {
     const parsed = scanSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: "Enter a valid ingredient label.", details: parsed.error.flatten() });
@@ -205,7 +228,7 @@ export function registerIngredientScannerRoutes(app: Express): void {
       })).returning();
       return { ...created, items: createdItems };
     });
-    return res.status(201).json({ scan });
+    return res.status(201).json({ scan: scanWithLabelSignals(scan) });
   }));
 
   app.patch("/api/ingredient-scans/:id", isAuthenticated, safeAsync(async (req: Request, res: Response) => {
@@ -238,7 +261,7 @@ export function registerIngredientScannerRoutes(app: Express): void {
     });
     if (result.status === 404) return res.status(404).json({ error: "Ingredient scan not found." });
     if (result.status === 409) return res.status(409).json({ error: "This saved label changed after you opened it. Your correction was not applied.", currentRevision: result.currentRevision });
-    return res.json({ scan: result.scan });
+    return res.json({ scan: scanWithLabelSignals(result.scan) });
   }));
 
   // Evidence refresh intentionally never changes the original label or a

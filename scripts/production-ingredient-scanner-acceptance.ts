@@ -74,34 +74,38 @@ async function main(): Promise<void> {
     const barcode = `ACPT-${stamp.slice(0, 12)}`;
     const created = await request("POST", "/api/ingredient-scans", {
       captureMethod: "manual_label", productName: "Acceptance ingredient label", barcode,
-      rawIngredientsText: "Ingredients: water, Red No. 40, sucralose",
+      rawIngredientsText: "Ingredients: water, Red No. 40, canola oil, sucralose",
     }, account.cookie);
     const scanId = Number(created.body?.scan?.id);
     assert(created.status === 201 && Number.isInteger(scanId) && Array.isArray(created.body?.scan?.items), `Ingredient review returned ${created.status}.`);
-    assert(created.body.scan.items.some((item: any) => item.classification === "declared_color_additive") && created.body.scan.items.some((item: any) => item.classification === "declared_non_nutritive_sweetener"), "Ingredient review did not preserve conservative evidence-linked identities.");
+    assert(created.body.scan.items.some((item: any) => item.classification === "declared_color_additive") && created.body.scan.items.some((item: any) => item.classification === "declared_non_nutritive_sweetener") && created.body.scan.items.some((item: any) => item.classification === "declared_seed_oil"), "Ingredient review did not preserve conservative evidence-linked identities and declared label facts.");
+    assert(created.body.scan.labelSignals?.signalCounts?.declared_seed_oil === 1 && /cannot determine a food's processing level/.test(created.body.scan.labelSignals?.disclosure || ""), "Ingredient review did not disclose its transparent label-signal boundary.");
 
     const listed = await request("GET", "/api/ingredient-scans", undefined, account.cookie);
     const listedScan = listed.body?.scans?.find((scan: any) => Number(scan.id) === scanId);
     assert(listed.status === 200 && listedScan?.items?.some((item: any) => item.preference?.preferenceType === "avoid" && item.preference?.displayName === "Red No. 40"), "Private preference was not attached only to its matching ingredient label term.");
 
+    const favorited = await request("PATCH", `/api/ingredient-scans/${scanId}/favorite`, { favorite: true }, account.cookie, { "x-lyfeos-expected-revision": "1" });
+    assert(favorited.status === 200 && favorited.body?.scan?.favorite === true && favorited.body?.scan?.revision === 2, "Private scanner favorite did not update with revision protection.");
+
     const corrected = await request("PATCH", `/api/ingredient-scans/${scanId}`, {
       captureMethod: "manual_label", productName: "Acceptance ingredient label", barcode,
       rawIngredientsText: "Ingredients: water, Red No. 40, sea salt",
-    }, account.cookie, { "x-lyfeos-expected-revision": "1" });
-    assert(corrected.status === 200 && corrected.body?.scan?.revision === 2 && corrected.body?.scan?.items?.some((item: any) => item.rawName === "sea salt"), "Ingredient correction did not retain its expected revision and reviewed replacement label.");
+    }, account.cookie, { "x-lyfeos-expected-revision": "2" });
+    assert(corrected.status === 200 && corrected.body?.scan?.revision === 3 && corrected.body?.scan?.items?.some((item: any) => item.rawName === "sea salt"), "Ingredient correction did not retain its expected revision and reviewed replacement label.");
 
-    const refreshed = await request("POST", `/api/ingredient-scans/${scanId}/evidence-review`, undefined, account.cookie, { "x-lyfeos-expected-revision": "2" });
-    assert(refreshed.status === 200 && refreshed.body?.scan?.revision === 3 && refreshed.body?.refreshedItems === 3, "Evidence refresh did not advance only the reviewed scanner revision.");
+    const refreshed = await request("POST", `/api/ingredient-scans/${scanId}/evidence-review`, undefined, account.cookie, { "x-lyfeos-expected-revision": "3" });
+    assert(refreshed.status === 200 && refreshed.body?.scan?.revision === 4 && refreshed.body?.refreshedItems === 3, "Evidence refresh did not advance only the reviewed scanner revision.");
 
     const privateLookup = await request("GET", `/api/ingredient-scans/lookup?barcode=${encodeURIComponent(barcode)}`, undefined, account.cookie);
     assert(privateLookup.status === 200 && privateLookup.body?.source === "your_private_history" && Number(privateLookup.body?.scan?.id) === scanId, "Scanner barcode lookup did not stay scoped to private saved-label history.");
 
-    const deleted = await request("DELETE", `/api/ingredient-scans/${scanId}`, undefined, account.cookie, { "x-lyfeos-expected-revision": "3" });
+    const deleted = await request("DELETE", `/api/ingredient-scans/${scanId}`, undefined, account.cookie, { "x-lyfeos-expected-revision": "4" });
     const afterDelete = await request("GET", "/api/ingredient-scans", undefined, account.cookie);
     assert(deleted.status === 204 && afterDelete.status === 200 && !afterDelete.body?.scans?.some((scan: any) => Number(scan.id) === scanId), "Ingredient review deletion did not remove the owner-scoped scan.");
     const preferenceDeleted = await request("DELETE", `/api/ingredient-preferences/${preference.body.preference.id}`, undefined, account.cookie);
     assert(preferenceDeleted.status === 204, "Ingredient preference deletion failed.");
-    console.log(JSON.stringify({ contract: "lyfeos.production-ingredient-scanner.v1", passed: true, evidenceLinkedItems: created.body.scan.items.length, privatePreferenceMatched: true, correctionRevision: corrected.body.scan.revision, refreshedRevision: refreshed.body.scan.revision }));
+    console.log(JSON.stringify({ contract: "lyfeos.production-ingredient-scanner.v1", passed: true, evidenceLinkedItems: created.body.scan.items.length, declaredLabelSignals: created.body.scan.labelSignals.signalCounts, privateFavorite: true, privatePreferenceMatched: true, correctionRevision: corrected.body.scan.revision, refreshedRevision: refreshed.body.scan.revision }));
   } finally {
     erased = await eraseAccount(account);
     console.error(`disposable account erased=${erased}`);

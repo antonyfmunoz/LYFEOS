@@ -28,7 +28,7 @@ describe("private ingredient label correction and reuse", () => {
     expect(routes).toContain("const safeAsync");
     expect(routes).toContain("Promise.resolve(handler(req, res, next)).catch(next)");
     expect(routes).toContain('safeAsync(async (req: Request, res: Response) =>');
-    expect((routes.match(/safeAsync\(async/g) || []).length).toBe(14);
+    expect((routes.match(/safeAsync\(async/g) || []).length).toBe(15);
     expect(routes).toContain('app.patch("/api/ingredient-scans/:id"');
     expect(routes).toContain('req.header("x-lyfeos-expected-revision")');
     expect(routes).toContain("FOR UPDATE");
@@ -40,6 +40,18 @@ describe("private ingredient label correction and reuse", () => {
     expect(routes).toContain("It was not deleted");
     const client = source("client/src/components/health/IngredientScanner.tsx");
     expect(client).toContain('"x-lyfeos-expected-revision": String(scan.revision)');
+  });
+
+  it("keeps favorites private and makes the shopping handoff an explicit user action", () => {
+    const routes = source("server/routes/ingredient-scanner.ts");
+    const client = source("client/src/components/health/IngredientScanner.tsx");
+    expect(routes).toContain('app.patch("/api/ingredient-scans/:id/favorite"');
+    expect(routes).toContain("Favorite labels are private bookmarks");
+    expect(routes).toContain("current.revision !== expectedRevision.revision");
+    expect(client).toContain('"/api/grocery-intelligence/shopping"');
+    expect(client).toContain("Add ${scan.productName || \"unnamed product\"} to shopping list");
+    expect(client).toContain("Label signals");
+    expect(client).toContain("declared_seed_oil");
   });
 
   it("allows an owner to refresh derived evidence without changing the saved label", () => {

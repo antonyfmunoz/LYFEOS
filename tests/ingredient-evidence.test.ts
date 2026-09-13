@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { classifyIngredientEvidence, normalizeIngredientKey, parseIngredientLabel } from "../server/ingredient-scanner";
+import { classifyIngredientEvidence, normalizeIngredientKey, parseIngredientLabel, summarizeIngredientLabelSignals } from "../server/ingredient-scanner";
 
 describe("ingredient evidence catalog", () => {
   it("surfaces only explicitly named, evidence-linked ingredient identities", () => {
@@ -15,6 +15,15 @@ describe("ingredient evidence catalog", () => {
     expect(caffeine).toMatchObject({ classification: "declared_caffeine_source", evidenceStrength: "regulatory_identity" });
     expect(allergenTerm).toMatchObject({ classification: "declared_major_allergen_label_term", evidenceStrength: "regulatory_identity" });
     expect(color.evidenceUrl).toMatch(/^https:\/\/www\.fda\.gov\//);
+  });
+
+  it("reports declared seed oils as a transparent label fact, never a health or toxicity grade", () => {
+    const seedOil = classifyIngredientEvidence(normalizeIngredientKey("canola oil"));
+    expect(seedOil).toMatchObject({ classification: "declared_seed_oil", evidenceStrength: "source_supplied" });
+    expect(seedOil.reason).toContain("not as a health, toxicity, or dietary verdict");
+    const summary = summarizeIngredientLabelSignals([{ classification: seedOil.classification }, { classification: "unknown" }]);
+    expect(summary).toMatchObject({ status: "label_signals_present", signalCounts: { declared_seed_oil: 1 } });
+    expect(summary.disclosure).toContain("cannot determine a food's processing level, quality, safety, toxicity, health effect, or suitability");
   });
 
   it("does not convert ordinary or ambiguous label terms into a safety claim", () => {
@@ -40,5 +49,9 @@ describe("ingredient evidence catalog", () => {
       "regulatory_identity",
     ]) expect(migration).toContain(classification);
     expect(release).toContain('id: "0158_ingredient_evidence_classifications"');
+    const parityMigration = readFileSync(resolve(process.cwd(), "migrations/0160_ingredient_scanner_parity.sql"), "utf8");
+    expect(parityMigration).toContain('"favorite" boolean');
+    expect(parityMigration).toContain("declared_seed_oil");
+    expect(release).toContain('id: "0160_ingredient_scanner_parity"');
   });
 });

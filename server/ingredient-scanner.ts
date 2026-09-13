@@ -5,11 +5,11 @@ export type ParsedIngredient = {
 };
 
 export type IngredientEvidenceClassification = {
-  classification: "unknown" | "declared_major_allergen_label_term" | "declared_color_additive" | "declared_sulfiting_agent" | "declared_non_nutritive_sweetener" | "declared_caffeine_source" | "declared_partially_hydrogenated_oil";
+  classification: "unknown" | "declared_major_allergen_label_term" | "declared_color_additive" | "declared_sulfiting_agent" | "declared_non_nutritive_sweetener" | "declared_caffeine_source" | "declared_partially_hydrogenated_oil" | "declared_seed_oil";
   reason: string | null;
   evidenceTitle: string | null;
   evidenceUrl: string | null;
-  evidenceStrength: "unverified" | "regulatory_identity";
+  evidenceStrength: "unverified" | "regulatory_identity" | "source_supplied";
 };
 
 type IngredientEvidenceRule = IngredientEvidenceClassification & { matches: (normalizedKey: string) => boolean };
@@ -67,7 +67,33 @@ const ingredientEvidenceRules: IngredientEvidenceRule[] = [
     evidenceStrength: "regulatory_identity",
     matches: (key) => /\bpartially_hydrogenated(?:_[a-z]+)*_oil\b/.test(key),
   },
+  {
+    classification: "declared_seed_oil",
+    reason: "This exact label term names an oil commonly grouped as a seed oil. It is surfaced as a factual label category for your own review, not as a health, toxicity, or dietary verdict.",
+    evidenceTitle: null,
+    evidenceUrl: null,
+    evidenceStrength: "source_supplied",
+    matches: (key) => /^(?:canola|rapeseed|soybean|corn|sunflower|safflower|cottonseed|grapeseed|rice_bran)_oil$/.test(key),
+  },
 ];
+
+export type IngredientLabelSignalSummary = {
+  status: "label_signals_present" | "no_mapped_signals";
+  signalCounts: Record<string, number>;
+  disclosure: string;
+};
+
+export function summarizeIngredientLabelSignals(items: Array<{ classification: string }>): IngredientLabelSignalSummary {
+  const signalCounts = items.reduce<Record<string, number>>((counts, item) => {
+    if (item.classification !== "unknown") counts[item.classification] = (counts[item.classification] || 0) + 1;
+    return counts;
+  }, {});
+  return {
+    status: Object.keys(signalCounts).length ? "label_signals_present" : "no_mapped_signals",
+    signalCounts,
+    disclosure: "This summary reports only ingredient identities explicitly named on the label. It cannot determine a food's processing level, quality, safety, toxicity, health effect, or suitability for you.",
+  };
+}
 
 export function classifyIngredientEvidence(normalizedKey: string): IngredientEvidenceClassification {
   const matched = ingredientEvidenceRules.find((rule) => rule.matches(normalizedKey));

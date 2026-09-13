@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Building2, Camera, Database, Pencil, ScanLine, Plus, RefreshCw, Search, ShieldAlert, Trash2 } from "lucide-react";
+import { Building2, Camera, Database, Pencil, ScanLine, Plus, RefreshCw, Search, ShieldAlert, ShoppingCart, Star, Trash2 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,8 @@ import { inspectKosherPackageText, type KosherPackageCheck } from "@/lib/kosher-
 
 type IngredientPreference = { id: number; displayName: string; preferenceType: "avoid" | "limit" | "watch"; note: string | null };
 type ScanItem = { id: number; rawName: string; classification: string; reason: string | null; evidenceTitle: string | null; evidenceUrl: string | null; evidenceStrength: string; preference: IngredientPreference | null };
-type IngredientScan = { id: number; captureMethod: "manual_label" | "photo_ocr" | "barcode"; productName: string | null; barcode: string | null; rawIngredientsText: string; revision: number; createdAt: string; items: ScanItem[]; catalogProviderId: string | null; catalogDatasetVersion: string | null; catalogAttributionText: string | null; catalogAttributionUrl: string | null; catalogSourceModified: boolean };
+type IngredientLabelSignals = { status: "label_signals_present" | "no_mapped_signals"; signalCounts: Record<string, number>; disclosure: string };
+type IngredientScan = { id: number; captureMethod: "manual_label" | "photo_ocr" | "barcode"; productName: string | null; barcode: string | null; rawIngredientsText: string; revision: number; favorite: boolean; createdAt: string; items: ScanItem[]; labelSignals: IngredientLabelSignals; catalogProviderId: string | null; catalogDatasetVersion: string | null; catalogAttributionText: string | null; catalogAttributionUrl: string | null; catalogSourceModified: boolean };
 type CatalogStatus = { available: boolean; reason: string | null; providers?: Array<{ id: string; name: string }>; defaultProviderId?: string | null };
 type CatalogCertification = { kind: "kosher"; status: "catalog_label_reported"; label: string };
 type CatalogEvidence = { sourceKind: "community_catalog" | "government_branded_database" | "government_reference_database" | "provider_classification_unavailable"; measurementBasis: "catalog_or_label_reported" | "government_reference" | "provider_basis_unavailable"; recordUpdatedAt: string | null; reportedNutrientCount: number; reportedCoreNutrientKeys: string[] };
@@ -43,8 +44,13 @@ function ingredientClassificationLabel(classification: string): string {
     declared_non_nutritive_sweetener: "declared non-nutritive sweetener",
     declared_caffeine_source: "declared caffeine source",
     declared_partially_hydrogenated_oil: "declared partially hydrogenated oil",
+    declared_seed_oil: "declared seed oil",
   };
   return labels[classification] || "unclassified";
+}
+
+function labelSignalLabel(signal: string): string {
+  return ingredientClassificationLabel(signal).replace(/^declared /, "");
 }
 
 export default function IngredientScanner({ onCatalogFoodImported, onManualFoodRequested }: { onCatalogFoodImported?: (foodId: number) => void; onManualFoodRequested?: (name: string) => void }) {
@@ -164,6 +170,17 @@ export default function IngredientScanner({ onCatalogFoodImported, onManualFoodR
     mutationFn: (scan: IngredientScan) => apiRequest(`/api/ingredient-scans/${scan.id}/evidence-review`, { method: "POST", headers: { "x-lyfeos-expected-revision": String(scan.revision) } }),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["/api/ingredient-scans"] }),
   });
+  const toggleFavorite = useMutation({
+    mutationFn: (scan: IngredientScan) => apiRequest(`/api/ingredient-scans/${scan.id}/favorite`, { method: "PATCH", headers: { "x-lyfeos-expected-revision": String(scan.revision) }, body: JSON.stringify({ favorite: !scan.favorite }) }),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["/api/ingredient-scans"] }),
+  });
+  const addToShoppingList = useMutation({
+    mutationFn: (scan: IngredientScan) => {
+      if (!scan.productName?.trim()) throw new Error("Name this label before adding it to your shopping list.");
+      return apiRequest("/api/grocery-intelligence/shopping", { method: "POST", body: JSON.stringify({ name: scan.productName.trim(), quantity: 1, unit: "item", note: "Added from private ingredient review" }) });
+    },
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["/api/grocery-intelligence/overview"] }),
+  });
   const saveFoodReviewPreferences = useMutation({
     mutationFn: (kosherPackageConfirmation: boolean) => apiRequest<{ preferences: FoodReviewPreferences }>("/api/food-review-preferences", { method: "PUT", body: JSON.stringify({ kosherPackageConfirmation }) }),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["/api/food-review-preferences"] }),
@@ -255,7 +272,7 @@ export default function IngredientScanner({ onCatalogFoodImported, onManualFoodR
   return <section className="glassmorphic rounded-2xl p-6 mb-8 border border-primary/30" aria-labelledby="ingredient-review-heading">
     <div>
       <h2 id="ingredient-review-heading" className="font-orbitron text-lg text-primary flex items-center gap-2"><ScanLine className="h-5 w-5" />Ingredient review</h2>
-      <p className="text-sm text-muted-foreground mt-1">Paste a package label to keep an exact, private ingredient record. Each item is shown as unclassified until LyfeOS has an evidence policy or a preference rule to apply.</p>
+      <p className="text-sm text-muted-foreground mt-1">Paste a package label to keep an exact, private ingredient record. LyfeOS shows transparent label facts and your own rules—not a product grade, health score, or safety verdict.</p>
     </div>
     <div className="grid gap-2 mt-4 sm:grid-cols-2">
       <Input aria-label="Product name" placeholder="Product name (optional)" value={productName} onChange={(event) => { setProductName(event.target.value); setCatalogLookupToken(null); setCatalogImportCandidate(null); setCatalogBrand(null); setCatalogIdentity(null); setRecallResult(null); setOwnershipResult(null); }} />
@@ -302,8 +319,11 @@ export default function IngredientScanner({ onCatalogFoodImported, onManualFoodR
         <p className="mt-1 text-xs text-muted-foreground">Across your saved labels: {evidenceCoverage.evidenceLinked} evidence-linked identit{evidenceCoverage.evidenceLinked === 1 ? "y" : "ies"}, {evidenceCoverage.preferenceMatched} personal-rule match{evidenceCoverage.preferenceMatched === 1 ? "" : "es"}, and {evidenceCoverage.unclassified} unclassified item{evidenceCoverage.unclassified === 1 ? "" : "s"} out of {evidenceCoverage.total}. Unclassified means LyfeOS has not made a conclusion—not that an ingredient is safe or unsafe.</p>
       </div>
       {scans.data.scans.map((scan) => <article key={scan.id} className="rounded-lg border border-muted/30 bg-background/20 p-3">
-        <div className="flex items-start justify-between gap-3"><div><p className="text-sm font-medium">{scan.productName || "Unnamed product"}</p><p className="text-xs text-muted-foreground">{new Date(scan.createdAt).toLocaleDateString()}{scan.barcode ? ` · barcode ${scan.barcode}` : ""} · {scan.items.length} parsed ingredients · revision {scan.revision}</p>{scan.catalogProviderId ? <p className="mt-1 text-[11px] text-muted-foreground">Source: {scan.catalogProviderId} dataset {scan.catalogDatasetVersion}{scan.catalogSourceModified ? " · privately corrected after import" : ""}{scan.catalogAttributionUrl ? <> · <a className="text-primary underline" href={scan.catalogAttributionUrl} target="_blank" rel="noreferrer">attribution</a></> : scan.catalogAttributionText ? ` · ${scan.catalogAttributionText}` : ""}</p> : null}</div><div className="flex"><Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`Refresh evidence for ${scan.productName || "unnamed product"}`} disabled={refreshEvidence.isPending} onClick={() => refreshEvidence.mutate(scan)}><RefreshCw className={`h-4 w-4 ${refreshEvidence.isPending ? "animate-spin" : ""}`} /></Button><Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`Correct ingredient review for ${scan.productName || "unnamed product"}`} onClick={() => editScan(scan)}><Pencil className="h-4 w-4" /></Button><Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`Delete ingredient review for ${scan.productName || "unnamed product"}`} disabled={remove.isPending} onClick={() => remove.mutate(scan.id)}><Trash2 className="h-4 w-4" /></Button></div></div>
+        <div className="flex items-start justify-between gap-3"><div><p className="text-sm font-medium">{scan.productName || "Unnamed product"}</p><p className="text-xs text-muted-foreground">{new Date(scan.createdAt).toLocaleDateString()}{scan.barcode ? ` · barcode ${scan.barcode}` : ""} · {scan.items.length} parsed ingredients · revision {scan.revision}</p>{scan.catalogProviderId ? <p className="mt-1 text-[11px] text-muted-foreground">Source: {scan.catalogProviderId} dataset {scan.catalogDatasetVersion}{scan.catalogSourceModified ? " · privately corrected after import" : ""}{scan.catalogAttributionUrl ? <> · <a className="text-primary underline" href={scan.catalogAttributionUrl} target="_blank" rel="noreferrer">attribution</a></> : scan.catalogAttributionText ? ` · ${scan.catalogAttributionText}` : ""}</p> : null}</div><div className="flex"><Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`${scan.favorite ? "Remove" : "Add"} ${scan.productName || "unnamed product"} ${scan.favorite ? "from" : "to"} favorites`} disabled={toggleFavorite.isPending} onClick={() => toggleFavorite.mutate(scan)}><Star className={`h-4 w-4 ${scan.favorite ? "fill-current text-primary" : ""}`} /></Button><Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`Add ${scan.productName || "unnamed product"} to shopping list`} disabled={!scan.productName?.trim() || addToShoppingList.isPending} onClick={() => addToShoppingList.mutate(scan)}><ShoppingCart className="h-4 w-4" /></Button><Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`Refresh evidence for ${scan.productName || "unnamed product"}`} disabled={refreshEvidence.isPending} onClick={() => refreshEvidence.mutate(scan)}><RefreshCw className={`h-4 w-4 ${refreshEvidence.isPending ? "animate-spin" : ""}`} /></Button><Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`Correct ingredient review for ${scan.productName || "unnamed product"}`} onClick={() => editScan(scan)}><Pencil className="h-4 w-4" /></Button><Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`Delete ingredient review for ${scan.productName || "unnamed product"}`} disabled={remove.isPending} onClick={() => remove.mutate(scan.id)}><Trash2 className="h-4 w-4" /></Button></div></div>
         <div className="mt-3 flex flex-wrap gap-1.5">{scan.items.map((item) => <span key={item.id} title={item.preference ? `Matches your ${item.preference.preferenceType} preference${item.preference.note ? `: ${item.preference.note}` : ""}` : item.reason || "No universal harmfulness or safety conclusion has been assigned"} className="rounded-md border border-muted/30 px-2 py-1 text-xs text-muted-foreground">{item.rawName} <span className="text-primary/80">· {item.preference ? `your ${item.preference.preferenceType} rule` : ingredientClassificationLabel(item.classification)}</span>{item.preference?.note ? <span> · {item.preference.note}</span> : null}{!item.preference && item.evidenceUrl && item.evidenceTitle ? <a className="ml-1 text-primary underline" href={item.evidenceUrl} target="_blank" rel="noreferrer">source</a> : null}</span>)}</div>
+        <div className="mt-3 rounded-md border border-muted/30 bg-background/30 p-2.5 text-xs text-muted-foreground"><p className="font-medium text-foreground">Label signals</p>{Object.keys(scan.labelSignals.signalCounts).length ? <div className="mt-1 flex flex-wrap gap-1.5">{Object.entries(scan.labelSignals.signalCounts).map(([signal, count]) => <span key={signal} className="rounded border border-primary/20 px-1.5 py-0.5 text-primary">{count} {labelSignalLabel(signal)}{count === 1 ? "" : "s"}</span>)}</div> : <p className="mt-1">No mapped label signals in this private record.</p>}<p className="mt-2">{scan.labelSignals.disclosure}</p></div>
+        {toggleFavorite.error ? <p className="mt-2 text-xs text-destructive">Could not update this favorite. Reload the label and try again.</p> : null}
+        {addToShoppingList.error ? <p className="mt-2 text-xs text-destructive">Could not add this label to your shopping list.</p> : null}
         {refreshEvidence.error ? <p className="mt-2 text-xs text-destructive">Evidence could not be refreshed. Reload this label and try again.</p> : null}
       </article>)}
     </div> : null}
