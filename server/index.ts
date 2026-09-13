@@ -257,6 +257,9 @@ app.use("/api/profile/generate-affirmation", createRateLimiter("profile-affirmat
 app.use("/api/voice-command", createRateLimiter("voice-command", qualificationRequestLimit(20), 60 * 1000));
 app.use("/api/ai/orchestration-runs", createRateLimiter("ai-orchestration", qualificationRequestLimit(10), 60 * 1000, true));
 app.use("/api/progression/reconcile", createRateLimiter("progression-reconcile", qualificationRequestLimit(2), 60 * 1000, true));
+// Public Overpass capacity is shared. Food Compass discovery is authenticated
+// and deliberately limited before the provider call.
+app.use("/api/food-compass/discover", createDistributedRateLimiter("food-compass.discover", 10));
 // The isolated authenticated journey exercises the whole API through one local
 // loopback address. Keep the production ceiling unchanged while preventing the
 // shared CI harness from turning unrelated later tests into 429 cascades.

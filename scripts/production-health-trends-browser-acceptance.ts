@@ -170,19 +170,10 @@ async function seedRecords(account: Account): Promise<{ earliestDate: string; mi
 }
 
 async function scrollToTrendWorkbench(page: Page): Promise<void> {
-  for (let attempt = 0; attempt < 30; attempt += 1) {
-    const heading = await page.$("#health-trends-heading");
-    if (heading) { await heading.evaluate((element) => element.scrollIntoView({ block: "center" })); return; }
-    const targeted = await page.evaluate(() => {
-      const target = document.querySelector<HTMLElement>("#health-section-trends")
-        || [...document.querySelectorAll<HTMLElement>(".scroll-mt-6")][16];
-      target?.scrollIntoView({ block: "center" });
-      return Boolean(target);
-    });
-    assert(targeted, "The Health trends deferred-section anchor is missing.");
-    await new Promise((resolve) => setTimeout(resolve, 500));
-  }
+  await page.waitForSelector("#tracker-tab-health", { visible: true, timeout: 30_000 });
+  await page.click("#tracker-tab-health");
   await page.waitForSelector("#health-trends-heading", { visible: true, timeout: 30_000 });
+  await page.$eval("#health-trends-heading", (element) => element.scrollIntoView({ block: "center" }));
 }
 
 async function clickSummary(page: Page, label: string): Promise<void> {
@@ -201,8 +192,8 @@ async function setInput(page: Page, ariaLabel: string, value: string): Promise<v
 
 async function auditPage(page: Page): Promise<Audit> {
   return page.evaluate(() => {
-    const scope = document.querySelector<HTMLElement>('[data-testid="health-page"]');
-    if (!scope) throw new Error("Health acceptance scope is not rendered.");
+    const scope = document.querySelector<HTMLElement>('[data-testid="tracker-health-lens"]');
+    if (!scope) throw new Error("Tracker Health analysis scope is not rendered.");
     const ids = new Map<string, number>();
     for (const element of document.querySelectorAll<HTMLElement>("[id]")) ids.set(element.id, (ids.get(element.id) || 0) + 1);
     const invalidLabelReferences = [...scope.querySelectorAll<HTMLElement>("[aria-labelledby]")]
@@ -262,11 +253,11 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     const session = cookieParts(account.cookie);
     await page.setCookie({ ...session, url: BASE_URL.origin, path: "/", httpOnly: true, secure: true, sameSite: "Lax" });
     await installFixtureUserStorageSeed(page, { id: account.id, displayName: account.displayName });
-    stage = "navigate to Health";
-    await page.goto(new URL("/health", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
-    await page.waitForSelector('[data-testid="health-page"]', { visible: true, timeout: 60_000 });
+    stage = "navigate to Tracker";
+    await page.goto(new URL("/tracker", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
+    await page.waitForSelector("#tracker-tab-health", { visible: true, timeout: 60_000 });
     await page.evaluate(() => [...document.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.getAttribute("aria-label") === "Skip this tutorial" || button.textContent?.trim() === "Skip tour")?.click());
-    stage = "load Health trend workbench";
+    stage = "load Tracker Health trend workbench";
     await scrollToTrendWorkbench(page);
     await page.waitForSelector('[aria-label="Second health trend"]', { visible: true, timeout: 45_000 });
     await page.waitForFunction((value) => [...document.querySelectorAll<HTMLOptionElement>('[aria-label="Second health trend"] option')].some((option) => option.value === value), { timeout: 45_000 }, OBSERVATION_OPTION);

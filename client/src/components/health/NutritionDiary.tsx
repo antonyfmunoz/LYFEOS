@@ -111,6 +111,10 @@ export default function NutritionDiary({ importedFoodId, onImportedFoodHandled, 
   const isNutritionTarget = (kind: string) => ["energy", "protein", "carbohydrate", "fat", "fiber", "sugar", "sodium"].includes(kind) || Boolean(nutrientRegistry.data?.nutrients.some((nutrient) => nutrient.nutrientKey === kind));
   const selectedFood = useMemo(() => foods.data?.foods.find((food) => food.id === Number(selectedFoodId)), [foods.data, selectedFoodId]);
   useEffect(() => () => { if (photoReferenceUrl) URL.revokeObjectURL(photoReferenceUrl); }, [photoReferenceUrl]);
+  // Saved foods can be created in another Health workspace while this diary
+  // remains mounted. Refresh when opening the entry form so the selector is
+  // never limited to the initial, stale snapshot.
+  useEffect(() => { if (expanded) void foods.refetch(); }, [expanded, foods.refetch]);
   const clearPhotoReference = () => { setPhotoReferenceUrl(null); setPhotoReferenceName(""); setPhotoReferenceReviewed(false); if (photoReferenceInput.current) photoReferenceInput.current.value = ""; };
   const setPhotoReference = (file: File | undefined) => {
     if (!file) return;

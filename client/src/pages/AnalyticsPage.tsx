@@ -9,7 +9,7 @@ import { apiRequest, queryClient } from '@/lib/queryClient';
 import {
   ArrowLeft, TrendingUp, Target, Zap,
   Calendar, Award, BarChart3, Activity, Flame, Loader2,
-  Trophy, Crown, Shield, GripVertical, Milestone
+  Trophy, Crown, Shield, GripVertical, Milestone, Heart, Dumbbell, Network, ZoomIn, ZoomOut
 } from "lucide-react";
 import {
   LineChart, Line, BarChart, Bar, RadarChart, Radar, PolarGrid,
@@ -18,6 +18,12 @@ import {
   Cell, PieChart, Pie, Legend
 } from "recharts";
 import HypothesisWorkbench from "@/components/analytics/HypothesisWorkbench";
+import ActivitySignals from "@/components/health/ActivitySignals";
+import WorkoutAnalytics from "@/components/health/WorkoutAnalytics";
+import HealthTrendWorkbench from "@/components/health/HealthTrendWorkbench";
+import CapabilityEvidencePanel from "@/components/health/CapabilityEvidencePanel";
+import HealthProgression from "@/components/health/HealthProgression";
+import { CapabilityConstellation } from "@/components/dashboard/CapabilityConstellation";
 
 const RANGE_OPTIONS = [
   { label: "7D", value: 7 },
@@ -25,6 +31,14 @@ const RANGE_OPTIONS = [
   { label: "30D", value: 30 },
   { label: "90D", value: 90 },
 ];
+
+const TRACKER_DOMAINS = [
+  { id: "activity", label: "Activity & goals" },
+  { id: "capabilities", label: "Capabilities" },
+  { id: "health", label: "Health" },
+] as const;
+
+type TrackerDomain = (typeof TRACKER_DOMAINS)[number]["id"];
 
 function formatDate(dateStr: string) {
   const d = new Date(dateStr + "T00:00:00");
@@ -59,14 +73,76 @@ function GenericTooltip({ active, payload, label }: any) {
   );
 }
 
+function HealthTracker() {
+  return <div className="space-y-6" data-testid="tracker-health-lens">
+    <div className="rounded-2xl border border-primary/20 bg-primary/5 p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="font-orbitron text-lg text-primary">Health</h2><p className="mt-1 max-w-2xl text-sm text-muted-foreground">Explore patterns created by the records you choose to keep in Health Log. These are views of the same private records, not separate entries or medical conclusions.</p></div><Link href="/health-log" className="rounded-md border border-primary/30 px-3 py-2 text-xs text-primary hover:bg-primary/10">Open Health Log</Link></div>
+      <p className="mt-3 text-xs text-muted-foreground">Compare hydration, nourishment, training, recovery, sleep, and recorded measurements. Missing data remains visibly missing; Tracker never fills gaps or turns a pattern into a health conclusion.</p>
+    </div>
+    <section aria-labelledby="tracker-health-movement"><h2 id="tracker-health-movement" className="mb-3 flex items-center gap-2 font-orbitron text-lg text-primary"><Dumbbell className="h-5 w-5" />Movement</h2><WorkoutAnalytics /><ActivitySignals /></section>
+    <section aria-labelledby="tracker-health-records"><h2 id="tracker-health-records" className="mb-3 flex items-center gap-2 font-orbitron text-lg text-primary"><Heart className="h-5 w-5" />Health record trends</h2><p className="mb-3 text-sm text-muted-foreground">Choose the records and time window you want to compare. This workspace keeps source, coverage, and uncertainty visible.</p><HealthTrendWorkbench /></section>
+    <section aria-labelledby="tracker-health-practice"><h2 id="tracker-health-practice" className="mb-3 flex items-center gap-2 font-orbitron text-lg text-primary"><Award className="h-5 w-5" />Practice history</h2><CapabilityEvidencePanel /><HealthProgression /></section>
+  </div>;
+}
+
+type TrackerSkillNode = {
+  id: number;
+  name: string;
+  kind: "primary" | "supporting" | "capacity" | "application";
+  experience: number;
+  level: number;
+  status: "locked" | "unlocked" | "mastered";
+  unmetRequirements: string[];
+  completedMissionCount: number;
+};
+
+type TrackerCapability = { id: number; name: string; experience: number; level: number; focusCount: number };
+
+function CapabilityTracker() {
+  const [zoom, setZoom] = useState(100);
+  const { data: threadData, isLoading } = useQuery<{ thread: null | { title: string; status: string; skillGraph?: { nodes: TrackerSkillNode[]; reviewCount: number }; skillEdges?: Array<{ sourceSkillId: number; targetSkillId: number; relationship: string; influenceWeight?: number }> } }>({
+    queryKey: ["/api/transformation-thread"],
+    queryFn: () => apiRequest("/api/transformation-thread"),
+  });
+  const { data: capabilityData } = useQuery<{ capabilities: TrackerCapability[]; note: string }>({
+    queryKey: ["/api/capabilities"],
+    queryFn: () => apiRequest("/api/capabilities"),
+  });
+  const nodes = threadData?.thread?.skillGraph?.nodes ?? [];
+  const edges = threadData?.thread?.skillEdges ?? [];
+  const capabilities = capabilityData?.capabilities ?? [];
+  const maxExperience = Math.max(1, ...capabilities.map((capability) => capability.experience));
+
+  return <div className="space-y-6" data-testid="tracker-capabilities-lens">
+    <section className="rounded-2xl border border-primary/20 bg-primary/5 p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="flex items-center gap-2 font-orbitron text-lg text-primary"><Network className="h-5 w-5" />Capabilities and skills</h2><p className="mt-1 max-w-2xl text-sm text-muted-foreground">See the skills connected to your current focus and the reviewed practice you have preserved across focuses. A mission checkmark alone never establishes competence.</p></div><Link href="/missions" className="rounded-md border border-primary/30 px-3 py-2 text-xs text-primary hover:bg-primary/10">Open Missions</Link></div>
+      <p className="mt-3 text-xs text-muted-foreground">Zoom changes the map view only. Relationships are explicit links you chose; line strength reflects their stated influence, not a causal claim.</p>
+    </section>
+
+    <section className="rounded-2xl border border-primary/20 bg-card/40 p-5" aria-labelledby="tracker-capability-map">
+      <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 id="tracker-capability-map" className="font-orbitron text-lg text-primary">Current focus map</h2><p className="mt-1 text-sm text-muted-foreground">{threadData?.thread ? `${threadData.thread.title} · ${nodes.length} mapped skills` : "No active focus map yet"}</p></div><div className="flex items-center gap-2"><button type="button" onClick={() => setZoom((current) => Math.max(70, current - 10))} disabled={zoom <= 70} className="rounded-md border border-primary/25 p-2 text-primary disabled:cursor-not-allowed disabled:opacity-40" aria-label="Zoom out capability map"><ZoomOut className="h-4 w-4" /></button><span className="min-w-12 text-center font-mono text-xs text-muted-foreground">{zoom}%</span><button type="button" onClick={() => setZoom((current) => Math.min(140, current + 10))} disabled={zoom >= 140} className="rounded-md border border-primary/25 p-2 text-primary disabled:cursor-not-allowed disabled:opacity-40" aria-label="Zoom in capability map"><ZoomIn className="h-4 w-4" /></button></div></div>
+      {isLoading ? <div className="flex min-h-60 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div> : nodes.length > 0 ? <div className="mt-4 overflow-auto rounded-lg"><div className="min-w-[38rem] origin-top-left transition-transform duration-200" style={{ transform: `scale(${zoom / 100})`, width: `${10000 / zoom}%` }}><CapabilityConstellation nodes={nodes} edges={edges} /></div></div> : <div className="mt-4 rounded-lg border border-dashed border-primary/20 p-5 text-sm text-muted-foreground">When a focus is initialized, its skill map and declared relationships will appear here. Durable capability history is still shown below.</div>}
+    </section>
+
+    <section className="rounded-2xl border border-primary/20 bg-card/40 p-5" aria-labelledby="tracker-capability-records"><div><h2 id="tracker-capability-records" className="font-orbitron text-lg text-primary">Durable capability record</h2><p className="mt-1 text-sm text-muted-foreground">These totals carry reviewed practice across prior focuses. They are private LyfeOS records, not credentials or outside certification.</p></div>{capabilities.length > 0 ? <div className="mt-5 space-y-4">{capabilities.map((capability) => <div key={capability.id}><div className="flex flex-wrap items-baseline justify-between gap-2 text-sm"><span className="font-medium text-foreground">{capability.name}</span><span className="font-mono text-xs text-primary">Level {capability.level} · {capability.experience} reviewed XP · {capability.focusCount} focus{capability.focusCount === 1 ? "" : "es"}</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-muted/20"><div className="h-full rounded-full bg-primary transition-all" style={{ width: `${Math.round((capability.experience / maxExperience) * 100)}%` }} /></div></div>)}</div> : <p className="mt-4 text-sm text-muted-foreground">No reviewed capability record yet. Build a focus and review evidence to create one.</p>}</section>
+
+    {nodes.length > 0 && <section className="rounded-2xl border border-primary/20 bg-card/40 p-5"><h2 className="font-orbitron text-lg text-primary">Skill detail</h2><div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{nodes.map((node) => <article key={node.id} className="rounded-lg border border-primary/15 bg-background/25 p-3"><div className="flex items-start justify-between gap-2"><h3 className="text-sm font-medium text-foreground">{node.name}</h3><span className="rounded-full border border-primary/20 px-2 py-0.5 font-mono text-[10px] uppercase text-primary">{node.status}</span></div><p className="mt-2 text-xs text-muted-foreground">{node.kind} · Level {node.level} · {node.experience} reviewed XP</p><p className="mt-1 text-xs text-muted-foreground">{node.completedMissionCount} reviewed mission{node.completedMissionCount === 1 ? "" : "s"}</p>{node.unmetRequirements[0] && <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">Next evidence: {node.unmetRequirements[0]}</p>}</article>)}</div></section>}
+  </div>;
+}
+
 export default function AnalyticsPage() {
   usePageTitle("Tracker - LYFEOS");
   const { user } = useAuth();
   const [days, setDays] = useState(30);
+  const [activeDomain, setActiveDomain] = useState<TrackerDomain>("activity");
 
-  const { data: analytics, isLoading } = useQuery<any>({
+  const { data: analytics, isLoading, isError, refetch: refetchAnalytics } = useQuery<any>({
     queryKey: ['/api/analytics', days],
-    queryFn: () => fetch(`/api/analytics?days=${days}`, { credentials: 'include' }).then(r => r.json()),
+    queryFn: async () => {
+      const response = await fetch(`/api/analytics?days=${days}`, { credentials: 'include' });
+      if (!response.ok) throw new Error("Tracker data could not be loaded.");
+      return response.json();
+    },
     enabled: !!user,
   });
 
@@ -88,6 +164,8 @@ export default function AnalyticsPage() {
     { id: 'completion-rate', title: 'Completion Rate', icon: <Target className="h-5 w-5 text-primary" /> },
     { id: 'activity-heatmap', title: 'Activity Heatmap', icon: <Activity className="h-5 w-5 text-primary" /> },
     { id: 'weekly-patterns', title: 'Weekly Patterns', icon: <BarChart3 className="h-5 w-5 text-primary" /> },
+    { id: 'mission-allocation', title: 'Mission Allocation', icon: <Calendar className="h-5 w-5 text-primary" /> },
+    { id: 'daily-record-coverage', title: 'Daily Record Coverage', icon: <Activity className="h-5 w-5 text-primary" /> },
     { id: 'pattern-explorer', title: 'Pattern Explorer', icon: <TrendingUp className="h-5 w-5 text-primary" /> },
     { id: 'personal-records', title: 'Personal Records', icon: <Trophy className="h-5 w-5 text-primary" /> },
     { id: 'milestone-analytics', title: 'Objective Analytics', icon: <Milestone className="h-5 w-5 text-primary" /> },
@@ -147,6 +225,8 @@ export default function AnalyticsPage() {
   const streakHistory = analytics?.streakHistory ?? [];
   const personalRecords = analytics?.personalRecords ?? {};
   const tokenEfficiency = analytics?.tokenEfficiency ?? {};
+  const missionAllocationTrend = analytics?.missionAllocationTrend ?? [];
+  const dailyRecordCoverage = analytics?.dailyRecordCoverage ?? [];
   const sleepWellnessCorrelation = analytics?.sleepWellnessCorrelation ?? [];
   const sleepWellnessDataQuality = analytics?.sleepWellnessDataQuality ?? { observations: 0, availableDays: days, coveragePercent: 0, level: "insufficient", readyToExplore: false, note: "Log sleep and daily state to begin." };
 
@@ -183,7 +263,7 @@ export default function AnalyticsPage() {
     return acc;
   }, []), [missionCompletionTrend]);
 
-  if (isLoading || !analytics) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center space-y-4">
@@ -191,6 +271,18 @@ export default function AnalyticsPage() {
           <p className="text-muted-foreground">Loading tracker...</p>
         </div>
       </div>
+    );
+  }
+
+  if (isError || !analytics) {
+    return (
+      <main className="flex min-h-[60vh] items-center justify-center px-4">
+        <div className="max-w-md space-y-4 rounded-xl border border-primary/20 bg-card/40 p-6 text-center" role="alert">
+          <h1 className="font-orbitron text-lg text-primary">Tracker is temporarily unavailable</h1>
+          <p className="text-sm text-muted-foreground">Your records were not loaded, so LyfeOS is not showing an empty dashboard as if it were your data.</p>
+          <button type="button" onClick={() => refetchAnalytics()} className="rounded-md border border-primary/40 px-3 py-2 text-sm text-primary hover:bg-primary/10">Try again</button>
+        </div>
+      </main>
     );
   }
 
@@ -371,6 +463,49 @@ export default function AnalyticsPage() {
                   </RadarChart>
                 </ResponsiveContainer>
               ) : <EmptyState message="No XP data yet." />}
+            </ChartCard>
+          </div>
+        );
+      case 'mission-allocation':
+        return (
+          <div data-testid="tracker-mission-allocation">
+            <ChartCard title="Completed mission allocation" icon={<Calendar className="h-5 w-5" />}>
+              {missionAllocationTrend.some((day: any) => day.missions > 0) ? <>
+                <ResponsiveContainer width="100%" height={250}>
+                  <LineChart data={missionAllocationTrend}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted))" opacity={0.3} />
+                    <XAxis dataKey="date" tickFormatter={formatDate} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                    <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                    <Tooltip content={<CustomTooltipContent />} />
+                    <Line type="monotone" dataKey="time" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 2 }} name="Time estimate (min)" />
+                    <Line type="monotone" dataKey="attention" stroke="#34d399" strokeWidth={2} dot={{ r: 2 }} name="Attention allocation (min)" />
+                    <Line type="monotone" dataKey="energy" stroke="#fbbf24" strokeWidth={2} dot={{ r: 2 }} name="Energy allocation (min)" />
+                  </LineChart>
+                </ResponsiveContainer>
+                <p className="mt-3 text-xs leading-relaxed text-muted-foreground">Each line is the scheduled-duration estimate saved on missions you marked complete. LyfeOS does not claim this is measured time, attention, or energy use; the current mission model assigns the same duration-based estimate to each resource.</p>
+              </> : <EmptyState message="Complete a scheduled mission to see its saved allocation estimate here." />}
+            </ChartCard>
+          </div>
+        );
+      case 'daily-record-coverage':
+        return (
+          <div data-testid="tracker-daily-record-coverage">
+            <ChartCard title="Saved daily-record sections" icon={<Activity className="h-5 w-5" />}>
+              {dailyRecordCoverage.some((day: any) => day.savedSections !== null) ? <>
+                <ResponsiveContainer width="100%" height={250}>
+                  <BarChart data={dailyRecordCoverage}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted))" opacity={0.3} />
+                    <XAxis dataKey="date" tickFormatter={formatDate} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                    <YAxis domain={[0, 4]} allowDecimals={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                    <Tooltip content={<CustomTooltipContent />} />
+                    <Bar stackId="records" dataKey="capture" fill="hsl(var(--primary))" name="Capture" />
+                    <Bar stackId="records" dataKey="research" fill="#34d399" name="Research" />
+                    <Bar stackId="records" dataKey="reflection" fill="#fbbf24" name="Reflection" />
+                    <Bar stackId="records" dataKey="intention" fill="#a78bfa" name="Intention" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+                <p className="mt-3 text-xs leading-relaxed text-muted-foreground">One bar segment means at least one item was saved in that section for the day. Blank dates remain blank, not zero. This reflects record presence only—not quality, completion, or a judgment about the day.</p>
+              </> : <EmptyState message="Save a dashboard capture, research note, reflection, or intention to begin this record-presence view." />}
             </ChartCard>
           </div>
         );
@@ -569,31 +704,59 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8" data-tour="tracker-summary">
-        <SummaryCard icon={<Target className="h-5 w-5" />} label="Missions Done" value={summary.completedMissions || 0} sub={`of ${summary.totalMissions || 0}`} />
-        <SummaryCard icon={<Award className="h-5 w-5" />} label="XP Earned" value={(summary.totalXpEarned || 0).toLocaleString()} sub={`Level ${summary.currentLevel || 1}`} />
-        <SummaryCard icon={<Flame className="h-5 w-5" />} label="Streak" value={`${summary.currentStreak || 0}d`} sub="consecutive" />
-        <SummaryCard icon={<Zap className="h-5 w-5" />} label="Efficiency" value={`${tokenEfficiency.efficiency || 0}%`} sub="token usage" />
+      <div className="mb-6 flex flex-wrap gap-2" role="tablist" aria-label="Tracker domain">
+        {TRACKER_DOMAINS.map((domain, index) => (
+          <button
+            key={domain.id}
+            id={`tracker-tab-${domain.id}`}
+            type="button"
+            role="tab"
+            aria-selected={activeDomain === domain.id}
+            aria-controls={`tracker-panel-${domain.id}`}
+            tabIndex={activeDomain === domain.id ? 0 : -1}
+            onClick={() => setActiveDomain(domain.id)}
+            onKeyDown={(event) => {
+              if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+              event.preventDefault();
+              const nextIndex = event.key === "Home" ? 0 : event.key === "End" ? TRACKER_DOMAINS.length - 1 : (index + (event.key === "ArrowRight" ? 1 : -1) + TRACKER_DOMAINS.length) % TRACKER_DOMAINS.length;
+              const nextDomain = TRACKER_DOMAINS[nextIndex];
+              setActiveDomain(nextDomain.id);
+              requestAnimationFrame(() => document.getElementById(`tracker-tab-${nextDomain.id}`)?.focus());
+            }}
+            className={`rounded-md border px-3 py-2 text-xs transition-colors ${activeDomain === domain.id ? "border-primary/50 bg-primary/20 text-primary" : "border-muted/20 text-muted-foreground hover:border-primary/30"}`}
+          >{domain.label}</button>
+        ))}
       </div>
-      <p className="-mt-3 mb-6 text-xs leading-relaxed text-muted-foreground">These charts summarize LyfeOS records and self-reported inputs. They show activity and patterns, not external certification or causal proof.</p>
 
-      <div className="space-y-6" data-tour="tracker-widgets">
-        {analyticsWidgets.map((widget, index) => {
-          const content = renderWidgetContent(widget.id);
-          if (!content) return null;
-          return (
-            <CollapsibleWidget
-              key={widget.id}
-              id={widget.id}
-              index={index}
-              title={widget.title}
-              icon={widget.icon}
-              moveWidget={moveAnalyticsWidget}
-            >
-              {content}
-            </CollapsibleWidget>
-          );
-        })}
+      <div id={`tracker-panel-${activeDomain}`} role="tabpanel" aria-labelledby={`tracker-tab-${activeDomain}`} tabIndex={0}>
+      {activeDomain === "health" ? <HealthTracker /> : activeDomain === "capabilities" ? <CapabilityTracker /> : <>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8" data-tour="tracker-summary">
+          <SummaryCard icon={<Target className="h-5 w-5" />} label="Missions Done" value={summary.completedMissions || 0} sub={`of ${summary.totalMissions || 0}`} />
+          <SummaryCard icon={<Award className="h-5 w-5" />} label="XP Earned" value={(summary.totalXpEarned || 0).toLocaleString()} sub={`Level ${summary.currentLevel || 1}`} />
+          <SummaryCard icon={<Flame className="h-5 w-5" />} label="Streak" value={`${summary.currentStreak || 0}d`} sub="consecutive" />
+          <SummaryCard icon={<Zap className="h-5 w-5" />} label="Efficiency" value={`${tokenEfficiency.efficiency || 0}%`} sub="token usage" />
+        </div>
+        <p className="-mt-3 mb-6 text-xs leading-relaxed text-muted-foreground">These charts summarize LyfeOS records and self-reported inputs. They show activity and patterns, not external certification or causal proof.</p>
+
+        <div className="space-y-6" data-tour="tracker-widgets">
+          {analyticsWidgets.map((widget, index) => {
+            const content = renderWidgetContent(widget.id);
+            if (!content) return null;
+            return (
+              <CollapsibleWidget
+                key={widget.id}
+                id={widget.id}
+                index={index}
+                title={widget.title}
+                icon={widget.icon}
+                moveWidget={moveAnalyticsWidget}
+              >
+                {content}
+              </CollapsibleWidget>
+            );
+          })}
+        </div>
+      </>}
       </div>
     </div>
   );

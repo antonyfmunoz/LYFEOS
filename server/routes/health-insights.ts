@@ -85,10 +85,12 @@ const healthDirectTables = [
   "ingredient_scan_items", "ingredient_preference_rules", "exercise_definitions", "workout_programs",
   "workout_program_sessions", "workouts", "workout_revisions", "workout_templates", "workout_template_revisions", "heart_rate_zone_profiles", "workout_heart_rate_samples",
   "health_source_records", "health_source_suppressions", "health_import_failures", "health_import_runs", "health_source_preferences", "health_connection_audits",
+  "food_compass_places", "food_compass_offers", "food_compass_correction_reports", "grocery_shopping_items",
 ] as const;
 const healthCountTables = [...healthDirectTables, "health_connections", "health_sync_cursors"] as const;
 const healthDeleteOrder = [
   "health_source_records", "health_source_suppressions", "health_import_failures", "health_import_runs", "health_sync_cursors", "health_source_preferences", "health_connection_audits", "health_connections",
+  "food_compass_correction_reports", "food_compass_offers", "food_compass_places", "grocery_shopping_items",
   "ingredient_scan_items", "ingredient_scans", "ingredient_preference_rules", "workout_heart_rate_samples", "heart_rate_zone_profiles",
   "workout_program_sessions", "workout_programs", "workout_template_revisions", "workout_templates", "workout_revisions", "workouts",
   "exercise_definitions", "nutrition_meal_plan_entries", "nutrition_meal_plans", "nutrition_diary_entries",

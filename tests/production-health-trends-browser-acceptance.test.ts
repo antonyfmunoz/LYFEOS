@@ -6,6 +6,7 @@ const workflow = fs.readFileSync(".github/workflows/production-browser-acceptanc
 const packageJson = fs.readFileSync("package.json", "utf8");
 const workbench = fs.readFileSync("client/src/components/health/HealthTrendWorkbench.tsx", "utf8");
 const healthPage = fs.readFileSync("client/src/pages/HealthDetailPage.tsx", "utf8");
+const tracker = fs.readFileSync("client/src/pages/AnalyticsPage.tsx", "utf8");
 
 describe("production Health trends browser acceptance custody", () => {
   it("binds exact-source desktop/mobile evidence into protected production acceptance", () => {
@@ -44,7 +45,7 @@ describe("production Health trends browser acceptance custody", () => {
     expect(script).toContain("longitudinal usefulness");
   });
 
-  it("uses current semantic Health hooks without moving or redesigning the workbench", () => {
+  it("uses current semantic Health hooks in Tracker without turning Health Log into another analysis surface", () => {
     expect(workbench).toContain('id="health-trends-heading"');
     expect(workbench).toContain('aria-label="First health trend"');
     expect(workbench).toContain('aria-label="Second health trend"');
@@ -53,6 +54,10 @@ describe("production Health trends browser acceptance custody", () => {
     expect(workbench).toContain("View saved-panel data table");
     expect(workbench).toContain("points.length <= 60");
     expect(workbench).toContain("connectNulls={false}");
-    expect(healthPage).toContain('targetId="health-section-trends"');
+    expect(tracker).toContain('aria-labelledby="tracker-health-records"');
+    expect(script).toContain("#tracker-tab-health");
+    expect(script).toContain('new URL("/tracker", BASE_URL)');
+    expect(tracker).toContain("<HealthTrendWorkbench />");
+    expect(healthPage).not.toContain('targetId="health-section-trends"');
   });
 });
