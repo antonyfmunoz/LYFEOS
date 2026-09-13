@@ -1,0 +1,90 @@
+name: Release LyfeOS production
+
+on:
+  workflow_dispatch:
+    inputs:
+      source:
+        description: "Immutable commit SHA already merged into main"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lyfeos-production-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build, migrate, and verify one immutable release
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: production
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.source }}
+          fetch-depth: 0
+
+      - name: Resolve an immutable mainline source
+        id: source
+        shell: bash
+        env:
+          REQUESTED_SOURCE: ${{ inputs.source }}
+        run: |
+          set -euo pipefail
+          [[ "$REQUESTED_SOURCE" =~ ^[0-9a-f]{40}$ ]]
+          source="$(git rev-parse HEAD)"
+          test "$source" = "$REQUESTED_SOURCE"
+          git fetch --no-tags origin main
+          git merge-base --is-ancestor "$source" origin/main
+          echo "source=$source" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Re-qualify the exact source
+        run: |
+          npm ci
+          npm run verify
+
+      - name: Install pinned Fly deployment CLI
+        uses: superfly/flyctl-actions/setup-flyctl@ed8efb33836e8b2096c7fd3ba1c8afe303ebbff1
+
+      - name: Deploy the qualified immutable image
+        shell: bash
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          SOURCE: ${{ steps.source.outputs.source }}
+        run: |
+          set -euo pipefail
+          test -n "$FLY_API_TOKEN"
+          flyctl deploy --remote-only --yes --config fly.toml \
+            --build-arg "LYFEOS_RELEASE=$SOURCE" \
+            --image-label "source-$SOURCE"
+
+      - name: Verify live release identity, readiness, and migration ledger
+        shell: bash
+        env:
+          SOURCE: ${{ steps.source.outputs.source }}
+        run: |
+          set -euo pipefail
+          expected_count="$(grep -oE 'id: "[^"]+"' server/release-migrate.ts | sed -E 's/id: "([^"]+)"/\1/' | sort | sed '/^$/d' | wc -l | tr -d ' ')"
+          expected_latest="$(grep -oE 'id: "[^"]+"' server/release-migrate.ts | sed -E 's/id: "([^"]+)"/\1/' | sort | tail -n 1)"
+          for attempt in $(seq 1 30); do
+            ready="$(curl --fail --silent --show-error --max-time 20 https://lyfeos.net/api/ready || true)"
+            release="$(curl --fail --silent --show-error --max-time 20 https://lyfeos.net/api/release || true)"
+            if [ "$ready" = '{"status":"ready"}' ] \
+              && [ "$(printf '%s' "$release" | jq -r '.sourceRevision // empty')" = "$SOURCE" ] \
+              && [ "$(printf '%s' "$release" | jq -r '.migrations.status // empty')" = "available" ] \
+              && [ "$(printf '%s' "$release" | jq -r '.migrations.count // empty')" = "$expected_count" ] \
+              && [ "$(printf '%s' "$release" | jq -r '.migrations.latest // empty')" = "$expected_latest" ]; then
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "Production never reported the deployed source, readiness, and exact migration ledger." >&2
+          exit 1
