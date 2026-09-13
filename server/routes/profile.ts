@@ -1618,6 +1618,43 @@ Generate the complete affirmation now:`;
         xpEarned: xpByDay[date] || 0,
       }));
 
+      // These are planning estimates stored on completed missions, not a
+      // sensor-derived measure of what a person used. Tracker keeps them
+      // separate from the profile's current resource balances.
+      const missionAllocationByDay: Record<string, { time: number; attention: number; energy: number; missions: number }> = {};
+      completedMissions.forEach(m => {
+        if (!m.completedAt) return;
+        const day = formatLocalDate(new Date(m.completedAt));
+        if (day < cutoffStr) return;
+        const allocation = missionAllocationByDay[day] ?? { time: 0, attention: 0, energy: 0, missions: 0 };
+        allocation.time += m.timeCost || 0;
+        allocation.attention += m.attentionCost || 0;
+        allocation.energy += m.energyCost || 0;
+        allocation.missions += 1;
+        missionAllocationByDay[day] = allocation;
+      });
+      const missionAllocationTrend = dateRange.map(date => ({
+        date,
+        time: missionAllocationByDay[date]?.time || 0,
+        attention: missionAllocationByDay[date]?.attention || 0,
+        energy: missionAllocationByDay[date]?.energy || 0,
+        missions: missionAllocationByDay[date]?.missions || 0,
+      }));
+
+      const hasSavedText = (value: unknown) => typeof value === "string" && value.trim().length > 0;
+      const dailyLogByDate = new Map(dailyLogs.map(log => [log.date, log]));
+      // Missing is null, never zero: it distinguishes no saved record from a
+      // saved day that intentionally contains no entry in a given section.
+      const dailyRecordCoverage = dateRange.map(date => {
+        const log = dailyLogByDate.get(date);
+        if (!log) return { date, capture: null, research: null, reflection: null, intention: null, savedSections: null };
+        const capture = hasSavedText(log.thoughts) || hasSavedText(log.contentConsumed) || hasSavedText(log.todoIdeas) ? 1 : 0;
+        const research = hasSavedText(log.research) || hasSavedText(log.sourceAuthor) || hasSavedText(log.sourceMaterial) || hasSavedText(log.researchNote) || hasSavedText(log.revisionNote) || hasSavedText(log.executionNote) || (Array.isArray(log.researchEntries) && log.researchEntries.length > 0) ? 1 : 0;
+        const reflection = hasSavedText(log.wentWell) || hasSavedText(log.couldBeBetter) || hasSavedText(log.learned) ? 1 : 0;
+        const intention = hasSavedText(log.gratitude) || hasSavedText(log.tomorrowGoals) || hasSavedText(log.annualGoals) ? 1 : 0;
+        return { date, capture, research, reflection, intention, savedSections: capture + research + reflection + intention };
+      });
+
       const categoryStats: Record<string, { total: number; completed: number; totalXp: number; totalEnergy: number }> = {};
       activeMissions.forEach(m => {
         const cat = m.category || "general";
@@ -1706,6 +1743,8 @@ Generate the complete affirmation now:`;
       res.json({
         moodTrends,
         missionCompletionTrend,
+        missionAllocationTrend,
+        dailyRecordCoverage,
         categoryStats,
         difficultyStats,
         sleepData,
