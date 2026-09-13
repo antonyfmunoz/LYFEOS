@@ -267,6 +267,66 @@ function buildThread(profile: Awaited<ReturnType<typeof storage.getUserProfile>>
   return { title, focus, rationale, sourceSnapshot, starterMissions: buildStarterMissions(profile, planningContext, focusCapability?.name), skillBlueprint: buildSkillBlueprint(profile, focusCapability) };
 }
 
+/**
+ * One-time, owner-scoped repair for Threads created before the private skill
+ * graph existed. It preserves the Thread and its missions, then adds only the
+ * graph records the current workspace requires. The advisory lock makes
+ * repeated page loads converge without duplicate capabilities or edges.
+ */
+async function reconcileLegacyThreadSkillGraph(userId: number, thread: typeof transformationThreads.$inferSelect): Promise<boolean> {
+  const [existingSkill] = await db.select({ id: skillNodes.id }).from(skillNodes).where(and(
+    eq(skillNodes.userId, userId),
+    eq(skillNodes.transformationThreadId, thread.id),
+  )).limit(1);
+  if (existingSkill) return false;
+
+  const profile = await storage.getUserProfile(userId);
+  const [focusCapability] = thread.primaryCapabilityId
+    ? await db.select({ id: personalCapabilities.id, name: personalCapabilities.name, description: personalCapabilities.description })
+      .from(personalCapabilities)
+      .where(and(eq(personalCapabilities.id, thread.primaryCapabilityId), eq(personalCapabilities.userId, userId)))
+      .limit(1)
+    : [];
+  const blueprint = buildSkillBlueprint(profile, focusCapability);
+
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(120103, ${userId})`);
+    const [stillMissing] = await tx.select({ id: skillNodes.id }).from(skillNodes).where(and(
+      eq(skillNodes.userId, userId),
+      eq(skillNodes.transformationThreadId, thread.id),
+    )).limit(1);
+    if (stillMissing) return false;
+
+    const createdSkills = [];
+    for (const skill of blueprint.nodes) {
+      const capability = skill.key === "primary" && focusCapability
+        ? focusCapability
+        : await ensurePersonalCapability(tx, { userId, name: skill.name, description: skill.description });
+      const [createdSkill] = await tx.insert(skillNodes).values({
+        userId,
+        transformationThreadId: thread.id,
+        capabilityId: capability.id,
+        ...skill,
+      }).returning();
+      createdSkills.push(createdSkill);
+    }
+    const skillIdsByKey = new Map(createdSkills.map((skill) => [skill.key, skill.id]));
+    const edges = blueprint.edges.map((edge) => ({
+      userId,
+      sourceSkillId: skillIdsByKey.get(edge.sourceKey),
+      targetSkillId: skillIdsByKey.get(edge.targetKey),
+      relationship: edge.relationship,
+    })).filter((edge): edge is { userId: number; sourceSkillId: number; targetSkillId: number; relationship: string } => Boolean(edge.sourceSkillId && edge.targetSkillId));
+    if (edges.length > 0) await tx.insert(skillEdges).values(edges);
+    const primaryCapabilityId = createdSkills.find((skill) => skill.key === "primary")?.capabilityId || null;
+    await tx.update(transformationThreads).set({ primaryCapabilityId, updatedAt: new Date() }).where(and(
+      eq(transformationThreads.id, thread.id),
+      eq(transformationThreads.userId, userId),
+    ));
+    return true;
+  });
+}
+
 async function getCompletionReadiness(userId: number, thread: typeof transformationThreads.$inferSelect) {
   const [linkedMissions, evidence] = await Promise.all([
     db.select({ id: quests.id, completed: quests.completed, progressionAppliedAt: missionContracts.progressionAppliedAt })
@@ -431,6 +491,16 @@ export function registerTransformationThreadRoutes(app: Express): void {
       .orderBy(desc(transformationThreads.updatedAt))
       .limit(1);
     if (!thread) return res.json({ thread: null });
+    try {
+      await reconcileLegacyThreadSkillGraph(userId, thread);
+    } catch (legacyGraphError) {
+      // A historical repair must never hide the already-owned Thread.
+      logger.error("Could not repair the legacy Thread skill graph", {
+        userId,
+        threadId: thread.id,
+        error: legacyGraphError instanceof Error ? legacyGraphError.message : "unknown",
+      });
+    }
 
     const [linkedMissions, evidence, skills, progression, completedSkillMissions, stats, profile, dailyLog] = await Promise.all([
       db.select({ id: quests.id, title: quests.title, completed: quests.completed, difficulty: quests.difficulty, energyCost: quests.energyCost, timeCost: quests.timeCost, attentionCost: quests.attentionCost })
