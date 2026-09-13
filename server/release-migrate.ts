@@ -3625,6 +3625,58 @@ const migrations = [
     `,
   },
   {
+    id: "0159_food_compass",
+    sql: `
+      CREATE TABLE IF NOT EXISTS "food_compass_places" (
+        "id" serial PRIMARY KEY, "user_id" integer NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
+        "name" text NOT NULL, "place_type" text NOT NULL, "address" text, "city" text, "region" text, "postal_code" text,
+        "latitude" real, "longitude" real, "website_url" text, "source_name" text NOT NULL, "source_url" text,
+        "source_updated_on" date, "verified_on" date, "notes" text, "status" text NOT NULL DEFAULT 'active',
+        "created_at" timestamp NOT NULL DEFAULT now(), "updated_at" timestamp NOT NULL DEFAULT now(),
+        CONSTRAINT "food_compass_places_type_valid" CHECK ("place_type" IN ('farm', 'market', 'grocery', 'restaurant', 'producer', 'other')),
+        CONSTRAINT "food_compass_places_status_valid" CHECK ("status" IN ('active', 'archived')),
+        CONSTRAINT "food_compass_places_latitude_valid" CHECK ("latitude" IS NULL OR "latitude" BETWEEN -90 AND 90),
+        CONSTRAINT "food_compass_places_longitude_valid" CHECK ("longitude" IS NULL OR "longitude" BETWEEN -180 AND 180)
+      );
+      CREATE INDEX IF NOT EXISTS "food_compass_places_user_status_updated_idx" ON "food_compass_places" ("user_id", "status", "updated_at");
+      CREATE INDEX IF NOT EXISTS "food_compass_places_user_type_idx" ON "food_compass_places" ("user_id", "place_type");
+      CREATE TABLE IF NOT EXISTS "food_compass_offers" (
+        "id" serial PRIMARY KEY, "user_id" integer NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
+        "place_id" integer NOT NULL REFERENCES "food_compass_places"("id") ON DELETE CASCADE, "name" text NOT NULL,
+        "category" text, "price" real, "currency" text NOT NULL DEFAULT 'USD', "availability_status" text NOT NULL DEFAULT 'unknown',
+        "fulfillment_mode" text NOT NULL DEFAULT 'unknown', "external_action_url" text, "source_name" text NOT NULL, "source_url" text,
+        "source_updated_on" date, "verified_on" date, "notes" text, "status" text NOT NULL DEFAULT 'active',
+        "created_at" timestamp NOT NULL DEFAULT now(), "updated_at" timestamp NOT NULL DEFAULT now(),
+        CONSTRAINT "food_compass_offers_availability_valid" CHECK ("availability_status" IN ('available', 'limited', 'unavailable', 'unknown')),
+        CONSTRAINT "food_compass_offers_fulfillment_valid" CHECK ("fulfillment_mode" IN ('pickup', 'delivery', 'shipping', 'in_store', 'unknown')),
+        CONSTRAINT "food_compass_offers_status_valid" CHECK ("status" IN ('active', 'archived')),
+        CONSTRAINT "food_compass_offers_price_valid" CHECK ("price" IS NULL OR "price" >= 0)
+      );
+      CREATE INDEX IF NOT EXISTS "food_compass_offers_user_status_updated_idx" ON "food_compass_offers" ("user_id", "status", "updated_at");
+      CREATE INDEX IF NOT EXISTS "food_compass_offers_place_status_idx" ON "food_compass_offers" ("place_id", "status");
+      CREATE INDEX IF NOT EXISTS "food_compass_offers_user_fulfillment_idx" ON "food_compass_offers" ("user_id", "fulfillment_mode");
+      CREATE TABLE IF NOT EXISTS "food_compass_correction_reports" (
+        "id" serial PRIMARY KEY, "user_id" integer NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
+        "place_id" integer REFERENCES "food_compass_places"("id") ON DELETE SET NULL,
+        "offer_id" integer REFERENCES "food_compass_offers"("id") ON DELETE SET NULL, "report_type" text NOT NULL,
+        "note" text, "evidence_url" text, "status" text NOT NULL DEFAULT 'open', "created_at" timestamp NOT NULL DEFAULT now(),
+        CONSTRAINT "food_compass_correction_reports_type_valid" CHECK ("report_type" IN ('stale', 'correction', 'closed', 'missing')),
+        CONSTRAINT "food_compass_correction_reports_status_valid" CHECK ("status" IN ('open', 'withdrawn'))
+      );
+      CREATE INDEX IF NOT EXISTS "food_compass_correction_reports_user_created_idx" ON "food_compass_correction_reports" ("user_id", "created_at");
+    `,
+  },
+  {
+    id: "0160_ingredient_scanner_parity",
+    sql: `
+      ALTER TABLE "ingredient_scans" ADD COLUMN IF NOT EXISTS "favorite" boolean NOT NULL DEFAULT false;
+      CREATE INDEX IF NOT EXISTS "ingredient_scans_user_favorite_created_idx" ON "ingredient_scans" ("user_id", "favorite", "created_at");
+      ALTER TABLE "ingredient_scan_items" DROP CONSTRAINT IF EXISTS "ingredient_scan_items_classification_valid";
+      ALTER TABLE "ingredient_scan_items" ADD CONSTRAINT "ingredient_scan_items_classification_valid"
+        CHECK ("classification" IN ('unknown', 'label_fact', 'preference_match', 'regulatory_notice', 'declared_major_allergen_label_term', 'declared_color_additive', 'declared_sulfiting_agent', 'declared_non_nutritive_sweetener', 'declared_caffeine_source', 'declared_partially_hydrogenated_oil', 'declared_seed_oil'));
+    `,
+  },
+  {
     id: "0161_mission_evidence_corrections",
     sql: `
       ALTER TABLE "mission_evidence" ADD COLUMN IF NOT EXISTS "supersedes_evidence_id" integer REFERENCES "mission_evidence"("id") ON DELETE SET NULL;
