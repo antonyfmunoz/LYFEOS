@@ -54,6 +54,18 @@ jobs:
       - name: Install pinned Fly deployment CLI
         uses: superfly/flyctl-actions/setup-flyctl@ed8efb33836e8b2096c7fd3ba1c8afe303ebbff1
 
+      - name: Refuse a runtime source-identity override
+        shell: bash
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$FLY_API_TOKEN"
+          if flyctl secrets list --app lyfeos-app | awk 'NR > 2 && $1 == "LYFEOS_RELEASE" { found=1 } END { exit(found ? 0 : 1) }'; then
+            echo "LYFEOS_RELEASE must be baked into the immutable image, not configured as a Fly runtime secret." >&2
+            exit 1
+          fi
+
       - name: Deploy the qualified immutable image
         shell: bash
         env:

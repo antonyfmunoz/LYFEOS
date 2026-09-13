@@ -11,6 +11,8 @@ describe("production release workflow", () => {
     expect(workflow).toContain('git merge-base --is-ancestor "$source" origin/main');
     expect(workflow).toContain('npm run verify');
     expect(workflow).toContain('FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}');
+    expect(workflow).toContain('name: Refuse a runtime source-identity override');
+    expect(workflow).toContain('LYFEOS_RELEASE must be baked into the immutable image');
     expect(workflow).toContain('--build-arg "LYFEOS_RELEASE=$SOURCE"');
     expect(workflow).toContain('image-label "source-$SOURCE"');
     expect(workflow).toContain('https://lyfeos.net/api/release');
