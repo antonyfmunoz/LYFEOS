@@ -237,6 +237,9 @@ describe("production browser acceptance custody", () => {
     expect(coreLoopScript).toContain("[AUTOMATED ACCEPTANCE]");
     expect(coreLoopScript).toContain("async function dismissBlockingTutorial");
     expect(coreLoopScript).toContain("async function activateRenderedControl");
+    expect(coreLoopScript).toContain("async function showSyntheticMissionInList");
+    expect(coreLoopScript).toContain('button.textContent?.trim() === "List"');
+    expect(coreLoopScript).toContain('button.textContent?.trim() === "Show completed"');
     expect(coreLoopScript).toContain("async function browserApiRequest");
     expect(coreLoopScript).toContain("async function ensureAcceptanceThread");
     expect(coreLoopScript).toContain('browserApiRequest(page, "/api/transformation-thread/initialize", "POST", {})');
@@ -329,6 +332,7 @@ describe("production browser acceptance custody", () => {
     expect(coreLoopScript).toContain('name: "rendered non-mutating automation controls"');
     expect(coreLoopScript).toContain('[data-testid^="mission-skill-"]:not([disabled])');
     expect(coreLoopScript).toContain('activateMissionControl(page, "start")');
+    expect(coreLoopScript).toContain("await showSyntheticMissionInList(page, false)");
     expect(coreLoopScript).toContain('card.contains(control)');
     expect(coreLoopScript).toContain('control.scrollIntoView({ block: "center", inline: "nearest" })');
     expect(coreLoopScript).toContain('name: "settled progression baseline"');
@@ -354,6 +358,7 @@ describe("production browser acceptance custody", () => {
     expect(coreLoopScript).toContain('activityExperience: Number((total || "").replace(/[^0-9-]/g, ""))');
     expect(coreLoopScript.match(/await waitForApiBudget\(page, 80\)/g)).toHaveLength(2);
     expect(coreLoopScript).toContain('activateMissionControl(page, "undo")');
+    expect(coreLoopScript).toContain("await showSyntheticMissionInList(page, true)");
     expect(coreLoopScript).toContain('progressionMatches(progressionBefore, progressionAfterReopen)');
     expect(coreLoopScript).toContain('unlockResult?.state === "declared"');
     expect(coreLoopScript).toContain('browserApiRequest(page, `/api/quests/${id}`, "DELETE")');
