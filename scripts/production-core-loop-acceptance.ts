@@ -40,7 +40,7 @@ type ThreadContinuityEvidence = {
     missionId: number | null;
     title: string;
     objective: string;
-  };
+  } | null;
   capability: {
     id: number;
     name: string;
@@ -999,9 +999,6 @@ async function requireThreadContinuityView(input: {
       workspaceToggle,
     );
   }
-  await page.waitForSelector('[data-testid="thread-current-path"]', { visible: true, timeout: 30_000 });
-  await page.waitForSelector('[data-testid="capability-constellation"]', { visible: true, timeout: 30_000 });
-
   const threadResponse = await browserApiRequest(page, "/api/transformation-thread");
   const thread = (threadResponse.body as {
     thread?: {
@@ -1024,7 +1021,11 @@ async function requireThreadContinuityView(input: {
   const nextPractice = thread.skillGraph?.nextPractice;
   assert(Number.isInteger(threadId) && ["active", "paused"].includes(threadStatus), "Rendered Thread continuity did not resolve an active or paused owned Thread.");
   assert(reviewedSkill && typeof reviewedSkill.capabilityId === "number" && Number.isInteger(capabilityId) && capabilityId > 0, "Reviewed skill was not linked to a durable private capability.");
-  assert(nextPractice && typeof nextPractice.skillNodeId === "number" && Number.isInteger(nextPractice.skillNodeId), "Current Thread did not expose one canonical next practice.");
+  await page.waitForSelector('[data-testid="capability-constellation"]', { visible: true, timeout: 30_000 });
+  if (nextPractice) {
+    assert(typeof nextPractice.skillNodeId === "number" && Number.isInteger(nextPractice.skillNodeId), "Current Thread exposed an invalid next practice.");
+    await page.waitForSelector('[data-testid="thread-current-path"]', { visible: true, timeout: 30_000 });
+  }
 
   const [capabilitiesResponse, historyResponse] = await Promise.all([
     browserApiRequest(page, "/api/capabilities"),
@@ -1066,6 +1067,7 @@ async function requireThreadContinuityView(input: {
       const text = (selector) => document.querySelector(selector)?.textContent?.replace(/\\s+/g, " ").trim() || "";
       return {
         constellationNodeCount: document.querySelectorAll('[data-testid^="capability-constellation-node-"]').length,
+        workspaceText: text('#transformation-thread-workspace'),
         currentPathText: text('[data-testid="thread-current-path"]'),
         currentPathSkill: text('[data-testid="thread-current-path-skill"]'),
         currentPathObjective: text('[data-testid="thread-current-path-objective"]'),
@@ -1084,6 +1086,7 @@ async function requireThreadContinuityView(input: {
     })()
   `) as {
     constellationNodeCount: number;
+    workspaceText: string;
     currentPathText: string;
     currentPathSkill: string;
     currentPathObjective: string;
@@ -1100,12 +1103,16 @@ async function requireThreadContinuityView(input: {
     focusVisible: boolean;
   };
   const graphNodeCount = thread.skillGraph?.nodes?.length || 0;
-  const nextSkillName = String(nextPractice.skillName || "");
-  const nextTitle = String(nextPractice.title || "");
   assert(rendered.constellationNodeCount === graphNodeCount && graphNodeCount > 0, "Rendered capability constellation did not match the current Thread graph.");
-  assert(rendered.currentPathSkill.includes(nextSkillName) && rendered.currentPathObjective.includes(objective) && rendered.currentPathTitle === nextTitle, "Rendered current path did not match the authenticated Thread recommendation.");
-  assert(rendered.method.includes("Method and tools") && rendered.proof.includes("Proof standard") && rendered.support.includes("Support and review") && rendered.advancement.includes("Advancement"), "Rendered current path omitted a required execution or evidence answer.");
-  assert(rendered.pathDisclosure.includes("not certification") && rendered.pathDisclosure.includes("authority") && rendered.pathDisclosure.includes("personal worth"), "Rendered current path omitted its evidence and authority boundary.");
+  if (nextPractice) {
+    const nextSkillName = String(nextPractice.skillName || "");
+    const nextTitle = String(nextPractice.title || "");
+    assert(rendered.currentPathSkill.includes(nextSkillName) && rendered.currentPathObjective.includes(objective) && rendered.currentPathTitle === nextTitle, "Rendered current path did not match the authenticated Thread recommendation.");
+    assert(rendered.method.includes("Method and tools") && rendered.proof.includes("Proof standard") && rendered.support.includes("Support and review") && rendered.advancement.includes("Advancement"), "Rendered current path omitted a required execution or evidence answer.");
+    assert(rendered.pathDisclosure.includes("not certification") && rendered.pathDisclosure.includes("authority") && rendered.pathDisclosure.includes("personal worth"), "Rendered current path omitted its evidence and authority boundary.");
+  } else {
+    assert(rendered.workspaceText.includes("Your focus remains connected to your stated direction, capacity, and reviewed record."), "Rendered Thread workspace did not explain that no next practice is prepared yet.");
+  }
   assert(rendered.capabilityName === String(history?.capability?.name || "") && rendered.capabilityExperience.includes(`${capabilityExperience} reviewed XP`), "Rendered durable capability total did not match its authenticated history.");
   assert(rendered.capabilityDisclosure.includes("not certification") && rendered.focusVisible, "Rendered capability history omitted its focus or truth boundary.");
   assert(rendered.capabilityHistoryText.includes(`${expectedEventDelta > 0 ? "+" : ""}${expectedEventDelta} XP`) && rendered.capabilityHistoryText.includes(expectedEventType.replaceAll("_", " ")), "Rendered capability history omitted the expected reviewed progression event.");
@@ -1114,13 +1121,13 @@ async function requireThreadContinuityView(input: {
     phase,
     threadId,
     threadStatus,
-    currentPath: {
-      skillNodeId: nextPractice.skillNodeId,
-      skillName: nextSkillName,
+    currentPath: nextPractice ? {
+      skillNodeId: Number(nextPractice.skillNodeId),
+      skillName: String(nextPractice.skillName || ""),
       missionId: typeof nextPractice.questId === "number" && Number.isInteger(nextPractice.questId) ? nextPractice.questId : null,
-      title: nextTitle,
+      title: String(nextPractice.title || ""),
       objective,
-    },
+    } : null,
     capability: {
       id: capabilityId,
       name: String(history?.capability?.name || ""),
