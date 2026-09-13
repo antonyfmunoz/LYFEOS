@@ -988,6 +988,17 @@ async function requireThreadContinuityView(input: {
   assert(missionId !== null && reviewedSkillNodeId !== null, "Thread continuity requires the reviewed synthetic Mission and its skill node.");
   await page.goto(new URL("/dashboard", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
   await page.waitForSelector('[data-testid="transformation-thread-panel"]', { visible: true, timeout: 30_000 });
+  const workspaceToggle = 'button[aria-controls="transformation-thread-workspace"]';
+  await page.waitForSelector(workspaceToggle, { visible: true, timeout: 30_000 });
+  const workspaceExpanded = await page.$eval(workspaceToggle, (element) => element.getAttribute("aria-expanded") === "true");
+  if (!workspaceExpanded) {
+    await page.click(workspaceToggle);
+    await page.waitForFunction(
+      (selector) => document.querySelector(selector)?.getAttribute("aria-expanded") === "true",
+      { timeout: 30_000 },
+      workspaceToggle,
+    );
+  }
   await page.waitForSelector('[data-testid="thread-current-path"]', { visible: true, timeout: 30_000 });
   await page.waitForSelector('[data-testid="capability-constellation"]', { visible: true, timeout: 30_000 });
 

@@ -346,6 +346,8 @@ describe("production browser acceptance custody", () => {
     expect(coreLoopScript).toContain('name: "rendered progression visualization"');
     expect(coreLoopScript).toContain("async function requireThreadContinuityView");
     expect(coreLoopScript).toContain('new URL("/dashboard", BASE_URL)');
+    expect(coreLoopScript).toContain('button[aria-controls="transformation-thread-workspace"]');
+    expect(coreLoopScript).toContain('element.getAttribute("aria-expanded") === "true"');
     expect(coreLoopScript).toContain('[data-testid="thread-current-path"]');
     expect(coreLoopScript).toContain('[data-testid="capability-constellation"]');
     expect(coreLoopScript).toContain('`/api/capabilities/${capabilityId}/history`');
