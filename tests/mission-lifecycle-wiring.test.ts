@@ -143,6 +143,20 @@ describe("mission lifecycle wiring", () => {
     expect(inbox).toContain('"/api/inbox/captures/batch"');
   });
 
+  it("keeps idea capture on the Dashboard rather than duplicating it in the global shell", () => {
+    const layout = readSource("client/src/components/layout/RootLayout.tsx");
+    const dashboard = readSource("client/src/pages/DashboardPage.tsx");
+    expect(layout).not.toContain("UniversalInboxCapture");
+    expect(layout).not.toContain("Capture an idea, task, or follow-up");
+    expect(dashboard).toContain("Today's Thoughts");
+    expect(dashboard).toContain("Information Consumed");
+    expect(dashboard).toContain("To-Do Ideas");
+    expect(dashboard).toContain("zero-XP historical record in Mission Archive");
+    expect(dashboard).not.toContain("/api/inbox/captures/batch");
+    expect(dashboard).not.toContain("Create missions");
+    expect(dashboard).not.toContain("Route to inbox");
+  });
+
   it("makes canonical mission creation atomic, source-aware, and replay safe", () => {
     const lifecycle = readSource("server/mission-lifecycle.ts");
     const inbox = readSource("server/routes/inbox.ts");
@@ -164,10 +178,17 @@ describe("mission lifecycle wiring", () => {
     const quests = readSource("server/routes/quests.ts");
     const conversion = readSource("server/todo-idea-conversion.ts");
     expect(profile).toContain("convertTodoIdeasToMissions");
+    expect(profile).toContain('"/api/users/:userId/daily-logs/reconcile-todo-ideas"');
     expect(quests).toContain("convertTodoIdeasToMissions");
     expect(conversion).toContain('source: "todo"');
-    expect(profile).not.toContain("Auto-created from To-Do Ideas");
-    expect(quests).not.toContain("Auto-created from To-Do Ideas");
+    expect(conversion).toContain("experienceReward: 0");
+    expect(conversion).toContain("unscheduled someday-Mission; it is not completed work");
+    const missionsPage = readSource("client/src/pages/QuestsPage.tsx");
+    expect(missionsPage).toContain("Saved To-Do Ideas and other unscheduled Missions are kept here");
+    expect(missionsPage).toContain("const futureWindowEndDate = formatDateStr(futureWindowEnd);");
+    expect(missionsPage).toContain("return q.startDate === today;");
+    expect(missionsPage).toContain("return q.startDate > today && q.startDate <= futureWindowEndDate;");
+    expect(readSource("client/src/components/dashboard/QuestItem.tsx")).toContain("Saved idea");
   });
 
   it("turns repeated capacity deferrals into a visible, non-judgmental planning signal", () => {

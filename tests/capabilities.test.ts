@@ -41,14 +41,14 @@ describe("private capability registry", () => {
     expect(panel).toContain("Could not remove connection");
   });
 
-  it("keeps the active Thread dashboard stable and labels branch entry", () => {
+  it("keeps the active Thread discoverable without placing an onboarding gate on the Dashboard", () => {
     const panel = readFileSync(resolve(process.cwd(), "client/src/components/dashboard/TransformationThreadPanel.tsx"), "utf8");
-    expect(panel).toContain('const threadPanelShellClassName = "mb-6 min-h-[calc(100vh-15rem)]"');
-    expect(panel).toContain('aria-busy="true"');
+    expect(panel).toContain('const threadPanelShellClassName = "mb-6"');
     expect(panel).toContain('aria-label="Connected skill branch name"');
-    expect(panel).toContain('data-testid="transformation-thread-onboarding-gate"');
     expect(panel).toContain('if (isThreadLoading || isProfileLoading)');
-    expect(panel).not.toContain('if (!thread) return null;');
+    expect(panel).toContain('if (!thread) return null;');
+    expect(panel).not.toContain('data-testid="transformation-thread-onboarding-gate"');
+    expect(panel).not.toContain('Continue onboarding');
   });
 
   it("keeps user-stated relationship strength visual rather than a hidden XP multiplier", () => {

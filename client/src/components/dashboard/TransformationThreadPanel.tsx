@@ -1,4 +1,4 @@
-import { Award, CheckCircle2, ChevronRight, Pause, Play, Plus, Target } from "lucide-react";
+import { Award, CheckCircle2, ChevronDown, ChevronRight, Pause, Play, Plus, Target } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -13,6 +13,7 @@ import { CapabilityConstellation } from "@/components/dashboard/CapabilityConste
 type StarterMission = {
   title: string;
   rationale: string;
+  dayOffset?: 0 | 1 | 2;
 };
 
 type CapabilitySummary = {
@@ -124,6 +125,7 @@ type TransformationThread = {
 
 export function TransformationThreadPanel() {
   const { toast } = useToast();
+  const [isWorkspaceOpen, setIsWorkspaceOpen] = useState(false);
   const [reflection, setReflection] = useState("");
   const [branchName, setBranchName] = useState("");
   const [edgeSourceId, setEdgeSourceId] = useState("");
@@ -156,7 +158,7 @@ export function TransformationThreadPanel() {
       queryClient.invalidateQueries({ queryKey: ["/api/transformation-thread"] });
       queryClient.invalidateQueries({ queryKey: ["/api/capabilities"] });
     },
-    onError: () => toast({ title: "System initialization failed", description: "Complete each onboarding mission before creating your plan.", variant: "destructive" }),
+    onError: () => toast({ title: "System initialization failed", description: "Your focus plan was not created. Please try again.", variant: "destructive" }),
   });
   const activateThread = useMutation({
     mutationFn: (threadId: number) => apiRequest(`/api/transformation-thread/${threadId}/activate`, { method: "POST" }),
@@ -212,33 +214,17 @@ export function TransformationThreadPanel() {
     },
     onError: (error: Error) => toast({ title: "Could not defer mission", description: error.message || "Your mission was not changed.", variant: "destructive" }),
   });
-  const onboardingComplete = profile?.onboardingCompleted && (profile.completedOnboardingMissions?.length || 0) >= 8;
-  // The dashboard appears beneath the app cover while these requests resolve. Keep the
-  // Thread region stable across loading, onboarding, initialization, and active states so
-  // the rest of the dashboard never jumps upward when an account has no Thread yet.
-  const threadPanelShellClassName = "mb-6 min-h-[calc(100vh-15rem)]";
+  const onboardingComplete = profile?.onboardingCompleted && (profile.completedOnboardingMissions?.length || 0) >= 9;
+  const threadPanelShellClassName = "mb-6";
   if (isThreadLoading || isProfileLoading) {
-    return (
-      <section
-        className={threadPanelShellClassName}
-        aria-label="Loading current Thread"
-        aria-busy="true"
-        data-tour="transformation-thread"
-      >
-        <div className="glassmorphic rounded-xl p-4 neon-border">
-          <div className="h-3 w-32 animate-pulse rounded bg-primary/15" />
-          <div className="mt-3 h-4 w-64 max-w-full animate-pulse rounded bg-primary/10" />
-          <div className="mt-2 h-3 w-full max-w-2xl animate-pulse rounded bg-primary/10" />
-        </div>
-      </section>
-    );
+    return null;
   }
 
   if (!thread && onboardingComplete) {
     const reusableCapabilities = capabilityData?.capabilities || [];
     return (
       <section className={threadPanelShellClassName} data-tour="transformation-thread" data-testid="transformation-thread-initialization">
-        <div className="glassmorphic rounded-xl p-4 neon-border">
+        <div className="rounded-xl border border-primary/20 bg-card/50 p-4 shadow-sm">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-[0.16em] text-primary">
@@ -269,27 +255,9 @@ export function TransformationThreadPanel() {
     );
   }
 
-  if (!thread) {
-    const completedMissionCount = profile?.completedOnboardingMissions?.length || 0;
-    return (
-      <section className={threadPanelShellClassName} data-tour="transformation-thread" data-testid="transformation-thread-onboarding-gate">
-        <div className="glassmorphic rounded-xl p-4 neon-border">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-[0.16em] text-primary">
-                <Target className="h-4 w-4" /> Your transformation Thread
-              </div>
-              <p className="mt-2 text-sm text-muted-foreground">Complete onboarding missions to prepare your focused growth plan, starter missions, and connected skill map.</p>
-              <p className="mt-2 text-xs text-muted-foreground" data-testid="transformation-thread-onboarding-progress">{completedMissionCount}/8 onboarding missions complete</p>
-            </div>
-            <Link href="/onboarding" className="inline-flex h-9 shrink-0 items-center justify-center rounded-md border border-primary/50 bg-primary/20 px-3 text-sm font-medium text-primary transition-colors hover:bg-primary/30">
-              Continue onboarding <ChevronRight className="ml-2 h-4 w-4" />
-            </Link>
-          </div>
-        </div>
-      </section>
-    );
-  }
+  // Onboarding missions are managed in Missions. Do not block the Dashboard
+  // with a duplicate gate before the member has created a Transformation Thread.
+  if (!thread) return null;
 
   const starterMissions = Array.isArray(thread.starterMissions) ? thread.starterMissions : [];
   const isDraft = thread.status === "draft";
@@ -309,7 +277,7 @@ export function TransformationThreadPanel() {
 
   return (
     <section className={threadPanelShellClassName} data-tour="transformation-thread" data-testid="transformation-thread-panel">
-      <div className="glassmorphic rounded-xl p-4 neon-border">
+      <div className="rounded-xl border border-primary/20 bg-card/50 p-4 shadow-sm">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-[0.16em] text-primary">
@@ -350,6 +318,33 @@ export function TransformationThreadPanel() {
           )}
         </div>
 
+        {!isDraft && (
+          <div className="mt-3 flex flex-col gap-3 border-t border-primary/10 pt-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <p className="text-[10px] font-mono uppercase tracking-[0.12em] text-primary">Focus workspace</p>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                {nextPractice
+                  ? <>Next aligned action: <span className="text-foreground">{nextPractice.title}</span>. {nextPractice.selectionBasis}</>
+                  : "Your focus remains connected to your stated direction, capacity, and reviewed record."}
+              </p>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="shrink-0 border-primary/25 text-primary hover:bg-primary/10"
+              aria-expanded={isWorkspaceOpen}
+              aria-controls="transformation-thread-workspace"
+              onClick={() => setIsWorkspaceOpen((open) => !open)}
+            >
+              {isWorkspaceOpen ? "Hide workspace" : "Open workspace"}
+              <ChevronDown className={`ml-1.5 h-3.5 w-3.5 transition-transform ${isWorkspaceOpen ? "rotate-180" : ""}`} />
+            </Button>
+          </div>
+        )}
+
+        <div id="transformation-thread-workspace" className={!isDraft && !isWorkspaceOpen ? "hidden" : undefined}>
+
         {planningContext && (
           <div className="mt-3 rounded-md border border-primary/10 bg-card/20 px-3 py-2 text-[11px] text-muted-foreground">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -371,6 +366,7 @@ export function TransformationThreadPanel() {
                   <span className="font-mono text-xs text-primary">0{index + 1}</span>
                   <div>
                     <p className="text-sm text-foreground">{mission.title}</p>
+                    <p className="mt-1 text-[10px] font-mono uppercase tracking-[0.1em] text-primary/80">{mission.dayOffset === 0 ? "Today" : mission.dayOffset === 1 ? "Tomorrow" : mission.dayOffset === 2 ? "Day after tomorrow" : `Step ${index + 1}`}</p>
                     <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{mission.rationale}</p>
                   </div>
                 </div>
@@ -636,6 +632,7 @@ export function TransformationThreadPanel() {
             <p className="mt-2 text-[10px] text-muted-foreground/80">{progression.competenceSignals.note}</p>
           </div>
         )}
+        </div>
       </div>
     </section>
   );

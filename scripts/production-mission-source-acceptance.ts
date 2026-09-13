@@ -232,7 +232,7 @@ async function main(): Promise<void> {
     assert([automationCreated.body?.result?.duplicate, automationReplayed.body?.result?.duplicate].filter(Boolean).length === 1, "Automation replay did not report exactly one duplicate.");
 
     stage = "qualify Thread system Mission activation";
-    const profile = await request("PATCH", "/api/profile", { completedOnboardingMissions: [0, 1, 2, 3, 4, 5, 6, 7] }, account.cookie);
+    const profile = await request("PATCH", "/api/profile", { completedOnboardingMissions: [0, 1, 2, 3, 4, 5, 6, 7, 8] }, account.cookie);
     assert(profile.status === 200, `Onboarding prerequisite setup returned ${profile.status}.`);
     const initialized = await request("POST", "/api/transformation-thread/initialize", {}, account.cookie);
     assert([200, 201].includes(initialized.status) && Number(initialized.body?.thread?.id) > 0, `Thread initialization returned ${initialized.status}.`);

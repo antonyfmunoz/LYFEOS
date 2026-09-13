@@ -54,7 +54,7 @@ describeApi("Thread capability focus authenticated journey", () => {
     outsiderId = outsider.data.user.id;
     for (const [cookie, craft] of [[ownerCookie, "Discovery conversations"], [outsiderCookie, "Illustration"]]) {
       expect((await request("PATCH", "/api/profile", {
-        completedOnboardingMissions: [0, 1, 2, 3, 4, 5, 6, 7], primaryCraft: craft, desiredTrait: "Deliberate practice",
+        completedOnboardingMissions: [0, 1, 2, 3, 4, 5, 6, 7, 8], primaryCraft: craft, desiredTrait: "Deliberate practice",
       }, cookie)).status).toBe(200);
       expect((await request("POST", "/api/transformation-thread/initialize", {}, cookie)).status).toBe(201);
     }

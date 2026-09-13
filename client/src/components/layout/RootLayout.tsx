@@ -5,7 +5,6 @@ import AICompanionPanel from "../ai/AICompanionPanel";
 import MissionTimer from "../dashboard/MissionTimer";
 import { useLYFEOS } from "../../lib/context";
 import { useLocation } from "wouter";
-import { UniversalInboxCapture } from "../UniversalInboxCapture";
 
 interface RootLayoutProps {
   children: ReactNode;
@@ -58,18 +57,18 @@ export default function RootLayout({ children }: RootLayoutProps) {
   const currentPage = pageAliases[rawPage] || rawPage;
   
   return (
-    <div className="flex flex-col bg-background" style={{ height: 'calc(100dvh + env(safe-area-inset-bottom, 0px))' }}>
+    <div className="flex flex-col h-[100dvh] bg-background">
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"
       >
         Skip to main content
       </a>
-      <div className="flex flex-grow overflow-hidden">
+      <div className="flex min-h-0 flex-grow overflow-hidden">
         <Sidebar currentPage={currentPage} displayName={displayName} />
         
-        <div className="flex-grow flex flex-col overflow-hidden">
-          <main id="main-content" ref={scrollContainerRef} tabIndex={-1} className="flex-grow overflow-y-auto relative safe-area-top">
+        <div className="flex min-h-0 flex-grow flex-col overflow-hidden">
+          <main id="main-content" ref={scrollContainerRef} tabIndex={-1} className="relative min-h-0 flex-grow overflow-y-auto safe-area-top">
             <div className="bg-background lg:hidden">
               <div className="flex items-center justify-center py-3">
                 <span className="text-2xl text-white font-orbitron font-bold">LYFE<span className="text-primary">OS</span></span>
@@ -102,9 +101,6 @@ export default function RootLayout({ children }: RootLayoutProps) {
               <div className="hidden lg:flex flex-col items-center mb-4">
                 <span className="text-2xl text-white font-orbitron font-bold">LYFE<span className="text-primary">OS</span></span>
                 <p className="text-muted-foreground text-sm mt-1">Your personal life operating system</p>
-              </div>
-              <div className="mb-4">
-                <UniversalInboxCapture />
               </div>
               {children}
             </div>

@@ -51,7 +51,7 @@ describeApi("Transformation intelligence API", () => {
     ownerId = ownerRegistration.data.user.id;
     reviewerId = reviewerRegistration.data.user.id;
     expect((await request("PATCH", "/api/profile", {
-      completedOnboardingMissions: [0, 1, 2, 3, 4, 5, 6, 7],
+      completedOnboardingMissions: [0, 1, 2, 3, 4, 5, 6, 7, 8],
       primaryCraft: "Discovery conversations",
       desiredTrait: "Curious communication",
       weeklyCapacity: { hours: 5 },

@@ -31,7 +31,7 @@ const DATABASE_URL = process.env.DATABASE_URL?.trim() || "";
 const OUTPUT_DIR = path.resolve(process.env.LYFEOS_THREAD_SUCCESSOR_OUTPUT_DIR || path.join(os.tmpdir(), "lyfeos-thread-successor-browser"));
 const OUTPUT_FILE = path.join(OUTPUT_DIR, "report.json");
 const PASSWORD = "TestPass123!";
-const ONBOARDING_MISSIONS = Array.from({ length: 8 }, (_, id) => id);
+const ONBOARDING_MISSIONS = Array.from({ length: 9 }, (_, id) => id);
 const VIEWPORTS: Array<{ name: string; value: Viewport }> = [
   { name: "desktop-1440x900", value: { width: 1440, height: 900, deviceScaleFactor: 1 } },
   { name: "mobile-390x844", value: { width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true } },
@@ -323,6 +323,8 @@ async function runViewport(browser: Browser, pool: pg.Pool, viewport: { name: st
     assert(primary?.capabilityId === first.capabilityId && Number(primary?.experience) === 0, "Successor primary skill did not begin with zero Thread-local XP over the same durable capability.");
     assert(Number(graphPrimary?.experience) === first.durableReviewedExperience && Number(graphPrimary?.threadExperience) === 0, "Successor graph did not separate durable reviewed XP from zero Thread-local XP.");
 
+    stage = "open the successor workspace";
+    await activateRenderedControl(page, 'button[aria-controls="transformation-thread-workspace"]');
     stage = "render both capability focus periods";
     const historyToggleSelector = `[data-testid="capability-history-toggle-${primary.id}"]`;
     await page.waitForSelector(historyToggleSelector, { visible: true, timeout: 30_000 });

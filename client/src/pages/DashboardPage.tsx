@@ -4,7 +4,7 @@ import {
   Calendar, BarChart, CalendarDays, Clock, Brain, AlarmClock, 
   MoonStar, Smile, HeartPulse, Book, BookOpen, ListChecks, 
   Zap, Target as TargetIcon, ChevronDown, Check, Search, FileText, Play, Link2,
-  Plus, Archive, ChevronUp, Pencil, X, RotateCcw
+  Plus, Archive, ChevronUp, Pencil, X, RotateCcw, Bell, MessageCircle, Radio
 } from 'lucide-react';
 import { useLYFEOS, type ResearchEntry } from '@/lib/context';
 import { useAuth } from '@/lib/authContext';
@@ -181,8 +181,20 @@ function TimezoneSelector({ timezone, setTimezone }: { timezone: string; setTime
 
 function PersistentDraggableWidget({ widgetId, ...props }: Omit<DraggableWidgetProps, 'isOpenProp' | 'onOpenChange'> & { widgetId: string }) {
   const [isOpen, setIsOpen] = useWidgetState(widgetId, props.defaultOpen ?? true);
+  useEffect(() => {
+    const openWidget = (event: Event) => {
+      if (!(event instanceof CustomEvent) || event.detail !== widgetId) return;
+      setIsOpen(true);
+    };
+    window.addEventListener("lyfeos:open-dashboard-widget", openWidget);
+    return () => window.removeEventListener("lyfeos:open-dashboard-widget", openWidget);
+  }, [setIsOpen, widgetId]);
   return <DraggableWidget {...props} isOpenProp={isOpen} onOpenChange={setIsOpen} headerActions={props.headerActions} />;
 }
+
+type PushControlStatus = { configured: boolean; supported: boolean; provider: string | null };
+type PushControlSubscription = { id: number; status: string };
+type ControlCenterConversation = { unreadCount: number };
 
 export default function DashboardPage() {
   // Set the page title
@@ -389,10 +401,48 @@ export default function DashboardPage() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [timeFormat, setTimeFormat] = useState<'12h' | '24h'>('12h');
   const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone);
+  const [isDailyControlOpen, setIsDailyControlOpen] = useState(false);
+  const dailyControlEnabled = isAuthenticated && isDailyControlOpen;
+  const notificationControl = useQuery<PushControlStatus>({
+    queryKey: ["/api/push/config"],
+    queryFn: () => apiRequest("/api/push/config"),
+    enabled: dailyControlEnabled,
+    staleTime: 60_000,
+  });
+  const notificationSubscriptions = useQuery<{ subscriptions: PushControlSubscription[] }>({
+    queryKey: ["/api/push/subscriptions"],
+    queryFn: () => apiRequest("/api/push/subscriptions"),
+    enabled: dailyControlEnabled,
+    staleTime: 60_000,
+  });
+  const messageControl = useQuery<{ conversations: ControlCenterConversation[] }>({
+    queryKey: ["/api/message-hub/conversations", "open", "daily-control"],
+    queryFn: () => apiRequest("/api/message-hub/conversations?status=open"),
+    enabled: dailyControlEnabled,
+    staleTime: 15_000,
+  });
   
   // Track the current date for energy log (to detect date changes) - uses local timezone
   const todayDateStr = getLocalDateString();
   const lastLoadedDateRef = useRef<string>(todayDateStr);
+  const lastTodoIdeaReconciliationDateRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!user?.id || lastTodoIdeaReconciliationDateRef.current === todayDateStr) return;
+    lastTodoIdeaReconciliationDateRef.current = todayDateStr;
+    void apiRequest(`/api/users/${user.id}/daily-logs/reconcile-todo-ideas`, {
+      method: "POST",
+      body: JSON.stringify({ currentDate: todayDateStr }),
+    }).then((result: { created?: number }) => {
+      if ((result.created || 0) > 0) {
+        queryClient.invalidateQueries({ queryKey: ["/api/quests"] });
+      }
+    }).catch(() => {
+      // Mission-list loading uses the same idempotent reconciliation as a
+      // recovery path if this background dashboard request cannot complete.
+      lastTodoIdeaReconciliationDateRef.current = null;
+    });
+  }, [user?.id, todayDateStr]);
   
   // Ref to track current log values for flush save on logout
   // This allows us to access current values without adding them to effect dependencies
@@ -572,25 +622,6 @@ export default function DashboardPage() {
       });
     }
   });
-  const routeTodoMutationIdRef = useRef(crypto.randomUUID());
-  const routeTodoIdeas = useMutation({
-    mutationFn: () => apiRequest("/api/inbox/captures/batch", {
-      method: "POST",
-      body: JSON.stringify({ text: dataLog.todoIdeas, sourceDate: todayDateStr, mutationId: routeTodoMutationIdRef.current }),
-    }),
-    onSuccess: (result: { created: unknown[]; skipped: number }) => {
-      routeTodoMutationIdRef.current = crypto.randomUUID();
-      queryClient.invalidateQueries({ queryKey: ["/api/quests"] });
-      toast({
-        title: result.created.length ? "Ideas routed to Missions" : "Ideas already in Missions",
-        description: result.created.length
-          ? `${result.created.length} inbox mission${result.created.length === 1 ? "" : "s"} created${result.skipped ? `; ${result.skipped} duplicate${result.skipped === 1 ? " was" : "s were"} skipped` : ""}.`
-          : "No duplicate missions were created.",
-      });
-    },
-    onError: (error: Error) => toast({ title: "Could not route ideas", description: error.message, variant: "destructive" }),
-  });
-  
   // Register pre-logout callback to save data BEFORE session is invalidated
   useEffect(() => {
     const flushSaveBeforeLogout = async () => {
@@ -860,6 +891,19 @@ export default function DashboardPage() {
     hour12: timeFormat === '12h',
     timeZone: timezone
   });
+  const unreadMessageCount = (messageControl.data?.conversations || []).reduce((total, conversation) => total + Math.max(0, conversation.unreadCount || 0), 0);
+  const activeNotificationDevices = notificationSubscriptions.data?.subscriptions.filter((subscription) => subscription.status === "active").length || 0;
+  const notificationSummary = !isAuthenticated
+    ? "Sign in to view your private notifications."
+    : notificationControl.isLoading || notificationSubscriptions.isLoading
+      ? "Checking this browser…"
+      : !notificationControl.data?.supported
+        ? "This browser does not support private web notifications."
+        : !notificationControl.data?.configured
+          ? "Notification delivery is not configured for this LyfeOS installation."
+          : activeNotificationDevices > 0
+            ? `${activeNotificationDevices} authorized browser${activeNotificationDevices === 1 ? "" : "s"}.`
+            : "No browser is authorized for private notifications.";
   
   // Update time every minute
   useEffect(() => {
@@ -1201,28 +1245,28 @@ export default function DashboardPage() {
       id: 'research-log',
       title: "Research",
       icon: <Search className="h-5 w-5 text-primary" />,
-      defaultOpen: true,
+      defaultOpen: false,
       infoDescription: "Document your research findings, revision summaries, and execution plans. Track the lifecycle of ideas from discovery through implementation."
     },
     {
       id: 'reflection-log',
       title: "Reflection",
       icon: <Calendar className="h-5 w-5 text-primary" />,
-      defaultOpen: true,
+      defaultOpen: false,
       infoDescription: "Reflect on what went well, what could improve, and lessons learned. Daily reflection builds self-awareness and accelerates growth."
     },
     {
       id: 'intention-setter',
       title: "Intention",
       icon: <TargetIcon className="h-5 w-5 text-primary" />,
-      defaultOpen: true,
+      defaultOpen: false,
       infoDescription: "Set your focus and priorities for the day. Clear intentions help direct your energy and attention toward what matters most."
     },
     {
       id: 'energy-log',
       title: "Energy",
       icon: <Brain className="h-5 w-5 text-primary" />,
-      defaultOpen: true,
+      defaultOpen: false,
       infoDescription: "Track your energy levels, sleep, exercise, and mood throughout the day. Understanding your patterns helps optimize your performance."
     }
   ]);
@@ -1330,15 +1374,10 @@ export default function DashboardPage() {
             </div>
             
             <div className="space-y-2">
-              <div className="flex items-center justify-between gap-2">
-                <label className="text-sm flex items-center text-muted-foreground">
-                  <ListChecks className="h-4 w-4 text-primary" />
-                  <span className="ml-2">To-Do Ideas</span>
-                </label>
-                <Button type="button" size="sm" variant="ghost" className="h-7 border border-primary/20 px-2 text-xs text-primary hover:bg-primary/10" onClick={() => routeTodoIdeas.mutate()} disabled={dataLog.todoIdeas.trim().length < 2 || routeTodoIdeas.isPending}>
-                  {routeTodoIdeas.isPending ? "Routing…" : "Route to inbox"}
-                </Button>
-              </div>
+              <label className="text-sm flex items-center text-muted-foreground">
+                <ListChecks className="h-4 w-4 text-primary" />
+                <span className="ml-2">To-Do Ideas</span>
+              </label>
               <MarkdownEditor
                 placeholder="Things you want to remember to do later..."
                 value={reflection.todoIdeas}
@@ -1346,7 +1385,7 @@ export default function DashboardPage() {
                 onBlur={handleBlurSave}
                 minHeight="80px"
               />
-              <p className="text-[11px] text-muted-foreground">Your notes stay here. Routing creates editable Inbox missions from the distinct lines above.</p>
+              <p className="text-[11px] text-muted-foreground">Jot down ideas without creating work. After the day closes, each saved line becomes a zero-XP historical record in Mission Archive—not an active Mission.</p>
             </div>
           </div>
         );
@@ -1718,10 +1757,18 @@ export default function DashboardPage() {
         <section className="mb-6" data-tour="date-header">
           <div className="glassmorphic rounded-xl p-3 neon-border">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
-              <div className="flex items-center">
+              <button
+                type="button"
+                className="flex items-center rounded-md text-left transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                onClick={() => setIsDailyControlOpen((open) => !open)}
+                aria-expanded={isDailyControlOpen}
+                aria-controls="daily-control-center"
+                aria-label={isDailyControlOpen ? "Close daily controls" : "Open daily controls"}
+              >
                 <CalendarDays className="h-5 w-5 text-primary mr-2" />
                 <h1 className="text-xl sm:text-2xl font-orbitron text-muted-foreground">{formattedDate}</h1>
-              </div>
+                <ChevronDown className={`ml-2 h-4 w-4 text-primary transition-transform ${isDailyControlOpen ? "rotate-180" : ""}`} />
+              </button>
               <div className="flex items-center gap-2 mt-2 sm:mt-0">
                 <Clock className="h-4 w-4 text-primary mr-2" />
                 <span className="text-muted-foreground font-mono">{formattedTime}</span>
@@ -1736,11 +1783,28 @@ export default function DashboardPage() {
                 </button>
               </div>
             </div>
+            <div id="daily-control-center" className={isDailyControlOpen ? "mt-3 border-t border-primary/15 pt-3" : "hidden"}>
+              <div className="grid gap-2 sm:grid-cols-3" aria-label="Daily attention center">
+                <div className="rounded-lg border border-primary/15 bg-background/25 p-3">
+                  <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-[0.12em] text-primary"><Bell className="h-3.5 w-3.5" /> Notifications</div>
+                  <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{notificationSummary}</p>
+                </div>
+                <div className="rounded-lg border border-primary/15 bg-background/25 p-3">
+                  <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-[0.12em] text-primary"><MessageCircle className="h-3.5 w-3.5" /> Messages</div>
+                  <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{messageControl.isLoading ? "Checking unread messages…" : unreadMessageCount > 0 ? `${unreadMessageCount} unread message${unreadMessageCount === 1 ? "" : "s"}.` : "No unread messages."}</p>
+                </div>
+                <div className="rounded-lg border border-primary/15 bg-background/25 p-3">
+                  <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-[0.12em] text-primary"><Radio className="h-3.5 w-3.5" /> Today</div>
+                  <p className="mt-2 text-xs leading-relaxed text-muted-foreground">Your date, clock, and timezone are set above. Daily records and missions remain in their own workspaces.</p>
+                </div>
+              </div>
+              <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">This panel is an at-a-glance attention surface. It does not create, schedule, or duplicate a mission, and it never invents a notification that LyfeOS has not actually received.</p>
+            </div>
           </div>
         </section>
 
-        <DeferredFeatureChunkBoundary fallback={<section className="mb-6 min-h-[calc(100vh-15rem)]" aria-label="Current Thread unavailable"><div className="glassmorphic rounded-xl p-4 neon-border text-sm text-muted-foreground" role="alert">Your Thread could not load. Refresh LyfeOS to try again.</div></section>}>
-          <Suspense fallback={<section className="mb-6 min-h-[calc(100vh-15rem)]" aria-label="Loading current Thread" aria-busy="true"><div className="glassmorphic rounded-xl p-4 neon-border"><div className="h-3 w-32 animate-pulse rounded bg-primary/15" /><div className="mt-3 h-4 w-64 max-w-full animate-pulse rounded bg-primary/10" /><div className="mt-2 h-3 w-full max-w-2xl animate-pulse rounded bg-primary/10" /></div></section>}>
+        <DeferredFeatureChunkBoundary fallback={null}>
+          <Suspense fallback={null}>
             <TransformationThreadPanel />
           </Suspense>
         </DeferredFeatureChunkBoundary>
@@ -1750,7 +1814,7 @@ export default function DashboardPage() {
         
         {/* Draggable Widget Sections */}
         {widgets.map((widget, index) => (
-          <div key={widget.id} data-tour={`widget-${widget.id}`}>
+          <div id={`dashboard-${widget.id}`} key={widget.id} data-tour={`widget-${widget.id}`}>
             <PersistentDraggableWidget
               widgetId={`dashboard.${widget.id}`}
               id={widget.id}

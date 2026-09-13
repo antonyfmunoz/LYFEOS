@@ -138,7 +138,7 @@ async function captureOnboarding(page: any, suffix: string) {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ onboardingCompleted: true, completedOnboardingMissions: [0,1,2,3,4,5,6,7] }),
+      body: JSON.stringify({ onboardingCompleted: true, completedOnboardingMissions: [0,1,2,3,4,5,6,7,8] }),
     });
   });
   await new Promise(r => setTimeout(r, 500));

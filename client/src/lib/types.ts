@@ -48,6 +48,8 @@ export interface Quest {
   category?: string;
   completed: boolean;
   completedAt?: string | null;
+  /** Provenance for lifecycle-created records; captured ideas remain historical notes. */
+  planningDecisionSource?: string | null;
   energyCost?: number;
   attentionCost?: number;
   timeCost?: number;

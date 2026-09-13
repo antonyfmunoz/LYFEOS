@@ -200,12 +200,12 @@ async function ensureAcceptanceThread(page: Page): Promise<{ state: "existing" |
     let initialized = await browserApiRequest(page, "/api/transformation-thread/initialize", "POST", {});
     if (initialized.status === 409) {
       const missing = (initialized.body as { missing?: unknown } | null)?.missing;
-      assert(Array.isArray(missing) && missing.length > 0 && missing.every((id) => Number.isInteger(id) && Number(id) >= 0 && Number(id) <= 7), "Thread initialization was refused for a reason other than missing acceptance-fixture onboarding Missions.");
+      assert(Array.isArray(missing) && missing.length > 0 && missing.every((id) => Number.isInteger(id) && Number(id) >= 0 && id <= 8), "Thread initialization was refused for a reason other than missing acceptance-fixture onboarding Missions.");
       const profileResponse = await browserApiRequest(page, "/api/profile");
       const profile = profileResponse.body as { onboardingCompleted?: unknown; completedOnboardingMissions?: unknown } | null;
       assert(profileResponse.status === 200 && profile?.onboardingCompleted === true, "Acceptance fixture provisioning is limited to the dedicated completed-onboarding account.");
       const completed = Array.isArray(profile.completedOnboardingMissions)
-        ? profile.completedOnboardingMissions.filter((id): id is number => Number.isInteger(id) && id >= 0 && id <= 7)
+        ? profile.completedOnboardingMissions.filter((id): id is number => Number.isInteger(id) && id >= 0 && id <= 8)
         : [];
       const completedOnboardingMissions = Array.from(new Set([...completed, ...missing.map(Number)])).sort((left, right) => left - right);
       const provisioned = await browserApiRequest(page, "/api/profile", "PATCH", { completedOnboardingMissions });

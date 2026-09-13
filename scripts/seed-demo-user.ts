@@ -90,7 +90,7 @@ async function seedDemoUser() {
     onboardingMission: 8,
     onboardingStep: 0,
     onboardingCompleted: true,
-    completedOnboardingMissions: [0, 1, 2, 3, 4, 5, 6, 7],
+    completedOnboardingMissions: [0, 1, 2, 3, 4, 5, 6, 7, 8],
     totalXP: 4250,
     strengths: ['Strategic thinking', 'Creative direction', 'Systems design'],
     weaknesses: ['Over-planning', 'Delegation', 'Impatience'],

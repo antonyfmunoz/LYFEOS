@@ -18,6 +18,7 @@ const ONBOARDING_MISSIONS = [
   { id: 5, title: "Baselines & States", xp: 70 },
   { id: 6, title: "History & Roots", xp: 50 },
   { id: 7, title: "Systems & Rituals", xp: 65 },
+  { id: 8, title: "Systems & Integrations", xp: 25 },
 ] as const;
 
 function assert(condition: unknown, message: string): asserts condition {

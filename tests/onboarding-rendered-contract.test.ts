@@ -5,6 +5,8 @@ const onboarding = fs.readFileSync("client/src/pages/OnboardingPage.tsx", "utf8"
 const profile = fs.readFileSync("client/src/pages/ProfilePage.tsx", "utf8");
 const app = fs.readFileSync("client/src/App.tsx", "utf8");
 const acceptance = fs.readFileSync("scripts/production-onboarding-browser-acceptance.ts", "utf8");
+const questRoutes = fs.readFileSync("server/routes/quests.ts", "utf8");
+const threadRoutes = fs.readFileSync("server/routes/transformation-threads.ts", "utf8");
 
 describe("rendered onboarding acceptance contract", () => {
   it("exposes stable, accessible controls without changing the visual flow", () => {
@@ -46,6 +48,16 @@ describe("rendered onboarding acceptance contract", () => {
     expect(onboarding.indexOf("await saveCompletedMission(currentMission)")).toBeLessThan(onboarding.indexOf("persistOnboardingPosition(currentMission, currentStep, true)", onboarding.indexOf("await saveCompletedMission(currentMission)")));
     expect(onboarding).toContain("await activateOnboardingThread();");
     expect(onboarding).not.toContain('await activateOnboardingThread().catch');
+  });
+
+  it("includes a non-blocking Systems and Integrations handoff without granting access", () => {
+    expect(onboarding).toContain('title: "Systems & Integrations"');
+    expect(onboarding).toContain("case 8: return 2;");
+    expect(onboarding).toContain("const renderMission8 = () => {");
+    expect(onboarding).toContain("Not now is a complete choice.");
+    expect(onboarding).toContain("No wearable, health-provider, or marketplace connection is created here.");
+    expect(questRoutes).toContain('"Onboarding: Systems & Integrations": 8');
+    expect(threadRoutes).toContain("const REQUIRED_ONBOARDING_MISSIONS = Array.from({ length: 9 }, (_, id) => id);");
   });
 
   it("reveals auth-aware routes after a cached-session reload", () => {
