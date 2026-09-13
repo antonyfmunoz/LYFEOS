@@ -53,6 +53,10 @@ async function loadFreshUserStats(userId: number) {
         current: dbStats.energyPointsCurrent,
         max: dbStats.energyPointsMax,
       },
+      healthPoints: {
+        current: dbStats.healthPointsCurrent,
+        max: dbStats.healthPointsMax,
+      },
       wealthTokens: {
         current: dbStats.wealthTokensCurrent ?? 100,
         max: dbStats.wealthTokensMax ?? 100,
@@ -1028,6 +1032,15 @@ Generate the complete affirmation now:`;
           dbStatsUpdate.energyPointsMax = frontendStats.energyPoints.max;
         }
       }
+
+      if (frontendStats.healthPoints) {
+        if (frontendStats.healthPoints.current !== undefined) {
+          dbStatsUpdate.healthPointsCurrent = frontendStats.healthPoints.current;
+        }
+        if (frontendStats.healthPoints.max !== undefined) {
+          dbStatsUpdate.healthPointsMax = frontendStats.healthPoints.max;
+        }
+      }
       
       
       if (frontendStats.wealthTokens) {
@@ -1092,6 +1105,10 @@ Generate the complete affirmation now:`;
         energyPoints: {
           current: dbUpdatedStats.energyPointsCurrent,
           max: dbUpdatedStats.energyPointsMax,
+        },
+        healthPoints: {
+          current: dbUpdatedStats.healthPointsCurrent,
+          max: dbUpdatedStats.healthPointsMax,
         },
         wealthTokens: {
           current: dbUpdatedStats.wealthTokensCurrent ?? 100,

@@ -35,6 +35,9 @@ describe("observed-pattern data quality", () => {
     const crossProduct = readFileSync(resolve(process.cwd(), "server/cross-product.ts"), "utf8");
     const storage = readFileSync(resolve(process.cwd(), "server/storage.ts"), "utf8");
     expect(compact).toContain("not a medical metric, diagnosis, or prediction");
+    expect(compact).toContain("const hpPercentage");
+    expect(compact).toContain('className="progress-bar progress-hp h-1.5 mb-1"');
+    expect(compact).not.toContain("RECORDS");
     expect(compact).toContain("not an account balance, financial advice, or a measure of wealth");
     expect(expanded).toContain("not a measure of productivity, wellbeing, or personal worth");
     expect(expanded).not.toContain("prevents illness");
@@ -46,7 +49,7 @@ describe("observed-pattern data quality", () => {
     expect(healthDetail).toContain("No mood check-ins recorded for this period");
     expect(healthDetail).toContain(".filter(([, value]) => categoryCount(value) > 0)");
     expect(healthDetail).not.toContain("stats.healthPoints.current");
-    expect(profileRoutes).not.toContain("healthPoints:");
+    expect(profileRoutes).toContain("healthPoints:");
     expect(healthDetail).toContain("not a measurement, score, diagnosis, or prediction of your health");
     expect(healthDetail).not.toContain("Current Health Status");
     expect(healthDetail).not.toContain("contributes to health");

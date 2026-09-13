@@ -11,6 +11,11 @@ export interface UserStats {
     current: number;
     max: number;
   };
+  /** A LyfeOS progression value, never a medical measurement or health assessment. */
+  healthPoints: {
+    current: number;
+    max: number;
+  };
   wealthTokens: {
     current: number;
     max: number;
