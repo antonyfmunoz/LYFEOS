@@ -349,6 +349,7 @@ describe("production browser acceptance custody", () => {
     expect(coreLoopScript).toContain('button[aria-controls="transformation-thread-workspace"]');
     expect(coreLoopScript).toContain('element.getAttribute("aria-expanded") === "true"');
     expect(coreLoopScript).toContain('[data-testid="thread-current-path"]');
+    expect(coreLoopScript).toContain('Your focus remains connected to your stated direction, capacity, and reviewed record.');
     expect(coreLoopScript).toContain('[data-testid="capability-constellation"]');
     expect(coreLoopScript).toContain('`/api/capabilities/${capabilityId}/history`');
     expect(coreLoopScript).toContain('expectedEventType = phase === "reviewed" ? "mission_evidence_review" : "mission_evidence_reversal"');
