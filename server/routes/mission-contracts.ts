@@ -73,6 +73,9 @@ const providerEvidenceSchema = z.object({
   summary: z.string().trim().min(3).max(2000),
 }).strict();
 const evidenceSchema = z.discriminatedUnion("sourceType", [manualEvidenceSchema, providerEvidenceSchema]);
+const evidenceCorrectionSchema = manualEvidenceSchema.extend({
+  correctionReason: z.string().trim().min(3).max(1000),
+}).strict();
 const reviewSchema = z.object({
   decision: z.enum(["meets_evidence", "revisions_needed"]),
   rubric: z.object({
@@ -717,6 +720,25 @@ export function registerMissionContractRoutes(app: Express): void {
     const evidence = (await missionEvidenceForContracts([contract.id], req.session.userId!))
       .find((item) => item.id === createdId);
     return res.status(201).json({ evidence });
+  });
+
+  app.post("/api/quests/:questId/evidence/:evidenceId/corrections", isAuthenticated, async (req: Request, res: Response) => {
+    const questId = Number(req.params.questId);
+    const evidenceId = Number(req.params.evidenceId);
+    if (!Number.isInteger(questId) || !Number.isInteger(evidenceId)) return res.status(400).json({ error: "Invalid mission evidence." });
+    const parsed = evidenceCorrectionSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: "Describe the correction and replacement evidence.", details: parsed.error.flatten() });
+    const [contract] = await db.select().from(missionContracts).where(and(eq(missionContracts.questId, questId), eq(missionContracts.userId, req.session.userId!))).limit(1);
+    if (!contract) return res.status(404).json({ error: "Mission proof plan not found." });
+    const [original] = await db.select().from(missionEvidence).where(and(eq(missionEvidence.id, evidenceId), eq(missionEvidence.missionContractId, contract.id), eq(missionEvidence.userId, req.session.userId!))).limit(1);
+    if (!original) return res.status(404).json({ error: "Mission evidence not found." });
+    if (original.sourceType === "provider") return res.status(409).json({ error: "Provider evidence keeps its original provenance. Add a separate manual observation if you need to explain a correction." });
+    const [evidence] = await db.insert(missionEvidence).values({
+      userId: req.session.userId!, missionContractId: contract.id, sourceType: parsed.data.sourceType,
+      sourceReference: parsed.data.sourceReference || null, summary: parsed.data.summary, confidence: parsed.data.confidence,
+      supersedesEvidenceId: original.id, correctionReason: parsed.data.correctionReason,
+    }).returning();
+    return res.status(201).json({ evidence: { ...evidence, supersededByCorrection: false, provenance: null } });
   });
 
   app.post("/api/quests/:questId/reviews", isAuthenticated, async (req: Request, res: Response) => {

@@ -28,8 +28,10 @@ export async function missionEvidenceForContracts(contractIds: number[], userId?
     ))
     .orderBy(desc(missionEvidence.submittedAt));
 
+  const correctedEvidenceIds = new Set(rows.map(({ evidence }) => evidence.supersedesEvidenceId).filter((id): id is number => id !== null));
   return rows.map(({ evidence, binding, sourceState }) => ({
     ...evidence,
+    supersededByCorrection: correctedEvidenceIds.has(evidence.id),
     provenance: binding ? providerProvenance(binding, sourceState) : null,
   }));
 }
