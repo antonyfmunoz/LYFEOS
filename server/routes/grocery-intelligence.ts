@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from "express";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
-import { brandOwnershipResearchReports, foodReviewPreferences, groceryPantryItems, groceryRecallAlerts, groceryRecallMonitoringPreferences, groceryReceiptDrafts, groceryShoppingItems, ingredientPreferenceRules } from "@shared/schema";
+import { brandOwnershipResearchReports, foodReviewPreferences, groceryPantryItems, groceryRecallAlerts, groceryRecallMonitoringPreferences, groceryReceiptDrafts, groceryShoppingItems, ingredientPreferenceRules, nutritionFoodNutrients, nutritionFoods } from "@shared/schema";
 import { db } from "../db";
 import { listReviewedBrandSpotlights, lookupReviewedBrandOwnership } from "../brand-ownership";
 import { FoodCatalogError, searchFoodCatalog } from "../food-catalog";
@@ -9,6 +9,7 @@ import { FoodRecallError, lookupFoodRecalls } from "../food-recalls";
 import { runGroceryRecallMonitor } from "../grocery-recall-monitor";
 import { ownershipScoreFromProfiles, parseReceiptText } from "../grocery-intelligence";
 import { parseIngredientLabel } from "../ingredient-scanner";
+import { compareFoods } from "../food-comparison";
 import { isAuthenticated } from "./middleware";
 
 const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -148,6 +149,23 @@ export function registerGroceryIntelligenceRoutes(app: Express): void {
       },
       disclosure: "Pantry, receipt text, and shopping items are private to this account. An ownership research report shares only the fields you submit with narrowly authorized ownership reviewers; it never shares your pantry or other LyfeOS data. Ownership results are shown only for exact, cited registry matches; missing coverage remains unknown.",
     });
+  });
+
+  // This compares only two foods the owner already saved. It does not infer a
+  // health score or a recommendation from incomplete nutrition records.
+  app.get("/api/grocery-intelligence/food-comparison", isAuthenticated, async (req: Request, res: Response) => {
+    const leftId = itemId(req.query.leftFoodId);
+    const rightId = itemId(req.query.rightFoodId);
+    if (!leftId.success || !rightId.success || leftId.data === rightId.data) return res.status(400).json({ error: "Choose two different private foods to compare." });
+    const userId = req.session.userId!;
+    const foods = await db.select().from(nutritionFoods).where(and(eq(nutritionFoods.userId, userId), inArray(nutritionFoods.id, [leftId.data, rightId.data])));
+    if (foods.length !== 2) return res.status(404).json({ error: "One or both foods are unavailable." });
+    const nutrients = await db.select().from(nutritionFoodNutrients).where(inArray(nutritionFoodNutrients.foodId, foods.map((food) => food.id)));
+    const byId = new Map(foods.map((food) => [food.id, { ...food, nutrients: nutrients.filter((nutrient) => nutrient.foodId === food.id) }]));
+    const left = byId.get(leftId.data);
+    const right = byId.get(rightId.data);
+    if (!left || !right) return res.status(404).json({ error: "One or both foods are unavailable." });
+    return res.json({ comparison: compareFoods(left, right) });
   });
 
   app.put("/api/grocery-intelligence/recall-monitoring", isAuthenticated, async (req: Request, res: Response) => {

@@ -3422,6 +3422,7 @@ export const ingredientScans = pgTable("ingredient_scans", {
   catalogAttributionUrl: text("catalog_attribution_url"),
   catalogTerritory: text("catalog_territory"),
   catalogSourceModified: boolean("catalog_source_modified").notNull().default(false),
+  favorite: boolean("favorite").notNull().default(false),
   parseVersion: text("parse_version").notNull().default("v1"),
   status: text("status").notNull().default("reviewed"),
   revision: integer("revision").notNull().default(1),

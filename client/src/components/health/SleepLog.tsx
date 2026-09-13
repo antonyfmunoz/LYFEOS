@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/lib/authContext";
 import { submitHealthMutation } from "@/lib/healthOfflineQueue";
 import { toast } from "@/hooks/use-toast";
+import { Link } from "wouter";
 
 type SleepRecord = {
   date: string;
@@ -75,6 +76,7 @@ export default function SleepLog() {
     onSuccess: () => void Promise.all([
       queryClient.invalidateQueries({ queryKey: ["/api/health-fitness/sleep"] }),
       queryClient.invalidateQueries({ queryKey: ["/api/stat-analytics"] }),
+      queryClient.invalidateQueries({ queryKey: ["/api/users", user?.id, "daily-logs"] }),
     ]),
   });
   const resetNapDraft = () => { setNapStartTime(""); setNapEndTime(""); setNapQuality(""); setNapNote(""); setEditingNapId(null); };
@@ -122,7 +124,7 @@ export default function SleepLog() {
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 id="sleep-log-heading" className="font-orbitron text-lg text-primary flex items-center gap-2"><MoonStar className="h-5 w-5" />Sleep log</h2>
-          <p className="text-sm text-muted-foreground mt-1">The same bed and wake times used by your daily check-in, now visible in Health.</p>
+          <p className="text-sm text-muted-foreground mt-1">The same bed and wake record used by your <Link href="/dashboard" className="text-primary hover:underline">Dashboard daily check-in</Link>. Updating either place updates the same private daily record; detailed sessions remain separate.</p>
         </div>
         <span className="text-[11px] font-mono text-muted-foreground border border-muted/25 rounded px-2 py-1 whitespace-nowrap">MANUAL · PRIVATE</span>
       </div>
