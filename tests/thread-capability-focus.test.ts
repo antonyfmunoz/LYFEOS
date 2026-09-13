@@ -24,6 +24,15 @@ describe("durable capability focus continuity", () => {
     expect(routes).toContain("Each Thread keeps its own missions, reviews, local XP and completion state");
   });
 
+  it("repairs graphless legacy Threads through the same owner-scoped graph model", () => {
+    const routes = source("server/routes/transformation-threads.ts");
+    expect(routes).toContain("async function reconcileLegacyThreadSkillGraph");
+    expect(routes).toContain("One-time, owner-scoped repair for Threads created before the private skill");
+    expect(routes).toContain("await reconcileLegacyThreadSkillGraph(userId, thread)");
+    expect(routes).toContain("Could not repair the legacy Thread skill graph");
+    expect(routes).toContain('eq(skillNodes.transformationThreadId, thread.id)');
+  });
+
   it("keeps the continuity controls inside the existing compact Thread panel", () => {
     const panel = source("client/src/components/dashboard/TransformationThreadPanel.tsx");
     const constellation = source("client/src/components/dashboard/CapabilityConstellation.tsx");
