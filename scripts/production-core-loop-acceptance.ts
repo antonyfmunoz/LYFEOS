@@ -139,6 +139,7 @@ let automationDeleted = false;
 let cleanupAttempted = false;
 let cleanupArchived = false;
 let failureMessage: string | null = null;
+let journeyStage = "startup";
 const views: ViewEvidence[] = [];
 const mutationTransportReconciliations: MutationTransportReconciliation[] = [];
 
@@ -151,6 +152,14 @@ function sanitizedMessage(error: unknown): string {
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
+}
+
+function observeResponse<T>(response: Promise<T>): Promise<T> {
+  // When a rendered control fails before its paired response is awaited, retain
+  // the original UI error and report it rather than allowing a later timeout
+  // from this observer to terminate the process without acceptance evidence.
+  void response.catch(() => undefined);
+  return response;
 }
 
 async function waitForRateLimitReset(response: BrowserApiResponse, label: string): Promise<void> {
@@ -462,10 +471,10 @@ async function exerciseNonMutatingAutomationControls(page: Page): Promise<Automa
     }, { timeout: 30_000 });
 
     stage = "activate the rendered New automation control";
-    const createResponsePromise = page.waitForResponse((response) => {
+    const createResponsePromise = observeResponse(page.waitForResponse((response) => {
       const url = new URL(response.url());
       return url.origin === BASE_URL.origin && url.pathname === "/api/automations" && response.request().method() === "POST";
-    }, { timeout: 30_000 });
+    }, { timeout: 30_000 }));
     await activateRenderedControl(page, '[data-testid="automation-create"]');
     const createResponse = await createResponsePromise;
     const createBody = await createResponse.json() as { automation?: { id?: number; enabled?: boolean }; error?: unknown };
@@ -494,10 +503,10 @@ async function exerciseNonMutatingAutomationControls(page: Page): Promise<Automa
       { selector: '[data-testid="automation-action-title-0"]', value: AUTOMATION_FOLLOW_UP_TITLE },
     ]);
     stage = "save the disabled bounded automation draft";
-    const saveResponsePromise = page.waitForResponse((response) => {
+    const saveResponsePromise = observeResponse(page.waitForResponse((response) => {
     const url = new URL(response.url());
     return url.origin === BASE_URL.origin && url.pathname === `/api/automations/${automationId}` && response.request().method() === "PATCH";
-  }, { timeout: 30_000 });
+  }, { timeout: 30_000 }));
     await activateRenderedControl(page, '[data-testid="automation-save"]');
     const saveResponse = await saveResponsePromise;
     const saveBody = await saveResponse.json() as {
@@ -519,10 +528,10 @@ async function exerciseNonMutatingAutomationControls(page: Page): Promise<Automa
     await page.waitForFunction((id) => Array.from(document.querySelectorAll<HTMLSelectElement>('[data-testid="automation-preview-mission"] option')).some((option) => option.value === String(id)), { timeout: 30_000 }, missionId);
     await page.select('[data-testid="automation-preview-mission"]', String(missionId));
     await waitForRenderedControlEnabled(page, '[data-testid="automation-preview"]');
-    const previewResponsePromise = page.waitForResponse((response) => {
+    const previewResponsePromise = observeResponse(page.waitForResponse((response) => {
     const url = new URL(response.url());
     return url.origin === BASE_URL.origin && url.pathname === `/api/automations/${automationId}/preview` && response.request().method() === "POST";
-  }, { timeout: 30_000 });
+  }, { timeout: 30_000 }));
     await activateRenderedControl(page, '[data-testid="automation-preview"]');
     const previewResponse = await previewResponsePromise;
     const previewBody = await previewResponse.json() as { preview?: { matched?: boolean; disclosure?: string; actions?: Array<{ type?: string; description?: string }> } };
@@ -553,10 +562,10 @@ async function exerciseNonMutatingAutomationControls(page: Page): Promise<Automa
     stage = "refill the API budget before the explicit enable and pause cycle";
     await waitForApiBudget(page, 35);
     stage = "enable the saved manual rule through the rendered control";
-    const enableResponsePromise = page.waitForResponse((response) => {
+    const enableResponsePromise = observeResponse(page.waitForResponse((response) => {
       const url = new URL(response.url());
       return url.origin === BASE_URL.origin && url.pathname === `/api/automations/${automationId}` && response.request().method() === "PATCH";
-    }, { timeout: 30_000 });
+    }, { timeout: 30_000 }));
     await activateRenderedControl(page, '[data-testid="automation-toggle"]');
     const enableResponse = await enableResponsePromise;
     const enableBody = await enableResponse.json() as { automation?: { enabled?: boolean; definition?: { trigger?: { type?: string } } } };
@@ -574,10 +583,10 @@ async function exerciseNonMutatingAutomationControls(page: Page): Promise<Automa
     assert(detailAfterEnable.status === 200 && runsAfterEnable.length === 0, "Enabling the saved manual automation created an execution receipt.");
 
     stage = "pause the enabled rule through the rendered control";
-    const pauseResponsePromise = page.waitForResponse((response) => {
+    const pauseResponsePromise = observeResponse(page.waitForResponse((response) => {
       const url = new URL(response.url());
       return url.origin === BASE_URL.origin && url.pathname === `/api/automations/${automationId}` && response.request().method() === "PATCH";
-    }, { timeout: 30_000 });
+    }, { timeout: 30_000 }));
     await activateRenderedControl(page, '[data-testid="automation-toggle"]');
     const pauseResponse = await pauseResponsePromise;
     const pauseBody = await pauseResponse.json() as { automation?: { enabled?: boolean } };
@@ -630,10 +639,10 @@ async function exerciseNonMutatingAutomationControls(page: Page): Promise<Automa
     );
 
     stage = "save the disabled daily schedule through the rendered control";
-    const dailyScheduleResponsePromise = page.waitForResponse((response) => {
+    const dailyScheduleResponsePromise = observeResponse(page.waitForResponse((response) => {
       const url = new URL(response.url());
       return url.origin === BASE_URL.origin && url.pathname === `/api/automations/${automationId}` && response.request().method() === "PATCH";
-    }, { timeout: 30_000 });
+    }, { timeout: 30_000 }));
     await activateRenderedControl(page, '[data-testid="automation-save"]');
     const dailyScheduleResponse = await dailyScheduleResponsePromise;
     const dailyScheduleBody = await dailyScheduleResponse.json() as {
@@ -698,10 +707,10 @@ async function exerciseNonMutatingAutomationControls(page: Page): Promise<Automa
     );
 
     stage = "save the revised disabled weekly schedule through the rendered control";
-    const weeklyScheduleResponsePromise = page.waitForResponse((response) => {
+    const weeklyScheduleResponsePromise = observeResponse(page.waitForResponse((response) => {
       const url = new URL(response.url());
       return url.origin === BASE_URL.origin && url.pathname === `/api/automations/${automationId}` && response.request().method() === "PATCH";
-    }, { timeout: 30_000 });
+    }, { timeout: 30_000 }));
     await activateRenderedControl(page, '[data-testid="automation-save"]');
     const weeklyScheduleResponse = await weeklyScheduleResponsePromise;
     const weeklyScheduleBody = await weeklyScheduleResponse.json() as typeof dailyScheduleBody;
@@ -719,10 +728,10 @@ async function exerciseNonMutatingAutomationControls(page: Page): Promise<Automa
 
     stage = "preview the revised saved schedule without executing it";
     await waitForRenderedControlEnabled(page, '[data-testid="automation-preview"]');
-    const scheduledPreviewResponsePromise = page.waitForResponse((response) => {
+    const scheduledPreviewResponsePromise = observeResponse(page.waitForResponse((response) => {
       const url = new URL(response.url());
       return url.origin === BASE_URL.origin && url.pathname === `/api/automations/${automationId}/preview` && response.request().method() === "POST";
-    }, { timeout: 30_000 });
+    }, { timeout: 30_000 }));
     await activateRenderedControl(page, '[data-testid="automation-preview"]');
     const scheduledPreviewResponse = await scheduledPreviewResponsePromise;
     const scheduledPreviewBody = await scheduledPreviewResponse.json() as typeof previewBody;
@@ -769,10 +778,10 @@ async function exerciseNonMutatingAutomationControls(page: Page): Promise<Automa
   };
 
     stage = "delete the synthetic automation through the rendered control";
-    const deleteResponsePromise = page.waitForResponse((response) => {
+    const deleteResponsePromise = observeResponse(page.waitForResponse((response) => {
     const url = new URL(response.url());
     return url.origin === BASE_URL.origin && url.pathname === `/api/automations/${automationId}` && response.request().method() === "DELETE";
-  }, { timeout: 30_000 });
+  }, { timeout: 30_000 }));
     page.once("dialog", async (dialog) => dialog.accept());
     await activateRenderedControl(page, '[data-testid="automation-delete"]');
     const deleteResponse = await deleteResponsePromise;
@@ -877,10 +886,10 @@ async function waitForAuthoritativeMissionCompletion(page: Page, expectedComplet
 async function waitForMissionToggle(page: Page, expectedCompleted: boolean, action: () => Promise<void>): Promise<{ quest?: { completed?: boolean }; xpAwarded?: number; replayed?: boolean; reconciled?: boolean }> {
   assert(missionId !== null, "Cannot observe a Mission toggle without a synthetic Mission.");
   for (let attempt = 0; attempt < 3; attempt++) {
-    const responsePromise = page.waitForResponse((response) => {
+    const responsePromise = observeResponse(page.waitForResponse((response) => {
       const url = new URL(response.url());
       return url.origin === BASE_URL.origin && url.pathname === `/api/quests/${missionId}/toggle` && response.request().method() === "POST";
-    }, { timeout: 30_000 });
+    }, { timeout: 30_000 }));
     let response: Awaited<typeof responsePromise>;
     try {
       await action();
@@ -1274,6 +1283,7 @@ async function main(): Promise<void> {
   await page.setCacheEnabled(false);
 
   try {
+    journeyStage = "authenticate the dedicated acceptance account";
     await login(page);
     steps.push({ name: "authenticated dedicated account", status: "passed", detail: "Session and completed onboarding verified." });
     await waitForApiBudget(page, 80);
@@ -1286,6 +1296,7 @@ async function main(): Promise<void> {
       steps.push({ name: "dedicated account fixture prerequisites", status: "passed", detail: "Recorded the missing onboarding Mission IDs on the already completed, dedicated acceptance account before its first truthful Thread initialization." });
     }
     steps.push({ name: "onboarding-derived Thread preflight", status: "passed", detail: threadPreflight.state === "existing" ? "The dedicated account already had an active onboarding-derived Thread." : "Activated the dedicated account's onboarding-derived draft Thread using the same product APIs as the rendered onboarding journey." });
+    journeyStage = "open the rendered Missions page";
     await page.goto(new URL("/missions", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
     await page.waitForSelector('[data-tour="create-mission"]', { visible: true, timeout: 30_000 });
     await new Promise((resolve) => setTimeout(resolve, 2_000));
@@ -1293,6 +1304,7 @@ async function main(): Promise<void> {
     steps.push({ name: "settled progression baseline", status: "passed", detail: "Captured a stable baseline after any legitimate one-time onboarding reconciliation completed." });
     const tutorialDismissed = await dismissBlockingTutorial(page);
     steps.push({ name: "first-use tutorial boundary", status: "passed", detail: tutorialDismissed ? "Dismissed the visible tutorial through its named Skip control." : "No blocking tutorial was presented." });
+    journeyStage = "open the rendered Mission creation flow";
     await activateRenderedControl(page, '[data-tour="create-mission"]');
     await fill(page, "#create-title", MISSION_TITLE);
     const skillSelector = '[data-testid^="mission-skill-"]:not([disabled])';
@@ -1307,10 +1319,11 @@ async function main(): Promise<void> {
     assert(Number.isInteger(reviewedSkillNodeId), "The selected Mission skill did not expose its owned skill-node identifier.");
     await activateRenderedControl(page, `[data-testid="${selectedSkill.testId}"]`);
     await page.waitForFunction((testId) => document.querySelector(`[data-testid="${testId}"]`)?.getAttribute("aria-checked") === "true", { timeout: 10_000 }, selectedSkill.testId);
-    const createResponsePromise = page.waitForResponse((response) => {
+    const createResponsePromise = observeResponse(page.waitForResponse((response) => {
       const url = new URL(response.url());
       return url.origin === BASE_URL.origin && url.pathname === "/api/quests" && response.request().method() === "POST";
-    }, { timeout: 30_000 });
+    }, { timeout: 30_000 }));
+    journeyStage = "submit the rendered synthetic Mission";
     await page.click('[data-testid="mission-create-submit"]');
     const createResponse = await createResponsePromise;
     const createBody = await createResponse.json() as { quest?: { id?: number; experienceReward?: number; difficulty?: string }; error?: unknown };
@@ -1321,6 +1334,7 @@ async function main(): Promise<void> {
     assert(expectedActivityExperience > 0, "Created Mission did not expose a positive, difficulty-adjusted activity XP value.");
     steps.push({ name: "rendered Mission creation", status: "passed", detail: `Canonical UI created one synthetic Mission linked to the unlocked ${selectedSkill.name} skill.` });
 
+    journeyStage = "render the newly created Mission detail";
     await page.goto(new URL(`/mission/${missionId}`, BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
     await page.waitForFunction((title) => document.body.innerText.includes(title), { timeout: 30_000 }, MISSION_TITLE);
     await waitForApiBudget(page, 60);
@@ -1336,10 +1350,11 @@ async function main(): Promise<void> {
     await fill(page, '[data-testid="proof-plan-method"]', "Create one bounded synthetic Mission.\nAttach one synthetic browser receipt.\nComplete through the focus-timer workflow.\nReview only the declared evidence.\nReopen and verify exact reversal.");
     await fill(page, '[data-testid="proof-plan-tools"]', "LyfeOS production browser acceptance");
     await fill(page, '[data-testid="proof-plan-evidence-requirement"]', REQUIRED_EVIDENCE);
-    const contractResponsePromise = page.waitForResponse((response) => {
+    const contractResponsePromise = observeResponse(page.waitForResponse((response) => {
       const url = new URL(response.url());
       return url.origin === BASE_URL.origin && url.pathname === `/api/quests/${missionId}/contract` && response.request().method() === "PUT";
-    }, { timeout: 30_000 });
+    }, { timeout: 30_000 }));
+    journeyStage = "save the rendered proof plan";
     await page.click('[data-testid="proof-plan-save"]');
     const contractResponse = await contractResponsePromise;
     assert(contractResponse.ok(), `Rendered proof-plan save failed (${contractResponse.status()}).`);
@@ -1350,10 +1365,11 @@ async function main(): Promise<void> {
     await page.select('[data-testid="mission-evidence-confidence"]', "medium");
     await fill(page, '[data-testid="mission-evidence-reference"]', `urn:lyfeos:acceptance:${RUN_ID}`);
     await fill(page, '[data-testid="mission-evidence-summary"]', EVIDENCE_SUMMARY);
-    const evidenceResponsePromise = page.waitForResponse((response) => {
+    const evidenceResponsePromise = observeResponse(page.waitForResponse((response) => {
       const url = new URL(response.url());
       return url.origin === BASE_URL.origin && url.pathname === `/api/quests/${missionId}/evidence` && response.request().method() === "POST";
-    }, { timeout: 30_000 });
+    }, { timeout: 30_000 }));
+    journeyStage = "add the rendered synthetic evidence";
     await page.click('[data-testid="mission-evidence-add"]');
     const evidenceResponse = await evidenceResponsePromise;
     assert(evidenceResponse.ok(), `Rendered evidence submission failed (${evidenceResponse.status()}).`);
@@ -1362,6 +1378,7 @@ async function main(): Promise<void> {
     assert(progressionMatches(progressionBefore, progressionAfterEvidence), "Unreviewed Mission evidence changed activity XP, capability XP, or active badges.");
     steps.push({ name: "unreviewed evidence boundary", status: "passed", detail: "Artifact evidence persisted without changing activity XP, capability XP, or badges." });
 
+    journeyStage = "exercise the non-mutating automation controls";
     automationControlEvidence = await exerciseNonMutatingAutomationControls(page);
     steps.push({ name: "rendered non-mutating automation controls", status: "passed", detail: "Created and saved one bounded manual rule, matched the synthetic Mission in Preview, explicitly enabled then paused it, proved Run now was available only while enabled, converted the paused rule to a disabled daily schedule, revised it to selected weekdays, proved a future next occurrence and unavailable Run now, previewed again, proved zero run receipts, follow-up Missions, and progression changes, then deleted the rule through the rendered control." });
 
@@ -1378,6 +1395,7 @@ async function main(): Promise<void> {
     // measures Mission semantics instead of harness traffic volume.
     await waitForApiBudget(page, 45);
     await page.setViewport({ width: 1440, height: 900, deviceScaleFactor: 1 });
+    journeyStage = "complete the Mission through the rendered focus-timer controls";
     await showSyntheticMissionInList(page, false);
     await activateMissionControl(page, "start");
     await page.waitForSelector('[data-testid="mission-timer-stop"]', { visible: true, timeout: 30_000 });
@@ -1403,10 +1421,11 @@ async function main(): Promise<void> {
     await page.waitForSelector('[data-testid="mission-review-requirement-0"]', { visible: true, timeout: 30_000 });
     await page.click('[data-testid="mission-review-requirement-0"]');
     await page.waitForSelector('[data-testid="mission-self-review-submit"]:not([disabled])', { visible: true, timeout: 10_000 });
-    const reviewResponsePromise = page.waitForResponse((response) => {
+    const reviewResponsePromise = observeResponse(page.waitForResponse((response) => {
       const url = new URL(response.url());
       return url.origin === BASE_URL.origin && url.pathname === `/api/quests/${missionId}/reviews` && response.request().method() === "POST";
-    }, { timeout: 30_000 });
+    }, { timeout: 30_000 }));
+    journeyStage = "submit the rendered self-review";
     await page.click('[data-testid="mission-self-review-submit"]');
     const reviewResponse = await reviewResponsePromise;
     const reviewBody = await reviewResponse.json() as { progression?: { applied?: boolean; skillExperienceAwarded?: number }; error?: unknown };
@@ -1420,6 +1439,7 @@ async function main(): Promise<void> {
     steps.push({ name: "rendered positive self-review", status: "passed", detail: `Declared evidence review applied exactly ${reviewedSkillExperience} capability XP and no certification or authority.` });
 
     await waitForApiBudget(page, 45);
+    journeyStage = "reconcile the reviewed capability history and Thread workspace";
     reviewedThreadContinuity = await requireThreadContinuityView({
       page,
       phase: "reviewed",
@@ -1458,6 +1478,7 @@ async function main(): Promise<void> {
     // than the acceptance harness's own traffic volume.
     await waitForApiBudget(page, 80);
     await showSyntheticMissionInList(page, true);
+    journeyStage = "reopen the Mission and reverse progression";
     const reopenedBody = await waitForMissionToggle(page, false, () => activateMissionControl(page, "undo"));
     assert(reopenedBody.quest?.completed === false, "Rendered Mission Undo control did not reopen the Mission.");
     progressionAfterReopen = await readProgression(page);
@@ -1468,6 +1489,7 @@ async function main(): Promise<void> {
 
     await waitForApiBudget(page, 35);
     assert(reviewedThreadContinuity, "Reviewed Thread continuity evidence was unavailable before reversal qualification.");
+    journeyStage = "reconcile the reversed capability history and Thread workspace";
     reversedThreadContinuity = await requireThreadContinuityView({
       page,
       phase: "reversed",
@@ -1477,7 +1499,7 @@ async function main(): Promise<void> {
     assert(reversedThreadContinuity.capability.reversesEventId === reviewedThreadContinuity.capability.eventId, "Rendered capability history reversal did not reference the reviewed event it reversed.");
     steps.push({ name: "rendered capability-history reversal", status: "passed", detail: `The same durable capability returned to ${reversedThreadContinuity.capability.reviewedExperience} reviewed XP and rendered a -${reviewedSkillExperience} XP reversal linked to the reviewed event.` });
   } catch (error) {
-    failureMessage = sanitizedMessage(error);
+    failureMessage = `${journeyStage}: ${sanitizedMessage(error)}`;
     steps.push({ name: "core-loop journey", status: "failed", detail: failureMessage });
     try {
       await page.screenshot({ path: path.join(OUTPUT_DIR, "core-loop-failure.png"), fullPage: true });
