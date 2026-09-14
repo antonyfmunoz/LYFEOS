@@ -18,6 +18,8 @@ export default function OfflineCalendarQueueStatus({ userId }: { userId: number 
     queryKey: ["calendar-offline-queue", userId],
     queryFn: () => listCalendarMutationQueue(userId),
     refetchOnWindowFocus: true,
+    retry: 6,
+    retryDelay: (attempt) => Math.min(1_000 * 2 ** attempt, 4_000),
   });
   const persistence = useQuery({
     queryKey: ["calendar-offline-persistence"],

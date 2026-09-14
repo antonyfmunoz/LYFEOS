@@ -2,6 +2,7 @@ const DATABASE_NAME = "lyfeos-calendar-mutations";
 const DATABASE_VERSION = 1;
 const STORE_NAME = "pending";
 const MAX_QUEUED_MUTATIONS = 100;
+const DATABASE_OPEN_TIMEOUT_MS = 3_000;
 
 type QueueStatus = "pending" | "conflict" | "failed";
 type MutationKind = "create" | "update";
@@ -63,6 +64,7 @@ function storageError(error: unknown): CalendarOfflineStorageError {
   if (error instanceof CalendarOfflineStorageError) return error;
   const name = typeof error === "object" && error && "name" in error ? String((error as { name: unknown }).name) : "";
   if (name === "QuotaExceededError") return new CalendarOfflineStorageError("This device is out of private offline storage. The Calendar change was not saved; keep the form open or reconnect and try again.");
+  if (name === "TimeoutError") return new CalendarOfflineStorageError("Private Calendar storage is taking too long to reopen. Keep this page open and LyfeOS will retry; do not clear site data before reconnecting.");
   if (["SecurityError", "InvalidStateError", "NotSupportedError"].includes(name)) return new CalendarOfflineStorageError("Private Calendar storage is unavailable in this browser. The change was not saved; stay online or keep the form open and try again.");
   if (name === "VersionError" || name === "BlockedError") return new CalendarOfflineStorageError("Another LyfeOS tab is blocking private Calendar storage. Close the other tab and try again.");
   return new CalendarOfflineStorageError("Private Calendar storage failed. The change was not saved; keep the form open and try again.");
@@ -90,7 +92,18 @@ function openDatabase(): Promise<IDBDatabase> {
       reject(storageError({ name: "NotSupportedError" }));
       return;
     }
+    let settled = false;
+    const settle = (callback: () => void) => {
+      if (settled) return false;
+      settled = true;
+      window.clearTimeout(timeout);
+      callback();
+      return true;
+    };
     const request = indexedDB.open(DATABASE_NAME, DATABASE_VERSION);
+    const timeout = window.setTimeout(() => {
+      settle(() => reject(storageError({ name: "TimeoutError" })));
+    }, DATABASE_OPEN_TIMEOUT_MS);
     request.onupgradeneeded = () => {
       const database = request.result;
       const store = database.objectStoreNames.contains(STORE_NAME)
@@ -98,9 +111,11 @@ function openDatabase(): Promise<IDBDatabase> {
         : database.createObjectStore(STORE_NAME, { keyPath: "id" });
       if (!store.indexNames.contains("userId")) store.createIndex("userId", "userId", { unique: false });
     };
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(storageError(request.error));
-    request.onblocked = () => reject(storageError({ name: "BlockedError" }));
+    request.onsuccess = () => {
+      if (!settle(() => resolve(request.result))) request.result.close();
+    };
+    request.onerror = () => { settle(() => reject(storageError(request.error))); };
+    request.onblocked = () => { settle(() => reject(storageError({ name: "BlockedError" }))); };
   });
 }
 
