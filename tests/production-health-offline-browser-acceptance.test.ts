@@ -21,6 +21,7 @@ describe("production Health offline browser acceptance custody", () => {
     expect(workflow).toContain("LYFEOS_HEALTH_OFFLINE_OUTPUT_DIR: ${{ runner.temp }}/lyfeos-browser-acceptance");
     expect(workflow).toContain("run: npm run acceptance:production-health-offline");
     expect(script).toContain('contract: "lyfeos.production-health-offline-browser.v1"');
+    expect(script).toContain('new URL("/health-log", BASE_URL)');
     expect(script).toContain('BASE_URL.origin === "https://lyfeos.net"');
     expect(script).toContain("sourceRevision: SOURCE");
     expect(script).toContain("harnessSource: HARNESS_SOURCE");
