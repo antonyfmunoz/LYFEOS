@@ -69,6 +69,8 @@ describe("production Calendar evidence custody", () => {
     expect(enableServiceWorker).toBeGreaterThan(-1);
     expect(stopServiceWorkers).toBeGreaterThan(enableServiceWorker);
     expect(acceptance).toContain('text.includes("Waiting for the next safe sync attempt")');
+    expect(acceptance).toContain("calendarColdStartDiagnostic");
+    expect(acceptance).toContain("cold-start diagnostic=");
     expect(acceptance).toContain('contract: "lyfeos.production-calendar-browser.v4"');
     expect(acceptance).toContain("persistent-storage request with truthful granted/best-effort risk disclosure");
     expect(acceptance).toContain("does not prove recovery after browser/site-data eviction");
