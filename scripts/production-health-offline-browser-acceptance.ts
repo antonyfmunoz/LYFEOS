@@ -572,6 +572,12 @@ async function clickButtonWithText(page: Page, scopeSelector: string, label: str
   assert(clicked, `Could not activate ${label} in ${scopeSelector}.`);
 }
 
+async function openHealthLogWorkspace(page: Page, section: string, workspace: string): Promise<void> {
+  await page.waitForSelector('[data-testid="health-log-page"]', { visible: true, timeout: 60_000 });
+  await clickButtonWithText(page, '[data-testid="health-log-page"]', section);
+  await clickButtonWithText(page, '[data-testid="health-log-page"]', workspace);
+}
+
 async function eraseAccount(account: Account): Promise<boolean> {
   if (!account.cookie) return true;
   for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -617,6 +623,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     stage = "wait for Health Log page";
     await page.waitForSelector('[data-testid="health-log-page"]', { visible: true, timeout: 60_000 });
     stage = "wait for daily Health log";
+    await openHealthLogWorkspace(page, "Records", "Daily check-in");
     await page.waitForSelector('[data-testid="daily-health-log"]', { visible: true, timeout: 60_000 });
     await dismissBlockingTutorial(page);
     stage = "read browser date context";
@@ -705,7 +712,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     await page.setCacheEnabled(true);
     await page.reload({ waitUntil: "domcontentloaded", timeout: 60_000 });
     stage = "wait for reloaded Health page";
-    await page.waitForSelector('[data-testid="health-page"]', { visible: true, timeout: 60_000 });
+    await openHealthLogWorkspace(page, "Records", "Daily check-in");
     stage = "wait for persisted hydration rendering";
     await page.waitForFunction((value) => document.body.innerText.includes(`${value} ml`), { timeout: 45_000 }, String(HYDRATION_ML));
     stage = "re-prove exactly one persisted record";
@@ -737,6 +744,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     const measurementReconnectSyncedExactlyOnce = true;
     stage = "reload Health after weight sync";
     await page.reload({ waitUntil: "domcontentloaded", timeout: 60_000 });
+    await openHealthLogWorkspace(page, "Records", "Daily check-in");
     await page.waitForSelector('[data-testid="daily-health-log"]', { visible: true, timeout: 60_000 });
     await page.waitForFunction((value) => document.body.innerText.includes(`${value} kg`), { timeout: 45_000 }, String(WEIGHT_KG));
     await waitForWeightCount(account, 1);
@@ -767,13 +775,15 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     const supplementReconnectSyncedExactlyOnce = true;
     stage = "reload Health after supplement sync";
     await page.reload({ waitUntil: "domcontentloaded", timeout: 60_000 });
+    await openHealthLogWorkspace(page, "Records", "Daily check-in");
     await page.waitForSelector('[data-testid="daily-health-log"]', { visible: true, timeout: 60_000 });
     await page.waitForFunction((name, amount) => document.body.innerText.includes(`${name} ${amount} mg`), { timeout: 45_000 }, SUPPLEMENT_NAME, String(SUPPLEMENT_AMOUNT_MG));
     await waitForSupplementCount(account, localContext.date, localContext.timeZone, localContext.utcOffsetMinutes, 1);
     const reloadRenderedPersistedSupplement = true;
 
     stage = "load recovery log";
-    await page.evaluate(() => document.getElementById("health-section-recovery")?.scrollIntoView({ block: "center" }));
+    await page.reload({ waitUntil: "domcontentloaded", timeout: 60_000 });
+    await openHealthLogWorkspace(page, "Recovery", "Recovery log");
     await page.waitForSelector('[data-testid="recovery-log"]', { visible: true, timeout: 60_000 });
     stage = "prove initial recovery absence";
     await waitForRecoveryActivityCount(account, localContext.date, localContext.timeZone, localContext.utcOffsetMinutes, 0);
@@ -799,15 +809,15 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     const recoveryReconnectSyncedExactlyOnce = true;
     stage = "reload Health after recovery sync";
     await page.reload({ waitUntil: "domcontentloaded", timeout: 60_000 });
-    await page.waitForSelector('[data-testid="health-page"]', { visible: true, timeout: 60_000 });
-    await page.evaluate(() => document.getElementById("health-section-recovery")?.scrollIntoView({ block: "center" }));
+    await openHealthLogWorkspace(page, "Recovery", "Recovery log");
     await page.waitForSelector('[data-testid="recovery-log"]', { visible: true, timeout: 60_000 });
     await page.waitForFunction((label, minutes) => document.body.innerText.includes(`${label} · ${minutes}m`), { timeout: 45_000 }, "Sauna", String(RECOVERY_DURATION_MINUTES));
     await waitForRecoveryActivityCount(account, localContext.date, localContext.timeZone, localContext.utcOffsetMinutes, 1);
     const reloadRenderedPersistedRecovery = true;
 
     stage = "load health metrics ledger";
-    await page.evaluate(() => document.getElementById("health-section-metrics")?.scrollIntoView({ block: "center" }));
+    await page.reload({ waitUntil: "domcontentloaded", timeout: 60_000 });
+    await openHealthLogWorkspace(page, "Records", "Health metrics");
     await page.waitForSelector('[data-testid="health-metrics-ledger"]', { visible: true, timeout: 60_000 });
     stage = "prove initial health observation absence";
     await waitForObservationCount(account, 0);
@@ -834,15 +844,15 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     const observationReconnectSyncedExactlyOnce = true;
     stage = "reload Health after health-observation sync";
     await page.reload({ waitUntil: "domcontentloaded", timeout: 60_000 });
-    await page.waitForSelector('[data-testid="health-page"]', { visible: true, timeout: 60_000 });
-    await page.evaluate(() => document.getElementById("health-section-metrics")?.scrollIntoView({ block: "center" }));
+    await openHealthLogWorkspace(page, "Records", "Health metrics");
     await page.waitForSelector('[data-testid="health-metrics-ledger"]', { visible: true, timeout: 60_000 });
     await page.waitForFunction((name, value, unit) => document.querySelector('[data-testid="health-metrics-ledger"]')?.textContent?.includes(name) && document.querySelector('[data-testid="health-metrics-ledger"]')?.textContent?.includes(`${value} ${unit}`), { timeout: 45_000 }, OBSERVATION_NAME, String(OBSERVATION_VALUE_BPM), OBSERVATION_UNIT);
     await waitForObservationCount(account, 1);
     const reloadRenderedPersistedObservation = true;
 
     stage = "load sleep log";
-    await page.evaluate(() => document.getElementById("health-section-sleep")?.scrollIntoView({ block: "center" }));
+    await page.reload({ waitUntil: "domcontentloaded", timeout: 60_000 });
+    await openHealthLogWorkspace(page, "Recovery", "Sleep log");
     await page.waitForSelector('[data-testid="sleep-log"]', { visible: true, timeout: 60_000 });
     // Keep this as a literal browser script. The TypeScript runner decorates
     // nested named callbacks with host-only helpers before Puppeteer
@@ -880,8 +890,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     const sleepSessionReconnectSyncedExactlyOnce = true;
     stage = "reload Health after sleep-session sync";
     await page.reload({ waitUntil: "domcontentloaded", timeout: 60_000 });
-    await page.waitForSelector('[data-testid="health-page"]', { visible: true, timeout: 60_000 });
-    await page.evaluate(() => document.getElementById("health-section-sleep")?.scrollIntoView({ block: "center" }));
+    await openHealthLogWorkspace(page, "Recovery", "Sleep log");
     await page.waitForSelector('[data-testid="sleep-log"]', { visible: true, timeout: 60_000 });
     await page.waitForFunction(() => {
       const text = document.querySelector('[data-testid="sleep-log"]')?.textContent || "";
@@ -894,7 +903,8 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     const reloadRenderedPersistedSleepSession = true;
 
     stage = "load workout log";
-    await page.evaluate(() => document.getElementById("health-section-training")?.scrollIntoView({ block: "center" }));
+    await page.reload({ waitUntil: "domcontentloaded", timeout: 60_000 });
+    await openHealthLogWorkspace(page, "Movement", "Workout log");
     await page.waitForSelector('[data-testid="workout-log"]', { visible: true, timeout: 60_000 });
     stage = "prove initial workout absence";
     await waitForWorkoutCount(account, localContext.date, localContext.timeZone, localContext.utcOffsetMinutes, 0);
@@ -920,8 +930,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     const workoutReconnectSyncedExactlyOnce = true;
     stage = "reload Health after workout sync";
     await page.reload({ waitUntil: "domcontentloaded", timeout: 60_000 });
-    await page.waitForSelector('[data-testid="health-page"]', { visible: true, timeout: 60_000 });
-    await page.evaluate(() => document.getElementById("health-section-training")?.scrollIntoView({ block: "center" }));
+    await openHealthLogWorkspace(page, "Movement", "Workout log");
     await page.waitForSelector('[data-testid="workout-log"]', { visible: true, timeout: 60_000 });
     await page.waitForFunction((activity, duration) => document.querySelector('[data-testid="workout-log"]')?.textContent?.includes(activity) && document.querySelector('[data-testid="workout-log"]')?.textContent?.includes(`${duration}m`), { timeout: 45_000 }, WORKOUT_ACTIVITY_TYPE, String(WORKOUT_DURATION_MINUTES));
     await waitForWorkoutCount(account, localContext.date, localContext.timeZone, localContext.utcOffsetMinutes, 1);
@@ -930,7 +939,8 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     stage = "create a factual nutrition fixture";
     const nutritionFoodId = await createAcceptanceFood(account);
     stage = "load nutrition diary";
-    await page.evaluate(() => document.getElementById("health-section-nutrition")?.scrollIntoView({ block: "center" }));
+    await page.reload({ waitUntil: "domcontentloaded", timeout: 60_000 });
+    await openHealthLogWorkspace(page, "Nourishment", "Nutrition diary");
     await page.waitForSelector('[aria-labelledby="nutrition-heading"]', { visible: true, timeout: 60_000 });
     await clickButtonWithText(page, '[aria-labelledby="nutrition-heading"]', "Log food");
     await page.waitForFunction((foodName) => Array.from(document.querySelectorAll('[aria-label="Choose saved food"] option')).some((option) => option.textContent?.includes(String(foodName))), { timeout: 45_000 }, NUTRITION_FOOD_NAME);
@@ -966,8 +976,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     const nutritionReconnectSyncedExactlyOnce = true;
     stage = "reload Health after nutrition sync";
     await page.reload({ waitUntil: "domcontentloaded", timeout: 60_000 });
-    await page.waitForSelector('[data-testid="health-page"]', { visible: true, timeout: 60_000 });
-    await page.evaluate(() => document.getElementById("health-section-nutrition")?.scrollIntoView({ block: "center" }));
+    await openHealthLogWorkspace(page, "Nourishment", "Nutrition diary");
     await page.waitForSelector('[aria-labelledby="nutrition-heading"]', { visible: true, timeout: 60_000 });
     await page.waitForFunction((foodName) => document.querySelector('[aria-labelledby="nutrition-heading"]')?.textContent?.includes(String(foodName)), { timeout: 45_000 }, NUTRITION_FOOD_NAME);
     await waitForNutritionCount(account, localContext.date, localContext.timeZone, localContext.utcOffsetMinutes, 1);

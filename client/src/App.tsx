@@ -506,7 +506,7 @@ function Router() {
       <Route path="/health-log">
         <ProtectedRoute>
           <RootLayout>
-            <HealthDetailPage />
+            <HealthDetailPage view="log" />
           </RootLayout>
         </ProtectedRoute>
       </Route>
