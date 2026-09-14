@@ -321,10 +321,24 @@ export default function QuestsPage() {
   
   const { quests, toggleQuestCompletion, createQuest, updateQuest, deleteQuest, refetchQuests, activeTimerQuest, missionElapsedTimes, missionBreakTimes, startMissionTimer, resumeMissionTimer, restartMissionTimer, userProfile } = useLYFEOS();
   const { user } = useAuth();
+  // Browser network state can settle after this route first renders during a
+  // cold offline restart. Keep it reactive so the device-local Calendar queue
+  // is mounted as soon as the browser reports the settled offline state.
+  const [calendarNetworkOnline, setCalendarNetworkOnline] = useState(() => typeof navigator === "undefined" || navigator.onLine);
+  useEffect(() => {
+    const refreshNetworkState = () => setCalendarNetworkOnline(typeof navigator === "undefined" || navigator.onLine);
+    refreshNetworkState();
+    window.addEventListener("online", refreshNetworkState);
+    window.addEventListener("offline", refreshNetworkState);
+    return () => {
+      window.removeEventListener("online", refreshNetworkState);
+      window.removeEventListener("offline", refreshNetworkState);
+    };
+  }, []);
   // A cold offline restart cannot complete the live auth check. Keep device-
   // local Calendar changes visible to the same cached account until that check
   // can resume, without treating the cached identity as server authorization.
-  const calendarQueueUserId = user?.id ?? (typeof navigator !== "undefined" && !navigator.onLine ? cachedCalendarQueueUserId() : null);
+  const calendarQueueUserId = user?.id ?? (!calendarNetworkOnline ? cachedCalendarQueueUserId() : null);
   const { toast } = useToast();
   const { runWithApproval } = useIntegrationActionApproval();
   const { data: activeThreadData } = useQuery<ActiveThreadData>({
