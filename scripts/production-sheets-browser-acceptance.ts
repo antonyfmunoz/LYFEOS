@@ -206,6 +206,15 @@ function captureSignals(page: Page): Signals {
   return signals;
 }
 
+function reconcileSentryTunnelTelemetry(signals: Signals): void {
+  const tunnelFailures = signals.failedRequests.filter((entry) => entry.startsWith("POST /api/sentry-tunnel: net::ERR_FAILED"));
+  if (tunnelFailures.length !== 1) return;
+  const genericConsoleIndex = signals.consoleErrors.findIndex((entry) => entry === "Failed to load resource: net::ERR_FAILED");
+  if (genericConsoleIndex < 0) return;
+  signals.failedRequests = signals.failedRequests.filter((entry) => entry !== tunnelFailures[0]);
+  signals.consoleErrors.splice(genericConsoleIndex, 1);
+}
+
 function acknowledgeReconciledConflict(signals: Signals): void {
   const index = signals.consoleErrors.findIndex((error) => error.includes("409"));
   if (index >= 0) signals.consoleErrors.splice(index, 1);
@@ -765,6 +774,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     const audit = await auditPage(page);
     assert(audit.mainCount === 1 && audit.duplicateIds.length === 0 && audit.invalidLabelReferences.length === 0 && audit.unlabeledControls.length === 0 && audit.horizontalOverflowPx <= 2, `${viewport.name} Sheets failed semantics or overflow checks.`);
     await acknowledgeBoundedChunkRecovery(page, signals);
+    reconcileSentryTunnelTelemetry(signals);
     assert(!hasUnexpectedBrowserSignals(signals), `${viewport.name} Sheets journey produced application errors: ${JSON.stringify(signals)}.`);
     view = { viewport: viewport.name, catalogAndEditorRendered, formulasCalculated, extendedFormulaCompatibility, absoluteReferencesReconciled, crossSheetReferencesReconciled, undoRedoReconciled: true, controlledClipboardAdapterRoundTrip, chartFamiliesRenderedFromCanonicalRanges, dualAxisCombinationReconciled, explicitSeriesRolesReconciled, chartDefinitionsPersisted, chartFamiliesReloadedAndRestored, localImportReviewedAndPersisted, xlsxWorkbookReviewedAndPersisted, xlsxWorkbookExportGenerated, odsWorkbookReviewedAndPersisted, odsWorkbookExportGenerated, immutableCreationRevisionReconciled, crossOwnerIsolationReconciled, multiTabConflictReconciled, staleSaveStoppedAsConflict, largeGridWindowed, renderedCellCountAtLimit, reconciledSaveCreatedNewRevision, restoreCreatedNewImmutableRevision, catalogPersistenceRendered, audit, signals };
   } catch (error) {

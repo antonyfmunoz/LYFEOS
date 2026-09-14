@@ -13,6 +13,7 @@ describe("production Sheets evidence custody", () => {
 
   it("binds the production-only contract to immutable runtime and harness sources", () => {
     expect(acceptance).toContain('contract: "lyfeos.production-sheets-browser.v12"');
+    expect(acceptance).toContain("reconcileSentryTunnelTelemetry");
     expect(acceptance).toContain('BASE_URL.origin === "https://lyfeos.net"');
     expect(acceptance).toContain("release.body?.sourceRevision === SOURCE");
     expect(acceptance).toContain("HARNESS_SOURCE");
