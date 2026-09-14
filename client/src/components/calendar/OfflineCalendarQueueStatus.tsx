@@ -17,6 +17,10 @@ export default function OfflineCalendarQueueStatus({ userId }: { userId: number 
   const queue = useQuery({
     queryKey: ["calendar-offline-queue", userId],
     queryFn: () => listCalendarMutationQueue(userId),
+    // This reads IndexedDB only. It must remain runnable while the browser is
+    // offline so a cold restart can show queued changes before any server
+    // session or network request is available.
+    networkMode: "always",
     refetchOnWindowFocus: true,
     retry: 6,
     retryDelay: (attempt) => Math.min(1_000 * 2 ** attempt, 4_000),

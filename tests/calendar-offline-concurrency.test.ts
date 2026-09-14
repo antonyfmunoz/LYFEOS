@@ -48,6 +48,7 @@ describe("Calendar offline and conflict contract", () => {
     expect(calendarPage).toContain("cachedCalendarQueueUserId()");
     expect(calendarPage).toContain("calendarNetworkOnline");
     expect(calendarPage).toContain('window.addEventListener("offline", refreshNetworkState)');
+    expect(status).toContain('networkMode: "always"');
     expect(queue).toContain('const MAX_QUEUED_MUTATIONS = 100');
     expect(queue).toContain('status: "conflict"');
     expect(queue).toContain('"x-lyfeos-expected-revision"');
