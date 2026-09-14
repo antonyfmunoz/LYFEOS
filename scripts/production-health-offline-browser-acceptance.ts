@@ -323,7 +323,7 @@ async function restoreIndexedDb(page: Page): Promise<void> {
 
 async function auditPage(page: Page): Promise<Audit> {
   return page.evaluate(() => {
-    const scope = document.querySelector<HTMLElement>('[data-testid="health-page"]');
+    const scope = document.querySelector<HTMLElement>('[data-testid="health-page"], [data-testid="health-log-page"]');
     if (!scope) throw new Error("Health acceptance scope is not rendered.");
     const ids = new Map<string, number>();
     for (const element of document.querySelectorAll<HTMLElement>("[id]")) ids.set(element.id, (ids.get(element.id) || 0) + 1);
