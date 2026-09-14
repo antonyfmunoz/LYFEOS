@@ -5735,6 +5735,7 @@ export default function QuestsPage() {
                       onToggle={() => toggleQuestCompletion(mission.id)}
                       onDelete={() => handleDeleteMission(mission)}
                       onEdit={() => openEditDialog(mission)}
+                      onUndo={() => handleUndoMission(mission)}
                       onStart={() => handleStartMission(mission)}
                       onResume={() => handleResumeMission(mission)}
                       onDone={() => handleDoneMission(mission)}
