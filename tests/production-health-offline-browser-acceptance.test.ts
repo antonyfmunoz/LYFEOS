@@ -23,6 +23,8 @@ describe("production Health offline browser acceptance custody", () => {
     expect(script).toContain('contract: "lyfeos.production-health-offline-browser.v1"');
     expect(script).toContain('new URL("/health-log", BASE_URL)');
     expect(fs.readFileSync("client/src/App.tsx", "utf8")).toContain('<Route path="/health-log">');
+    expect(fs.readFileSync("client/src/App.tsx", "utf8")).toContain('<HealthDetailPage view="log" />');
+    expect(script).toContain("async function openHealthLogWorkspace");
     expect(script).toContain('BASE_URL.origin === "https://lyfeos.net"');
     expect(script).toContain("sourceRevision: SOURCE");
     expect(script).toContain("harnessSource: HARNESS_SOURCE");
