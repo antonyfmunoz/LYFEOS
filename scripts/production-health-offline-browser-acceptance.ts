@@ -612,10 +612,10 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     }, { id: account.id, displayName: account.displayName });
     await page.setViewport(viewport.value);
     await page.setCacheEnabled(false);
-    stage = "navigate to Health";
-    await page.goto(new URL("/health", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
-    stage = "wait for Health page";
-    await page.waitForSelector('[data-testid="health-page"]', { visible: true, timeout: 60_000 });
+    stage = "navigate to Health Log";
+    await page.goto(new URL("/health-log", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
+    stage = "wait for Health Log page";
+    await page.waitForSelector('[data-testid="health-log-page"]', { visible: true, timeout: 60_000 });
     stage = "wait for daily Health log";
     await page.waitForSelector('[data-testid="daily-health-log"]', { visible: true, timeout: 60_000 });
     await dismissBlockingTutorial(page);
