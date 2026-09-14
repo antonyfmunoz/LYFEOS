@@ -503,6 +503,13 @@ function Router() {
           </RootLayout>
         </ProtectedRoute>
       </Route>
+      <Route path="/health-log">
+        <ProtectedRoute>
+          <RootLayout>
+            <HealthDetailPage />
+          </RootLayout>
+        </ProtectedRoute>
+      </Route>
       <Route path="/ownership-review">
         <ProtectedRoute><RootLayout><OwnershipReviewPage /></RootLayout></ProtectedRoute>
       </Route>
