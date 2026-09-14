@@ -139,6 +139,52 @@ async function stopServiceWorkers(page: Page): Promise<void> {
   }
 }
 
+async function calendarColdStartDiagnostic(page: Page): Promise<Record<string, unknown>> {
+  return await page.evaluate(async () => {
+    const cachedUser = (() => {
+      try {
+        const value = JSON.parse(localStorage.getItem("lyfeos_user") || "null") as { id?: unknown } | null;
+        return Number.isInteger(value?.id) ? value!.id : null;
+      } catch {
+        return null;
+      }
+    })();
+    const queuePanel = document.querySelector('[data-testid="calendar-offline-queue"]');
+    const databases = typeof indexedDB.databases === "function" ? await indexedDB.databases().catch(() => []) : [];
+    const queueDatabaseExists = databases.some((database) => database.name === "lyfeos-calendar-mutations");
+    const records = await new Promise<Array<{ userId: number; title: string; status: string }>>((resolve) => {
+      if (!queueDatabaseExists) return resolve([]);
+      const open = indexedDB.open("lyfeos-calendar-mutations");
+      open.onerror = () => resolve([]);
+      open.onsuccess = () => {
+        const database = open.result;
+        if (!database.objectStoreNames.contains("pending")) {
+          database.close();
+          return resolve([]);
+        }
+        const request = database.transaction("pending", "readonly").objectStore("pending").getAll();
+        request.onerror = () => { database.close(); resolve([]); };
+        request.onsuccess = () => {
+          database.close();
+          resolve((request.result as Array<{ userId?: unknown; title?: unknown; status?: unknown }>).map((record) => ({
+            userId: Number(record.userId),
+            title: String(record.title || "").slice(0, 120),
+            status: String(record.status || ""),
+          })));
+        };
+      };
+    });
+    return {
+      online: navigator.onLine,
+      cachedUserId: cachedUser,
+      queuePanelPresent: Boolean(queuePanel),
+      queuePanelText: queuePanel?.textContent?.slice(0, 500) || "",
+      queueDatabaseExists,
+      records,
+    };
+  });
+}
+
 async function findChromium(): Promise<string> {
   const candidates = [
     process.env.LYFEOS_CHROMIUM_PATH,
@@ -436,11 +482,16 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     await page.setOfflineMode(true);
     await page.goto(new URL("/calendar", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });
     await page.waitForSelector('[data-testid="calendar-page"]', { visible: true, timeout: 60_000 });
-    await page.waitForFunction((title) => {
-      const text = document.querySelector('[data-testid="calendar-offline-queue"]')?.textContent || "";
-      const pendingOffline = text.includes("Waiting for a connection") || text.includes("Waiting for the next safe sync attempt");
-      return text.includes(String(title)) && pendingOffline;
-    }, { timeout: 45_000 }, offlineTitle);
+    try {
+      await page.waitForFunction((title) => {
+        const text = document.querySelector('[data-testid="calendar-offline-queue"]')?.textContent || "";
+        const pendingOffline = text.includes("Waiting for a connection") || text.includes("Waiting for the next safe sync attempt");
+        return text.includes(String(title)) && pendingOffline;
+      }, { timeout: 45_000 }, offlineTitle);
+    } catch (error) {
+      const diagnostic = await calendarColdStartDiagnostic(page).catch(() => ({ unavailable: true }));
+      throw new Error(`${safeError(error)}; cold-start diagnostic=${JSON.stringify(diagnostic)}`);
+    }
     const serviceWorkerColdStartRecovered = await page.evaluate(() => Boolean(navigator.serviceWorker?.controller));
     assert(serviceWorkerColdStartRecovered, "Calendar did not recover through a restarted service worker while offline.");
 
