@@ -191,6 +191,14 @@ describe("mission lifecycle wiring", () => {
     expect(readSource("client/src/components/dashboard/QuestItem.tsx")).toContain("Saved idea");
   });
 
+  it("keeps completed Missions reversible from the rendered List view", () => {
+    const missionsPage = readSource("client/src/pages/QuestsPage.tsx");
+    const missionCard = readSource("client/src/components/dashboard/QuestItem.tsx");
+    expect(missionsPage).toContain('section="list"');
+    expect(missionsPage).toContain("onUndo={() => handleUndoMission(mission)}");
+    expect(missionCard).toContain('data-testid={`mission-undo-${quest.id}`}');
+  });
+
   it("turns repeated capacity deferrals into a visible, non-judgmental planning signal", () => {
     const threads = readSource("server/routes/transformation-threads.ts");
     const panel = readSource("client/src/components/dashboard/TransformationThreadPanel.tsx");
