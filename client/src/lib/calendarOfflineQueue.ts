@@ -46,6 +46,21 @@ export type CalendarMutationResult<T> =
 
 export type CalendarOfflinePersistenceState = "persistent" | "best-effort" | "unavailable";
 
+// Calendar mutations are private to one device and one LyfeOS account. During
+// a cold offline restart, the server cannot revalidate the session, but the
+// last server-verified identity is already stored on that same device. This is
+// only an identity hint for reading that device-local queue; every server write
+// still uses the live cookie when connectivity returns.
+export function cachedCalendarQueueUserId(): number | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const user = JSON.parse(window.localStorage.getItem("lyfeos_user") || "null") as { id?: unknown } | null;
+    return Number.isInteger(user?.id) && Number(user!.id) > 0 ? Number(user!.id) : null;
+  } catch {
+    return null;
+  }
+}
+
 export class CalendarOfflineStorageError extends Error {
   constructor(message: string) {
     super(message);

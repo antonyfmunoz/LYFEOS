@@ -46,6 +46,7 @@ import type { MissionView } from "@shared/schema";
 import type { GoogleIntegrationPermissions } from "@shared/google-integration-permissions";
 import { calendarVisibleRange } from "@shared/calendar";
 import OfflineCalendarQueueStatus from "@/components/calendar/OfflineCalendarQueueStatus";
+import { cachedCalendarQueueUserId } from "@/lib/calendarOfflineQueue";
 import { Badge } from "@/components/ui/badge";
 import { ObsidianMarkdown } from "@/components/ui/obsidian-markdown";
 import { StatInfoDialog } from "@/components/ui/stat-info-dialog";
@@ -320,6 +321,10 @@ export default function QuestsPage() {
   
   const { quests, toggleQuestCompletion, createQuest, updateQuest, deleteQuest, refetchQuests, activeTimerQuest, missionElapsedTimes, missionBreakTimes, startMissionTimer, resumeMissionTimer, restartMissionTimer, userProfile } = useLYFEOS();
   const { user } = useAuth();
+  // A cold offline restart cannot complete the live auth check. Keep device-
+  // local Calendar changes visible to the same cached account until that check
+  // can resume, without treating the cached identity as server authorization.
+  const calendarQueueUserId = user?.id ?? (typeof navigator !== "undefined" && !navigator.onLine ? cachedCalendarQueueUserId() : null);
   const { toast } = useToast();
   const { runWithApproval } = useIntegrationActionApproval();
   const { data: activeThreadData } = useQuery<ActiveThreadData>({
@@ -4280,7 +4285,7 @@ export default function QuestsPage() {
             <p className="border-b border-primary/10 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">
               Calendar is a scheduling view of your canonical Missions. Creating or editing here updates the same mission record and lifecycle.
             </p>
-            {user?.id ? <OfflineCalendarQueueStatus userId={user.id} /> : null}
+            {calendarQueueUserId ? <OfflineCalendarQueueStatus userId={calendarQueueUserId} /> : null}
             {calendarMissionQuery.isPending && calendarMissionQuery.fetchStatus !== 'paused' && (
               <p role="status" className="border-b border-primary/10 px-3 py-2 text-xs text-muted-foreground">Loading this Calendar range…</p>
             )}
