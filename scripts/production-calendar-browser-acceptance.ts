@@ -107,7 +107,13 @@ async function restoreOnline(page: Page): Promise<void> {
 }
 
 async function primeCurrentAppShell(page: Page): Promise<void> {
-  const result = await page.evaluate(async () => {
+  let lastError: unknown;
+  // A newly activated worker can miss its first message while Chromium is
+  // settling registration. Retry the same confirmation handshake; do not
+  // continue unless the worker explicitly confirms a non-empty cache.
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const result = await page.evaluate(async () => {
     if (!("serviceWorker" in navigator)) throw new Error("Service workers are unavailable.");
     const registration = await navigator.serviceWorker.ready;
     if (!registration.active) throw new Error("The LyfeOS service worker is not active.");
@@ -122,8 +128,15 @@ async function primeCurrentAppShell(page: Page): Promise<void> {
       };
       registration.active!.postMessage({ type: "CACHE_CURRENT_APP_SHELL", urls }, [channel.port2]);
     });
-  });
-  assert(result.cached > 0, "The service worker did not cache any current app-shell resources.");
+      });
+      assert(result.cached > 0, "The service worker did not cache any current app-shell resources.");
+      return;
+    } catch (error) {
+      lastError = error;
+      await page.waitForTimeout(1_000 * (attempt + 1));
+    }
+  }
+  throw lastError;
 }
 
 async function stopServiceWorkers(page: Page): Promise<void> {
