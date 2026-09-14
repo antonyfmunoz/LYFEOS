@@ -42,7 +42,9 @@ describe("Calendar offline and conflict contract", () => {
     expect(queue).toContain('indexedDB.open(DATABASE_NAME');
     expect(queue).toContain('DATABASE_OPEN_TIMEOUT_MS');
     expect(queue).toContain('name: "TimeoutError"');
+    expect(queue).toContain("cachedCalendarQueueUserId");
     expect(status).toContain('retry: 6');
+    expect(source("client/src/pages/QuestsPage.tsx")).toContain("cachedCalendarQueueUserId()");
     expect(queue).toContain('const MAX_QUEUED_MUTATIONS = 100');
     expect(queue).toContain('status: "conflict"');
     expect(queue).toContain('"x-lyfeos-expected-revision"');
