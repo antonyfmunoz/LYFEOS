@@ -39,6 +39,7 @@ describe("production Health data-rights browser acceptance custody", () => {
     expect(script).toContain("Authenticated Health export read");
     expect(script).toContain('["GET", "HEAD"].includes(failed.method())');
     expect(script).toContain("setCheckbox(page");
+    expect(script).toContain('await page.keyboard.press("Space")');
     expect(script).toContain("savedPreferenceResponse.status() === 200");
     expect(script).toContain("The Health permission save response did not acknowledge both explicit consents.");
   });
