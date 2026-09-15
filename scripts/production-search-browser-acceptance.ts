@@ -381,7 +381,7 @@ async function main(): Promise<void> {
     // event. This exercises the same trusted key path a person uses and keeps
     // the acceptance contract honest about the global shortcut.
     await page.keyboard.down("Control");
-    await page.keyboard.press("K");
+    await page.keyboard.press("KeyK");
     await page.keyboard.up("Control");
     await page.waitForSelector('[data-testid="workspace-search-input"]', { visible: true, timeout: 30_000 });
     shortcutOpenedAndFocused = new URL(page.url()).pathname === "/search" && await page.$eval('[data-testid="workspace-search-input"]', (element) => document.activeElement === element);
