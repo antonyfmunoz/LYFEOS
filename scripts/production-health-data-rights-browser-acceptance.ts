@@ -75,17 +75,18 @@ async function setCheckbox(page: Page, selector: string, expected: boolean): Pro
   }, { timeout: 45_000 }, selector);
   const current = await page.$eval(selector, (element) => (element as HTMLInputElement).checked);
   if (current !== expected) {
-    // Profile settings can finish their first paint while this control is
-    // transitioning from its initial preference read. Retry one ordinary,
-    // visible user click before treating a toggle as broken.
-    for (let attempt = 0; attempt < 2; attempt += 1) {
-      await page.click(selector);
-      const changed = await page.waitForFunction((target, value) => {
-        const control = document.querySelector<HTMLInputElement>(target);
-        return control?.checked === value;
-      }, { timeout: 7_500 }, selector, expected).then(() => true).catch(() => false);
-      if (changed) return;
-    }
+    // First exercise the visible pointer path. If layout movement during the
+    // initial Profile paint prevents that activation from committing, use the
+    // same enabled control's native Space-key activation—the keyboard route a
+    // person can use, not a synthetic state mutation.
+    await page.click(selector);
+    const pointerActivated = await page.waitForFunction((target, value) => {
+      const control = document.querySelector<HTMLInputElement>(target);
+      return control?.checked === value;
+    }, { timeout: 7_500 }, selector, expected).then(() => true).catch(() => false);
+    if (pointerActivated) return;
+    await page.focus(selector);
+    await page.keyboard.press("Space");
   }
   await page.waitForFunction((target, value) => {
     const control = document.querySelector<HTMLInputElement>(target);
