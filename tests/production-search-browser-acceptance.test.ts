@@ -39,6 +39,7 @@ describe("production Search browser acceptance custody", () => {
     expect(script).toContain("do not retry the");
     expect(script).toContain('await page.keyboard.down("Control")');
     expect(script).toContain('await page.keyboard.press("K")');
+    expect(script).toContain("await page.bringToFront()");
     expect(script).toContain('await page.focus("main")');
     expect(script).not.toContain('new KeyboardEvent("keydown"');
     for (const kind of ["mission", "document", "spreadsheet", "canvas", "database", "relationship"]) expect(script).toContain(`"${kind}"`);
