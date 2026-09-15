@@ -1,4 +1,4 @@
-import { ReactNode, useRef, useEffect } from "react";
+import { ReactNode, useRef, useEffect, useLayoutEffect } from "react";
 import Sidebar from "./Sidebar";
 import MobileNav from "./MobileNav";
 import AICompanionPanel from "../ai/AICompanionPanel";
@@ -21,7 +21,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
     }
   }, [location]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const openSearch = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       const editing = target?.isContentEditable || target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement;
@@ -30,7 +30,11 @@ export default function RootLayout({ children }: RootLayoutProps) {
       navigate("/search");
     };
     window.addEventListener("keydown", openSearch);
-    return () => window.removeEventListener("keydown", openSearch);
+    document.documentElement.dataset.lyfeosSearchShortcutReady = "true";
+    return () => {
+      window.removeEventListener("keydown", openSearch);
+      delete document.documentElement.dataset.lyfeosSearchShortcutReady;
+    };
   }, [navigate]);
 
   

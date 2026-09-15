@@ -369,14 +369,15 @@ async function main(): Promise<void> {
     // become document.activeElement: this layout keeps body-level focus.
     await page.bringToFront();
     await page.focus("main");
-    // The Dashboard can paint before RootLayout's native shortcut effect has
-    // attached. Wait for the real document load and a settled client frame
-    // before sending one ordinary Ctrl+K interaction; do not retry the
-    // shortcut, because the assertion should still prove a single action.
+    // The Dashboard can paint before the global shortcut has attached. Wait
+    // for the app's explicit readiness seam before sending one ordinary
+    // Ctrl+K interaction; do not retry the shortcut, because the assertion
+    // should still prove a single action.
     await page.waitForFunction(() => document.readyState === "complete", { timeout: 30_000 });
     await page.evaluate(() => new Promise<void>((resolve) => {
       window.requestAnimationFrame(() => window.requestAnimationFrame(() => window.setTimeout(resolve, 500)));
     }));
+    await page.waitForFunction(() => document.documentElement.dataset.lyfeosSearchShortcutReady === "true", { timeout: 30_000 });
     // Drive the browser's keyboard rather than dispatching a synthetic DOM
     // event. This exercises the same trusted key path a person uses and keeps
     // the acceptance contract honest about the global shortcut.
