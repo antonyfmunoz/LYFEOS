@@ -18,13 +18,6 @@ export default function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    const oauthNotice = sessionStorage.getItem("lyfeos-oauth-login-notice");
-    if (!oauthNotice) return;
-    sessionStorage.removeItem("lyfeos-oauth-login-notice");
-    setError(oauthNotice);
-  }, []);
-
-  useEffect(() => {
     if ((!isLoading && user) || (isClerkLoaded && isSignedIn)) {
       navigate("/dashboard", { replace: true });
     }

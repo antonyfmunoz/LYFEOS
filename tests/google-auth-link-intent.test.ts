@@ -21,12 +21,19 @@ describe("Google sign-in account linking", () => {
   it("wires the one-time server intent and existing profile without moving the settings surface", () => {
     const authRoutes = fs.readFileSync(path.resolve("server/routes/auth.ts"), "utf8");
     const authContext = fs.readFileSync(path.resolve("client/src/lib/authContext.tsx"), "utf8");
+    const loginPage = fs.readFileSync(path.resolve("client/src/pages/LoginPage.tsx"), "utf8");
     const profile = fs.readFileSync(path.resolve("client/src/pages/ProfilePage.tsx"), "utf8");
     expect(authRoutes).toContain('app.post("/api/auth/google-link-intent", requireAuth');
     expect(authRoutes).toContain("isValidGoogleAuthLinkIntent(googleLinkIntent, req.session.userId)");
     expect(authRoutes).toContain("hasGoogleExternalAccount(clerkUser.externalAccounts)");
     expect(authContext).toContain('redirectUrlComplete: "/profile?google-signin=linked"');
     expect(authContext).toContain("body: JSON.stringify({ currentPassword })");
+    expect(authContext).toContain("function googleSignInFailureMessage(error: unknown)");
+    expect(authContext).toContain("Google sign-in is temporarily unavailable. Try again shortly, or use your email and password instead.");
+    expect(authContext).not.toContain("Google sign-in failed: ${error?.message || String(error)}");
+    expect(authContext).not.toContain("No LyfeOS account exists for that Google sign-in");
+    expect(authContext).not.toContain('sessionStorage.setItem("lyfeos-oauth-login-notice"');
+    expect(loginPage).not.toContain("lyfeos-oauth-login-notice");
     expect(profile).toContain("Add Google");
     expect(profile).toContain("Create Password");
     expect(profile).toContain("clerkUser.updatePassword(data)");
