@@ -37,6 +37,9 @@ describe("production Search browser acceptance custody", () => {
     expect(script).toContain('document.readyState === "complete"');
     expect(script).toContain("requestAnimationFrame(() => window.requestAnimationFrame");
     expect(script).toContain("do not retry the");
+    expect(script).toContain('await page.keyboard.down("Control")');
+    expect(script).toContain('await page.keyboard.press("K")');
+    expect(script).not.toContain('new KeyboardEvent("keydown"');
     for (const kind of ["mission", "document", "spreadsheet", "canvas", "database", "relationship"]) expect(script).toContain(`"${kind}"`);
     expect(script).toContain("account/session/identifier erasure");
     expect(script).toContain("does not prove consented search telemetry");

@@ -374,13 +374,14 @@ async function main(): Promise<void> {
     await page.evaluate(() => new Promise<void>((resolve) => {
       window.requestAnimationFrame(() => window.requestAnimationFrame(() => window.setTimeout(resolve, 500)));
     }));
-    const shortcutHandled = await page.evaluate(() => {
-      const event = new KeyboardEvent("keydown", { key: "k", code: "KeyK", ctrlKey: true, bubbles: true, cancelable: true });
-      window.dispatchEvent(event);
-      return event.defaultPrevented;
-    });
+    // Drive the browser's keyboard rather than dispatching a synthetic DOM
+    // event. This exercises the same trusted key path a person uses and keeps
+    // the acceptance contract honest about the global shortcut.
+    await page.keyboard.down("Control");
+    await page.keyboard.press("K");
+    await page.keyboard.up("Control");
     await page.waitForSelector('[data-testid="workspace-search-input"]', { visible: true, timeout: 30_000 });
-    shortcutOpenedAndFocused = shortcutHandled && new URL(page.url()).pathname === "/search" && await page.$eval('[data-testid="workspace-search-input"]', (element) => document.activeElement === element);
+    shortcutOpenedAndFocused = new URL(page.url()).pathname === "/search" && await page.$eval('[data-testid="workspace-search-input"]', (element) => document.activeElement === element);
     assert(shortcutOpenedAndFocused, "Ctrl+K did not open and focus private Search.");
 
     stage = "render, filter, deep-link and reload all six canonical results";
