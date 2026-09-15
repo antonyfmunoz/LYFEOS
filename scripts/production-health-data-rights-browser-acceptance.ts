@@ -74,7 +74,19 @@ async function setCheckbox(page: Page, selector: string, expected: boolean): Pro
     return Boolean(control && !control.disabled);
   }, { timeout: 45_000 }, selector);
   const current = await page.$eval(selector, (element) => (element as HTMLInputElement).checked);
-  if (current !== expected) await page.click(selector);
+  if (current !== expected) {
+    // Profile settings can finish their first paint while this control is
+    // transitioning from its initial preference read. Retry one ordinary,
+    // visible user click before treating a toggle as broken.
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      await page.click(selector);
+      const changed = await page.waitForFunction((target, value) => {
+        const control = document.querySelector<HTMLInputElement>(target);
+        return control?.checked === value;
+      }, { timeout: 7_500 }, selector, expected).then(() => true).catch(() => false);
+      if (changed) return;
+    }
+  }
   await page.waitForFunction((target, value) => {
     const control = document.querySelector<HTMLInputElement>(target);
     return control?.checked === value;
