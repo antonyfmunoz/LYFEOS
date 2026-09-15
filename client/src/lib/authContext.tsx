@@ -43,6 +43,15 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+function googleSignInFailureMessage(error: unknown): string {
+  const message = error instanceof Error ? error.message.toLowerCase() : String(error ?? "").toLowerCase();
+  if (message.includes("cancel")) return "Google sign-in was cancelled. You can try again whenever you are ready.";
+  if (message.includes("network") || message.includes("offline") || message.includes("fetch")) {
+    return "We could not reach Google sign-in. Check your connection, then try again.";
+  }
+  return "Google sign-in is temporarily unavailable. Try again shortly, or use your email and password instead.";
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -516,7 +525,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
       } else {
         if (!signIn) throw new Error("Sign-in not available");
-        sessionStorage.setItem("lyfeos-oauth-login-notice", "No LyfeOS account exists for that Google sign-in. Use Register to create one.");
         await signIn.authenticateWithRedirect({
           strategy: "oauth_google",
           redirectUrl: "/sso-callback",
@@ -528,8 +536,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("lyfeos-oauth-redirect-pending");
       console.error("Google login error:", error);
       toast({
-        title: "Login Error",
-        description: `Google sign-in failed: ${error?.message || String(error)}`,
+        title: "Google sign-in unavailable",
+        description: googleSignInFailureMessage(error),
         variant: "destructive",
       });
     } finally {
@@ -601,7 +609,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
       } else {
         if (!signIn) throw new Error("Sign-in not available");
-        sessionStorage.setItem("lyfeos-oauth-login-notice", "No LyfeOS account exists for that Apple sign-in. Use Register to create one.");
         await signIn.authenticateWithRedirect({
           strategy: "oauth_apple",
           redirectUrl: "/sso-callback",
