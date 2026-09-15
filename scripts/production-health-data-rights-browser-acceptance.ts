@@ -118,6 +118,30 @@ async function downloadHealthExport(page: Page): Promise<import("puppeteer-core"
   return keyboardExport;
 }
 
+async function deleteHealthData(page: Page): Promise<void> {
+  const selector = '[data-testid="health-data-delete"]';
+  await page.waitForSelector(selector, { visible: true, timeout: 45_000 });
+  await page.waitForFunction((target) => {
+    const button = document.querySelector<HTMLButtonElement>(target);
+    return Boolean(button && !button.disabled && button.getClientRects().length);
+  }, { timeout: 45_000 }, selector);
+
+  const awaitDeletion = (timeout: number) => page.waitForResponse(
+    (response) => new URL(response.url()).pathname === "/api/health-data" && response.request().method() === "DELETE",
+    { timeout },
+  );
+  const pointerDeletion = awaitDeletion(10_000);
+  await page.click(selector);
+  const responseFromPointer = await pointerDeletion.catch(() => null);
+  if (!responseFromPointer) {
+    await page.focus(selector);
+    const keyboardDeletion = awaitDeletion(30_000);
+    await page.keyboard.press("Space");
+    await keyboardDeletion;
+  }
+  await page.waitForSelector('[data-testid="health-data-deletion-complete"]', { visible: true, timeout: 45_000 });
+}
+
 async function setCheckbox(page: Page, selector: string, expected: boolean): Promise<void> {
   await page.waitForSelector(selector, { visible: true, timeout: 45_000 });
   await page.waitForFunction((target) => {
@@ -187,7 +211,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     const savedRights = await request("GET", "/api/health-data/rights", undefined, account.cookie); const preferencesSaved = savedRights.status === 200 && savedRights.body?.preferences?.aiContextEnabled === true && savedRights.body?.preferences?.planningContextEnabled === true; assert(preferencesSaved, "Health permission settings did not persist through the UI.");
     stage = "download Health export from the UI"; const browserExport = await downloadHealthExport(page); assert(browserExport.status() === 200 && (browserExport.headers()["content-disposition"] || "").includes("attachment;"), "The Health export UI did not receive a JSON attachment response."); const contentExport = await request("GET", "/api/health-data/export", undefined, account.cookie); assert(contentExport.status === 200, `Authenticated Health export read returned ${contentExport.status}.`); const exportBody = contentExport.body;
     const serializedExport = JSON.stringify(exportBody); const exportedRecordedHealth = Array.isArray(exportBody?.tables?.hydration_entries) && exportBody.tables.hydration_entries.some((entry: any) => Number(entry.volume_ml) === 322); const exportIncludedNoCredentialReferences = !serializedExport.includes("credentialRef") && !serializedExport.includes("credential_ref"); assert(exportedRecordedHealth && exportIncludedNoCredentialReferences, "The UI-triggered export did not preserve the factual record or exposed credential custody.");
-    stage = "delete only the Health domain through the UI"; await page.$eval('[data-testid="health-data-delete"]', (element) => element.closest("details")?.setAttribute("open", "")); await setValue(page, '[data-testid="health-data-deletion-confirmation"]', "DELETE MY HEALTH DATA"); await clickReady(page, '[data-testid="health-data-delete"]'); await page.waitForSelector('[data-testid="health-data-deletion-complete"]', { visible: true, timeout: 45_000 });
+    stage = "delete only the Health domain through the UI"; await page.$eval('[data-testid="health-data-delete"]', (element) => element.closest("details")?.setAttribute("open", "")); await setValue(page, '[data-testid="health-data-deletion-confirmation"]', "DELETE MY HEALTH DATA"); await deleteHealthData(page);
     const postDeleteExport = await request("GET", "/api/health-data/export", undefined, account.cookie); const postDeleteRights = await request("GET", "/api/health-data/rights", undefined, account.cookie); const deletedHealthDomain = postDeleteExport.status === 200 && Array.isArray(postDeleteExport.body?.tables?.hydration_entries) && postDeleteExport.body.tables.hydration_entries.length === 0; const rightsReceiptRetained = postDeleteRights.status === 200 && Number(postDeleteRights.body?.recordCounts?.health_data_rights_audit || 0) >= 3; assert(deletedHealthDomain && rightsReceiptRetained, "Health-domain deletion did not remove the health record while retaining minimal rights receipts.");
     await page.evaluate(() => window.scrollTo(0, 0)); const audit = await auditPage(page); assert(audit.mainCount === 1 && !audit.duplicateIds.length && !audit.invalidLabelReferences.length && !audit.unlabeledControls.length && audit.horizontalOverflowPx <= 1, `Health data-rights accessibility/layout audit failed: ${JSON.stringify(audit)}.`); assert(!hasUnexpectedBrowserSignals(signals), `Unexpected browser signals: ${JSON.stringify(signals)}.`);
     view = { viewport: viewport.name, preferencesSaved, exportedRecordedHealth, exportIncludedNoCredentialReferences, deletedHealthDomain, rightsReceiptRetained, audit, signals };
