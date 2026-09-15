@@ -737,7 +737,14 @@ async function newPage(browser: Browser, viewport: Viewport, mobile: boolean): P
   if (mobile) {
     await page.setUserAgent("Mozilla/5.0 (Linux; Android 14; LyfeOS acceptance) AppleWebKit/537.36 Chrome/125 Mobile Safari/537.36");
   }
-  await page.setCacheEnabled(false);
+  // A new browser context starts cold, so the first document still proves
+  // first-visit delivery. Keep normal HTTP caching enabled afterwards: the
+  // hashed assets are explicitly immutable, and a real user does not
+  // re-download the complete shared application graph for every route.
+  // Disabling the cache here turned this inventory into repeated synthetic
+  // cold starts that could overload the single production instance and hide
+  // the performance actually experienced during normal navigation.
+  await page.setCacheEnabled(true);
   await installPerformanceObservers(page);
   return page;
 }
