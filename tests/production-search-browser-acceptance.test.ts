@@ -36,6 +36,7 @@ describe("production Search browser acceptance custody", () => {
     ]) expect(script).toContain(invariant);
     expect(script).toContain('document.readyState === "complete"');
     expect(script).toContain("requestAnimationFrame(() => window.requestAnimationFrame");
+    expect(script).toContain("lyfeosSearchShortcutReady");
     expect(script).toContain("do not retry the");
     expect(script).toContain('await page.keyboard.down("Control")');
     expect(script).toContain('await page.keyboard.press("KeyK")');
