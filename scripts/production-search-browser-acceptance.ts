@@ -363,9 +363,11 @@ async function main(): Promise<void> {
     await page.waitForSelector("main", { visible: true, timeout: 30_000 });
     assert(new URL(page.url()).pathname === "/dashboard", `Authenticated browser opened ${new URL(page.url()).pathname} instead of Dashboard.`);
     await dismissBlockingTutorial(page);
-    await page.evaluate(() => {
-      if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
-    });
+    // Put keyboard focus on the application's non-editable main surface.
+    // Without a focused page surface, headless Chrome can retain browser
+    // chrome focus and consume Ctrl+K before the app receives it.
+    await page.focus("main");
+    await page.waitForFunction(() => document.activeElement?.matches("main"), { timeout: 10_000 });
     // The Dashboard can paint before RootLayout's native shortcut effect has
     // attached. Wait for the real document load and a settled client frame
     // before sending one ordinary Ctrl+K interaction; do not retry the
