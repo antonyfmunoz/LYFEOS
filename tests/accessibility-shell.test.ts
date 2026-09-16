@@ -19,6 +19,7 @@ describe("shared accessibility shell", () => {
     expect(mobile).toContain('e.key === "Enter" || e.key === " "');
     expect(sidebar).toContain('aria-label="Primary navigation"');
     expect(sidebar).toContain('aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}');
+    expect(sidebar).toContain('hidden shrink-0 lg:flex');
   });
 
   it("keeps the desktop assistant controls keyboard and screen-reader operable", () => {
