@@ -22,7 +22,7 @@ describe("optional Health workspace preferences", () => {
     const profile = source("client/src/pages/ProfilePage.tsx");
     expect(preferences).toContain("Everything is optional, and unselected workspaces remain available below");
     expect(profile).toContain('import HealthPreferences from "@/components/health/HealthPreferences"');
-    expect(profile).toContain('<HealthPreferences />');
+    expect(profile).toContain('<HealthPreferences embedded />');
     expect(healthLog).toContain('const healthLogSections');
     expect(healthLog).toContain('title: "Nourishment"');
     expect(healthLog).toContain('case "nutrition-diary": return <DeferredHealthSection label="nutrition diary"');

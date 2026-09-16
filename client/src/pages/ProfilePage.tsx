@@ -2732,8 +2732,8 @@ export default function ProfilePage() {
                 <h2 id="health-settings-heading" className="flex items-center gap-2 font-orbitron text-lg text-primary"><Heart className="h-5 w-5" />Health settings & privacy</h2>
                 <p className="mt-1 text-xs text-muted-foreground">Manage Health units, calendar context, and your Health-record rights here—not inside your chronological Health Log.</p>
               </div>
-              <HealthPreferences />
-              <HealthDataRights />
+              <HealthPreferences embedded />
+              <HealthDataRights embedded />
             </section>
 
 
