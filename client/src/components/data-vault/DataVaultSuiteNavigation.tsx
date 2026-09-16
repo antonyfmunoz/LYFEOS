@@ -1,8 +1,8 @@
 import { Link } from "wouter";
-import { FileSpreadsheet, FileText, FolderOpen, LayoutDashboard, TableProperties } from "lucide-react";
+import { FileSpreadsheet, FileText, FolderOpen, LayoutDashboard, Presentation, Star, TableProperties } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type DataVaultWorkspace = "files" | "sheets" | "canvas" | "tables";
+type DataVaultWorkspace = "vault" | "files" | "sheets" | "canvas" | "slides" | "forms" | "tables";
 
 type DataVaultSuiteNavigationProps = {
   active: DataVaultWorkspace;
@@ -14,16 +14,18 @@ const workspaces: Array<{
   href: string;
   icon: typeof FolderOpen;
 }> = [
+  { id: "vault", label: "Vault", href: "/data-vault", icon: Star },
   { id: "files", label: "Files & Docs", href: "/document-vault", icon: FolderOpen },
   { id: "sheets", label: "Sheets", href: "/spreadsheets", icon: FileSpreadsheet },
   { id: "canvas", label: "Canvas", href: "/canvases", icon: LayoutDashboard },
-  { id: "tables", label: "Forms & Tables", href: "/databases", icon: TableProperties },
+  { id: "slides", label: "Slides", href: "/slides", icon: Presentation },
+  { id: "forms", label: "Forms", href: "/forms", icon: FileText },
+  { id: "tables", label: "Tables", href: "/databases", icon: TableProperties },
 ];
 
 /**
  * The suite shell makes the data workspaces one coherent Vault without
- * pretending that a canvas graph is a slide deck or that form-backed tables
- * are plain spreadsheet grids.
+ * keeping every editor distinct while sharing one private content layer.
  */
 export function DataVaultSuiteNavigation({ active }: DataVaultSuiteNavigationProps) {
   return (
@@ -36,7 +38,7 @@ export function DataVaultSuiteNavigation({ active }: DataVaultSuiteNavigationPro
           </Link>
           <p className="mt-3 text-xs font-mono uppercase tracking-[0.14em] text-primary">Personal workspace suite</p>
           <h1 className="font-orbitron text-2xl">Data Vault</h1>
-          <p className="text-sm text-muted-foreground">Your private home for files, documents, structured work, media, and forms.</p>
+          <p className="text-sm text-muted-foreground">Your private home for documents, Sheets, Canvas, Slides, Forms, tables, and media.</p>
         </div>
         <div className="hidden items-center gap-2 text-xs text-muted-foreground md:flex">
           <FileText className="h-4 w-4 text-primary" />

@@ -1220,6 +1220,31 @@ export const insertUserSchema = createInsertSchema(users).pick({
   stripeSubscriptionId: true,
 });
 
+// Presentation decks are intentionally their own structured document type.
+// A freeform Canvas is useful for spatial thinking; it is not a Slides editor.
+export const slides = pgTable("slides", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  description: text("description"),
+  document: jsonb("document").notNull(),
+  favorite: boolean("favorite").notNull().default(false),
+  deletedAt: timestamp("deleted_at"),
+  revision: integer("revision").notNull().default(1),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [index("slides_user_updated_idx").on(table.userId, table.updatedAt), index("slides_user_deleted_idx").on(table.userId, table.deletedAt)]);
+
+export const slideRevisions = pgTable("slide_revisions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  slideId: integer("slide_id").notNull().references(() => slides.id, { onDelete: "cascade" }),
+  revisionNumber: integer("revision_number").notNull(),
+  action: text("action").notNull(),
+  snapshot: jsonb("snapshot").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [uniqueIndex("slide_revisions_slide_revision_idx").on(table.slideId, table.revisionNumber), index("slide_revisions_user_slide_created_idx").on(table.userId, table.slideId, table.createdAt)]);
+
 export const insertUserStatsSchema = createInsertSchema(userStats).pick({
   userId: true,
   timeTokensCurrent: true,
@@ -2225,6 +2250,44 @@ export const kanbanBoards = pgTable("kanban_boards", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+
+// These forms are a catalogue in their own right. A backing table is optional
+// and never defines the form: responses are retained independently first.
+export const vaultForms = pgTable("vault_forms", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  description: text("description"),
+  definition: jsonb("definition").notNull(),
+  confirmationText: text("confirmation_text").notNull().default("Response saved."),
+  backingDatabaseId: integer("backing_database_id").references(() => workspaceDatabases.id, { onDelete: "set null" }),
+  favorite: boolean("favorite").notNull().default(false),
+  active: boolean("active").notNull().default(true),
+  deletedAt: timestamp("deleted_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [index("vault_forms_user_updated_idx").on(table.userId, table.updatedAt), index("vault_forms_user_deleted_idx").on(table.userId, table.deletedAt)]);
+
+export const vaultFormResponses = pgTable("vault_form_responses", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  formId: integer("form_id").notNull().references(() => vaultForms.id, { onDelete: "cascade" }),
+  values: jsonb("values").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [index("vault_form_responses_user_form_created_idx").on(table.userId, table.formId, table.createdAt)]);
+
+// One overlay owns cross-workspace recency, favourites and trash state without
+// collapsing the distinct editors or rewriting legacy source records.
+export const vaultItemStates = pgTable("vault_item_states", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  itemType: text("item_type").notNull(),
+  itemId: integer("item_id").notNull(),
+  favorite: boolean("favorite").notNull().default(false),
+  trashedAt: timestamp("trashed_at"),
+  lastOpenedAt: timestamp("last_opened_at"),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [uniqueIndex("vault_item_states_user_type_item_idx").on(table.userId, table.itemType, table.itemId), index("vault_item_states_user_trash_recent_idx").on(table.userId, table.trashedAt, table.lastOpenedAt)]);
 
 // Kanban Column table
 export const kanbanColumns = pgTable("kanban_columns", {

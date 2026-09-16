@@ -85,6 +85,11 @@ const TablesPage = lazyRoute(() => import("./pages/TablesPage"));
 const TableEditorPage = lazyRoute(() => import("./pages/TableEditorPage"));
 const FormPage = lazyRoute(() => import("./pages/FormPage"));
 const PublicFormPage = lazyRoute(() => import("./pages/PublicFormPage"));
+const VaultWorkspacePage = lazyRoute(() => import("./pages/VaultWorkspacePage"));
+const SlidesPage = lazyRoute(() => import("./pages/SlidesPage"));
+const SlideEditorPage = lazyRoute(() => import("./pages/SlideEditorPage"));
+const FormsCatalogPage = lazyRoute(() => import("./pages/FormsCatalogPage"));
+const VaultFormEditorPage = lazyRoute(() => import("./pages/VaultFormEditorPage"));
 const AutomationsPage = lazyRoute(() => import("./pages/AutomationsPage"));
 const ProjectsPage = lazyRoute(() => import("./pages/ProjectsPage"));
 const MessagesPage = lazyRoute(() => import("./pages/MessagesPage"));
@@ -657,6 +662,10 @@ function Router() {
         </ProtectedRoute>
       </Route>
 
+      <Route path="/data-vault">
+        <ProtectedRoute><RootLayout><VaultWorkspacePage /></RootLayout></ProtectedRoute>
+      </Route>
+
       <Route path="/messages">
         <ProtectedRoute>
           <RootLayout>
@@ -689,6 +698,18 @@ function Router() {
         <ProtectedRoute><RootLayout><CanvasesPage /></RootLayout></ProtectedRoute>
       </Route>
 
+      <Route path="/slides/new">
+        <ProtectedRoute><RootLayout><SlidesPage /></RootLayout></ProtectedRoute>
+      </Route>
+
+      <Route path="/slides/:slideId">
+        <ProtectedRoute><RootLayout><SlideEditorPage /></RootLayout></ProtectedRoute>
+      </Route>
+
+      <Route path="/slides">
+        <ProtectedRoute><RootLayout><SlidesPage /></RootLayout></ProtectedRoute>
+      </Route>
+
       <Route path="/search">
         <ProtectedRoute><RootLayout><SearchPage /></RootLayout></ProtectedRoute>
       </Route>
@@ -699,6 +720,14 @@ function Router() {
 
       <Route path="/databases">
         <ProtectedRoute><RootLayout><TablesPage /></RootLayout></ProtectedRoute>
+      </Route>
+
+      <Route path="/forms/catalog/:formId">
+        <ProtectedRoute><RootLayout><VaultFormEditorPage /></RootLayout></ProtectedRoute>
+      </Route>
+
+      <Route path="/forms">
+        <ProtectedRoute><RootLayout><FormsCatalogPage /></RootLayout></ProtectedRoute>
       </Route>
 
       <Route path="/forms/:formId">

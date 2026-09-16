@@ -46,6 +46,7 @@ import { registerProductAnalyticsRoutes } from "./routes/product-analytics";
 import { registerHypothesisRoutes } from "./routes/hypotheses";
 import { registerPersonalFinanceRoutes } from "./routes/personal-finance";
 import { registerSpiritLogRoutes } from "./routes/spirit-log";
+import { registerDataVaultRoutes } from "./routes/data-vault";
 import { registerVoiceSessionRoutes } from "./routes/voice-sessions";
 import { registerAIOrchestrationRoutes } from "./routes/ai-orchestration";
 import { registerPushNotificationRoutes } from "./routes/push-notifications";
@@ -150,6 +151,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerProfileRoutes(app);
   registerQuestRoutes(app);
   registerContentRoutes(app);
+  registerDataVaultRoutes(app);
   registerSearchRoutes(app);
   registerTableRoutes(app);
   registerAutomationRoutes(app);
