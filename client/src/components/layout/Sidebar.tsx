@@ -21,7 +21,7 @@ export default function Sidebar({ currentPage, displayName }: SidebarProps) {
   return (
     <div
       data-tour="sidebar-nav"
-      className={`hidden lg:flex lg:flex-col border-r border-opacity-20 border-primary p-4 glassmorphic transition-[width] duration-300 overflow-hidden ${
+      className={`hidden shrink-0 lg:flex lg:flex-col border-r border-opacity-20 border-primary p-4 glassmorphic transition-[width] duration-300 overflow-hidden ${
         collapsed ? "w-[72px]" : "w-64"
       }`}
     >
