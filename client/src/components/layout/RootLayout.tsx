@@ -1,7 +1,6 @@
 import { ReactNode, useRef, useEffect, useLayoutEffect } from "react";
 import Sidebar from "./Sidebar";
 import MobileNav from "./MobileNav";
-import AICompanionPanel from "../ai/AICompanionPanel";
 import MissionTimer from "../dashboard/MissionTimer";
 import { useLYFEOS } from "../../lib/context";
 import { useLocation } from "wouter";
@@ -112,7 +111,6 @@ export default function RootLayout({ children }: RootLayoutProps) {
         </div>
       </div>
       
-      <AICompanionPanel />
       <MobileNav currentPage={currentPage} />
     </div>
     
