@@ -310,6 +310,8 @@ describe("mission lifecycle wiring", () => {
     expect(ceremony).toContain('stats.energyPoints.current');
     expect(ceremony).toContain('stats.efficiencyScore');
     expect(ceremony).not.toContain('value="100 / 100"');
+    expect(ceremony).toContain('label="HEALTH RECORDS" loaded={statsLoaded.health} value="100%"');
+    expect(ceremony).not.toContain('value="PRIVATE BY DEFAULT"');
   });
 
   it("keeps registration on the direct onboarding path without an obsolete verification screen", () => {

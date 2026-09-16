@@ -74,7 +74,7 @@ export default function CeremonyPage() {
             <div className="space-y-4 w-80">
               <StatBar label="LEVEL" loaded={statsLoaded.level} value={String(stats.experience.level)} />
               <StatBar label="ENERGY POINTS" loaded={statsLoaded.energy} value={`${stats.energyPoints.current} / ${stats.energyPoints.max}`} />
-              <StatBar label="HEALTH RECORDS" loaded={statsLoaded.health} value="PRIVATE BY DEFAULT" />
+              <StatBar label="HEALTH RECORDS" loaded={statsLoaded.health} value="100%" />
               <StatBar label="TIME TOKENS" loaded={statsLoaded.time} value={`${stats.timeTokens.current} / ${stats.timeTokens.max}`} />
               <StatBar label="ATTENTION TOKENS" loaded={statsLoaded.attention} value={`${stats.attentionTokens.current} / ${stats.attentionTokens.max}`} />
               <StatBar label="EFFICIENCY SCORE" loaded={statsLoaded.efficiency} value={`${stats.efficiencyScore}%`} />
