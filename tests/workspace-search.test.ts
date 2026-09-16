@@ -38,11 +38,11 @@ describe("private workspace search", () => {
     const routes = source("server/routes.ts");
     const searchRoute = source("server/routes/search.ts");
     const app = source("client/src/App.tsx");
-    const vault = source("client/src/pages/DocumentVaultPage.tsx");
+    const shell = source("client/src/components/layout/RootLayout.tsx");
     expect(routes).toContain("registerSearchRoutes(app)");
     expect(searchRoute).toContain('app.get("/api/search", isAuthenticated');
     expect(app).toContain('<Route path="/search">');
-    expect(vault).toContain("navigate('/search')");
+    expect(shell).toContain('navigate("/search")');
   });
 
   it("deep-links document and relationship results into their existing authoritative surfaces", () => {
