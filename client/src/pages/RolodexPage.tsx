@@ -524,9 +524,6 @@ export default function RolodexPage() {
           <p className="text-muted-foreground">Your personal contacts</p>
         </div>
         <div className="flex flex-wrap justify-end gap-2">
-          <Button onClick={() => navigate('/messages')} variant="outline" className="border-primary/30 text-primary hover:bg-primary/10 font-mono text-xs" size="sm">
-            <MessageSquare className="h-4 w-4" /> Messages
-          </Button>
           <Button
             onClick={openCreateForm}
             className="bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30 font-mono text-xs"
