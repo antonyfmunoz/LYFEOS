@@ -223,10 +223,6 @@ function IntegrationsSection({ userId }: { userId?: number }) {
     queryKey: ["/api/google/status"],
     enabled: !!userId,
   });
-  const { data: googleActivity } = useQuery<{ receipts: GoogleActionReceipt[] }>({
-    queryKey: ["/api/google/action-receipts"],
-    enabled: !!userId,
-  });
   const { data: ecosystemStatus, isLoading: isEcosystemLoading } = useQuery<{
     availability: { available: boolean; reason: string | null };
     revision: number;
@@ -385,15 +381,11 @@ function IntegrationsSection({ userId }: { userId?: number }) {
   }, []);
 
   return (
-    <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
-      <div className="flex items-center gap-2 mb-2">
-        <Link2 className="h-4 w-4 text-primary" />
-        <Label className="text-sm text-foreground">Connected Apps</Label>
-      </div>
-      <p className="text-xs text-muted-foreground mb-3">
+    <div className="space-y-3">
+      <p className="text-xs text-muted-foreground">
         Connect each app separately, choose what it can do, and approve consequential actions when they happen.
       </p>
-      <div className="mb-3 rounded-lg border border-primary/10 bg-card/40 p-3">
+      <div className="rounded-lg border border-primary/10 bg-card/40 p-3">
         <div className="mb-2 flex items-center justify-between gap-2">
           <div>
             <p className="text-xs font-medium text-foreground">Account-wide defaults</p>
@@ -428,7 +420,7 @@ function IntegrationsSection({ userId }: { userId?: number }) {
           </label>
         </div>
       </div>
-      <div className="relative mb-3">
+      <div className="relative">
         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
         <Input
           aria-label="Search apps"
@@ -694,32 +686,33 @@ function IntegrationsSection({ userId }: { userId?: number }) {
           );
         })}
       </div>
-      {(googleActivity?.receipts.length ?? 0) > 0 ? (
-        <details className="mt-3 rounded-lg border border-primary/10 bg-card/30 p-3">
-          <summary className="cursor-pointer select-none text-xs font-medium text-foreground">Recent connected-app activity</summary>
-          <div className="mt-3 space-y-2">
-            {googleActivity!.receipts.slice(0, 8).map((receipt) => {
-              const appName = GOOGLE_INTEGRATIONS.find((item) => item.service === receipt.service)?.name || receipt.service;
-              const outcome = receipt.state === "succeeded" ? "Completed"
-                : receipt.state === "denied" ? "Denied"
-                  : receipt.state === "failed" ? "Failed"
-                    : receipt.state === "expired" ? "Expired"
-                      : receipt.state === "pending" ? "Awaiting approval"
-                        : "In progress";
-              return (
-                <div key={receipt.id} className="flex items-start justify-between gap-3 rounded border border-primary/10 bg-background/30 p-2">
-                  <div className="min-w-0">
-                    <p className="truncate text-xs text-foreground">{receipt.title}</p>
-                    <p className="text-[10px] text-muted-foreground">{appName} · {new Date(receipt.createdAt).toLocaleString()}</p>
-                  </div>
-                  <span className={`shrink-0 text-[10px] font-mono ${receipt.state === "failed" || receipt.state === "denied" ? "text-amber-300" : receipt.state === "succeeded" ? "text-primary" : "text-muted-foreground"}`}>{outcome}</span>
-                </div>
-              );
-            })}
-          </div>
-        </details>
-      ) : null}
-      <CrossProductWorkLinksSection userId={userId} />
+    </div>
+  );
+}
+
+function ConnectedAppActivitySection({ userId }: { userId?: number }) {
+  const { data: googleActivity } = useQuery<{ receipts: GoogleActionReceipt[] }>({
+    queryKey: ["/api/google/action-receipts"],
+    enabled: !!userId,
+  });
+  const receipts = googleActivity?.receipts ?? [];
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-muted-foreground">A private receipt trail for actions requested through connected apps. It never includes the contents of your private work.</p>
+      {receipts.length ? <div className="space-y-2">{receipts.slice(0, 8).map((receipt) => {
+        const appName = GOOGLE_INTEGRATIONS.find((item) => item.service === receipt.service)?.name || receipt.service;
+        const outcome = receipt.state === "succeeded" ? "Completed"
+          : receipt.state === "denied" ? "Denied"
+            : receipt.state === "failed" ? "Failed"
+              : receipt.state === "expired" ? "Expired"
+                : receipt.state === "pending" ? "Awaiting approval"
+                  : "In progress";
+        return <div key={receipt.id} className="flex items-start justify-between gap-3 rounded-lg border border-primary/10 bg-card/50 p-3">
+          <div className="min-w-0"><p className="truncate text-xs text-foreground">{receipt.title}</p><p className="text-[10px] text-muted-foreground">{appName} · {new Date(receipt.createdAt).toLocaleString()}</p></div>
+          <span className={`shrink-0 text-[10px] font-mono ${receipt.state === "failed" || receipt.state === "denied" ? "text-amber-300" : receipt.state === "succeeded" ? "text-primary" : "text-muted-foreground"}`}>{outcome}</span>
+        </div>;
+      })}</div> : <p className="rounded-lg border border-primary/10 bg-card/50 p-3 text-xs text-muted-foreground">No connected-app activity has been recorded yet.</p>}
     </div>
   );
 }
@@ -814,11 +807,7 @@ function CrossProductWorkLinksSection({ userId }: { userId?: number }) {
   };
 
   return (
-    <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
-      <div className="flex items-center gap-2 mb-2">
-        <Link2 className="h-4 w-4 text-primary" />
-        <Label className="text-sm text-foreground">Linked connected-app work</Label>
-      </div>
+    <div className="space-y-3">
       {!coordinationEnabled ? (
         <p className="text-xs text-muted-foreground">{sharing?.availability.available ? "Enable “Linked work coordination” for the receiving app above before linking a mission. A link shares only the summary you write and the mission’s open/completed state." : "UMH routing is unavailable, so no mission can be linked for sharing."}</p>
       ) : (
@@ -1625,6 +1614,27 @@ export default function ProfilePage() {
       icon: <Settings className="h-5 w-5 text-primary" />,
       defaultOpen: true,
       infoDescription: "Customize the look and feel of your interface. Adjust theme colors, layout preferences, and display options to match your style."
+    },
+    {
+      id: 'connected-apps',
+      title: "Connected Apps",
+      icon: <Link2 className="h-5 w-5 text-primary" />,
+      defaultOpen: true,
+      infoDescription: "Connect apps, set their permissions, and control how they can act for you."
+    },
+    {
+      id: 'connected-app-activity',
+      title: "Recent connected-app activity",
+      icon: <Clock className="h-5 w-5 text-primary" />,
+      defaultOpen: true,
+      infoDescription: "Review the outcomes of actions requested through connected apps."
+    },
+    {
+      id: 'connected-work',
+      title: "Connected Work",
+      icon: <BriefcaseBusiness className="h-5 w-5 text-primary" />,
+      defaultOpen: true,
+      infoDescription: "Link the specific missions that need coordination across your connected apps."
     }
   ]);
 
@@ -2015,6 +2025,12 @@ export default function ProfilePage() {
         return renderPlayerRecord();
       case 'player-affirmation':
         return renderPlayerAffirmation();
+      case 'connected-apps':
+        return <IntegrationsSection userId={user?.id} />;
+      case 'connected-app-activity':
+        return <ConnectedAppActivitySection userId={user?.id} />;
+      case 'connected-work':
+        return <CrossProductWorkLinksSection userId={user?.id} />;
       case 'settings':
         return (
           <>
@@ -2723,10 +2739,6 @@ export default function ProfilePage() {
                 </p>
               </div> : null}
             </div>
-
-            {/* Connected Apps / Integrations */}
-            <IntegrationsSection userId={user?.id} />
-
             <section id="health-settings" className="mb-4 scroll-mt-6" aria-labelledby="health-settings-heading">
               <div className="mb-3 px-1">
                 <h2 id="health-settings-heading" className="flex items-center gap-2 font-orbitron text-lg text-primary"><Heart className="h-5 w-5" />Health settings & privacy</h2>
