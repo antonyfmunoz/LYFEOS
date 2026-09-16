@@ -63,6 +63,7 @@ const EnhancedMissionPage = lazyRoute(() => import("./pages/EnhancedMissionPage"
 const LoginPage = lazyRoute(() => import("./pages/LoginPage"));
 const RegisterPage = lazyRoute(() => import("./pages/RegisterPage"));
 const JournalArchivePage = lazyRoute(() => import("./pages/JournalArchivePage"));
+const SpiritLogPage = lazyRoute(() => import("./pages/SpiritLogPage"));
 const MissionArchivePage = lazyRoute(() => import("./pages/MissionArchivePage"));
 const RitualsArchivePage = lazyRoute(() => import("./pages/RitualsArchivePage"));
 const KnowledgeArchivePage = lazyRoute(() => import("./pages/KnowledgeArchivePage"));
@@ -577,6 +578,14 @@ function Router() {
         <ProtectedRoute>
           <RootLayout>
             <JournalArchivePage />
+          </RootLayout>
+        </ProtectedRoute>
+      </Route>
+
+      <Route path="/spirit-log">
+        <ProtectedRoute>
+          <RootLayout>
+            <SpiritLogPage />
           </RootLayout>
         </ProtectedRoute>
       </Route>

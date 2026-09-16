@@ -1076,6 +1076,23 @@ export const spreadsheetRevisions = pgTable("spreadsheet_revisions", {
   index("spreadsheet_revisions_user_spreadsheet_created_idx").on(table.userId, table.spreadsheetId, table.createdAt),
 ]);
 
+// Owner-authored spiritual records. This deliberately has no provider or
+// theological inference layer: study, prayer, and reflection remain private.
+export const spiritEntries = pgTable("spirit_entries", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  entryDate: date("entry_date").notNull(),
+  kind: text("kind").notNull(),
+  title: varchar("title", { length: 180 }).notNull(),
+  scripture: varchar("scripture", { length: 300 }),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("spirit_entries_user_date_idx").on(table.userId, table.entryDate),
+  index("spirit_entries_user_kind_date_idx").on(table.userId, table.kind, table.entryDate),
+]);
+
 // Relationships - Note: some tables are declared later but referenced here
 export const usersRelations = relations(users, ({ one, many }) => ({
   stats: one(userStats, {
@@ -1093,6 +1110,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   missionPages: many(missionPages),
   contacts: many(contacts),
   spreadsheets: many(spreadsheets),
+  spiritEntries: many(spiritEntries),
   userIntegrations: one(userIntegrations, {
     fields: [users.id],
     references: [userIntegrations.userId],
