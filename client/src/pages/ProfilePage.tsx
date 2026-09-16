@@ -595,7 +595,7 @@ function IntegrationsSection({ userId }: { userId?: number }) {
           );
         })}
 
-        {"health connections".includes(appSearchQuery.trim().toLowerCase()) || !appSearchQuery.trim() ? <HealthConnections embedded /> : null}
+        {"health connections apple health health connect oura whoop strava garmin".includes(appSearchQuery.trim().toLowerCase()) || !appSearchQuery.trim() ? <HealthConnections /> : null}
 
         {"UMH".toLowerCase().includes(appSearchQuery.toLowerCase()) ? (
           <div className="p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors">
