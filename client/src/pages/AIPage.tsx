@@ -24,6 +24,7 @@ import { AIMessage, ChatSession } from "../lib/types";
 import { useIsMobile } from "../hooks/use-mobile";
 import VoiceSessionArchive from "@/components/ai/VoiceSessionArchive";
 import AgentWorkspace from "@/components/ai/AgentWorkspace";
+import AssistantActivity from "@/components/ai/AssistantActivity";
 import { Link } from "wouter";
 
 export default function AIPage() {
@@ -384,6 +385,7 @@ export default function AIPage() {
       <div className={cn("mb-4 rounded-lg border border-primary/15 bg-card/45 px-3 py-2 text-xs leading-relaxed text-muted-foreground", isTutorialLoading && "invisible")} data-testid="ai-trust-summary">
         <span className="font-medium text-foreground">Your guide, under your control.</span> It uses only the context you enable, explains the basis for context-grounded guidance, and asks for approval before consequential changes. External sending, purchases, and publishing are disabled. <Link href="/profile" className="text-primary hover:underline">Review AI context and privacy settings</Link>.
       </div>
+      <AssistantActivity />
       
       {/* Main Chat Area with Collapsible Sidebar */}
       <div className={cn("flex-grow flex flex-col sm:flex-row relative overflow-hidden", isTutorialLoading && "invisible")}>

@@ -23,17 +23,23 @@ describe("Profile connected-app consistency", () => {
     expect(extensions).not.toContain("mt-6 rounded-xl border border-primary/20 bg-card/30 p-4");
   });
 
-  it("keeps app connections, receipts, and linked work out of Settings", () => {
+  it("uses clear Profile homes and keeps activity and mission workflow out of Profile", () => {
     const profile = source("client/src/pages/ProfilePage.tsx");
-    const settingsCase = profile.slice(profile.indexOf("case 'settings':"), profile.indexOf("default:", profile.indexOf("case 'settings':")));
 
-    expect(profile).toContain("id: 'connected-apps'");
-    expect(profile).toContain("id: 'connected-app-activity'");
-    expect(profile).toContain("id: 'connected-work'");
-    expect(profile).toContain("case 'connected-apps':");
-    expect(profile).toContain("case 'connected-app-activity':");
-    expect(profile).toContain("case 'connected-work':");
-    expect(settingsCase).not.toContain("<IntegrationsSection");
-    expect(settingsCase).not.toContain("<CrossProductWorkLinksSection");
+    for (const id of ["account-security", "connections", "privacy-data", "preferences"]) {
+      expect(profile).toContain(`id: '${id}'`);
+    }
+    expect(profile).toContain("case 'connections':");
+    expect(profile).toContain("<IntegrationsSection");
+    expect(profile).toContain('<HealthPreferences embedded section="calendar" />');
+    expect(profile).toContain('<HealthPreferences embedded section="preferences" />');
+    expect(profile).toContain("<ExtensionSettings />");
+    expect(profile).not.toContain("id: 'connected-app-activity'");
+    expect(profile).not.toContain("id: 'connected-work'");
+    expect(profile).not.toContain("case 'settings':");
+    expect(profile).not.toContain("<ConnectedAppActivitySection");
+    expect(profile).not.toContain("<CrossProductWorkLinksSection");
+    expect(profile).not.toContain("Assistant activity");
+    expect(source("client/src/pages/AIPage.tsx")).toContain("<AssistantActivity />");
   });
 });

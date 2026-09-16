@@ -1025,9 +1025,9 @@ export default function ProfilePage() {
       position: "bottom",
     },
     {
-      target: "[data-tour='profile-widget-settings']",
-      title: "Settings",
-      description: "Customize your experience — change your theme color, toggle notifications, enable two-factor authentication, and adjust display preferences.",
+      target: "[data-tour='profile-widget-account-security']",
+      title: "Account & Security",
+      description: "Manage your account, sign-in methods, password, and two-factor authentication here.",
       position: "top",
     },
   ];
@@ -1232,22 +1232,6 @@ export default function ProfilePage() {
     queryKey: ["/api/account/ai-memory"],
     enabled: !!user?.id,
   });
-  const { data: aiPersona } = useQuery<{ persona: { name: string; interactionStyle: Record<string, unknown>; ecosystemSharingEnabled: boolean; allowedDestinations: string[]; revision: number } }>({
-    queryKey: ["/api/ai/persona"], enabled: !!user?.id,
-  });
-  const [personaName, setPersonaName] = useState("");
-  useEffect(() => { if (aiPersona?.persona.name) setPersonaName(aiPersona.persona.name); }, [aiPersona?.persona.name]);
-  const savePersonaMutation = useMutation({
-    mutationFn: (sharing?: { ecosystemSharingEnabled: boolean; allowedDestinations: string[] }) => apiRequest("/api/ai/persona", { method: "PUT", body: JSON.stringify({
-      name: personaName,
-      interactionStyle: aiPersona?.persona.interactionStyle || {},
-      ecosystemSharingEnabled: sharing?.ecosystemSharingEnabled ?? aiPersona?.persona.ecosystemSharingEnabled ?? false,
-      allowedDestinations: sharing?.allowedDestinations ?? aiPersona?.persona.allowedDestinations ?? [],
-      expectedRevision: aiPersona?.persona.revision,
-    }) }),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/ai/persona"] }); toast({ title: "AI persona saved", description: "Your AI name is synchronized with the portable persona record." }); },
-    onError: (error: Error) => toast({ title: "Could not save AI persona", description: error.message, variant: "destructive" }),
-  });
   const { data: aiMemoryPolicy } = useQuery<{ policy: { chatHistoryDays: number | null; contextReceiptDays: number; actionReceiptDays: number; crossProductMemoryEnabled: boolean; allowedDestinations: string[]; revision: number } }>({
     queryKey: ["/api/account/ai-memory-policy"], enabled: !!user?.id,
   });
@@ -1301,53 +1285,6 @@ export default function ProfilePage() {
       toast({ title: "Could not update AI context", description: "Your previous setting is unchanged.", variant: "destructive" });
     }
   };
-
-  const { data: aiActions } = useQuery<{
-    actions: Array<{ id: number; tool_name: string; risk: string; state: string; outcome_summary?: string | null; repair_state: string; repair_expires_at?: string | null; repaired_at?: string | null; created_at: string }>;
-  }>({
-    queryKey: ["/api/account/ai-actions"],
-    enabled: !!user?.id,
-  });
-
-  const { data: pendingAiActions } = useQuery<{
-    actions: Array<{ id: number; toolName: string; preview: string; expiresAt: string; createdAt: string }>;
-  }>({
-    queryKey: ["/api/ai-actions/pending"],
-    enabled: !!user?.id,
-  });
-
-  const refreshAiActionState = () => {
-    queryClient.invalidateQueries({ queryKey: ["/api/account/ai-actions"] });
-    queryClient.invalidateQueries({ queryKey: ["/api/ai-actions/pending"] });
-  };
-
-  const refreshAiAffectedDomains = () => {
-    queryClient.invalidateQueries({ queryKey: ["/api/quests"] });
-    queryClient.invalidateQueries({ queryKey: ["/api/quests/archived"] });
-    queryClient.invalidateQueries({ queryKey: ["/api/user-stats"] });
-    queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
-    queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
-    queryClient.invalidateQueries({ queryKey: ["/api/users", user?.id, "profile"] });
-    queryClient.invalidateQueries({ queryKey: ["/api/users", user?.id, "daily-logs"] });
-    queryClient.invalidateQueries({ queryKey: ["/api/vision-goals"] });
-  };
-
-  const decideAiActionMutation = useMutation({
-    mutationFn: ({ actionId, decision }: { actionId: number; decision: "approve" | "reject" }) =>
-      apiRequest(`/api/ai-actions/${actionId}/${decision}`, { method: "POST" }),
-    onSuccess: (_, input) => {
-      refreshAiAffectedDomains();
-      toast({ title: input.decision === "approve" ? "Assistant action approved" : "Assistant action declined", description: input.decision === "approve" ? "LyfeOS executed the exact reviewed action." : "Nothing was changed." });
-    },
-    onError: (error: Error) => toast({ title: "Could not process approval", description: error.message, variant: "destructive" }),
-    onSettled: refreshAiActionState,
-  });
-  const repairAiActionMutation = useMutation({
-    mutationFn: (actionId: number) => apiRequest(`/api/ai-actions/${actionId}/repair`, { method: "POST" }),
-    onSuccess: () => { refreshAiAffectedDomains(); toast({ title: "Assistant action repaired", description: "LyfeOS restored the recorded prior state." }); },
-    onError: (error: Error) => toast({ title: "Repair unavailable", description: error.message, variant: "destructive" }),
-    onSettled: refreshAiActionState,
-  });
 
   const clearAiMemoryMutation = useMutation({
     mutationFn: async (scope: "chat-history" | "assistant-profile" | "context-sources" | "action-history" | "all-ai-memory") => {
@@ -1609,32 +1546,32 @@ export default function ProfilePage() {
       infoDescription: "Your personal affirmation or mantra. Set a message that motivates and reminds you of your purpose every time you visit your profile."
     },
     {
-      id: 'settings',
-      title: "Settings",
-      icon: <Settings className="h-5 w-5 text-primary" />,
+      id: 'account-security',
+      title: "Account & Security",
+      icon: <Shield className="h-5 w-5 text-primary" />,
       defaultOpen: true,
-      infoDescription: "Customize the look and feel of your interface. Adjust theme colors, layout preferences, and display options to match your style."
+      infoDescription: "Manage your account identity, sign-in methods, password, and two-factor authentication."
     },
     {
-      id: 'connected-apps',
-      title: "Connected Apps",
+      id: 'connections',
+      title: "Connections",
       icon: <Link2 className="h-5 w-5 text-primary" />,
       defaultOpen: true,
-      infoDescription: "Connect apps, set their permissions, and control how they can act for you."
+      infoDescription: "Connect apps, manage their permissions, and control how they can act for you."
     },
     {
-      id: 'connected-app-activity',
-      title: "Recent connected-app activity",
-      icon: <Clock className="h-5 w-5 text-primary" />,
+      id: 'privacy-data',
+      title: "Privacy & Data",
+      icon: <ShieldCheck className="h-5 w-5 text-primary" />,
       defaultOpen: true,
-      infoDescription: "Review the outcomes of actions requested through connected apps."
+      infoDescription: "Control data rights, AI context, exports, deletion, and optional analytics."
     },
     {
-      id: 'connected-work',
-      title: "Connected Work",
-      icon: <BriefcaseBusiness className="h-5 w-5 text-primary" />,
+      id: 'preferences',
+      title: "Preferences",
+      icon: <Settings className="h-5 w-5 text-primary" />,
       defaultOpen: true,
-      infoDescription: "Link the specific missions that need coordination across your connected apps."
+      infoDescription: "Choose interface, notification, device, tutorial, Health display, and calendar preferences."
     }
   ]);
 
@@ -2025,15 +1962,14 @@ export default function ProfilePage() {
         return renderPlayerRecord();
       case 'player-affirmation':
         return renderPlayerAffirmation();
-      case 'connected-apps':
-        return <IntegrationsSection userId={user?.id} />;
-      case 'connected-app-activity':
-        return <ConnectedAppActivitySection userId={user?.id} />;
-      case 'connected-work':
-        return <CrossProductWorkLinksSection userId={user?.id} />;
-      case 'settings':
+      case 'connections':
+        return <><IntegrationsSection userId={user?.id} /><HealthPreferences embedded section="calendar" /><ExtensionSettings /></>;
+      case 'account-security':
+      case 'privacy-data':
+      case 'preferences':
         return (
           <>
+            {widgetId === 'account-security' ? <>
             {/* Account Settings */}
             <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4" data-testid="ai-memory-settings">
               <div className="flex items-center justify-between mb-3">
@@ -2523,67 +2459,19 @@ export default function ProfilePage() {
                 </div>
               ) : null}
             </div>
-            
-            <PushNotificationSettings />
-            <ExtensionSettings />
+            </> : null}
 
-            <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Clock className="h-4 w-4 text-primary" />
-                <Label className="text-sm text-foreground">Assistant activity</Label>
-              </div>
-              <p className="text-xs text-muted-foreground mb-3">A compact record of actions your named assistant attempted. It never repeats your private prompts or raw tool inputs.</p>
-              {(pendingAiActions?.actions || []).length > 0 && (
-                <div className="mb-3 space-y-2 rounded-md border border-amber-400/25 bg-amber-400/5 p-2.5">
-                  <p className="text-[10px] font-mono uppercase tracking-widest text-amber-200">Awaiting your approval</p>
-                  {pendingAiActions!.actions.map((action) => (
-                    <div key={action.id} className="flex flex-wrap items-center justify-between gap-2 text-xs">
-                      <div className="min-w-0">
-                        <p className="text-foreground">{action.toolName.replaceAll("_", " ")}</p>
-                        <p className="mt-0.5 text-muted-foreground">{action.preview} No change has happened. Expires {new Date(action.expiresAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}.</p>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button size="sm" className="h-7 bg-primary/20 px-2 text-xs text-primary hover:bg-primary/30" onClick={() => decideAiActionMutation.mutate({ actionId: action.id, decision: "approve" })} disabled={decideAiActionMutation.isPending}>Approve</Button>
-                        <Button size="sm" variant="outline" className="h-7 border-amber-300/30 px-2 text-xs text-amber-200 hover:bg-amber-300/10" onClick={() => decideAiActionMutation.mutate({ actionId: action.id, decision: "reject" })} disabled={decideAiActionMutation.isPending}>Decline</Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {(aiActions?.actions || []).length > 0 ? (
-                <div className="space-y-2">
-                  {aiActions!.actions.slice(0, 5).map((action) => (
-                    <div key={action.id} className="flex items-start justify-between gap-3 text-xs">
-                      <div className="min-w-0">
-                        <p className="truncate text-foreground">{action.tool_name.replaceAll("_", " ")}</p>
-                        {action.outcome_summary && <p className="mt-0.5 truncate text-muted-foreground">{action.outcome_summary}</p>}
-                      </div>
-                      <div className="flex shrink-0 flex-col items-end gap-1">
-                        <span className={`font-mono uppercase ${action.state === "succeeded" ? "text-primary" : action.state === "failed" ? "text-red-300" : action.state === "rejected" ? "text-amber-300" : "text-muted-foreground"}`}>{action.state} · {action.risk}</span>
-                        {action.repair_state === "available" && <Button size="sm" variant="outline" className="h-6 border-primary/30 px-2 text-[10px] text-primary" onClick={() => repairAiActionMutation.mutate(action.id)} disabled={repairAiActionMutation.isPending}>Undo safely</Button>}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : <p className="text-xs text-muted-foreground">No assistant actions have been recorded yet.</p>}
-            </div>
+            {widgetId === 'preferences' ? <PushNotificationSettings /> : null}
 
+            {widgetId === 'privacy-data' ? <>
             <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
               <div className="flex items-center gap-2 mb-2">
                 <Brain className="h-4 w-4 text-primary" />
                 <Label className="text-sm text-foreground">AI Memory</Label>
               </div>
               <p className="text-xs text-muted-foreground mb-3">
-                Your named AI uses only the context you authorize. Native Messages and external sending are always excluded.
+                Choose the context and retention rules your AI may use. Rename your assistant in the AI workspace. Native Messages and external sending are always excluded.
               </p>
-              <div className="mb-3 flex gap-2">
-                <Input value={personaName} onChange={(event) => setPersonaName(event.target.value)} maxLength={32} aria-label="AI persona name" data-testid="ai-memory-persona-name" className="h-8 bg-background/50 text-xs" />
-                <Button size="sm" variant="outline" className="h-8 border-primary/30 text-primary" data-testid="ai-memory-save-persona" onClick={() => savePersonaMutation.mutate(undefined)} disabled={!personaName.trim() || savePersonaMutation.isPending}>Save name</Button>
-              </div>
-              <div className="mb-3 flex items-center justify-between gap-3 rounded-md bg-card/40 px-3 py-2">
-                <div><p className="text-xs text-foreground">Portable persona via UMH</p><p className="text-[11px] text-muted-foreground">Shares only the AI name and interaction style—not chats, health data, or native Messages.</p></div>
-                <button type="button" onClick={() => { const enabled = !aiPersona?.persona.ecosystemSharingEnabled; savePersonaMutation.mutate({ ecosystemSharingEnabled: enabled, allowedDestinations: enabled ? ["umh"] : [] }); }} className={`h-5 w-10 shrink-0 rounded-full relative transition-colors ${aiPersona?.persona.ecosystemSharingEnabled ? "bg-primary/30" : "bg-card"}`} aria-pressed={aiPersona?.persona.ecosystemSharingEnabled || false} aria-label="Share portable AI persona through UMH" role="switch"><span className={`absolute top-0.5 h-4 w-4 rounded-full transition-all ${aiPersona?.persona.ecosystemSharingEnabled ? "left-5 bg-primary" : "left-0.5 bg-muted-foreground"}`} /></button>
-              </div>
               <div className="space-y-2 text-xs text-muted-foreground" aria-live="polite">
                 <p data-testid="ai-memory-chat-summary">{aiMemory?.conversationCount || 0} saved text conversations, {aiMemory?.voiceSessionCount || 0} voice sessions, and {aiMemory?.legacyMessageCount || 0} legacy messages.</p>
                 <p data-testid="ai-memory-profile-summary">{aiMemory?.affirmationStored || aiMemory?.profileContextStored ? "A generated assistant profile is stored." : "No generated assistant profile is stored."}</p>
@@ -2649,8 +2537,8 @@ export default function ProfilePage() {
                 <Label className="text-sm text-foreground">Your Data</Label>
               </div>
               <p className="text-xs text-muted-foreground mb-3">Download a portable copy of your LyfeOS record, including relationship records, mission proof, planning history, and LyfeOS-side federation audit records. Sensitive provider credentials and password data are never included.</p>
-              {dataRights?.classes?.length ? <details className="mb-3 rounded-md border border-primary/10 bg-card/30 px-3 py-2">
-                <summary className="cursor-pointer text-xs font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">What LyfeOS stores and why</summary>
+              {dataRights?.classes?.length ? <div className="mb-3 rounded-md border border-primary/10 bg-card/30 px-3 py-2">
+                <p className="text-xs font-medium text-foreground">What LyfeOS stores and why</p>
                 <p className="mt-2 text-[11px] text-muted-foreground">This describes current product behavior, not approved legal terms. External providers control their own retained copies.</p>
                 <div className="mt-2 space-y-2">
                   {dataRights.classes.map((dataClass) => <div key={dataClass.id} className="rounded-md border border-primary/10 bg-background/40 px-3 py-2">
@@ -2663,7 +2551,7 @@ export default function ProfilePage() {
                     <p className="mt-1 text-[10px] text-primary/80">Rights: {[dataClass.rights.export && "export", dataClass.rights.erase && "erase", dataClass.rights.revoke && "revoke"].filter(Boolean).join(" · ") || "provider or operations managed"}</p>
                   </div>)}
                 </div>
-              </details> : null}
+              </div> : null}
               <Button size="sm" variant="outline" className="border-primary/30 text-primary hover:bg-primary/10" onClick={() => {
                 toast({ title: "Preparing your export", description: "Your browser will download your LyfeOS record when it is ready." });
                 window.location.assign("/api/account/export");
@@ -2719,15 +2607,15 @@ export default function ProfilePage() {
                   <span className={`absolute top-0.5 w-4 h-4 rounded-full transition-all duration-300 ${productAnalytics?.enabled ? 'left-5 bg-primary shadow-[0_0_5px_var(--primary-glow-medium)]' : 'left-0.5 bg-muted-foreground'}`} />
                 </button>
               </div>
-              <details className="mt-3 rounded-md border border-primary/10 bg-card/30 px-3 py-2">
-                <summary className="cursor-pointer text-xs font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">Exactly what can be recorded</summary>
+              <div className="mt-3 rounded-md border border-primary/10 bg-card/30 px-3 py-2">
+                <p className="text-xs font-medium text-foreground">Exactly what can be recorded</p>
                 <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
                   Session start, coarse app area viewed, onboarding completion, mission creation/completion/reopen, evidence submission, review completion, and transformation-focus completion. Automatic click capture, session replay, exception capture, precise URLs, and profile properties stay disabled.
                 </p>
                 <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
                   Turning this off stops capture immediately, retires the random analytics identifier, and queues its provider-side events for deletion. Re-enabling creates a new identifier.
                 </p>
-              </details>
+              </div>
               {productAnalytics?.deletion.receipt ? <div data-testid="product-analytics-deletion-receipt" role="status" className="mt-3 rounded-md border border-primary/15 bg-card/30 px-3 py-2">
                 <p className="text-xs font-medium text-foreground">Provider deletion receipt</p>
                 <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
@@ -2739,16 +2627,14 @@ export default function ProfilePage() {
                 </p>
               </div> : null}
             </div>
-            <section id="health-settings" className="mb-4 scroll-mt-6" aria-labelledby="health-settings-heading">
-              <div className="mb-3 px-1">
-                <h2 id="health-settings-heading" className="flex items-center gap-2 font-orbitron text-lg text-primary"><Heart className="h-5 w-5" />Health settings & privacy</h2>
-                <p className="mt-1 text-xs text-muted-foreground">Manage Health units, calendar context, and your Health-record rights here—not inside your chronological Health Log.</p>
-              </div>
-              <HealthPreferences embedded />
+            <section id="health-settings" className="mb-4 scroll-mt-6" aria-label="Health data rights">
               <HealthDataRights embedded />
             </section>
+            </> : null}
 
 
+            {widgetId === 'preferences' ? <>
+            <HealthPreferences embedded section="preferences" />
             {/* Blue Light Filter */}
             <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
               <div className="flex items-center gap-2 mb-2">
@@ -2974,6 +2860,7 @@ export default function ProfilePage() {
                 ))}
               </div>
             </div>
+            </> : null}
           </>
         );
       default:
