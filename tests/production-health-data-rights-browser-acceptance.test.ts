@@ -47,7 +47,7 @@ describe("production Health data-rights browser acceptance custody", () => {
   it("uses semantic hooks while Profile owns the Health data-rights settings surface", () => {
     for (const hook of ["health-data-rights", "health-data-export", "health-ai-context-enabled", "health-planning-context-enabled", "health-data-rights-save", "health-data-rights-saved", "health-data-deletion-confirmation", "health-data-delete", "health-data-deletion-complete"]) expect(rights).toContain(`data-testid=\"${hook}\"`);
     expect(profilePage).toContain('import HealthDataRights from "@/components/health/HealthDataRights"');
-    expect(profilePage).toContain('<HealthDataRights />');
+    expect(profilePage).toContain('<HealthDataRights embedded />');
     expect(profilePage).toContain('id="health-settings"');
   });
 
