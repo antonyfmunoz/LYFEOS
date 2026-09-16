@@ -120,6 +120,8 @@ const DraggableCategoryCard = ({ id, index, item, moveCategory, navigate }: Drag
   const navigateToArchive = () => {
     if (item.id === "journal") {
       navigate('/journal-log');
+    } else if (item.id === "spirit-log") {
+      navigate('/spirit-log');
     } else if (item.id === "missions") {
       navigate('/mission-log');
     } else if (item.id === "knowledge") {
@@ -263,6 +265,12 @@ export default function ChronilogPage() {
       title: "Journal", 
       icon: <BookOpen className="h-5 w-5 text-primary" />,
       description: "Your daily reflections, thoughts, and personal entries. Review past journal logs to track your growth over time."
+    },
+    {
+      id: "spirit-log",
+      title: "Spirit Log",
+      icon: <BookOpen className="h-5 w-5 text-primary" />,
+      description: "Your private record of Bible study, prayers, reflections, sermons, and spiritual practice."
     },
     {
       id: "health-log",
