@@ -13,6 +13,8 @@ describe("Data Vault suite navigation", () => {
     for (const href of ["/data-vault", "/document-vault", "/spreadsheets", "/canvases", "/slides", "/forms", "/databases"]) {
       expect(navigation).toContain(`href: "${href}"`);
     }
+    expect(navigation).toContain('ArrowLeft className="h-4 w-4"');
+    expect(navigation).toContain('href="/chronilog" className="inline-flex items-center gap-2 rounded-md border border-primary/50 bg-primary/20');
   });
 
   it("keeps Automations and Personal Finance as Chronilog workspaces, not Vault launchers", () => {

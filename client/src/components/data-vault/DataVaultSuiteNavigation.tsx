@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { FileSpreadsheet, FileText, FolderOpen, LayoutDashboard, Presentation, Star, TableProperties } from "lucide-react";
+import { ArrowLeft, FileSpreadsheet, FileText, FolderOpen, LayoutDashboard, Presentation, Star, TableProperties } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type DataVaultWorkspace = "vault" | "files" | "sheets" | "canvas" | "slides" | "forms" | "tables";
@@ -32,9 +32,9 @@ export function DataVaultSuiteNavigation({ active }: DataVaultSuiteNavigationPro
     <section className="space-y-3" data-testid="data-vault-suite-navigation">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <Link href="/chronilog" className="inline-flex items-center gap-1 text-xs font-mono text-primary hover:underline">
-            <span aria-hidden="true">←</span>
-            Back
+          <Link href="/chronilog" className="inline-flex items-center gap-2 rounded-md border border-primary/50 bg-primary/20 px-3 py-2 font-mono text-xs text-primary transition-colors hover:bg-primary/30">
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+            <span>Back</span>
           </Link>
           <p className="mt-3 text-xs font-mono uppercase tracking-[0.14em] text-primary">Personal workspace suite</p>
           <h1 className="font-orbitron text-2xl">Data Vault</h1>

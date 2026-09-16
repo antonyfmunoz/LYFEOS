@@ -40,5 +40,8 @@ describe("Spirit Log", () => {
     expect(page).toContain('data-testid="spirit-log-create-form"');
     expect(page).toContain('data-testid={`spirit-log-entry-${entry.id}`}');
     expect(page).toContain("Search Spirit Log");
+    expect(page).toContain('DatePicker ariaLabel="Spirit Log entry date"');
+    expect(page).toContain('SelectItem value="all">All types</SelectItem>');
+    expect(page).not.toContain('type="date"');
   });
 });

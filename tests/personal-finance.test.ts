@@ -39,6 +39,10 @@ describe("personal finance foundation", () => {
     expect(page).toContain('Delete ${item.description}');
     expect(page).toContain('Complete');
     expect(page).toContain('Reopen');
+    expect(page).toContain('MonthPicker ariaLabel="Finance month"');
+    expect(page).toContain('DatePicker ariaLabel="Transaction date"');
+    expect(page).not.toContain('type="month"');
+    expect(page).not.toContain('type="date"');
   });
 
   it("binds the complete rendered finance lifecycle to protected production evidence", () => {
