@@ -57,6 +57,7 @@ import {
   Pause,
   Repeat,
   Shield,
+  ShieldCheck,
   Phone,
   CheckCircle,
   Clock,
@@ -1261,7 +1262,7 @@ export default function ProfilePage() {
       queryClient.invalidateQueries({ queryKey: ["/api/account/ai-memory-policy"] });
       queryClient.invalidateQueries({ queryKey: ["/api/account/ai-memory"] });
       queryClient.invalidateQueries({ queryKey: ["/api/ai/context-receipts"] });
-      refreshAiActionState();
+      queryClient.invalidateQueries({ queryKey: ["/api/account/ai-actions"] });
       toast({ title: "Memory retention updated", description: "Expired records were removed under the saved policy." });
     },
     onError: (error: Error) => toast({ title: "Could not update retention", description: error.message, variant: "destructive" }),
