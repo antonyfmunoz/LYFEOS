@@ -55,10 +55,10 @@ describe("Canvas instrument", () => {
 
   it("makes Canvas discoverable through protected routes without adding another primary navigation destination", () => {
     const app = source("client/src/App.tsx");
-    const vault = source("client/src/pages/DocumentVaultPage.tsx");
+    const suite = source("client/src/components/data-vault/DataVaultSuiteNavigation.tsx");
     expect(app).toContain('<Route path="/canvases/:canvasId">');
     expect(app).toContain('<Route path="/canvases">');
-    expect(vault).toContain("navigate('/canvases')");
+    expect(suite).toContain('href: "/canvases"');
   });
 
   it("preserves unknown legacy content until the user explicitly converts it", () => {

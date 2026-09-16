@@ -54,11 +54,11 @@ describe("Tables and Forms instruments", () => {
   });
 
   it("includes the instruments in account export/deletion and protected journeys", () => {
-    const profile = source("server/routes/profile.ts"); const app = source("client/src/App.tsx"); const vault = source("client/src/pages/DocumentVaultPage.tsx");
+    const profile = source("server/routes/profile.ts"); const app = source("client/src/App.tsx"); const suite = source("client/src/components/data-vault/DataVaultSuiteNavigation.tsx");
     for (const table of ["workspace_databases", "workspace_database_rows", "workspace_forms"]) expect(profile).toContain(`"${table}"`);
     expect(app).toContain('<Route path="/databases/:databaseId">');
     expect(app).toContain('<Route path="/forms/:formId">');
-    expect(vault).toContain("navigate('/databases')");
+    expect(suite).toContain('href: "/databases"');
   });
 
   it("filters and sorts typed rows deterministically without changing source records", () => {

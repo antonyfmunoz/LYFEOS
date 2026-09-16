@@ -487,10 +487,10 @@ describe("Sheets instrument", () => {
 
   it("makes the dormant instrument discoverable through real protected routes", () => {
     const app = source("client/src/App.tsx");
-    const vault = source("client/src/pages/DocumentVaultPage.tsx");
+    const suite = source("client/src/components/data-vault/DataVaultSuiteNavigation.tsx");
     expect(app).toContain('<Route path="/spreadsheets/:spreadsheetId">');
     expect(app).toContain('<Route path="/spreadsheets">');
-    expect(vault).toContain("navigate('/spreadsheets')");
+    expect(suite).toContain('href: "/spreadsheets"');
   });
 
   it("recognizes the dedicated new-sheet route without relying on a missing route parameter", () => {

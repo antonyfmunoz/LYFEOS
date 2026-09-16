@@ -2,7 +2,7 @@ import { Link, useLocation } from "wouter";
 import { useLYFEOS } from "@/lib/context";
 import { useAuth } from "@/lib/authContext";
 import { usePageTitle } from "@/hooks/use-page-title";
-import { FileText, Clock, Tag, Calendar, Award, GripVertical, CheckSquare, BookOpen, GraduationCap, Target, Info, BarChart3, Users, FolderOpen, Heart } from "lucide-react";
+import { FileText, Clock, Tag, Calendar, Award, GripVertical, CheckSquare, BookOpen, GraduationCap, Target, Info, BarChart3, Users, FolderOpen, Heart, WalletCards, Workflow } from "lucide-react";
 import { StatInfoDialog } from "@/components/ui/stat-info-dialog";
 import { useDrag, useDrop } from 'react-dnd';
 import { useState, useCallback, useRef, useEffect } from 'react';
@@ -134,6 +134,10 @@ const DraggableCategoryCard = ({ id, index, item, moveCategory, navigate }: Drag
       navigate('/rolodex');
     } else if (item.id === "document-vault") {
       navigate('/document-vault');
+    } else if (item.id === "automations") {
+      navigate('/automations');
+    } else if (item.id === "personal-finance") {
+      navigate('/finance');
     }
   };
   
@@ -300,7 +304,19 @@ export default function ChronilogPage() {
       id: "document-vault", 
       title: "Data Vault", 
       icon: <FolderOpen className="h-5 w-5 text-primary" />,
-      description: "Create, edit, and organize documents, media, and files in folders. Your personal data organizer."
+      description: "A private workspace suite for files, documents, media, sheets, visual canvases, and form-backed tables."
+    },
+    {
+      id: "automations",
+      title: "Automations",
+      icon: <Workflow className="h-5 w-5 text-primary" />,
+      description: "Create and manage private routines, rules, and scheduled workflows from one focused workspace."
+    },
+    {
+      id: "personal-finance",
+      title: "Personal Finance",
+      icon: <WalletCards className="h-5 w-5 text-primary" />,
+      description: "Track your private financial picture, plans, and decisions in a dedicated Chronilog workspace."
     }
   ]);
 
