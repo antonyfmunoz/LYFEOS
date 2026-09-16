@@ -113,6 +113,7 @@ describe("LyfeOS native Messages convergence", () => {
     const app = source("client/src/App.tsx");
     const page = source("client/src/pages/MessagesPage.tsx");
     const rolodex = source("client/src/pages/RolodexPage.tsx");
+    const layout = source("client/src/components/layout/RootLayout.tsx");
     const sidebar = source("client/src/components/layout/Sidebar.tsx");
     expect(app).toContain('lazyRoute(() => import("./pages/MessagesPage"))');
     expect(app).toContain('<Route path="/messages">');
@@ -126,7 +127,9 @@ describe("LyfeOS native Messages convergence", () => {
     expect(page).toContain("nativeMessageReactions.map");
     expect(page).toContain("Group participants");
     expect(page).toContain("Leave group");
-    expect(rolodex).toContain("navigate('/messages')");
+    expect(layout).toContain('href="/messages"');
+    expect(layout).toContain('aria-label="Open Messages"');
+    expect(rolodex).not.toContain("navigate('/messages')");
     expect(sidebar).not.toContain('{ id: "messages"');
   });
 
