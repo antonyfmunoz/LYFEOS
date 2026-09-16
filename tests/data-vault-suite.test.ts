@@ -7,10 +7,10 @@ const source = (path: string) => readFileSync(resolve(process.cwd(), path), "utf
 describe("Data Vault suite navigation", () => {
   it("keeps the existing private workspaces discoverable through one shared suite shell", () => {
     const navigation = source("client/src/components/data-vault/DataVaultSuiteNavigation.tsx");
-    for (const label of ["Files & Docs", "Sheets", "Canvas", "Forms & Tables"]) {
+    for (const label of ["Vault", "Files & Docs", "Sheets", "Canvas", "Slides", "Forms", "Tables"]) {
       expect(navigation).toContain(`label: "${label}"`);
     }
-    for (const href of ["/document-vault", "/spreadsheets", "/canvases", "/databases"]) {
+    for (const href of ["/data-vault", "/document-vault", "/spreadsheets", "/canvases", "/slides", "/forms", "/databases"]) {
       expect(navigation).toContain(`href: "${href}"`);
     }
   });
