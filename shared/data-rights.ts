@@ -86,18 +86,6 @@ export const LYFEOS_DATA_CLASSES: readonly LyfeOSDataClass[] = [
     rightsDetail: "Owners can revoke relationship-sharing consent and remove their account participation. Account deletion cannot erase another participant's independent account or lawful copy of a shared message.",
   },
   {
-    id: "consent_bound_collaboration",
-    label: "Team and coach collaboration",
-    sensitivity: "sensitive",
-    purpose: "Coordinate with invited LyfeOS members through owner-selected, purpose-bound Mission or Thread projections.",
-    examples: ["workspace membership", "invitation purpose", "Mission summary grant", "Thread status grant", "revocation audit"],
-    access: "purpose_bound_participants",
-    retention: "shared_record_lifecycle",
-    retentionDetail: "Membership metadata follows the workspace lifecycle. Visibility grants expire within one year or end immediately when revoked, a recipient leaves, or membership is revoked.",
-    rights: { export: true, erase: true, revoke: true },
-    rightsDetail: "Membership alone grants no personal-record access. The owner can revoke each projection or membership; export includes collaboration metadata, while source Health, finance, relationship, journal, message, AI-memory, and evidence records are never copied into collaboration storage.",
-  },
-  {
     id: "workspace_content",
     label: "Workspace content",
     sensitivity: "sensitive",
