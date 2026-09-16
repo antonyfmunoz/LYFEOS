@@ -48,6 +48,8 @@ describe("AI and memory governance", () => {
     const chat = readSource("server/replit_integrations/chat/routes.ts");
     const profileRoute = readSource("server/routes/profile.ts");
     const profilePage = readSource("client/src/pages/ProfilePage.tsx");
+    const aiPage = readSource("client/src/pages/AIPage.tsx");
+    const assistantIdentity = readSource("client/src/components/ai/AssistantIdentity.tsx");
     const migration = readSource("migrations/0102_ai_memory_governance.sql");
     const lifecycleMigration = readSource("migrations/0138_ai_memory_lifecycle.sql");
     const resetChoiceMigration = readSource("migrations/0139_affirmation_reset_choice.sql");
@@ -59,7 +61,8 @@ describe("AI and memory governance", () => {
     expect(chat).toContain('"/api/ai-actions/:actionId/repair"');
     expect(profileRoute).toContain('"context-sources"');
     expect(profileRoute).toContain('"action-history"');
-    expect(profilePage).toContain("Portable persona via UMH");
+    expect(aiPage).toContain("<AssistantIdentity />");
+    expect(assistantIdentity).toContain("Portable persona via UMH");
     expect(profilePage).toContain("Recent context sources");
     expect(migration).toContain('CREATE TABLE IF NOT EXISTS "ai_context_receipts"');
     expect(migration).toContain('CREATE TABLE IF NOT EXISTS "ai_action_repairs"');

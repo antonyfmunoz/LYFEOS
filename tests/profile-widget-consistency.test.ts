@@ -10,7 +10,7 @@ describe("Profile widget visual system", () => {
     const rights = source("client/src/components/health/HealthDataRights.tsx");
 
     expect(profile).toContain('className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4"');
-    expect(profile).toContain("<HealthPreferences embedded />");
+    expect(profile).toContain('<HealthPreferences embedded section="preferences" />');
     expect(profile).toContain("<HealthDataRights embedded />");
     expect(preferences).toContain('embedded ? "mb-4 rounded-lg border border-primary/10 bg-background/40 p-4"');
     expect(rights).toContain('embedded ? "mb-4 rounded-lg border border-primary/10 bg-background/40 p-4"');

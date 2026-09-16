@@ -78,7 +78,7 @@ describe("independent Google productivity integrations", () => {
     expect(profile).toContain("Action approval");
     expect(profile).toContain("Account-wide defaults");
     expect(profile).toContain("New actions added later");
-    expect(profile).toContain("Recent connected-app activity");
+    expect(profile).not.toContain("Recent connected-app activity");
     expect(profile).not.toContain("<span className=\"text-sm\">Google</span>");
   });
 
