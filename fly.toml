@@ -9,7 +9,10 @@ primary_region = "sjc"
 
 [env]
   NODE_ENV = "production"
-  NODE_OPTIONS = "--max-old-space-size=384"
+  # Keep enough native-memory headroom for request compression, database I/O,
+  # and concurrent browser reloads inside the existing 512 MB machine. Letting
+  # V8 grow to 384 MB previously allowed the process to be OOM-killed mid-load.
+  NODE_OPTIONS = "--max-old-space-size=288"
   PORT = "8080"
 
 [http_service]
