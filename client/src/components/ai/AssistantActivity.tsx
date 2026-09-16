@@ -2,6 +2,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { Clock3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/lib/authContext";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
 type PendingAction = { id: number; toolName: string; preview: string; expiresAt: string };
@@ -9,19 +10,33 @@ type ActionReceipt = { id: number; tool_name: string; outcome_summary?: string |
 
 export default function AssistantActivity() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const { data: pending } = useQuery<{ actions: PendingAction[] }>({ queryKey: ["/api/ai-actions/pending"] });
   const { data: history } = useQuery<{ actions: ActionReceipt[] }>({ queryKey: ["/api/account/ai-actions"] });
   const decide = useMutation({
     mutationFn: ({ actionId, decision }: { actionId: number; decision: "approve" | "reject" }) => apiRequest(`/api/ai-actions/${actionId}/${decision}`, { method: "POST" }),
-    onSuccess: () => {
+    onSuccess: (_, input) => {
       void queryClient.invalidateQueries({ queryKey: ["/api/ai-actions/pending"] });
       void queryClient.invalidateQueries({ queryKey: ["/api/account/ai-actions"] });
+      void queryClient.invalidateQueries({ queryKey: ["/api/quests"] });
+      void queryClient.invalidateQueries({ queryKey: ["/api/quests/archived"] });
+      void queryClient.invalidateQueries({ queryKey: ["/api/user-stats"] });
+      void queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+      void queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+      void queryClient.invalidateQueries({ queryKey: ["/api/users", user?.id, "profile"] });
+      void queryClient.invalidateQueries({ queryKey: ["/api/users", user?.id, "daily-logs"] });
+      void queryClient.invalidateQueries({ queryKey: ["/api/vision-goals"] });
+      toast({ title: input.decision === "approve" ? "Assistant action approved" : "Assistant action declined", description: input.decision === "approve" ? "LyfeOS executed the exact reviewed action." : "Nothing was changed." });
     },
     onError: (error: Error) => toast({ title: "Could not update assistant action", description: error.message, variant: "destructive" }),
   });
   const repair = useMutation({
     mutationFn: (actionId: number) => apiRequest(`/api/ai-actions/${actionId}/repair`, { method: "POST" }),
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["/api/account/ai-actions"] }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["/api/account/ai-actions"] });
+      void queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+      toast({ title: "Assistant action repaired", description: "LyfeOS restored the recorded prior state." });
+    },
     onError: (error: Error) => toast({ title: "Could not undo assistant action", description: error.message, variant: "destructive" }),
   });
   const hasActivity = Boolean((pending?.actions || []).length || (history?.actions || []).length);
