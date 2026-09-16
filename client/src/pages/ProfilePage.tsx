@@ -1624,7 +1624,7 @@ export default function ProfilePage() {
     },
     {
       id: 'connected-app-activity',
-      title: "Integration Activity",
+      title: "Recent connected-app activity",
       icon: <Clock className="h-5 w-5 text-primary" />,
       defaultOpen: true,
       infoDescription: "Review the outcomes of actions requested through connected apps."
