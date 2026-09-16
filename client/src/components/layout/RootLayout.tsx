@@ -1,9 +1,10 @@
 import { ReactNode, useRef, useEffect, useLayoutEffect } from "react";
+import { MessageSquare } from "lucide-react";
 import Sidebar from "./Sidebar";
 import MobileNav from "./MobileNav";
 import MissionTimer from "../dashboard/MissionTimer";
 import { useLYFEOS } from "../../lib/context";
-import { useLocation } from "wouter";
+import { Link, useLocation } from "wouter";
 
 interface RootLayoutProps {
   children: ReactNode;
@@ -73,8 +74,15 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <div className="flex min-h-0 flex-grow flex-col overflow-hidden">
           <main id="main-content" ref={scrollContainerRef} tabIndex={-1} className="relative min-h-0 flex-grow overflow-y-auto safe-area-top">
             <div className="bg-background lg:hidden">
-              <div className="flex items-center justify-center py-3">
+              <div className="relative flex items-center justify-center px-4 py-3">
                 <span className="text-2xl text-white font-orbitron font-bold">LYFE<span className="text-primary">OS</span></span>
+                <Link
+                  href="/messages"
+                  aria-label="Open Messages"
+                  className="absolute right-4 inline-flex h-9 w-9 items-center justify-center rounded-md border border-primary/30 bg-card/40 text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                >
+                  <MessageSquare className="h-4 w-4" aria-hidden="true" />
+                </Link>
               </div>
             </div>
             {activeTimerQuest && (
@@ -101,9 +109,18 @@ export default function RootLayout({ children }: RootLayoutProps) {
             )}
             
             <div className="p-4 lg:p-6 main-content-padding">
-              <div className="hidden lg:flex flex-col items-center mb-4">
-                <span className="text-2xl text-white font-orbitron font-bold">LYFE<span className="text-primary">OS</span></span>
-                <p className="text-muted-foreground text-sm mt-1">Your personal life operating system</p>
+              <div className="relative mb-4 hidden min-h-14 items-center justify-center lg:flex">
+                <div className="flex flex-col items-center">
+                  <span className="text-2xl text-white font-orbitron font-bold">LYFE<span className="text-primary">OS</span></span>
+                  <p className="mt-1 text-sm text-muted-foreground">Your personal life operating system</p>
+                </div>
+                <Link
+                  href="/messages"
+                  className="absolute right-0 inline-flex items-center gap-2 rounded-md border border-primary/30 bg-card/40 px-3 py-2 font-mono text-xs text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                >
+                  <MessageSquare className="h-4 w-4" aria-hidden="true" />
+                  <span>Messages</span>
+                </Link>
               </div>
               {children}
             </div>

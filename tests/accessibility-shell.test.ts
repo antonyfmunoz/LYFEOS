@@ -14,12 +14,16 @@ describe("shared accessibility shell", () => {
   it("keeps desktop and mobile primary navigation discoverable to assistive technology", () => {
     const mobile = readFileSync(resolve(process.cwd(), "client/src/components/layout/MobileNav.tsx"), "utf8");
     const sidebar = readFileSync(resolve(process.cwd(), "client/src/components/layout/Sidebar.tsx"), "utf8");
+    const layout = readFileSync(resolve(process.cwd(), "client/src/components/layout/RootLayout.tsx"), "utf8");
     expect(mobile).toContain('aria-label="Primary navigation"');
     expect(mobile).toContain('aria-label={isOpen ? "Close navigation" : "Open navigation"}');
     expect(mobile).toContain('e.key === "Enter" || e.key === " "');
     expect(sidebar).toContain('aria-label="Primary navigation"');
     expect(sidebar).toContain('aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}');
     expect(sidebar).toContain('hidden shrink-0 lg:flex');
+    expect(layout).toContain('href="/messages"');
+    expect(layout).toContain('aria-label="Open Messages"');
+    expect(layout).toContain('<span>Messages</span>');
   });
 
   it("keeps AI work on its dedicated route instead of a global desktop floating button", () => {
