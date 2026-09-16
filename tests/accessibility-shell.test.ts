@@ -22,13 +22,12 @@ describe("shared accessibility shell", () => {
     expect(sidebar).toContain('hidden shrink-0 lg:flex');
   });
 
-  it("keeps the desktop assistant controls keyboard and screen-reader operable", () => {
-    const assistant = readFileSync(resolve(process.cwd(), "client/src/components/ai/AICompanionPanel.tsx"), "utf8");
-    expect(assistant).toContain('aria-label={`Chat with ${aiCompanionName}`}');
-    expect(assistant).toContain('aria-label="Save assistant name"');
-    expect(assistant).toContain('aria-label={`Open chat: ${chat.title}`}');
-    expect(assistant).toContain('e.key === "Enter" || e.key === " "');
-    expect(assistant).toContain('aria-label="Send message"');
+  it("keeps AI work on its dedicated route instead of a global desktop floating button", () => {
+    const layout = readFileSync(resolve(process.cwd(), "client/src/components/layout/RootLayout.tsx"), "utf8");
+    const aiPage = readFileSync(resolve(process.cwd(), "client/src/pages/AIPage.tsx"), "utf8");
+    expect(layout).not.toContain("AICompanionPanel");
+    expect(aiPage).not.toContain("ai-floating-chat");
+    expect(aiPage).toContain('data-tour="ai-input"');
   });
 
   it("keeps the public waitlist forms and FAQ semantically operable", () => {
