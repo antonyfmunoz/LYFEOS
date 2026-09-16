@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link, useLocation } from "wouter";
+import { useLocation } from "wouter";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { FileSpreadsheet, Plus, Search, Star, Trash2 } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { usePageTitle } from "@/hooks/use-page-title";
+import { DataVaultSuiteNavigation } from "@/components/data-vault/DataVaultSuiteNavigation";
 
 type SpreadsheetSummary = {
   id: number;
@@ -51,14 +52,14 @@ export default function SpreadsheetsPage() {
   }).sort((a, b) => Number(b.favorite) - Number(a.favorite) || new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()), [all, category, search]);
 
   return <div data-testid="sheets-page" className="container max-w-6xl py-6 space-y-5">
+    <DataVaultSuiteNavigation active="sheets" />
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div>
-        <p className="text-xs font-mono uppercase tracking-[0.14em] text-primary">Personal information system</p>
-        <h1 className="font-orbitron text-2xl">Sheets</h1>
+        <p className="text-xs font-mono uppercase tracking-[0.14em] text-primary">Data Vault workspace</p>
+        <h2 className="font-orbitron text-2xl">Sheets</h2>
         <p className="text-sm text-muted-foreground">Private, structured calculations and trackers owned by your LyfeOS account.</p>
       </div>
       <div className="flex gap-2">
-        <Link href="/document-vault"><Button variant="outline">Data Vault</Button></Link>
         <Button data-testid="sheets-new" onClick={() => navigate("/spreadsheets/new")}><Plus className="mr-1 h-4 w-4" />New sheet</Button>
       </div>
     </div>

@@ -108,7 +108,7 @@ describe("workflow automations", () => {
     const release = source("server/release-migrate.ts");
     const profile = source("server/routes/profile.ts");
     const app = source("client/src/App.tsx");
-    const vault = source("client/src/pages/DocumentVaultPage.tsx");
+    const chronilog = source("client/src/pages/ChronilogPage.tsx");
     for (const table of ["workflow_automations", "workflow_automation_runs"]) {
       expect(migration).toContain(`CREATE TABLE IF NOT EXISTS "${table}"`);
       expect(release).toContain(`CREATE TABLE IF NOT EXISTS "${table}"`);
@@ -117,7 +117,8 @@ describe("workflow automations", () => {
     expect(release).toContain('id: "0096_workflow_automations"');
     expect(app).toContain('lazyRoute(() => import("./pages/AutomationsPage"))');
     expect(app).toContain('<Route path="/automations">');
-    expect(vault).toContain("navigate('/automations')");
+    expect(chronilog).toContain("navigate('/automations')");
+    expect(chronilog).toContain('id: "automations"');
   });
 
   it("exposes stable non-visual hooks for the bounded rendered preview journey", () => {

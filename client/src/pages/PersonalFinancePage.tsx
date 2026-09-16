@@ -97,7 +97,7 @@ export default function PersonalFinancePage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8" aria-labelledby="finance-title" data-testid="personal-finance">
-      <Link href="/wealth" className="mb-6 inline-flex items-center gap-2 rounded-md border border-primary/50 bg-primary/20 px-3 py-2 font-mono text-xs text-primary hover:bg-primary/30"><ArrowLeft className="h-4 w-4" />Back to Wealth Tokens</Link>
+      <Link href="/chronilog" className="mb-6 inline-flex items-center gap-2 rounded-md border border-primary/50 bg-primary/20 px-3 py-2 font-mono text-xs text-primary hover:bg-primary/30"><ArrowLeft className="h-4 w-4" />Back</Link>
       <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div><h1 id="finance-title" className="flex items-center gap-3 font-orbitron text-3xl text-primary"><Landmark className="h-8 w-8" />Personal Finance</h1><p className="mt-2 max-w-3xl text-sm text-muted-foreground">Private balances, cash flow, budgets, and goals. This is separate from Wealth Tokens and is not financial advice.</p></div>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">Month<Input type="month" value={month} onChange={(event) => setMonth(event.target.value)} className={`${fieldClass} w-40`} /></label>

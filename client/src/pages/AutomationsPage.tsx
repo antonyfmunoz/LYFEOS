@@ -168,7 +168,7 @@ export default function AutomationsPage() {
   return <div data-testid="automations-page" className="container max-w-6xl space-y-5 py-6">
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div><p className="text-xs font-mono uppercase tracking-[0.14em] text-primary">Private mission orchestration</p><h1 className="font-orbitron text-2xl">Automations</h1><p className="max-w-2xl text-sm text-muted-foreground">Turn explicit mission events into bounded, auditable actions. Automations cannot complete or delete missions, interpret health data, contact providers, or write to another product.</p></div>
-      <div className="flex gap-2"><Button asChild variant="outline"><Link href="/document-vault">Data Vault</Link></Button><Button data-testid="automation-create" onClick={() => create.mutate()} disabled={create.isPending || (list.data?.automations.length || 0) >= 25}><Plus className="mr-1 h-4 w-4" />New automation</Button></div>
+      <div className="flex gap-2"><Button asChild variant="outline"><Link href="/chronilog">Back</Link></Button><Button data-testid="automation-create" onClick={() => create.mutate()} disabled={create.isPending || (list.data?.automations.length || 0) >= 25}><Plus className="mr-1 h-4 w-4" />New automation</Button></div>
     </div>
 
     <div className="grid gap-5 lg:grid-cols-[280px_1fr]">

@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { ObsidianMarkdown } from '@/components/ui/obsidian-markdown';
 import { RichTextToolbar } from '@/components/ui/rich-text-toolbar';
+import { DataVaultSuiteNavigation } from '@/components/data-vault/DataVaultSuiteNavigation';
 import {
   Tabs, TabsList, TabsTrigger, TabsContent,
 } from '@/components/ui/tabs';
@@ -28,7 +29,7 @@ import {
   ArrowLeft, Plus, FolderPlus, FileText, Folder, FolderOpen, MoreHorizontal,
   Trash, Trash2, Edit, Star, StarOff, ChevronRight, Home, Search, Save, X, Eye, Pencil,
   ArrowUpLeft, File, Clock, Undo2, Upload, Image, Video, FileDown, Play,
-  LayoutList, LayoutGrid, RefreshCw, Download, CloudUpload, Check, AlertCircle, Loader2, FileSpreadsheet, LayoutDashboard, Database, Workflow,
+  LayoutList, LayoutGrid, RefreshCw, Download, CloudUpload, Check, AlertCircle, Loader2,
 } from 'lucide-react';
 import { SiGoogledrive, SiObsidian, SiEvernote } from 'react-icons/si';
 import { Progress } from '@/components/ui/progress';
@@ -776,63 +777,14 @@ export default function DocumentVaultPage() {
 
   return (
     <div className="pb-20">
-      <div className="mb-4">
-        <Button 
-          className="bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30 font-mono text-xs" 
-          size="sm"
-          onClick={() => navigate('/chronilog')}
-        >
-          <ArrowLeft className="h-4 w-4" />
-          <span>Back</span>
-        </Button>
-      </div>
+      <DataVaultSuiteNavigation active="files" />
 
-      <div className="mb-4 flex items-start justify-between">
+      <div className="mb-4 mt-5 flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-orbitron mb-1">Data Vault</h1>
-          <p className="text-muted-foreground">Create, edit, and organize<br />your documents, media, and folders</p>
+          <h2 className="text-xl font-orbitron mb-1">Files &amp; documents</h2>
+          <p className="text-muted-foreground">Create, edit, organize, and retrieve your files, media, folders, and documents.</p>
         </div>
-        <div className="flex gap-1.5">
-          <button
-            className="h-8 px-3 inline-flex items-center gap-1.5 rounded border bg-primary/10 border-primary/30 text-primary hover:bg-primary/20 transition-colors font-mono text-xs"
-            onClick={() => navigate('/search')}
-            title="Search LyfeOS"
-          >
-            <Search className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Search</span>
-          </button>
-          <button
-            className="h-8 px-3 inline-flex items-center gap-1.5 rounded border bg-primary/10 border-primary/30 text-primary hover:bg-primary/20 transition-colors font-mono text-xs"
-            onClick={() => navigate('/spreadsheets')}
-            title="Open Sheets"
-          >
-            <FileSpreadsheet className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Sheets</span>
-          </button>
-          <button
-            className="h-8 px-3 inline-flex items-center gap-1.5 rounded border bg-primary/10 border-primary/30 text-primary hover:bg-primary/20 transition-colors font-mono text-xs"
-            onClick={() => navigate('/canvases')}
-            title="Open Canvas"
-          >
-            <LayoutDashboard className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Canvas</span>
-          </button>
-          <button
-            className="h-8 px-3 inline-flex items-center gap-1.5 rounded border bg-primary/10 border-primary/30 text-primary hover:bg-primary/20 transition-colors font-mono text-xs"
-            onClick={() => navigate('/databases')}
-            title="Open Tables and Forms"
-          >
-            <Database className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Tables</span>
-          </button>
-          <button
-            className="h-8 px-3 inline-flex items-center gap-1.5 rounded border bg-primary/10 border-primary/30 text-primary hover:bg-primary/20 transition-colors font-mono text-xs"
-            onClick={() => navigate('/automations')}
-            title="Open Automations"
-          >
-            <Workflow className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Automations</span>
-          </button>
+        <div className="flex flex-wrap justify-end gap-1.5">
           <div className="flex rounded border border-primary/50 overflow-hidden mr-1">
             <button
               className={cn(

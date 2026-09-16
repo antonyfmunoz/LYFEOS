@@ -113,7 +113,7 @@ describe("shared accessibility shell", () => {
     expect(automations).toContain('role="alert"');
     expect(automations).toContain("list.refetch()");
     expect(automations).toContain("detail.refetch()");
-    expect(automations).toContain('<Button asChild variant="outline"><Link href="/document-vault">Data Vault</Link></Button>');
+    expect(automations).toContain('<Button asChild variant="outline"><Link href="/chronilog">Back</Link></Button>');
   });
 
   it("keeps the canonical Mission proof and evidence controls explicitly named", () => {
