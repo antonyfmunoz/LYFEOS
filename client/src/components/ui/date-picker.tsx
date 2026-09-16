@@ -9,11 +9,13 @@ interface DatePickerProps {
   onChange: (date: string) => void;
   placeholder?: string;
   className?: string;
+  ariaLabel?: string;
+  dataTestId?: string;
   isOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
 }
 
-export function DatePicker({ value, onChange, placeholder = "Select date", className, isOpen, onOpenChange }: DatePickerProps) {
+export function DatePicker({ value, onChange, placeholder = "Select date", className, ariaLabel, dataTestId, isOpen, onOpenChange }: DatePickerProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const open = isOpen !== undefined ? isOpen : internalOpen;
   const setOpen = (val: boolean) => {
@@ -119,6 +121,8 @@ export function DatePicker({ value, onChange, placeholder = "Select date", class
         <Button
           type="button"
           variant="outline"
+          aria-label={ariaLabel}
+          data-testid={dataTestId}
           className={cn(
             "w-full justify-start text-left font-normal bg-background/50 border-primary/30 hover:bg-background/70",
             !value && "text-muted-foreground",
