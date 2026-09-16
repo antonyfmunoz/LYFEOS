@@ -86,7 +86,6 @@ import type { LyfeOSDataClass } from "@shared/data-rights";
 import { startThetaBeats, stopThetaBeats } from '@/lib/theta-beats';
 import { useReverification, useUser } from "@clerk/clerk-react";
 import PushNotificationSettings from "@/components/profile/PushNotificationSettings";
-import CollaborationSettings from "@/components/profile/CollaborationSettings";
 import ExtensionSettings from "@/components/profile/ExtensionSettings";
 import HealthPreferences from "@/components/health/HealthPreferences";
 import HealthConnections from "@/components/health/HealthConnections";
@@ -595,6 +594,8 @@ function IntegrationsSection({ userId }: { userId?: number }) {
             </div>
           );
         })}
+
+        {"health connections".includes(appSearchQuery.trim().toLowerCase()) || !appSearchQuery.trim() ? <HealthConnections embedded /> : null}
 
         {"UMH".toLowerCase().includes(appSearchQuery.toLowerCase()) ? (
           <div className="p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors">
@@ -2508,7 +2509,6 @@ export default function ProfilePage() {
             </div>
             
             <PushNotificationSettings />
-            <CollaborationSettings />
             <ExtensionSettings />
 
             <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
@@ -2730,10 +2730,9 @@ export default function ProfilePage() {
             <section id="health-settings" className="mb-4 scroll-mt-6" aria-labelledby="health-settings-heading">
               <div className="mb-3 px-1">
                 <h2 id="health-settings-heading" className="flex items-center gap-2 font-orbitron text-lg text-primary"><Heart className="h-5 w-5" />Health settings & privacy</h2>
-                <p className="mt-1 text-xs text-muted-foreground">Manage Health units, calendar context, explicit connections, and your Health-record rights here—not inside your chronological Health Log.</p>
+                <p className="mt-1 text-xs text-muted-foreground">Manage Health units, calendar context, and your Health-record rights here—not inside your chronological Health Log.</p>
               </div>
               <HealthPreferences />
-              <HealthConnections />
               <HealthDataRights />
             </section>
 

@@ -207,21 +207,6 @@ async function selectSafeMissionReviewInvitationRows(userId: number): Promise<un
   return (result as { rows?: unknown[] }).rows || [];
 }
 
-async function selectCollaborationRows(userId: number): Promise<Record<string, unknown[]>> {
-  const queryRows = async (query: ReturnType<typeof sql>): Promise<unknown[]> => {
-    const result = await db.execute(query);
-    return (result as { rows?: unknown[] }).rows || [];
-  };
-  const workspaceScope = sql`SELECT "workspace_id" FROM "collaboration_memberships" WHERE "user_id" = ${userId}`;
-  const [workspaces, memberships, grants, audit] = await Promise.all([
-    queryRows(sql`SELECT * FROM "collaboration_workspaces" WHERE "id" IN (${workspaceScope}) OR "owner_user_id" = ${userId}`),
-    queryRows(sql`SELECT * FROM "collaboration_memberships" WHERE "user_id" = ${userId} OR "workspace_id" IN (SELECT "id" FROM "collaboration_workspaces" WHERE "owner_user_id" = ${userId})`),
-    queryRows(sql`SELECT * FROM "collaboration_visibility_grants" WHERE "owner_user_id" = ${userId} OR "grantee_user_id" = ${userId}`),
-    queryRows(sql`SELECT * FROM "collaboration_audit_events" WHERE "workspace_id" IN (SELECT "id" FROM "collaboration_workspaces" WHERE "owner_user_id" = ${userId}) OR "actor_user_id" = ${userId} OR "subject_user_id" = ${userId}`),
-  ]);
-  return { collaboration_workspaces: workspaces, collaboration_memberships: memberships, collaboration_visibility_grants: grants, collaboration_audit_events: audit };
-}
-
 async function selectSafeExtensionInstallationRows(userId: number): Promise<unknown[]> {
   const result = await db.execute(sql`
     SELECT i.*, p."version", p."display_name", p."description", p."manifest_digest", p."publisher_key_id"
@@ -633,7 +618,7 @@ export function registerProfileRoutes(app: Express): void {
       const userId = req.session.userId!;
       const user = await storage.getUser(userId);
       if (!user) return res.status(404).json({ error: "User not found" });
-      const [rows, federationAudit, healthConnectionRows, workspaceFormAccessRows, nutritionNutrients, nutritionRecipeIngredients, workoutExerciseRows, workoutSetRows, messageHubRows, missionReviewInvitationRows, collaborationRows, extensionInstallationRows] = await Promise.all([
+      const [rows, federationAudit, healthConnectionRows, workspaceFormAccessRows, nutritionNutrients, nutritionRecipeIngredients, workoutExerciseRows, workoutSetRows, messageHubRows, missionReviewInvitationRows, extensionInstallationRows] = await Promise.all([
         Promise.all(accountExportTables.map(async (table) => [table, await selectAccountRows(table, userId)] as const)),
         selectFederationAuditRows(userId),
         selectSafeHealthConnectionRows(userId),
@@ -644,7 +629,6 @@ export function registerProfileRoutes(app: Express): void {
         selectWorkoutSetRows(userId),
         selectMessageHubRows(userId),
         selectSafeMissionReviewInvitationRows(userId),
-        selectCollaborationRows(userId),
         selectSafeExtensionInstallationRows(userId),
       ]);
       const data = Object.fromEntries(rows) as Record<string, unknown[]>;
@@ -657,7 +641,6 @@ export function registerProfileRoutes(app: Express): void {
       data.workout_sets = workoutSetRows;
       Object.assign(data, messageHubRows);
       data.mission_review_invitations = missionReviewInvitationRows;
-      Object.assign(data, collaborationRows);
       data.extension_installations = extensionInstallationRows;
       const safeUser = { ...user, password: undefined, passwordResetToken: undefined, passwordResetExpiry: undefined, emailVerificationToken: undefined, emailVerificationExpiry: undefined, twoFactorEmailCode: undefined, twoFactorEmailExpiry: undefined, twoFactorPhoneCode: undefined, twoFactorPhoneExpiry: undefined };
       data.integrations = data.integrations.map((entry: any) => {

@@ -159,7 +159,6 @@ describe("production browser signal reconciliation", () => {
       "messages-browser-acceptance.ts",
       "production-projects-browser-acceptance.ts",
       "mission-safety-browser-acceptance.ts",
-      "collaboration-browser-acceptance.ts",
     ];
 
     for (const journey of journeys) {
