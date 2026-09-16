@@ -307,11 +307,11 @@ async function runViewport(browser: Browser, pool: pg.Pool, viewport: { name: st
     await waitForText(page, "ai-memory-chat-summary", "0 saved text conversations, 0 voice sessions, and 0 legacy messages.");
     await clickMemoryAction(page, "ai-memory-reset-profile");
     await waitForText(page, "ai-memory-profile-summary", "No generated assistant profile is stored.");
-    await page.goto(`${BASE_URL.origin}/ai`, { waitUntil: "networkidle" });
+    await page.goto(`${BASE_URL.origin}/ai`, { waitUntil: "domcontentloaded" });
     await page.waitForSelector('[data-testid="assistant-identity"]', { visible: true, timeout: 30_000 });
     await page.waitForFunction(() => document.querySelector('[data-testid="ai-persona-name"]')?.textContent?.trim() === "NOVA", { timeout: 30_000 });
     const personaResetName = await page.$eval('[data-testid="ai-persona-name"]', (element) => element.textContent?.trim() || "");
-    await page.goto(`${BASE_URL.origin}/profile`, { waitUntil: "networkidle" });
+    await page.goto(`${BASE_URL.origin}/profile`, { waitUntil: "domcontentloaded" });
     await page.waitForSelector('[data-testid="ai-memory-settings"]', { visible: true, timeout: 30_000 });
     await clickMemoryAction(page, "ai-memory-clear-context");
     await waitForText(page, "ai-memory-receipt-summary", "0 context-source receipts and 2 action receipts.");

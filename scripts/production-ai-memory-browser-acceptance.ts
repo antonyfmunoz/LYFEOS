@@ -318,11 +318,11 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     await clickMemoryAction(page, "ai-memory-reset-profile");
     stage = "confirming assistant profile reset";
     await waitForText(page, "ai-memory-profile-summary", "No generated assistant profile is stored.");
-    await page.goto(`${BASE_URL.origin}/ai`, { waitUntil: "networkidle" });
+    await page.goto(`${BASE_URL.origin}/ai`, { waitUntil: "domcontentloaded" });
     await page.waitForSelector('[data-testid="assistant-identity"]', { visible: true, timeout: 30_000 });
     await page.waitForFunction(() => document.querySelector('[data-testid="ai-persona-name"]')?.textContent?.trim() === "NOVA", { timeout: 30_000 });
     const personaResetName = await page.$eval('[data-testid="ai-persona-name"]', (element) => element.textContent?.trim() || "");
-    await page.goto(`${BASE_URL.origin}/profile`, { waitUntil: "networkidle" });
+    await page.goto(`${BASE_URL.origin}/profile`, { waitUntil: "domcontentloaded" });
     await page.waitForSelector('[data-testid="ai-memory-settings"]', { visible: true, timeout: 30_000 });
     stage = "clearing context receipts";
     await clickMemoryAction(page, "ai-memory-clear-context");
