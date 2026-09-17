@@ -118,6 +118,8 @@ describe("LyfeOS native Messages convergence", () => {
     expect(app).toContain('lazyRoute(() => import("./pages/MessagesPage"))');
     expect(app).toContain('<Route path="/messages">');
     expect(page).toContain("Native private communication");
+    expect(page).toContain('href="/chronilog"');
+    expect(page).toContain('<ArrowLeft className="h-4 w-4" /><span>Back</span>');
     expect(page).toContain("Private note · only you");
     expect(page).toContain("idempotencyKey: crypto.randomUUID()");
     expect(page).toContain("Attach from Data Vault");

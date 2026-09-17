@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { Check, CheckCheck, Clock3, FileText, Inbox, LockKeyhole, MessageCircle, Paperclip, Pencil, Plus, Reply, Search, Send, ShieldBan, StickyNote, Trash2, UserRound, Users, X } from "lucide-react";
+import { ArrowLeft, Check, CheckCheck, Clock3, FileText, Inbox, LockKeyhole, MessageCircle, Paperclip, Pencil, Plus, Reply, Search, Send, ShieldBan, StickyNote, Trash2, UserRound, Users, X } from "lucide-react";
 import { messageConversationStatuses, nativeMessageReactions, type MessageConversationStatus } from "@shared/messages";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/lib/authContext";
@@ -189,6 +189,7 @@ export default function MessagesPage() {
 
   return (
     <div className="container max-w-7xl space-y-4 py-5">
+      <Link href="/chronilog" className="inline-flex items-center gap-2 rounded-md border border-primary/50 bg-primary/20 px-3 py-2 font-mono text-xs text-primary transition-colors hover:bg-primary/30"><ArrowLeft className="h-4 w-4" /><span>Back</span></Link>
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs font-mono uppercase tracking-[0.14em] text-primary">Native private communication</p>
