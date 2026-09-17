@@ -34,9 +34,21 @@ describe("private device message bridges", () => {
     const profile = read("client/src/components/profile/IMessageBridgeConnection.tsx");
     expect(companion).toContain("Library/Messages/chat.db");
     expect(companion).toContain("tell application \"Messages\"");
+    expect(companion).toContain("MenuBarExtra");
+    expect(companion).toContain("SMAppService.mainApp");
+    expect(companion).toContain("Pair this Mac");
     expect(profile).toContain("/api/message-bridge/devices/${id}/revoke");
     expect(profile).toContain("unified Messages inbox");
     expect(android).toContain("SmsManager.getDefault().sendTextMessage");
     expect(androidReadme).toContain("not an assertion that LyfeOS can read or send RCS");
+  });
+
+  it("ships the Mac bridge as an app-ready companion rather than a user terminal workflow", () => {
+    const readme = read("companion/macos/README.md");
+    const packageScript = read("companion/macos/scripts/package-app.sh");
+    const infoPlist = read("companion/macos/Resources/Info.plist");
+    expect(readme).toContain("No one should need to use Terminal");
+    expect(packageScript).toContain("LyfeOS Messages.app");
+    expect(infoPlist).toContain("net.lyfeos.messages");
   });
 });
