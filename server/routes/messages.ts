@@ -39,6 +39,7 @@ import { isAuthenticated } from "./middleware";
 
 const conversationIdSchema = z.string().uuid();
 const messageIdSchema = z.string().uuid();
+const normalizeDeliveryHandle = (value: string | null | undefined) => (value || "").trim().replace(/\s+/g, "").toLowerCase();
 
 function snapshotDocument(document: typeof documents.$inferSelect) {
   if (document.fileData) {
@@ -237,10 +238,19 @@ export function registerMessageRoutes(app: Express): void {
       const participantUserIds = Array.from(new Set([userId, ...input.participantUserIds.filter((id) => id !== userId)]));
       if (participantUserIds.length < 2) return res.status(400).json({ error: "Choose at least one other LyfeOS user." });
       if (participantUserIds.length > 20) return res.status(400).json({ error: "A conversation can include up to 20 people." });
-      const participantUsers = await db.select({ id: users.id, displayName: users.displayName }).from(users).where(inArray(users.id, participantUserIds));
+      const participantUsers = await db.select({ id: users.id, displayName: users.displayName, email: users.email, phoneNumber: users.phoneNumber }).from(users).where(inArray(users.id, participantUserIds));
       if (participantUsers.length !== participantUserIds.length) return res.status(400).json({ error: "One or more participants are unavailable." });
       const kind = participantUserIds.length === 2 ? "direct" : "group";
       const sorted = [...participantUserIds].sort((a, b) => a - b);
+      const otherUser = participantUsers.find((user) => user.id !== userId);
+      // If the owner already has a bridge thread whose iMessage address is the
+      // new LyfeOS participant's verified account email or phone, that is the
+      // same person. Reuse its history instead of manufacturing a second chat.
+      const targetHandles = new Set([otherUser?.email, otherUser?.phoneNumber].map(normalizeDeliveryHandle).filter(Boolean));
+      const bridgeCandidates = kind === "direct" && targetHandles.size ? await db.select({ conversationId: messageBridgeThreads.conversationId, recipientHandle: messageBridgeThreads.recipientHandle })
+        .from(messageBridgeThreads).innerJoin(messageConversations, eq(messageConversations.id, messageBridgeThreads.conversationId))
+        .where(and(eq(messageConversations.createdByUserId, userId), eq(messageConversations.kind, "direct"))) : [];
+      const bridgedConversationId = bridgeCandidates.find((candidate) => targetHandles.has(normalizeDeliveryHandle(candidate.recipientHandle)))?.conversationId;
       const created = await db.transaction(async (tx) => {
         if (kind === "direct") {
           await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`lyfeos-native-message:${sorted.join(":")}`}, 0))`);
@@ -254,6 +264,12 @@ export function registerMessageRoutes(app: Express): void {
           `);
           const existingId = (existingResult as unknown as { rows?: Array<{ id: string }> }).rows?.[0]?.id;
           if (existingId) return { id: existingId, replayed: true };
+          if (bridgedConversationId) {
+            await tx.insert(messageConversationParticipants).values({ conversationId: bridgedConversationId, userId: otherUser!.id, role: "member" }).onConflictDoNothing();
+            await tx.insert(messageChannelBindings).values({ conversationId: bridgedConversationId, provider: "native", channelKind: "native", status: "active" }).onConflictDoNothing();
+            await tx.insert(messageAuditEvents).values({ conversationId: bridgedConversationId, actorUserId: userId, eventType: "ConversationChannelUnified.v1", aggregateVersion: 1, metadata: { provider: "native", matchedExternalHandle: true } });
+            return { id: bridgedConversationId, replayed: false };
+          }
         }
         const otherNames = participantUsers.filter((user) => user.id !== userId).map((user) => user.displayName || "LyfeOS user");
         const [conversation] = await tx.insert(messageConversations).values({
@@ -336,17 +352,18 @@ export function registerMessageRoutes(app: Express): void {
       const bindings = await db.select().from(messageChannelBindings).where(and(eq(messageChannelBindings.conversationId, conversationId), eq(messageChannelBindings.status, "active")));
       const nativeBinding = bindings.find((binding) => binding.provider === "native");
       const bridgeBinding = bindings.find((binding) => binding.provider === "imessage_bridge");
-      if (!nativeBinding && !bridgeBinding) return res.status(409).json({ error: "No active message channel is available." });
+      const selectedBinding = input.channelBindingId ? bindings.find((binding) => binding.id === input.channelBindingId) : nativeBinding || bridgeBinding;
+      if (!selectedBinding) return res.status(409).json({ error: "Choose an active message channel before sending." });
       if (input.replyToMessageId) {
         const [replyTarget] = await db.select({ conversationId: conversationMessages.conversationId }).from(conversationMessages).where(eq(conversationMessages.id, input.replyToMessageId)).limit(1);
         if (!replyTarget || replyTarget.conversationId !== conversationId) return res.status(400).json({ error: "Reply target is outside this conversation." });
       }
-      if (!nativeBinding && bridgeBinding) {
+      if (selectedBinding.provider === "imessage_bridge") {
         if (input.documentIds.length) return res.status(409).json({ error: "Attachments are not available through the private iMessage bridge yet." });
-        if (!bridgeBinding.connectionRef) return res.status(409).json({ error: "This iMessage bridge is missing its paired Mac." });
+        if (!selectedBinding.connectionRef) return res.status(409).json({ error: "This iMessage bridge is missing its paired Mac." });
         const [[device], [thread]] = await Promise.all([
-          db.select().from(messageBridgeDevices).where(and(eq(messageBridgeDevices.id, bridgeBinding.connectionRef), eq(messageBridgeDevices.userId, userId), eq(messageBridgeDevices.status, "active"))).limit(1),
-          db.select().from(messageBridgeThreads).where(and(eq(messageBridgeThreads.deviceId, bridgeBinding.connectionRef), eq(messageBridgeThreads.conversationId, conversationId))).limit(1),
+          db.select().from(messageBridgeDevices).where(and(eq(messageBridgeDevices.id, selectedBinding.connectionRef), eq(messageBridgeDevices.userId, userId), eq(messageBridgeDevices.status, "active"))).limit(1),
+          db.select().from(messageBridgeThreads).where(and(eq(messageBridgeThreads.deviceId, selectedBinding.connectionRef), eq(messageBridgeThreads.conversationId, conversationId))).limit(1),
         ]);
         if (!device || !(device.permissions as { send?: boolean }).send) return res.status(409).json({ error: "Enable sending for this iMessage bridge in Connections before replying." });
         if (!thread?.recipientHandle) return res.status(409).json({ error: "This iMessage conversation does not have a sendable recipient yet." });

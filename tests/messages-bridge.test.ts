@@ -11,10 +11,15 @@ describe("private iMessage bridge", () => {
     expect(routes).toContain('app.post("/api/message-bridge/pairings", isAuthenticated');
     expect(routes).toContain('app.post("/api/message-bridge/claim"');
     expect(routes).toContain('app.post("/api/message-bridge/events"');
+    expect(routes).toContain('app.post("/api/message-bridge/conversations", isAuthenticated');
     expect(routes).toContain('app.get("/api/message-bridge/commands"');
     expect(routes).toContain('provider: "imessage_bridge"');
     expect(hub).toContain('binding.provider === "imessage_bridge"');
     expect(hub).toContain("messageBridgeCommands");
+    expect(routes).toContain("draftThreadId");
+    expect(routes).toContain("if (input.conversationId)");
+    expect(hub).toContain("channelBindingId");
+    expect(hub).toContain("ConversationChannelUnified.v1");
   });
 
   it("keeps the companion local and revocable", () => {

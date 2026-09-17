@@ -20,6 +20,7 @@ export const queueNativeMessageSchema = z.object({
   idempotencyKey: z.string().trim().min(8).max(128),
   replyToMessageId: z.string().uuid().nullable().default(null),
   documentIds: z.array(z.number().int().positive()).max(5).transform((ids) => Array.from(new Set(ids))).default([]),
+  channelBindingId: z.string().uuid().nullable().default(null),
 }).strict().refine((input) => input.body.length > 0 || input.documentIds.length > 0, { message: "Add a message or attachment." });
 
 export const updateMessageBlockSchema = z.object({ blocked: z.boolean() }).strict();
