@@ -17,7 +17,7 @@ type MessageReaction = { id: string; messageId: string; userId: number; reaction
 type Message = { id: string; senderUserId: number | null; direction: "inbound" | "outbound"; provider?: string; body: string; status: string; version: number; replyToMessageId?: string | null; createdAt: string; editedAt?: string | null; deletedAt?: string | null; extension?: { kind?: string; invitationId?: number; reviewPath?: string }; attachments?: Attachment[]; reactions?: MessageReaction[] };
 type Note = { id: string; body: string; createdAt: string };
 type DocumentOption = { id: number; title: string; fileType: string | null; mimeType: string | null; fileSize: number | null; format: string };
-type BridgeDevice = { id: string; displayName: string; status: string; permissions: { read?: boolean; send?: boolean } };
+type BridgeDevice = { id: string; displayName: string; platform: "macos" | "android"; status: string; permissions: { read?: boolean; send?: boolean } };
 type Conversation = {
   id: string;
   title: string;
@@ -57,13 +57,14 @@ function conversationLabel(conversation: Conversation, currentUserId?: number) {
 
 function channelLabel(provider?: string) {
   if (provider === "imessage_bridge") return "iMessage";
+  if (provider === "android_sms_bridge") return "Phone text";
   if (provider === "native") return "LyfeOS";
   return provider ? provider.replace(/[_-]+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase()) : "Message";
 }
 
 function MessageChannelStamp({ provider, direction }: Pick<Message, "provider" | "direction">) {
   const label = channelLabel(provider);
-  const Icon = provider === "imessage_bridge" ? Smartphone : MessageCircle;
+  const Icon = provider === "imessage_bridge" || provider === "android_sms_bridge" ? Smartphone : MessageCircle;
   const action = direction === "outbound" ? "Sent" : "Received";
 
   return <span data-testid={`message-channel-stamp-${provider || "unknown"}`} title={`${action} via ${label}`} aria-label={`${action} via ${label}`} className="inline-flex items-center gap-1 rounded-full border border-primary/15 bg-background/35 px-1.5 py-0.5 text-[9px] text-muted-foreground">
@@ -79,8 +80,8 @@ export default function MessagesPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [status, setStatus] = useState<MessageConversationStatus>("open");
   const [search, setSearch] = useState("");
-  const [newConversationChannel, setNewConversationChannel] = useState<"lyfeos" | "imessage">("lyfeos");
-  const [iMessageRecipient, setIMessageRecipient] = useState("");
+  const [newConversationChannel, setNewConversationChannel] = useState<"lyfeos" | "imessage" | "sms">("lyfeos");
+  const [bridgeRecipient, setBridgeRecipient] = useState("");
   const [selectedChannelBindingId, setSelectedChannelBindingId] = useState<string | null>(null);
   const [selectedPeople, setSelectedPeople] = useState<Person[]>([]);
   const [groupTitle, setGroupTitle] = useState("");
@@ -114,7 +115,8 @@ export default function MessagesPage() {
     queryFn: () => apiRequest("/api/message-bridge/status"),
     refetchInterval: 15_000,
   });
-  const activeIMessageBridge = (bridgeStatus.data?.devices || []).find((device) => device.status === "active" && device.permissions.send);
+  const activeIMessageBridge = (bridgeStatus.data?.devices || []).find((device) => device.platform === "macos" && device.status === "active" && device.permissions.send);
+  const activeAndroidBridge = (bridgeStatus.data?.devices || []).find((device) => device.platform === "android" && device.status === "active" && device.permissions.send);
   const attachmentOptions = useQuery<{ documents: DocumentOption[] }>({
     queryKey: ["/api/message-hub/attachment-options", attachmentSearch],
     queryFn: () => apiRequest(`/api/message-hub/attachment-options${attachmentSearch.trim() ? `?q=${encodeURIComponent(attachmentSearch.trim())}` : ""}`),
@@ -148,17 +150,19 @@ export default function MessagesPage() {
     onError: (error) => toast({ title: "Conversation was not created", description: error instanceof Error ? error.message : "Try again.", variant: "destructive" }),
   });
 
-  const createIMessageConversation = useMutation({
+  const createBridgeConversation = useMutation({
     mutationFn: () => {
-      if (!activeIMessageBridge) throw new Error("Pair a Mac with sending enabled in Connections before starting an iMessage conversation.");
-      return apiRequest<{ conversation: Conversation; created: boolean; attached: boolean }>("/api/message-bridge/conversations", { method: "POST", body: JSON.stringify({ deviceId: activeIMessageBridge.id, recipientHandle: iMessageRecipient, conversationId: selectedId }) });
+      const device = newConversationChannel === "sms" ? activeAndroidBridge : activeIMessageBridge;
+      if (!device) throw new Error(newConversationChannel === "sms" ? "Pair an Android phone with sending enabled in Connections before starting a phone-text conversation." : "Pair a Mac with sending enabled in Connections before starting an iMessage conversation.");
+      return apiRequest<{ conversation: Conversation; created: boolean; attached: boolean }>("/api/message-bridge/conversations", { method: "POST", body: JSON.stringify({ deviceId: device.id, channel: newConversationChannel, recipientHandle: bridgeRecipient, conversationId: selectedId }) });
     },
     onSuccess: async ({ conversation, created, attached }) => {
-      setIMessageRecipient(""); setStatus("open");
+      setBridgeRecipient(""); setStatus("open");
       await invalidate(conversation.id); setSelectedId(conversation.id);
-      toast({ title: attached ? "iMessage added to this conversation" : created ? "iMessage conversation ready" : "Opened existing iMessage conversation" });
+      const name = newConversationChannel === "sms" ? "Phone text" : "iMessage";
+      toast({ title: attached ? `${name} added to this conversation` : created ? `${name} conversation ready` : "Opened existing bridged conversation" });
     },
-    onError: (error) => toast({ title: "iMessage conversation was not opened", description: error instanceof Error ? error.message : "Try again.", variant: "destructive" }),
+    onError: (error) => toast({ title: "Bridged conversation was not opened", description: error instanceof Error ? error.message : "Try again.", variant: "destructive" }),
   });
 
   const send = useMutation({
@@ -203,7 +207,7 @@ export default function MessagesPage() {
   const conversation = detail.data?.conversation;
   const activeBindings = (conversation?.bindings || []).filter((binding) => binding.status === "active" && binding.capabilities?.send !== false);
   const selectedBinding = activeBindings.find((binding) => binding.id === selectedChannelBindingId) || activeBindings.find((binding) => binding.provider === "native") || activeBindings[0];
-  const isIMessageConversation = selectedBinding?.provider === "imessage_bridge";
+  const isDeviceBridgeConversation = selectedBinding?.provider === "imessage_bridge" || selectedBinding?.provider === "android_sms_bridge";
   useEffect(() => {
     if (!conversation) { setSelectedChannelBindingId(null); return; }
     const next = (conversation.bindings || []).find((binding) => binding.status === "active" && binding.provider === "native") || (conversation.bindings || []).find((binding) => binding.status === "active");
@@ -256,6 +260,7 @@ export default function MessagesPage() {
         <div className="mb-3 flex flex-wrap gap-2" aria-label="New conversation channel">
           <button type="button" onClick={() => setNewConversationChannel("lyfeos")} className={`rounded-full border px-3 py-1.5 text-xs ${newConversationChannel === "lyfeos" ? "border-primary bg-primary/15 text-primary" : "border-primary/15 text-muted-foreground hover:bg-primary/5"}`}>LyfeOS</button>
           <button type="button" onClick={() => setNewConversationChannel("imessage")} className={`rounded-full border px-3 py-1.5 text-xs ${newConversationChannel === "imessage" ? "border-primary bg-primary/15 text-primary" : "border-primary/15 text-muted-foreground hover:bg-primary/5"}`}>iMessage</button>
+          <button type="button" onClick={() => setNewConversationChannel("sms")} className={`rounded-full border px-3 py-1.5 text-xs ${newConversationChannel === "sms" ? "border-primary bg-primary/15 text-primary" : "border-primary/15 text-muted-foreground hover:bg-primary/5"}`}>Phone text</button>
         </div>
         {newConversationChannel === "lyfeos" ? <>
           <div className="grid gap-2 md:grid-cols-[minmax(220px,1fr)_minmax(220px,1fr)_auto]">
@@ -266,8 +271,8 @@ export default function MessagesPage() {
           {selectedPeople.length > 0 && <div className="mt-2 flex flex-wrap gap-2">{selectedPeople.map((person) => <button key={person.id} onClick={() => setSelectedPeople((current) => current.filter((item) => item.id !== person.id))} className="inline-flex items-center gap-1 rounded-full border border-primary/25 bg-primary/10 px-2 py-1 text-xs text-primary">{person.displayName}<X className="h-3 w-3" /></button>)}</div>}
           {search.trim().length >= 2 && visiblePeople.length > 0 && <div className="mt-2 flex flex-wrap gap-2">{visiblePeople.map((person) => <button key={person.id} onClick={() => setSelectedPeople((current) => [...current, person])} className="rounded-lg border border-primary/15 px-3 py-1.5 text-xs hover:bg-primary/10">+ {person.displayName}</button>)}</div>}
         </> : <div className="space-y-2">
-          <div className="grid gap-2 md:grid-cols-[minmax(220px,1fr)_auto]"><Input aria-label="iMessage phone number or email" value={iMessageRecipient} onChange={(event) => setIMessageRecipient(event.target.value)} placeholder="iMessage phone number or email…" /><Button onClick={() => createIMessageConversation.mutate()} disabled={!iMessageRecipient.trim() || !activeIMessageBridge || createIMessageConversation.isPending}><Plus className="mr-1 h-4 w-4" />{selectedId ? "Add iMessage" : "New iMessage"}</Button></div>
-          <p className="text-xs text-muted-foreground">{activeIMessageBridge ? selectedId ? `This adds iMessage to the current conversation. Every channel will share one history.` : `New conversations will be sent through ${activeIMessageBridge.displayName} after you type the first message.` : "Pair a Mac with sending enabled in Connections to start an iMessage conversation."}</p>
+          <div className="grid gap-2 md:grid-cols-[minmax(220px,1fr)_auto]"><Input aria-label={newConversationChannel === "sms" ? "Phone number" : "iMessage phone number or email"} value={bridgeRecipient} onChange={(event) => setBridgeRecipient(event.target.value)} placeholder={newConversationChannel === "sms" ? "Phone number…" : "iMessage phone number or email…"} /><Button onClick={() => createBridgeConversation.mutate()} disabled={!bridgeRecipient.trim() || !(newConversationChannel === "sms" ? activeAndroidBridge : activeIMessageBridge) || createBridgeConversation.isPending}><Plus className="mr-1 h-4 w-4" />{selectedId ? newConversationChannel === "sms" ? "Add phone text" : "Add iMessage" : newConversationChannel === "sms" ? "New phone text" : "New iMessage"}</Button></div>
+          <p className="text-xs text-muted-foreground">{newConversationChannel === "sms" ? activeAndroidBridge ? selectedId ? "This adds phone texting to the current conversation. Every channel will share one history." : `New conversations will be sent through ${activeAndroidBridge.displayName} after you type the first message.` : "Pair an Android phone with sending enabled in Connections to start a phone-text conversation. RCS remains unavailable unless Android provides that capability to the bridge." : activeIMessageBridge ? selectedId ? "This adds iMessage to the current conversation. Every channel will share one history." : `New conversations will be sent through ${activeIMessageBridge.displayName} after you type the first message.` : "Pair a Mac with sending enabled in Connections to start an iMessage conversation."}</p>
         </div>}
       </section>
 
@@ -332,10 +337,10 @@ export default function MessagesPage() {
           </div>
           <div className="border-t border-primary/15 p-3">
             {replyTo && <div className="mb-2 flex items-center justify-between rounded-md bg-primary/5 px-2 py-1 text-xs text-muted-foreground"><span className="truncate">Replying to: {replyTo.body}</span><button aria-label="Cancel reply" onClick={() => setReplyTo(null)}><X className="h-3.5 w-3.5" /></button></div>}
-            {!noteMode && canCompose && !isIMessageConversation && <details className="mb-2 rounded-md border border-primary/15 bg-background/25 px-2 py-1.5"><summary className="cursor-pointer list-none text-xs text-primary"><Paperclip className="mr-1 inline h-3.5 w-3.5" />Attach from Data Vault ({selectedDocuments.length}/5)</summary><div className="mt-2 space-y-2"><Input aria-label="Find an owned attachment" value={attachmentSearch} onChange={(event) => setAttachmentSearch(event.target.value)} placeholder="Find an owned document…" /><div className="max-h-32 overflow-y-auto">{(attachmentOptions.data?.documents || []).filter((document) => !selectedDocuments.some((selected) => selected.id === document.id)).map((document) => <button key={document.id} type="button" onClick={() => selectedDocuments.length < 5 && setSelectedDocuments((current) => [...current, document])} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs hover:bg-primary/10"><FileText className="h-3.5 w-3.5 text-primary" /><span className="truncate">{document.title}</span></button>)}</div>{selectedDocuments.length > 0 && <div className="flex flex-wrap gap-1">{selectedDocuments.map((document) => <button key={document.id} type="button" onClick={() => setSelectedDocuments((current) => current.filter((item) => item.id !== document.id))} className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/10 px-2 py-1 text-[10px] text-primary">{document.title}<X className="h-3 w-3" /></button>)}</div>}<p className="text-[10px] text-muted-foreground">Sending explicitly grants this conversation access to the selected document or file. Private context outside the selected file is not shared.</p></div></details>}
-            {!noteMode && canCompose && isIMessageConversation && <p className="mb-2 rounded-md border border-primary/15 bg-background/25 px-2 py-1.5 text-[10px] text-muted-foreground">Messages are queued privately for your paired Mac. Attachments are not enabled for this bridge yet.</p>}
+            {!noteMode && canCompose && !isDeviceBridgeConversation && <details className="mb-2 rounded-md border border-primary/15 bg-background/25 px-2 py-1.5"><summary className="cursor-pointer list-none text-xs text-primary"><Paperclip className="mr-1 inline h-3.5 w-3.5" />Attach from Data Vault ({selectedDocuments.length}/5)</summary><div className="mt-2 space-y-2"><Input aria-label="Find an owned attachment" value={attachmentSearch} onChange={(event) => setAttachmentSearch(event.target.value)} placeholder="Find an owned document…" /><div className="max-h-32 overflow-y-auto">{(attachmentOptions.data?.documents || []).filter((document) => !selectedDocuments.some((selected) => selected.id === document.id)).map((document) => <button key={document.id} type="button" onClick={() => selectedDocuments.length < 5 && setSelectedDocuments((current) => [...current, document])} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs hover:bg-primary/10"><FileText className="h-3.5 w-3.5 text-primary" /><span className="truncate">{document.title}</span></button>)}</div>{selectedDocuments.length > 0 && <div className="flex flex-wrap gap-1">{selectedDocuments.map((document) => <button key={document.id} type="button" onClick={() => setSelectedDocuments((current) => current.filter((item) => item.id !== document.id))} className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/10 px-2 py-1 text-[10px] text-primary">{document.title}<X className="h-3 w-3" /></button>)}</div>}<p className="text-[10px] text-muted-foreground">Sending explicitly grants this conversation access to the selected document or file. Private context outside the selected file is not shared.</p></div></details>}
+            {!noteMode && canCompose && isDeviceBridgeConversation && <p className="mb-2 rounded-md border border-primary/15 bg-background/25 px-2 py-1.5 text-[10px] text-muted-foreground">Messages are queued privately for your paired device. Attachments are not enabled for device bridges yet.</p>}
             <div className="mb-2 flex flex-wrap items-center gap-2"><button onClick={() => { setNoteMode(false); }} className={`rounded-full border px-2 py-1 text-[10px] ${!noteMode ? "border-primary/40 bg-primary/10 text-primary" : "border-primary/15 text-muted-foreground"}`}>Message</button><button onClick={() => { setNoteMode(true); setReplyTo(null); }} className={`rounded-full border px-2 py-1 text-[10px] ${noteMode ? "border-amber-500/40 bg-amber-500/10 text-amber-400" : "border-primary/15 text-muted-foreground"}`}>Private note</button>{!noteMode && activeBindings.length > 1 && <select aria-label="Send via" value={selectedBinding?.id || ""} onChange={(event) => { setSelectedChannelBindingId(event.target.value); setSelectedDocuments([]); }} className="rounded-full border border-primary/20 bg-background px-2 py-1 text-[10px] text-foreground"><option value="" disabled>Choose channel</option>{activeBindings.map((binding) => <option key={binding.id} value={binding.id}>{channelLabel(binding.provider)}</option>)}</select>}{noteMode && <span className="text-[10px] text-muted-foreground">Never delivered to participants.</span>}</div>
-            <div className="flex items-end gap-2"><Textarea aria-label={noteMode ? "Private note text" : "Message text"} data-testid="native-message-composer" value={composer} onChange={(event) => setComposer(event.target.value)} disabled={!canCompose && !noteMode} maxLength={noteMode ? 4_000 : 10_000} placeholder={noteMode ? "Write a note only you can see…" : canCompose ? "Type a message…" : "Reopen this conversation before replying"} className="min-h-12 resize-none" onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); if ((composer.trim() || (!noteMode && selectedDocuments.length && !isIMessageConversation)) && !send.isPending) send.mutate(); } }} /><Button size="icon" aria-label={noteMode ? "Save private note" : "Send message"} onClick={() => send.mutate()} disabled={(!composer.trim() && (noteMode || !selectedDocuments.length || isIMessageConversation)) || send.isPending || (!canCompose && !noteMode)}><Send className="h-4 w-4" /></Button></div>
+            <div className="flex items-end gap-2"><Textarea aria-label={noteMode ? "Private note text" : "Message text"} data-testid="native-message-composer" value={composer} onChange={(event) => setComposer(event.target.value)} disabled={!canCompose && !noteMode} maxLength={noteMode ? 4_000 : 10_000} placeholder={noteMode ? "Write a note only you can see…" : canCompose ? "Type a message…" : "Reopen this conversation before replying"} className="min-h-12 resize-none" onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); if ((composer.trim() || (!noteMode && selectedDocuments.length && !isDeviceBridgeConversation)) && !send.isPending) send.mutate(); } }} /><Button size="icon" aria-label={noteMode ? "Save private note" : "Send message"} onClick={() => send.mutate()} disabled={(!composer.trim() && (noteMode || !selectedDocuments.length || isDeviceBridgeConversation)) || send.isPending || (!canCompose && !noteMode)}><Send className="h-4 w-4" /></Button></div>
           </div>
         </section> : <div className="flex min-h-[560px] items-center justify-center p-10 text-center text-sm text-muted-foreground"><div><MessageCircle className="mx-auto mb-3 h-9 w-9 text-primary/50" />Choose or create a conversation.</div></div>}
       </div>

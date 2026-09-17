@@ -2876,7 +2876,9 @@ export const messageBridgeThreads = pgTable("message_bridge_threads", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => [
   uniqueIndex("message_bridge_threads_device_external_unique").on(table.deviceId, table.externalThreadId),
-  uniqueIndex("message_bridge_threads_conversation_unique").on(table.conversationId),
+  // One person-level conversation can deliberately carry a Mac/iMessage thread
+  // and an Android/SMS thread. A device itself may only map it once.
+  uniqueIndex("message_bridge_threads_device_conversation_unique").on(table.deviceId, table.conversationId),
 ]);
 
 export const messageBridgeImportedMessages = pgTable("message_bridge_imported_messages", {
