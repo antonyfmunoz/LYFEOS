@@ -118,6 +118,10 @@ describe("LyfeOS native Messages convergence", () => {
     expect(app).toContain('lazyRoute(() => import("./pages/MessagesPage"))');
     expect(app).toContain('<Route path="/messages">');
     expect(page).toContain("Private unified communication");
+    expect(page).toContain("function MessageChannelStamp");
+    expect(page).toContain('direction === "outbound" ? "Sent" : "Received"');
+    expect(page).toContain('title={`${action} via ${label}`}');
+    expect(page).toContain('<MessageChannelStamp provider={message.provider} direction={message.direction} />');
     expect(page).toContain('href="/chronilog"');
     expect(page).toContain('<ArrowLeft className="h-4 w-4" /><span>Back</span>');
     expect(page).toContain("Private note · only you");

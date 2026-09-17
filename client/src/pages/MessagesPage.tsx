@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { ArrowLeft, Check, CheckCheck, Clock3, FileText, Inbox, LockKeyhole, MessageCircle, Paperclip, Pencil, Plus, Reply, Search, Send, ShieldBan, StickyNote, Trash2, UserRound, Users, X } from "lucide-react";
+import { ArrowLeft, Check, CheckCheck, Clock3, FileText, Inbox, LockKeyhole, MessageCircle, Paperclip, Pencil, Plus, Reply, Search, Send, ShieldBan, Smartphone, StickyNote, Trash2, UserRound, Users, X } from "lucide-react";
 import { messageConversationStatuses, nativeMessageReactions, type MessageConversationStatus } from "@shared/messages";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/lib/authContext";
@@ -58,7 +58,18 @@ function conversationLabel(conversation: Conversation, currentUserId?: number) {
 function channelLabel(provider?: string) {
   if (provider === "imessage_bridge") return "iMessage";
   if (provider === "native") return "LyfeOS";
-  return provider || "Message";
+  return provider ? provider.replace(/[_-]+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase()) : "Message";
+}
+
+function MessageChannelStamp({ provider, direction }: Pick<Message, "provider" | "direction">) {
+  const label = channelLabel(provider);
+  const Icon = provider === "imessage_bridge" ? Smartphone : MessageCircle;
+  const action = direction === "outbound" ? "Sent" : "Received";
+
+  return <span data-testid={`message-channel-stamp-${provider || "unknown"}`} title={`${action} via ${label}`} aria-label={`${action} via ${label}`} className="inline-flex items-center gap-1 rounded-full border border-primary/15 bg-background/35 px-1.5 py-0.5 text-[9px] text-muted-foreground">
+    <Icon aria-hidden="true" className="h-3 w-3" />
+    <span>{label}</span>
+  </span>;
 }
 
 export default function MessagesPage() {
@@ -300,9 +311,10 @@ export default function MessagesPage() {
               }));
               return <div key={message.id} data-message-id={message.id} data-testid={`native-message-${message.id}`} className={`group flex ${outbound ? "justify-end" : "justify-start"}`}>
                 <div className={`max-w-[82%] rounded-2xl border px-3 py-2 ${outbound ? "border-primary/30 bg-primary/12" : "border-primary/15 bg-background/55"}`}>
-                  <div className="mb-1 flex items-center justify-between gap-4 text-[10px] text-muted-foreground"><span>{outbound ? "You" : participantNames.get(message.senderUserId || -1) || "Contact"}</span><span className="inline-flex items-center gap-1"><span>{channelLabel(message.provider)}</span><span>{new Date(message.createdAt).toLocaleString()}</span></span></div>
+                  <div className="mb-1 flex items-center justify-between gap-4 text-[10px] text-muted-foreground"><span>{outbound ? "You" : participantNames.get(message.senderUserId || -1) || "Contact"}</span><span>{new Date(message.createdAt).toLocaleString()}</span></div>
                   {message.replyToMessageId && <p className="mb-1 border-l border-primary/40 pl-2 text-[10px] text-muted-foreground">Reply</p>}
                   {editing ? <div className="space-y-2"><Textarea aria-label="Edit message text" data-testid={`native-message-edit-input-${message.id}`} value={editBody} maxLength={10_000} onChange={(event) => setEditBody(event.target.value)} className="min-h-20 resize-none bg-background" /><div className="flex justify-end gap-1"><Button size="sm" variant="ghost" onClick={() => { setEditingMessageId(null); setEditBody(""); }}><X className="mr-1 h-3 w-3" />Cancel</Button><Button size="sm" data-testid={`native-message-edit-save-${message.id}`} disabled={!editBody.trim() || editMessage.isPending} onClick={() => editMessage.mutate({ messageId: message.id, body: editBody, expectedVersion: message.version })}><Check className="mr-1 h-3 w-3" />Save</Button></div></div> : <p className={`whitespace-pre-wrap break-words text-sm ${deleted ? "italic text-muted-foreground" : ""}`}>{message.body}</p>}
+                  {!deleted && <div className={`mt-1.5 flex ${outbound ? "justify-end" : "justify-start"}`}><MessageChannelStamp provider={message.provider} direction={message.direction} /></div>}
                   {!deleted && !outbound && message.extension?.kind === "mission_review_invitation" && message.extension.reviewPath?.startsWith("/review-mission#invitation=") ? <Link href={message.extension.reviewPath}><Button size="sm" variant="outline" className="mt-2">Open scoped review</Button></Link> : null}
                   {message.editedAt && !deleted && <p className="mt-1 text-[9px] text-muted-foreground">edited</p>}
                   {!deleted && message.attachments?.length ? <div className="mt-2 space-y-1">{message.attachments.map((attachment) => <a key={attachment.id} href={`/api/message-hub/attachments/${attachment.id}/file`} className="flex items-center gap-2 rounded-md border border-primary/20 bg-background/30 px-2 py-1.5 text-xs text-primary hover:bg-primary/10"><FileText className="h-3.5 w-3.5" /><span className="min-w-0 flex-1 truncate">{attachment.filename || "Attachment"}</span>{attachment.sizeBytes != null && <span className="text-[10px] text-muted-foreground">{Math.max(1, Math.ceil(attachment.sizeBytes / 1024))} KB</span>}</a>)}</div> : null}
