@@ -17,6 +17,7 @@ import {
   bridgeInboundMessageSchema,
   claimMessageBridgeSchema,
   completeMessageBridgeCommandSchema,
+  createBridgeConversationSchema,
   createMessageBridgePairingSchema,
 } from "@shared/message-bridge";
 import { db } from "../db";
@@ -25,6 +26,7 @@ import { isAuthenticated } from "./middleware";
 
 const sha256 = (value: string) => createHash("sha256").update(value).digest("hex");
 const now = () => new Date();
+const normalizedRecipientHandle = (value: string | null | undefined) => (value || "").trim().replace(/\s+/g, "").toLowerCase();
 
 function bridgeError(res: Response, error: unknown) {
   if (error instanceof ZodError) return res.status(400).json({ error: error.errors[0]?.message || "Invalid bridge request." });
@@ -83,6 +85,68 @@ export function registerMessageBridgeRoutes(app: Express): void {
       const devices = await db.select().from(messageBridgeDevices)
         .where(eq(messageBridgeDevices.userId, req.session.userId!)).orderBy(asc(messageBridgeDevices.createdAt));
       return res.json({ devices: devices.map(safeDevice) });
+    } catch (error) { return bridgeError(res, error); }
+  });
+
+  // Creates an empty thread in the existing Messages hub. It is intentionally
+  // not a send operation; the actual message still goes through the regular
+  // composer and is queued for the user's paired Mac.
+  app.post("/api/message-bridge/conversations", isAuthenticated, async (req, res) => {
+    try {
+      const input = createBridgeConversationSchema.parse(req.body);
+      const recipientHandle = input.recipientHandle.trim();
+      const [device] = await db.select().from(messageBridgeDevices).where(and(
+        eq(messageBridgeDevices.id, input.deviceId),
+        eq(messageBridgeDevices.userId, req.session.userId!),
+        eq(messageBridgeDevices.status, "active"),
+      )).limit(1);
+      if (!device) return res.status(409).json({ error: "Connect an active Mac before starting an iMessage conversation." });
+      if (!(device.permissions as { send?: boolean }).send) return res.status(409).json({ error: "Enable sending for this iMessage bridge in Connections before starting a conversation." });
+
+      const result = await db.transaction(async (tx) => {
+        if (input.conversationId) {
+          const [membership] = await tx.select().from(messageConversationParticipants).where(and(
+            eq(messageConversationParticipants.conversationId, input.conversationId),
+            eq(messageConversationParticipants.userId, device.userId),
+            inArray(messageConversationParticipants.status, ["active", "blocked"]),
+          )).limit(1);
+          const [conversation] = await tx.select().from(messageConversations).where(eq(messageConversations.id, input.conversationId)).limit(1);
+          if (!membership || !conversation || conversation.kind !== "direct") throw new Error("MESSAGE_CHANNEL_CONVERSATION_UNAVAILABLE");
+          const [existingBinding] = await tx.select().from(messageChannelBindings).where(and(
+            eq(messageChannelBindings.conversationId, conversation.id),
+            eq(messageChannelBindings.provider, "imessage_bridge"),
+            eq(messageChannelBindings.status, "active"),
+          )).limit(1);
+          if (existingBinding) return { conversationId: conversation.id, created: false, attached: false };
+          const draftThreadId = `draft:${sha256(`${device.id}:${normalizedRecipientHandle(recipientHandle)}`).slice(0, 40)}`;
+          await tx.insert(messageChannelBindings).values({
+            conversationId: conversation.id, provider: "imessage_bridge", connectionRef: device.id, channelKind: "imessage", externalThreadId: draftThreadId,
+            status: "active", capabilities: { send: true, receive: Boolean((device.permissions as { read?: boolean }).read), receipts: true },
+          });
+          await tx.insert(messageBridgeThreads).values({ deviceId: device.id, externalThreadId: draftThreadId, conversationId: conversation.id, title: recipientHandle, recipientHandle });
+          return { conversationId: conversation.id, created: false, attached: true };
+        }
+        const threads = await tx.select().from(messageBridgeThreads).where(eq(messageBridgeThreads.deviceId, device.id));
+        const knownThread = threads.find((thread) => normalizedRecipientHandle(thread.recipientHandle) === normalizedRecipientHandle(recipientHandle));
+        if (knownThread) return { conversationId: knownThread.conversationId, created: false, attached: false };
+
+        const [conversation] = await tx.insert(messageConversations).values({
+          createdByUserId: device.userId, title: recipientHandle, kind: "direct", status: "open", aiMode: "observe",
+        }).returning();
+        await tx.insert(messageConversationParticipants).values({ conversationId: conversation.id, userId: device.userId, role: "admin" });
+        // The first chat.db import replaces this temporary id with the real
+        // local Messages thread id while retaining this unified conversation.
+        const draftThreadId = `draft:${sha256(`${device.id}:${normalizedRecipientHandle(recipientHandle)}`).slice(0, 40)}`;
+        await tx.insert(messageChannelBindings).values({
+          conversationId: conversation.id, provider: "imessage_bridge", connectionRef: device.id, channelKind: "imessage", externalThreadId: draftThreadId,
+          status: "active", capabilities: { send: true, receive: Boolean((device.permissions as { read?: boolean }).read), receipts: true },
+        });
+        await tx.insert(messageBridgeThreads).values({ deviceId: device.id, externalThreadId: draftThreadId, conversationId: conversation.id, title: recipientHandle, recipientHandle });
+        return { conversationId: conversation.id, created: true, attached: false };
+      });
+      const [conversation] = await db.select().from(messageConversations).where(eq(messageConversations.id, result.conversationId)).limit(1);
+      if (!conversation) return res.status(500).json({ error: "The iMessage conversation could not be opened." });
+      return res.status(result.created ? 201 : 200).json({ conversation, created: result.created, attached: result.attached });
     } catch (error) { return bridgeError(res, error); }
   });
 
@@ -154,6 +218,19 @@ export function registerMessageBridgeRoutes(app: Express): void {
         let [thread] = await tx.select().from(messageBridgeThreads).where(and(
           eq(messageBridgeThreads.deviceId, device.id), eq(messageBridgeThreads.externalThreadId, input.threadId),
         )).limit(1);
+        if (!thread) {
+          // A user may have opened a thread from the unified composer before
+          // its first local chat.db scan. Match it by recipient, then replace
+          // the synthetic draft id with the actual Messages thread id.
+          const threads = await tx.select().from(messageBridgeThreads).where(eq(messageBridgeThreads.deviceId, device.id));
+          const draftThread = threads.find((candidate) => normalizedRecipientHandle(candidate.recipientHandle) === normalizedRecipientHandle(input.recipientHandle));
+          if (draftThread) {
+            [thread] = await tx.update(messageBridgeThreads).set({ externalThreadId: input.threadId, title: input.title, recipientHandle: input.recipientHandle, updatedAt: now() })
+              .where(eq(messageBridgeThreads.id, draftThread.id)).returning();
+            await tx.update(messageChannelBindings).set({ externalThreadId: input.threadId, updatedAt: now() }).where(and(eq(messageChannelBindings.conversationId, draftThread.conversationId), eq(messageChannelBindings.provider, "imessage_bridge")));
+            await tx.update(messageConversations).set({ title: input.title, updatedAt: now() }).where(eq(messageConversations.id, draftThread.conversationId));
+          }
+        }
         if (!thread) {
           const [conversation] = await tx.insert(messageConversations).values({
             createdByUserId: device.userId, title: input.title, kind: "direct", status: "open", aiMode: "observe",
