@@ -3764,6 +3764,14 @@ const migrations = [
       CREATE INDEX IF NOT EXISTS "message_bridge_commands_device_state_idx" ON "message_bridge_commands" ("device_id", "state", "created_at");
     `,
   },
+  {
+    id: "0165_multi_device_message_bridge_threads",
+    sql: `
+      ALTER TABLE "message_bridge_threads" DROP CONSTRAINT IF EXISTS "message_bridge_threads_conversation_unique";
+      DROP INDEX IF EXISTS "message_bridge_threads_conversation_unique";
+      CREATE UNIQUE INDEX IF NOT EXISTS "message_bridge_threads_device_conversation_unique" ON "message_bridge_threads" ("device_id", "conversation_id");
+    `,
+  },
 ];
 
 async function run(): Promise<void> {

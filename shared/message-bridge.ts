@@ -1,18 +1,21 @@
 import { z } from "zod";
 
+export const bridgePlatformSchema = z.enum(["macos", "android"]);
+export const bridgeChannelSchema = z.enum(["imessage", "sms"]);
 export const bridgePermissionsSchema = z.object({ read: z.boolean(), send: z.boolean() }).strict();
 
 export const createMessageBridgePairingSchema = z.object({
   displayName: z.string().trim().min(1).max(80).default("My Mac"),
+  platform: bridgePlatformSchema.default("macos"),
   permissions: bridgePermissionsSchema.refine((value) => value.read || value.send, { message: "Choose at least one bridge capability." }),
 }).strict();
 
-// iMessage addresses are either a phone number or an Apple Account email.
-// Keep this intentionally narrow: a bridge must never be used as a generic
-// AppleScript command surface.
+// A phone number or platform-account address that the explicitly paired device
+// can deliver to. A bridge is never a generic device command surface.
 export const createBridgeConversationSchema = z.object({
   deviceId: z.string().uuid(),
-  recipientHandle: z.string().trim().min(3).max(320).regex(/^[+()\-\s\dA-Za-z@._]+$/, "Enter an iMessage phone number or email address."),
+  channel: bridgeChannelSchema.default("imessage"),
+  recipientHandle: z.string().trim().min(3).max(320).regex(/^[+()\-\s\dA-Za-z@._]+$/, "Enter a phone number or supported address."),
   // When provided, a new channel belongs to this existing person-level
   // conversation rather than creating a second chat for the same person.
   conversationId: z.string().uuid().nullable().default(null),

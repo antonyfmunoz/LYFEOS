@@ -69,6 +69,16 @@ function safeDevice(device: typeof messageBridgeDevices.$inferSelect) {
   };
 }
 
+function bridgeDescriptor(device: typeof messageBridgeDevices.$inferSelect) {
+  return device.platform === "android"
+    ? { provider: "android_sms_bridge", channelKind: "sms", name: "Android text-message" }
+    : { provider: "imessage_bridge", channelKind: "imessage", name: "iMessage" };
+}
+
+function deviceSupportsChannel(device: typeof messageBridgeDevices.$inferSelect, channel: "imessage" | "sms") {
+  return bridgeDescriptor(device).channelKind === channel;
+}
+
 /** A device-paired relay for personal Messages. Apple credentials never enter LyfeOS. */
 export function registerMessageBridgeRoutes(app: Express): void {
   app.use((req, res, next) => {
@@ -90,7 +100,7 @@ export function registerMessageBridgeRoutes(app: Express): void {
 
   // Creates an empty thread in the existing Messages hub. It is intentionally
   // not a send operation; the actual message still goes through the regular
-  // composer and is queued for the user's paired Mac.
+  // composer and is queued for the user's paired device.
   app.post("/api/message-bridge/conversations", isAuthenticated, async (req, res) => {
     try {
       const input = createBridgeConversationSchema.parse(req.body);
@@ -100,8 +110,10 @@ export function registerMessageBridgeRoutes(app: Express): void {
         eq(messageBridgeDevices.userId, req.session.userId!),
         eq(messageBridgeDevices.status, "active"),
       )).limit(1);
-      if (!device) return res.status(409).json({ error: "Connect an active Mac before starting an iMessage conversation." });
-      if (!(device.permissions as { send?: boolean }).send) return res.status(409).json({ error: "Enable sending for this iMessage bridge in Connections before starting a conversation." });
+      if (!device) return res.status(409).json({ error: "Connect an active personal messaging bridge before starting this conversation." });
+      if (!deviceSupportsChannel(device, input.channel)) return res.status(409).json({ error: `This device cannot send ${input.channel === "sms" ? "phone text messages" : "iMessage"}.` });
+      if (!(device.permissions as { send?: boolean }).send) return res.status(409).json({ error: `Enable sending for this ${bridgeDescriptor(device).name} bridge in Connections before starting a conversation.` });
+      const bridge = bridgeDescriptor(device);
 
       const result = await db.transaction(async (tx) => {
         if (input.conversationId) {
@@ -114,13 +126,13 @@ export function registerMessageBridgeRoutes(app: Express): void {
           if (!membership || !conversation || conversation.kind !== "direct") throw new Error("MESSAGE_CHANNEL_CONVERSATION_UNAVAILABLE");
           const [existingBinding] = await tx.select().from(messageChannelBindings).where(and(
             eq(messageChannelBindings.conversationId, conversation.id),
-            eq(messageChannelBindings.provider, "imessage_bridge"),
+            eq(messageChannelBindings.provider, bridge.provider),
             eq(messageChannelBindings.status, "active"),
           )).limit(1);
           if (existingBinding) return { conversationId: conversation.id, created: false, attached: false };
           const draftThreadId = `draft:${sha256(`${device.id}:${normalizedRecipientHandle(recipientHandle)}`).slice(0, 40)}`;
           await tx.insert(messageChannelBindings).values({
-            conversationId: conversation.id, provider: "imessage_bridge", connectionRef: device.id, channelKind: "imessage", externalThreadId: draftThreadId,
+            conversationId: conversation.id, provider: bridge.provider, connectionRef: device.id, channelKind: bridge.channelKind, externalThreadId: draftThreadId,
             status: "active", capabilities: { send: true, receive: Boolean((device.permissions as { read?: boolean }).read), receipts: true },
           });
           await tx.insert(messageBridgeThreads).values({ deviceId: device.id, externalThreadId: draftThreadId, conversationId: conversation.id, title: recipientHandle, recipientHandle });
@@ -134,18 +146,18 @@ export function registerMessageBridgeRoutes(app: Express): void {
           createdByUserId: device.userId, title: recipientHandle, kind: "direct", status: "open", aiMode: "observe",
         }).returning();
         await tx.insert(messageConversationParticipants).values({ conversationId: conversation.id, userId: device.userId, role: "admin" });
-        // The first chat.db import replaces this temporary id with the real
-        // local Messages thread id while retaining this unified conversation.
+        // The first bridge import replaces this temporary id with the real
+        // device thread id while retaining this unified conversation.
         const draftThreadId = `draft:${sha256(`${device.id}:${normalizedRecipientHandle(recipientHandle)}`).slice(0, 40)}`;
         await tx.insert(messageChannelBindings).values({
-          conversationId: conversation.id, provider: "imessage_bridge", connectionRef: device.id, channelKind: "imessage", externalThreadId: draftThreadId,
+          conversationId: conversation.id, provider: bridge.provider, connectionRef: device.id, channelKind: bridge.channelKind, externalThreadId: draftThreadId,
           status: "active", capabilities: { send: true, receive: Boolean((device.permissions as { read?: boolean }).read), receipts: true },
         });
         await tx.insert(messageBridgeThreads).values({ deviceId: device.id, externalThreadId: draftThreadId, conversationId: conversation.id, title: recipientHandle, recipientHandle });
         return { conversationId: conversation.id, created: true, attached: false };
       });
       const [conversation] = await db.select().from(messageConversations).where(eq(messageConversations.id, result.conversationId)).limit(1);
-      if (!conversation) return res.status(500).json({ error: "The iMessage conversation could not be opened." });
+      if (!conversation) return res.status(500).json({ error: "The bridged conversation could not be opened." });
       return res.status(result.created ? 201 : 200).json({ conversation, created: result.created, attached: result.attached });
     } catch (error) { return bridgeError(res, error); }
   });
@@ -156,7 +168,7 @@ export function registerMessageBridgeRoutes(app: Express): void {
       const pairingCode = randomBytes(32).toString("base64url");
       const expiresAt = new Date(Date.now() + 10 * 60_000);
       const [device] = await db.insert(messageBridgeDevices).values({
-        userId: req.session.userId!, displayName: input.displayName, platform: "macos", status: "pairing",
+        userId: req.session.userId!, displayName: input.displayName, platform: input.platform, status: "pairing",
         pairingTokenHash: sha256(pairingCode), pairingExpiresAt: expiresAt, permissions: input.permissions,
       }).returning();
       return res.status(201).json({ device: safeDevice(device), pairingCode, expiresAt });
@@ -168,7 +180,7 @@ export function registerMessageBridgeRoutes(app: Express): void {
       const [device] = await db.update(messageBridgeDevices).set({ status: "revoked", accessTokenHash: null, pairingTokenHash: null, revokedAt: now(), updatedAt: now() })
         .where(and(eq(messageBridgeDevices.id, req.params.deviceId), eq(messageBridgeDevices.userId, req.session.userId!))).returning();
       if (!device) return res.status(404).json({ error: "Bridge not found." });
-      await db.update(messageChannelBindings).set({ status: "revoked", updatedAt: now() }).where(and(eq(messageChannelBindings.provider, "imessage_bridge"), eq(messageChannelBindings.connectionRef, device.id)));
+      await db.update(messageChannelBindings).set({ status: "revoked", updatedAt: now() }).where(eq(messageChannelBindings.connectionRef, device.id));
       return res.json({ device: safeDevice(device) });
     } catch (error) { return bridgeError(res, error); }
   });
@@ -207,6 +219,7 @@ export function registerMessageBridgeRoutes(app: Express): void {
       const device = await authenticateBridge(req, res); if (!device) return;
       const input = bridgeInboundMessageSchema.parse(req.body);
       const permissions = device.permissions as { read?: boolean };
+      const bridge = bridgeDescriptor(device);
       if (!permissions.read) return res.status(403).json({ error: "This bridge is not allowed to import Messages." });
 
       const result = await db.transaction(async (tx) => {
@@ -227,7 +240,7 @@ export function registerMessageBridgeRoutes(app: Express): void {
           if (draftThread) {
             [thread] = await tx.update(messageBridgeThreads).set({ externalThreadId: input.threadId, title: input.title, recipientHandle: input.recipientHandle, updatedAt: now() })
               .where(eq(messageBridgeThreads.id, draftThread.id)).returning();
-            await tx.update(messageChannelBindings).set({ externalThreadId: input.threadId, updatedAt: now() }).where(and(eq(messageChannelBindings.conversationId, draftThread.conversationId), eq(messageChannelBindings.provider, "imessage_bridge")));
+            await tx.update(messageChannelBindings).set({ externalThreadId: input.threadId, updatedAt: now() }).where(and(eq(messageChannelBindings.conversationId, draftThread.conversationId), eq(messageChannelBindings.provider, bridge.provider)));
             await tx.update(messageConversations).set({ title: input.title, updatedAt: now() }).where(eq(messageConversations.id, draftThread.conversationId));
           }
         }
@@ -237,7 +250,7 @@ export function registerMessageBridgeRoutes(app: Express): void {
           }).returning();
           await tx.insert(messageConversationParticipants).values({ conversationId: conversation.id, userId: device.userId, role: "admin" });
           await tx.insert(messageChannelBindings).values({
-            conversationId: conversation.id, provider: "imessage_bridge", connectionRef: device.id, channelKind: "imessage", externalThreadId: input.threadId,
+            conversationId: conversation.id, provider: bridge.provider, connectionRef: device.id, channelKind: bridge.channelKind, externalThreadId: input.threadId,
             status: "active", capabilities: { send: Boolean((device.permissions as { send?: boolean }).send), receive: true, receipts: true },
           });
           [thread] = await tx.insert(messageBridgeThreads).values({ deviceId: device.id, externalThreadId: input.threadId, conversationId: conversation.id, title: input.title, recipientHandle: input.recipientHandle }).returning();
@@ -247,14 +260,13 @@ export function registerMessageBridgeRoutes(app: Express): void {
         }
 
         const occurredAt = new Date(input.occurredAt);
-        // AppleScript hands delivery to Messages rather than returning an iMessage
-        // GUID. Reconcile that local echo to the queued unified-inbox message so a
-        // later chat.db scan does not create a duplicate bubble.
+        // Reconcile a device echo to the queued unified-inbox message so a later
+        // device scan does not create a duplicate bubble.
         if (input.direction === "outbound") {
           const [queuedEcho] = await tx.select().from(conversationMessages).where(and(
             eq(conversationMessages.conversationId, thread.conversationId),
             eq(conversationMessages.senderUserId, device.userId),
-            eq(conversationMessages.provider, "imessage_bridge"),
+            eq(conversationMessages.provider, bridge.provider),
             eq(conversationMessages.body, input.body),
             isNull(conversationMessages.providerMessageId),
             inArray(conversationMessages.status, ["queued", "sent"]),
@@ -267,14 +279,14 @@ export function registerMessageBridgeRoutes(app: Express): void {
         }
         const [message] = await tx.insert(conversationMessages).values({
           conversationId: thread.conversationId, senderUserId: input.direction === "outbound" ? device.userId : null,
-          direction: input.direction, provider: "imessage_bridge", body: input.body, status: input.status,
-          providerMessageId: input.providerMessageId, idempotencyKey: `imessage:${device.id}:${input.providerMessageId}`,
+          direction: input.direction, provider: bridge.provider, body: input.body, status: input.status,
+          providerMessageId: input.providerMessageId, idempotencyKey: `${bridge.provider}:${device.id}:${input.providerMessageId}`,
           sentAt: input.direction === "outbound" ? occurredAt : null, receivedAt: input.direction === "inbound" ? occurredAt : null,
           createdAt: occurredAt, updatedAt: occurredAt,
         }).returning();
         await tx.insert(messageBridgeImportedMessages).values({ deviceId: device.id, providerMessageId: input.providerMessageId, messageId: message.id });
         const [conversation] = await tx.update(messageConversations).set({ lastMessageAt: occurredAt, updatedAt: occurredAt, version: sql`${messageConversations.version} + 1` }).where(eq(messageConversations.id, thread.conversationId)).returning();
-        await tx.insert(messageAuditEvents).values({ conversationId: thread.conversationId, messageId: message.id, actorUserId: input.direction === "outbound" ? device.userId : null, eventType: "BridgeMessageImported.v1", aggregateVersion: conversation.version, metadata: { provider: "imessage_bridge", direction: input.direction } });
+        await tx.insert(messageAuditEvents).values({ conversationId: thread.conversationId, messageId: message.id, actorUserId: input.direction === "outbound" ? device.userId : null, eventType: "BridgeMessageImported.v1", aggregateVersion: conversation.version, metadata: { provider: bridge.provider, direction: input.direction } });
         return { messageId: message.id, replayed: false };
       });
       await db.update(messageBridgeDevices).set({ lastSeenAt: now(), updatedAt: now() }).where(eq(messageBridgeDevices.id, device.id));
