@@ -2814,6 +2814,31 @@ export const messageChannelBindings = pgTable("message_channel_bindings", {
   uniqueIndex("message_channel_binding_native_unique").on(table.conversationId, table.provider, table.channelKind),
 ]);
 
+// A bridge is a user-owned device, never an Apple-account credential.  Its
+// bearer token is stored only as a hash, and can be revoked from Profile.
+export const messageBridgeDevices = pgTable("message_bridge_devices", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  displayName: text("display_name").notNull(),
+  platform: text("platform").notNull().default("macos"),
+  status: text("status").notNull().default("pairing"),
+  pairingTokenHash: text("pairing_token_hash"),
+  pairingExpiresAt: timestamp("pairing_expires_at"),
+  accessTokenHash: text("access_token_hash"),
+  publicKey: text("public_key"),
+  permissions: jsonb("permissions").notNull().default({ read: false, send: false }),
+  lastSeenAt: timestamp("last_seen_at"),
+  pairedAt: timestamp("paired_at"),
+  revokedAt: timestamp("revoked_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("message_bridge_devices_user_status_idx").on(table.userId, table.status),
+  uniqueIndex("message_bridge_devices_access_token_unique").on(table.accessTokenHash),
+]);
+
+// A one-way map lets a private Mac thread appear in the existing Messages
+// inbox without requiring the other person to have a LyfeOS account.
 export const conversationMessages = pgTable("conversation_messages", {
   id: uuid("id").primaryKey().defaultRandom(),
   conversationId: uuid("conversation_id").notNull().references(() => messageConversations.id, { onDelete: "cascade" }),
@@ -2838,6 +2863,45 @@ export const conversationMessages = pgTable("conversation_messages", {
 }, (table) => [
   uniqueIndex("conversation_messages_sender_idempotency_unique").on(table.senderUserId, table.idempotencyKey),
   index("conversation_messages_conversation_created_idx").on(table.conversationId, table.createdAt),
+]);
+
+export const messageBridgeThreads = pgTable("message_bridge_threads", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  deviceId: uuid("device_id").notNull().references(() => messageBridgeDevices.id, { onDelete: "cascade" }),
+  externalThreadId: text("external_thread_id").notNull(),
+  conversationId: uuid("conversation_id").notNull().references(() => messageConversations.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  recipientHandle: text("recipient_handle"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("message_bridge_threads_device_external_unique").on(table.deviceId, table.externalThreadId),
+  uniqueIndex("message_bridge_threads_conversation_unique").on(table.conversationId),
+]);
+
+export const messageBridgeImportedMessages = pgTable("message_bridge_imported_messages", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  deviceId: uuid("device_id").notNull().references(() => messageBridgeDevices.id, { onDelete: "cascade" }),
+  providerMessageId: text("provider_message_id").notNull(),
+  messageId: uuid("message_id").notNull().references(() => conversationMessages.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [uniqueIndex("message_bridge_imported_messages_device_provider_unique").on(table.deviceId, table.providerMessageId)]);
+
+export const messageBridgeCommands = pgTable("message_bridge_commands", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  deviceId: uuid("device_id").notNull().references(() => messageBridgeDevices.id, { onDelete: "cascade" }),
+  conversationId: uuid("conversation_id").notNull().references(() => messageConversations.id, { onDelete: "cascade" }),
+  messageId: uuid("message_id").notNull().references(() => conversationMessages.id, { onDelete: "cascade" }),
+  kind: text("kind").notNull().default("send"),
+  payload: jsonb("payload").notNull().default({}),
+  state: text("state").notNull().default("pending"),
+  failureCode: text("failure_code"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("message_bridge_commands_message_unique").on(table.messageId),
+  index("message_bridge_commands_device_state_idx").on(table.deviceId, table.state, table.createdAt),
 ]);
 
 export const messageAttachments = pgTable("message_attachments", {
