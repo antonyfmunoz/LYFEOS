@@ -88,6 +88,7 @@ import { startThetaBeats, stopThetaBeats } from '@/lib/theta-beats';
 import { useReverification, useUser } from "@clerk/clerk-react";
 import PushNotificationSettings from "@/components/profile/PushNotificationSettings";
 import ExtensionSettings from "@/components/profile/ExtensionSettings";
+import IMessageBridgeConnection from "@/components/profile/IMessageBridgeConnection";
 import HealthPreferences from "@/components/health/HealthPreferences";
 import HealthConnections from "@/components/health/HealthConnections";
 import HealthDataRights from "@/components/health/HealthDataRights";
@@ -587,6 +588,8 @@ function IntegrationsSection({ userId }: { userId?: number }) {
             </div>
           );
         })}
+
+        {"imessage messages mac apple".includes(appSearchQuery.trim().toLowerCase()) || !appSearchQuery.trim() ? <IMessageBridgeConnection enabled={Boolean(userId)} /> : null}
 
         {"health connections apple health health connect oura whoop strava garmin".includes(appSearchQuery.trim().toLowerCase()) || !appSearchQuery.trim() ? <HealthConnections /> : null}
 

@@ -14,6 +14,9 @@ import {
   messageEditHistory,
   messageInternalNotes,
   messageReactions,
+  messageBridgeCommands,
+  messageBridgeDevices,
+  messageBridgeThreads,
   users,
 } from "@shared/schema";
 import {
@@ -82,7 +85,7 @@ async function conversationParticipants(conversationId: string) {
 async function summarizeConversation(conversation: typeof messageConversations.$inferSelect, userId: number, membership?: typeof messageConversationParticipants.$inferSelect) {
   const ownMembership = membership ?? await messageMembership(conversation.id, userId);
   if (!ownMembership) return null;
-  const [participants, latestRows, unreadResult] = await Promise.all([
+  const [participants, latestRows, unreadResult, bindings] = await Promise.all([
     conversationParticipants(conversation.id),
     db.select({ id: conversationMessages.id, body: conversationMessages.body, senderUserId: conversationMessages.senderUserId, createdAt: conversationMessages.createdAt })
       .from(conversationMessages).where(eq(conversationMessages.conversationId, conversation.id)).orderBy(desc(conversationMessages.createdAt)).limit(1),
@@ -92,6 +95,8 @@ async function summarizeConversation(conversation: typeof messageConversations.$
         AND "sender_user_id" IS DISTINCT FROM ${userId}
         AND (${ownMembership.lastReadAt}::timestamp IS NULL OR "created_at" > ${ownMembership.lastReadAt})
     `),
+    db.select({ id: messageChannelBindings.id, provider: messageChannelBindings.provider, channelKind: messageChannelBindings.channelKind, status: messageChannelBindings.status })
+      .from(messageChannelBindings).where(eq(messageChannelBindings.conversationId, conversation.id)),
   ]);
   const unreadRows = (unreadResult as unknown as { rows?: Array<{ count: number | string }> }).rows || [];
   const unreadCount = Number(unreadRows[0]?.count || 0);
@@ -103,6 +108,7 @@ async function summarizeConversation(conversation: typeof messageConversations.$
     snoozedUntil: ownMembership.snoozedUntil,
     version: ownMembership.version,
     participants,
+    bindings,
     unreadCount,
     latestMessage: latest ? { ...latest, body: latest.body.slice(0, 160), direction: latest.senderUserId === userId ? "outbound" : "inbound" } : null,
   };
@@ -327,11 +333,40 @@ export function registerMessageRoutes(app: Express): void {
       if (!membership) return res.status(404).json({ error: "Conversation not found." });
       if (membership.status === "blocked") return res.status(409).json({ error: "Unblock this conversation before replying." });
       if (!["open", "pending"].includes(membership.inboxStatus)) return res.status(409).json({ error: "Reopen this conversation before replying." });
-      const [binding] = await db.select().from(messageChannelBindings).where(and(eq(messageChannelBindings.conversationId, conversationId), eq(messageChannelBindings.provider, "native"), eq(messageChannelBindings.status, "active"))).limit(1);
-      if (!binding) return res.status(409).json({ error: "No active native channel is available." });
+      const bindings = await db.select().from(messageChannelBindings).where(and(eq(messageChannelBindings.conversationId, conversationId), eq(messageChannelBindings.status, "active")));
+      const nativeBinding = bindings.find((binding) => binding.provider === "native");
+      const bridgeBinding = bindings.find((binding) => binding.provider === "imessage_bridge");
+      if (!nativeBinding && !bridgeBinding) return res.status(409).json({ error: "No active message channel is available." });
       if (input.replyToMessageId) {
         const [replyTarget] = await db.select({ conversationId: conversationMessages.conversationId }).from(conversationMessages).where(eq(conversationMessages.id, input.replyToMessageId)).limit(1);
         if (!replyTarget || replyTarget.conversationId !== conversationId) return res.status(400).json({ error: "Reply target is outside this conversation." });
+      }
+      if (!nativeBinding && bridgeBinding) {
+        if (input.documentIds.length) return res.status(409).json({ error: "Attachments are not available through the private iMessage bridge yet." });
+        if (!bridgeBinding.connectionRef) return res.status(409).json({ error: "This iMessage bridge is missing its paired Mac." });
+        const [[device], [thread]] = await Promise.all([
+          db.select().from(messageBridgeDevices).where(and(eq(messageBridgeDevices.id, bridgeBinding.connectionRef), eq(messageBridgeDevices.userId, userId), eq(messageBridgeDevices.status, "active"))).limit(1),
+          db.select().from(messageBridgeThreads).where(and(eq(messageBridgeThreads.deviceId, bridgeBinding.connectionRef), eq(messageBridgeThreads.conversationId, conversationId))).limit(1),
+        ]);
+        if (!device || !(device.permissions as { send?: boolean }).send) return res.status(409).json({ error: "Enable sending for this iMessage bridge in Connections before replying." });
+        if (!thread?.recipientHandle) return res.status(409).json({ error: "This iMessage conversation does not have a sendable recipient yet." });
+        const result = await db.transaction(async (tx) => {
+          const [queued] = await tx.insert(conversationMessages).values({
+            conversationId, senderUserId: userId, senderParticipantRef: membership.id, body: input.body, replyToMessageId: input.replyToMessageId,
+            idempotencyKey: input.idempotencyKey, status: "queued", provider: "imessage_bridge", direction: "outbound",
+          }).onConflictDoNothing({ target: [conversationMessages.senderUserId, conversationMessages.idempotencyKey] }).returning();
+          if (!queued) {
+            const [existing] = await tx.select().from(conversationMessages).where(and(eq(conversationMessages.senderUserId, userId), eq(conversationMessages.idempotencyKey, input.idempotencyKey))).limit(1);
+            if (!existing || existing.conversationId !== conversationId || existing.body !== input.body) throw new Error("MESSAGE_IDEMPOTENCY_CONFLICT");
+            return { message: existing, replayed: true };
+          }
+          const timestamp = new Date();
+          const [conversation] = await tx.update(messageConversations).set({ lastMessageAt: timestamp, updatedAt: timestamp, version: sql`${messageConversations.version} + 1` }).where(eq(messageConversations.id, conversationId)).returning();
+          await tx.insert(messageBridgeCommands).values({ deviceId: device.id, conversationId, messageId: queued.id, kind: "send", payload: { recipientHandle: thread.recipientHandle, body: input.body } });
+          await tx.insert(messageAuditEvents).values({ conversationId, messageId: queued.id, actorUserId: userId, eventType: "BridgeMessageQueued.v1", aggregateVersion: conversation.version, metadata: { provider: "imessage_bridge" } });
+          return { message: queued, replayed: false };
+        });
+        return res.status(result.replayed ? 200 : 201).json(result);
       }
       const participants = await db.select().from(messageConversationParticipants).where(eq(messageConversationParticipants.conversationId, conversationId));
       const recipients = participants.filter((participant) => participant.userId !== userId && participant.status === "active");

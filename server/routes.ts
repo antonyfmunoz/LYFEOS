@@ -41,6 +41,7 @@ import { registerTableRoutes } from "./routes/tables";
 import { registerAutomationRoutes } from "./routes/automations";
 import { registerProjectRoutes } from "./routes/projects";
 import { registerMessageRoutes } from "./routes/messages";
+import { registerMessageBridgeRoutes } from "./routes/message-bridge";
 import { registerAIGovernanceRoutes } from "./routes/ai-governance";
 import { registerProductAnalyticsRoutes } from "./routes/product-analytics";
 import { registerHypothesisRoutes } from "./routes/hypotheses";
@@ -156,6 +157,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerAutomationRoutes(app);
   registerProjectRoutes(app);
   registerMessageRoutes(app);
+  registerMessageBridgeRoutes(app);
   registerAIGovernanceRoutes(app);
   registerProductAnalyticsRoutes(app);
   registerHypothesisRoutes(app);

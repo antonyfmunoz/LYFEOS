@@ -3720,6 +3720,50 @@ const migrations = [
       CREATE INDEX IF NOT EXISTS "vault_item_states_user_trash_recent_idx" ON "vault_item_states" ("user_id", "trashed_at", "last_opened_at");
     `,
   },
+  {
+    id: "0164_private_imessage_bridge",
+    sql: `
+      CREATE TABLE IF NOT EXISTS "message_bridge_devices" (
+        "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+        "user_id" integer NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
+        "display_name" text NOT NULL, "platform" text NOT NULL DEFAULT 'macos', "status" text NOT NULL DEFAULT 'pairing',
+        "pairing_token_hash" text, "pairing_expires_at" timestamp, "access_token_hash" text, "public_key" text,
+        "permissions" jsonb NOT NULL DEFAULT '{"read":false,"send":false}'::jsonb,
+        "last_seen_at" timestamp, "paired_at" timestamp, "revoked_at" timestamp,
+        "created_at" timestamp NOT NULL DEFAULT now(), "updated_at" timestamp NOT NULL DEFAULT now(),
+        CONSTRAINT "message_bridge_devices_status_check" CHECK ("status" IN ('pairing','active','revoked','error'))
+      );
+      CREATE INDEX IF NOT EXISTS "message_bridge_devices_user_status_idx" ON "message_bridge_devices" ("user_id", "status");
+      CREATE UNIQUE INDEX IF NOT EXISTS "message_bridge_devices_access_token_unique" ON "message_bridge_devices" ("access_token_hash") WHERE "access_token_hash" IS NOT NULL;
+      CREATE TABLE IF NOT EXISTS "message_bridge_threads" (
+        "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+        "device_id" uuid NOT NULL REFERENCES "message_bridge_devices"("id") ON DELETE CASCADE,
+        "external_thread_id" text NOT NULL, "conversation_id" uuid NOT NULL REFERENCES "message_conversations"("id") ON DELETE CASCADE,
+        "title" text NOT NULL, "recipient_handle" text, "created_at" timestamp NOT NULL DEFAULT now(), "updated_at" timestamp NOT NULL DEFAULT now(),
+        CONSTRAINT "message_bridge_threads_device_external_unique" UNIQUE ("device_id", "external_thread_id"),
+        CONSTRAINT "message_bridge_threads_conversation_unique" UNIQUE ("conversation_id")
+      );
+      CREATE TABLE IF NOT EXISTS "message_bridge_imported_messages" (
+        "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+        "device_id" uuid NOT NULL REFERENCES "message_bridge_devices"("id") ON DELETE CASCADE,
+        "provider_message_id" text NOT NULL, "message_id" uuid NOT NULL REFERENCES "conversation_messages"("id") ON DELETE CASCADE,
+        "created_at" timestamp NOT NULL DEFAULT now(),
+        CONSTRAINT "message_bridge_imported_messages_device_provider_unique" UNIQUE ("device_id", "provider_message_id")
+      );
+      CREATE TABLE IF NOT EXISTS "message_bridge_commands" (
+        "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+        "device_id" uuid NOT NULL REFERENCES "message_bridge_devices"("id") ON DELETE CASCADE,
+        "conversation_id" uuid NOT NULL REFERENCES "message_conversations"("id") ON DELETE CASCADE,
+        "message_id" uuid NOT NULL REFERENCES "conversation_messages"("id") ON DELETE CASCADE,
+        "kind" text NOT NULL DEFAULT 'send', "payload" jsonb NOT NULL DEFAULT '{}'::jsonb, "state" text NOT NULL DEFAULT 'pending',
+        "failure_code" text, "completed_at" timestamp, "created_at" timestamp NOT NULL DEFAULT now(), "updated_at" timestamp NOT NULL DEFAULT now(),
+        CONSTRAINT "message_bridge_commands_message_unique" UNIQUE ("message_id"),
+        CONSTRAINT "message_bridge_commands_kind_check" CHECK ("kind" = 'send'),
+        CONSTRAINT "message_bridge_commands_state_check" CHECK ("state" IN ('pending','sent','delivered','failed'))
+      );
+      CREATE INDEX IF NOT EXISTS "message_bridge_commands_device_state_idx" ON "message_bridge_commands" ("device_id", "state", "created_at");
+    `,
+  },
 ];
 
 async function run(): Promise<void> {
