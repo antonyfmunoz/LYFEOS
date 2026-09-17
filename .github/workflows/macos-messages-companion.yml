@@ -1,0 +1,23 @@
+name: macOS Messages Companion
+
+on:
+  pull_request:
+    paths:
+      - companion/macos/**
+      - .github/workflows/macos-messages-companion.yml
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the native companion
+        run: swift build --package-path companion/macos -c release
+      - name: Package internal QA app
+        run: bash companion/macos/scripts/package-app.sh
+      - name: Upload internal QA app
+        uses: actions/upload-artifact@v4
+        with:
+          name: LyfeOS-Messages-macOS-QA
+          path: companion/macos/dist/LyfeOS Messages.app

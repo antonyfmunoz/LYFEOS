@@ -1,32 +1,43 @@
-# LyfeOS Messages Bridge for Mac
+# LyfeOS Messages for Mac
 
-This is the local transport for the unified LyfeOS Messages inbox. It uses the
-Messages database on a Mac already signed into the person's Apple Account; it
-does not ask for, store, or transmit an Apple Account password.
+LyfeOS Messages is a native, user-owned Mac companion for the unified LyfeOS
+Messages inbox. It pairs from a one-time code generated in **Profile →
+Connections**, remains available from the Mac menu bar, and starts at login when
+the person chooses that option. No one should need to use Terminal to pair or
+operate it.
 
-## Privacy boundary
+## What the person does
 
-- The person pairs the bridge with a short-lived code generated inside LyfeOS.
-- The bridge stores its device token locally in the person's Application Support
-  folder with owner-only permissions.
-- macOS requires the person to grant **Full Disk Access** before this program can
-  read `~/Library/Messages/chat.db`, and **Automation > Messages** before it can
-  send a message. Declining either permission keeps that capability unavailable.
-- LyfeOS can revoke the paired device at any time from Profile > Connections.
+1. On iPhone and Mac, sign in to Messages with the same Apple Account and enable
+   the iPhone number in Messages. In iPhone Settings, turn on **Text Message
+   Forwarding** for the Mac when the person also wants their phone text history
+   available there.
+2. In LyfeOS, open **Profile → Connections → iMessage → Pair Mac**.
+3. Open **LyfeOS Messages.app**, paste the one-time code, and choose **Pair this
+   Mac**.
+4. Grant **Full Disk Access** only if message-history sync is desired. macOS asks
+   separately before the app can automate Messages to send.
 
-## Local development use
+The one-time pairing code expires in ten minutes. The bridge token is stored
+locally in the person's Application Support folder with owner-only permissions.
+Disconnecting in LyfeOS revokes the server-side token; disconnecting in the Mac
+app removes its local token.
 
-On the paired Mac, install Xcode Command Line Tools, then run:
+## Privacy and platform boundary
 
-```sh
-cd companion/macos
-swift run LyfeOSMessagesBridge pair --server https://lyfeos.net --code YOUR_PAIRING_CODE
-swift run LyfeOSMessagesBridge run
-```
+- This is a private local relay: it never asks for, stores, or transmits an
+  Apple Account password.
+- The selected sending identity is controlled in **Messages → Settings →
+  iMessage** on the Mac. The optional label in LyfeOS Messages is local display
+  context only; it is not a claim that LyfeOS verified a telephone number.
+- The current relay imports one-to-one Messages rows and sends iMessages through
+  the person's installed Messages app. It does not claim direct iPhone access,
+  group-thread support, attachments, or personal RCS access.
 
-`run` imports new one-to-one message rows into the same LyfeOS Messages inbox
-and executes explicit messages queued from that inbox. This is intentionally a
-user-owned Mac companion, not a cloud credential relay or an App Store client.
+## Release packaging
 
-Group threads and attachments are not enabled by this first companion build;
-they are never silently dropped into another channel.
+The source builds as the `LyfeOSMessages` macOS application binary. A user
+release must be distributed as a notarized `LyfeOS Messages.app` / DMG signed
+with the LyfeOS Apple Developer **Developer ID Application** certificate. That
+certificate and notarization credentials are intentionally not present in this
+repository.
