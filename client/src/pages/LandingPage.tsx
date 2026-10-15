@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { useAuth } from "../lib/authContext";
 import { usePageTitle } from "@/hooks/use-page-title";
+import { CookieConsentBanner } from "@/components/CookieConsentBanner";
 import {
   Check,
   ChevronDown,
@@ -217,7 +217,7 @@ function Placeholder({ label }: { label: string }) {
 
 export default function LandingPage() {
   usePageTitle("Home");
-  const { isAuthenticated } = useAuth();
+  const isAuthenticated = false;
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const ctaHref = isAuthenticated ? "/dashboard" : "/register";
@@ -601,6 +601,7 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
+      <CookieConsentBanner />
     </div>
   );
 }

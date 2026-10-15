@@ -10,9 +10,8 @@
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png?v=4" />
     <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png?v=4" />
     <!-- Typography and legacy icon glyphs are visual enhancements, not app
-         boot dependencies. Create their stylesheets only after the complete
-         document has loaded, during idle time, so a third-party DNS/TLS/font
-         stall cannot delay the app shell, authentication or first content. -->
+         boot dependencies. They are third-party assets, so wait for explicit
+         optional-cookie consent before requesting them. -->
     <script>
       (function() {
         function loadOptionalTypography() {
@@ -27,13 +26,22 @@
           });
         }
 
-        window.addEventListener("load", function() {
+        function consented() {
+          try { return localStorage.getItem("lyfeos.cookie-consent.v1") === "accepted"; }
+          catch (error) { return false; }
+        }
+
+        function loadAfterConsent() {
+          if (!consented()) return;
           if ("requestIdleCallback" in window) {
             window.requestIdleCallback(loadOptionalTypography, { timeout: 3000 });
           } else {
             window.setTimeout(loadOptionalTypography, 0);
           }
-        }, { once: true });
+        }
+
+        window.addEventListener("load", loadAfterConsent, { once: true });
+        window.addEventListener("lyfeos:cookie-consent-changed", loadAfterConsent);
       })();
     </script>
     <!-- Theme initialization script -->

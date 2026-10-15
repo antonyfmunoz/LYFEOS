@@ -1,27 +1,14 @@
 import "./instrument";
 
+import { lazy, Suspense, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { ClerkProvider } from "@clerk/clerk-react";
-import App from "./App";
 import "./index.css";
-import { QueryClientProvider } from "@tanstack/react-query";
-import { queryClient } from "./lib/queryClient";
-import * as Sentry from "@sentry/react";
-import { sentryEnabled } from "./instrument";
-import { AppErrorFallback } from "./components/AppErrorFallback";
+import { startSentryAfterConsent } from "./instrument";
+import { COOKIE_CONSENT_CHANGED_EVENT, hasOptionalCookieConsent } from "./lib/cookieConsent";
+import LandingPage from "./pages/LandingPage";
 
-const runtimeConfig = (window as Window & {
-  __LYFEOS_RUNTIME_CONFIG__?: {
-    clerkPublishableKey?: string;
-  };
-}).__LYFEOS_RUNTIME_CONFIG__;
-
-const PUBLISHABLE_KEY = runtimeConfig?.clerkPublishableKey || import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+const AppBootstrap = lazy(() => import("./AppBootstrap"));
 const CLERK_JS_VERSION = "5.127.2";
-
-if (!PUBLISHABLE_KEY) {
-  throw new Error("Missing Publishable Key");
-}
 
 // Add title
 document.title = "LYFEOS - Dashboard";
@@ -68,23 +55,17 @@ async function startServiceWorker(): Promise<void> {
 
 if ('serviceWorker' in navigator) void startServiceWorker();
 
-const application = (
-  <ClerkProvider
-    publishableKey={PUBLISHABLE_KEY}
-    clerkJSVersion={CLERK_JS_VERSION}
-  >
-    <QueryClientProvider client={queryClient}>
-      <App />
-    </QueryClientProvider>
-  </ClerkProvider>
-);
+function ConsentGatedApplication() {
+  const [hasConsent, setHasConsent] = useState(hasOptionalCookieConsent);
+  useEffect(() => {
+    const syncConsent = () => setHasConsent(hasOptionalCookieConsent());
+    window.addEventListener(COOKIE_CONSENT_CHANGED_EVENT, syncConsent);
+    return () => window.removeEventListener(COOKIE_CONSENT_CHANGED_EVENT, syncConsent);
+  }, []);
 
-createRoot(document.getElementById("root")!).render(
-  sentryEnabled ? (
-    <Sentry.ErrorBoundary
-      fallback={({ error, eventId }) => <AppErrorFallback error={error} eventId={eventId} />}
-    >
-      {application}
-    </Sentry.ErrorBoundary>
-  ) : application,
-);
+  if (!hasConsent) return <LandingPage />;
+  return <Suspense fallback={<div className="min-h-screen bg-background" aria-label="Loading LyfeOS" />}><AppBootstrap clerkJSVersion={CLERK_JS_VERSION} /></Suspense>;
+}
+
+createRoot(document.getElementById("root")!).render(<ConsentGatedApplication />);
+void startSentryAfterConsent();
