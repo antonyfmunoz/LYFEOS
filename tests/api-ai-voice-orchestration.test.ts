@@ -23,7 +23,7 @@ describeApi("AI voice and orchestration authenticated contract", () => {
 
   it("creates private idempotent voice records and completes extractive outputs", async () => {
     expect((await request("GET", "/api/ai/voice-sessions")).status).toBe(401);
-    const owner = await request("POST", "/api/auth/complete-registration", { email: `voice_${stamp}@example.com`, password: "TestPass123!", displayName: `voice_${stamp}`, termsAccepted: true });
+    const owner = await request("POST", "/api/auth/complete-registration", { email: `voice_${stamp}@example.com`, password: "TestPass123!", displayName: `voice_${stamp}`, termsAccepted: true, adultEligibilityAcknowledged: true });
     expect(owner.status).toBe(201); ownerCookie = owner.cookie; ownerId = owner.data.user.id;
     const created = await request("POST", "/api/ai/voice-sessions", { title: "Voice session", purpose: "meeting" }, ownerCookie);
     expect(created.status).toBe(201); voiceId = created.data.session.id;
@@ -51,7 +51,7 @@ describeApi("AI voice and orchestration authenticated contract", () => {
   });
 
   it("isolates owners and exports and erases both domains", async () => {
-    const other = await request("POST", "/api/auth/complete-registration", { email: `voice_other_${stamp}@example.com`, password: "TestPass123!", displayName: `voice_other_${stamp}`, termsAccepted: true });
+    const other = await request("POST", "/api/auth/complete-registration", { email: `voice_other_${stamp}@example.com`, password: "TestPass123!", displayName: `voice_other_${stamp}`, termsAccepted: true, adultEligibilityAcknowledged: true });
     expect(other.status).toBe(201); otherCookie = other.cookie;
     expect((await request("GET", `/api/ai/voice-sessions/${voiceId}`, undefined, otherCookie)).status).toBe(404);
     expect((await request("GET", `/api/ai/orchestration-runs/${runId}`, undefined, otherCookie)).status).toBe(404);

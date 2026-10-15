@@ -50,7 +50,7 @@ describeApi("Native Messages authenticated multi-account convergence", () => {
 
   beforeAll(async () => {
     for (const account of accounts) {
-      const registration = await request("POST", "/api/auth/complete-registration", { ...account, termsAccepted: true });
+      const registration = await request("POST", "/api/auth/complete-registration", { ...account, termsAccepted: true, adultEligibilityAcknowledged: true });
       expect(registration.status).toBe(201);
       account.cookie = registration.cookie;
       account.id = registration.data.user.id;

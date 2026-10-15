@@ -29,8 +29,8 @@ describeApi("spreadsheet version and concurrency contract", () => {
 
   it("requires authentication and creates isolated accounts", async () => {
     expect((await request("GET", "/api/spreadsheets/1/revisions")).status).toBe(401);
-    const owner = await request("POST", "/api/auth/complete-registration", { email: `sheets_owner_${stamp}@example.com`, password: "TestPass123!", displayName: `sheets_owner_${stamp}`, termsAccepted: true });
-    const other = await request("POST", "/api/auth/complete-registration", { email: `sheets_other_${stamp}@example.com`, password: "TestPass123!", displayName: `sheets_other_${stamp}`, termsAccepted: true });
+    const owner = await request("POST", "/api/auth/complete-registration", { email: `sheets_owner_${stamp}@example.com`, password: "TestPass123!", displayName: `sheets_owner_${stamp}`, termsAccepted: true, adultEligibilityAcknowledged: true });
+    const other = await request("POST", "/api/auth/complete-registration", { email: `sheets_other_${stamp}@example.com`, password: "TestPass123!", displayName: `sheets_other_${stamp}`, termsAccepted: true, adultEligibilityAcknowledged: true });
     expect([owner.status, other.status]).toEqual([201, 201]);
     ownerCookie = owner.cookie; otherCookie = other.cookie;
   });

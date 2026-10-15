@@ -36,7 +36,7 @@ describeApi("Project lifecycle recovery", () => {
 
   it("atomically converges concurrent links and refuses silent cross-Project moves", async () => {
     const registration = await request("POST", "/api/auth/complete-registration", {
-      email: `projects_${stamp}@example.com`, password: "TestPass123!", displayName: `projects_${stamp}`, termsAccepted: true,
+      email: `projects_${stamp}@example.com`, password: "TestPass123!", displayName: `projects_${stamp}`, termsAccepted: true, adultEligibilityAcknowledged: true,
     });
     expect(registration.status).toBe(201);
     cookie = registration.cookie;
@@ -179,7 +179,7 @@ describeApi("Project lifecycle recovery", () => {
 
   it("keeps Project records and repair routes owner-scoped and account-portable", async () => {
     const registration = await request("POST", "/api/auth/complete-registration", {
-      email: `projects_other_${stamp}@example.com`, password: "TestPass123!", displayName: `projects_other_${stamp}`, termsAccepted: true,
+      email: `projects_other_${stamp}@example.com`, password: "TestPass123!", displayName: `projects_other_${stamp}`, termsAccepted: true, adultEligibilityAcknowledged: true,
     });
     expect(registration.status).toBe(201);
     otherCookie = registration.cookie;

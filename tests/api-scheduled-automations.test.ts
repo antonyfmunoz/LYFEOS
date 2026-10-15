@@ -38,7 +38,7 @@ describeApi("Scheduled automation authenticated journey", () => {
 
   it("creates disabled, owner-scoped schedules and refuses a foreign anchor", async () => {
     expect((await request("GET", "/api/automations")).status).toBe(401);
-    const owner = await request("POST", "/api/auth/complete-registration", { email: `schedule_${stamp}@example.com`, password: "TestPass123!", displayName: `schedule_${stamp}`, termsAccepted: true });
+    const owner = await request("POST", "/api/auth/complete-registration", { email: `schedule_${stamp}@example.com`, password: "TestPass123!", displayName: `schedule_${stamp}`, termsAccepted: true, adultEligibilityAcknowledged: true });
     expect(owner.status).toBe(201); cookie = owner.cookie; userId = owner.data.user.id;
     const anchor = await request("POST", "/api/quests", { userId, title: "Weekly operating review", description: "Stable anchor", category: "operations", experienceReward: 10, completed: false }, cookie);
     expect(anchor.status).toBe(201); anchorId = anchor.data.quest.id;

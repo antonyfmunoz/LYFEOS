@@ -35,10 +35,10 @@ describeApi("bounded canonical mission Calendar window", () => {
 
   it("requires authentication and refuses a different account", async () => {
     const owner = await request("POST", "/api/auth/complete-registration", {
-      email: `calendar_owner_${stamp}@example.com`, password: "TestPass123!", displayName: `calendar_owner_${stamp}`, termsAccepted: true,
+      email: `calendar_owner_${stamp}@example.com`, password: "TestPass123!", displayName: `calendar_owner_${stamp}`, termsAccepted: true, adultEligibilityAcknowledged: true,
     });
     const other = await request("POST", "/api/auth/complete-registration", {
-      email: `calendar_other_${stamp}@example.com`, password: "TestPass123!", displayName: `calendar_other_${stamp}`, termsAccepted: true,
+      email: `calendar_other_${stamp}@example.com`, password: "TestPass123!", displayName: `calendar_other_${stamp}`, termsAccepted: true, adultEligibilityAcknowledged: true,
     });
     expect([owner.status, other.status]).toEqual([201, 201]);
     ownerCookie = owner.cookie;

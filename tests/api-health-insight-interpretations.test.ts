@@ -34,8 +34,8 @@ describeApi("Health insight interpretation authenticated journey", () => {
 
   it("creates isolated owners and calculates an uncertainty-bounded association", async () => {
     expect((await request("GET", "/api/health-insights/interpretations")).status).toBe(401);
-    const owner = await request("POST", "/api/auth/complete-registration", { email: `insight_owner_${stamp}@example.com`, password: "TestPass123!", displayName: `insight_owner_${stamp}`, termsAccepted: true });
-    const outsider = await request("POST", "/api/auth/complete-registration", { email: `insight_outsider_${stamp}@example.com`, password: "TestPass123!", displayName: `insight_outsider_${stamp}`, termsAccepted: true });
+    const owner = await request("POST", "/api/auth/complete-registration", { email: `insight_owner_${stamp}@example.com`, password: "TestPass123!", displayName: `insight_owner_${stamp}`, termsAccepted: true, adultEligibilityAcknowledged: true });
+    const outsider = await request("POST", "/api/auth/complete-registration", { email: `insight_outsider_${stamp}@example.com`, password: "TestPass123!", displayName: `insight_outsider_${stamp}`, termsAccepted: true, adultEligibilityAcknowledged: true });
     expect(owner.status).toBe(201);
     expect(outsider.status).toBe(201);
     ownerCookie = owner.cookie;

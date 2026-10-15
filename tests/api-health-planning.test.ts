@@ -30,7 +30,7 @@ describeApi("Health planning consent lifecycle API", () => {
   });
 
   it("creates an expiring title-only private handoff", async () => {
-    const registration = await request("POST", "/api/auth/complete-registration", { ...user, termsAccepted: true });
+    const registration = await request("POST", "/api/auth/complete-registration", { ...user, termsAccepted: true, adultEligibilityAcknowledged: true });
     expect(registration.status).toBe(201);
     cookie = registration.cookie;
     const created = await request("POST", "/api/health-insights/planning-drafts", {

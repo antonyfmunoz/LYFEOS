@@ -35,8 +35,8 @@ describeApi("Mission planning context amendment journey", () => {
   });
 
   it("creates one owner-private immutable creation snapshot with source drill-down", async () => {
-    const owner = await request("POST", "/api/auth/complete-registration", { email: `context_owner_${stamp}@example.com`, password: "TestPass123!", displayName: `context_owner_${stamp}`, termsAccepted: true });
-    const outsider = await request("POST", "/api/auth/complete-registration", { email: `context_outsider_${stamp}@example.com`, password: "TestPass123!", displayName: `context_outsider_${stamp}`, termsAccepted: true });
+    const owner = await request("POST", "/api/auth/complete-registration", { email: `context_owner_${stamp}@example.com`, password: "TestPass123!", displayName: `context_owner_${stamp}`, termsAccepted: true, adultEligibilityAcknowledged: true });
+    const outsider = await request("POST", "/api/auth/complete-registration", { email: `context_outsider_${stamp}@example.com`, password: "TestPass123!", displayName: `context_outsider_${stamp}`, termsAccepted: true, adultEligibilityAcknowledged: true });
     expect(owner.status).toBe(201);
     expect(outsider.status).toBe(201);
     ownerCookie = owner.cookie;

@@ -30,8 +30,8 @@ describeApi("canvas version and concurrency contract", () => {
 
   it("creates isolated accounts and an immutable baseline", async () => {
     expect((await request("GET", "/api/canvases/1/revisions")).status).toBe(401);
-    const owner = await request("POST", "/api/auth/complete-registration", { email: `canvas_owner_${stamp}@example.com`, password: "TestPass123!", displayName: `canvas_owner_${stamp}`, termsAccepted: true });
-    const other = await request("POST", "/api/auth/complete-registration", { email: `canvas_other_${stamp}@example.com`, password: "TestPass123!", displayName: `canvas_other_${stamp}`, termsAccepted: true });
+    const owner = await request("POST", "/api/auth/complete-registration", { email: `canvas_owner_${stamp}@example.com`, password: "TestPass123!", displayName: `canvas_owner_${stamp}`, termsAccepted: true, adultEligibilityAcknowledged: true });
+    const other = await request("POST", "/api/auth/complete-registration", { email: `canvas_other_${stamp}@example.com`, password: "TestPass123!", displayName: `canvas_other_${stamp}`, termsAccepted: true, adultEligibilityAcknowledged: true });
     expect([owner.status, other.status]).toEqual([201, 201]);
     ownerCookie = owner.cookie; otherCookie = other.cookie;
     const created = await request("POST", "/api/canvases", { title: "Original map", description: "baseline", category: "planning", favorite: false, content: documentWith("Original") }, ownerCookie);

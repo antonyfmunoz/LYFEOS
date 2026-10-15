@@ -22,7 +22,7 @@ describeApi("Web Push authenticated device contract", () => {
 
   it("is private, fails closed without VAPID, and isolates device records", async () => {
     expect((await request("GET", "/api/push/config")).status).toBe(401);
-    const owner = await request("POST", "/api/auth/complete-registration", { email: `push_${stamp}@example.com`, password: "TestPass123!", displayName: `push_${stamp}`, termsAccepted: true });
+    const owner = await request("POST", "/api/auth/complete-registration", { email: `push_${stamp}@example.com`, password: "TestPass123!", displayName: `push_${stamp}`, termsAccepted: true, adultEligibilityAcknowledged: true });
     expect(owner.status).toBe(201); ownerCookie = owner.cookie; ownerId = owner.data.user.id;
     const config = await request("GET", "/api/push/config", undefined, ownerCookie);
     expect(config.status).toBe(200); expect(config.data).toMatchObject({ configured: false, supported: true, publicKey: null });
@@ -30,7 +30,7 @@ describeApi("Web Push authenticated device contract", () => {
     await pool.query(`INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth, status) VALUES ($1,$2,$3,$4,'active')`, [ownerId, endpoint, "p".repeat(30), "a".repeat(12)]);
     const listed = await request("GET", "/api/push/subscriptions", undefined, ownerCookie);
     expect(listed.status).toBe(200); expect(listed.data.subscriptions).toHaveLength(1);
-    const other = await request("POST", "/api/auth/complete-registration", { email: `push_other_${stamp}@example.com`, password: "TestPass123!", displayName: `push_other_${stamp}`, termsAccepted: true });
+    const other = await request("POST", "/api/auth/complete-registration", { email: `push_other_${stamp}@example.com`, password: "TestPass123!", displayName: `push_other_${stamp}`, termsAccepted: true, adultEligibilityAcknowledged: true });
     expect(other.status).toBe(201); otherCookie = other.cookie;
     expect((await request("GET", "/api/push/subscriptions", undefined, otherCookie)).data.subscriptions).toEqual([]);
     expect((await request("DELETE", "/api/push/subscriptions", { endpoint }, otherCookie)).status).toBe(404);

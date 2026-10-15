@@ -39,7 +39,7 @@ describeApi("Health write concurrency API", () => {
   });
 
   it("creates exactly one workout for simultaneous identical mutation replays", async () => {
-    const registration = await request("POST", "/api/auth/complete-registration", { ...user, termsAccepted: true });
+    const registration = await request("POST", "/api/auth/complete-registration", { ...user, termsAccepted: true, adultEligibilityAcknowledged: true });
     expect(registration.status).toBe(201);
     cookie = registration.cookie;
 

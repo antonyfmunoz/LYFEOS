@@ -47,7 +47,7 @@ describeApi("workflow automation execution recovery", () => {
 
   it("creates an owner-scoped enabled rule and executes one run for concurrent duplicate requests", async () => {
     const registration = await request("POST", "/api/auth/complete-registration", {
-      email: `automation_${stamp}@example.com`, password: "TestPass123!", displayName: `automation_${stamp}`, termsAccepted: true,
+      email: `automation_${stamp}@example.com`, password: "TestPass123!", displayName: `automation_${stamp}`, termsAccepted: true, adultEligibilityAcknowledged: true,
     });
     expect(registration.status).toBe(201);
     cookie = registration.cookie;
@@ -114,7 +114,7 @@ describeApi("workflow automation execution recovery", () => {
 
   it("does not let another account read or repair the owner's receipts", async () => {
     const registration = await request("POST", "/api/auth/complete-registration", {
-      email: `automation_other_${stamp}@example.com`, password: "TestPass123!", displayName: `automation_other_${stamp}`, termsAccepted: true,
+      email: `automation_other_${stamp}@example.com`, password: "TestPass123!", displayName: `automation_other_${stamp}`, termsAccepted: true, adultEligibilityAcknowledged: true,
     });
     expect(registration.status).toBe(201);
     otherCookie = registration.cookie;

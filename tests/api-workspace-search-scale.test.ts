@@ -38,8 +38,8 @@ describeApi("private workspace search at realistic account scale", () => {
 
   it("builds isolated canonical fixtures without exposing a contact secret as search content", async () => {
     expect((await request("GET", "/api/search?q=atlasneedle")).status).toBe(401);
-    const ownerRegistration = await request("POST", "/api/auth/complete-registration", { ...owner, termsAccepted: true });
-    const otherRegistration = await request("POST", "/api/auth/complete-registration", { ...other, termsAccepted: true });
+    const ownerRegistration = await request("POST", "/api/auth/complete-registration", { ...owner, termsAccepted: true, adultEligibilityAcknowledged: true });
+    const otherRegistration = await request("POST", "/api/auth/complete-registration", { ...other, termsAccepted: true, adultEligibilityAcknowledged: true });
     expect([ownerRegistration.status, otherRegistration.status]).toEqual([201, 201]);
     ownerCookie = ownerRegistration.cookie;
     otherCookie = otherRegistration.cookie;

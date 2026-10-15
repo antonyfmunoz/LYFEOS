@@ -54,7 +54,7 @@ describeApi("Authenticated Health report and write load", () => {
   });
 
   it("serves concurrent owner-scoped reports across 12,500 factual and 2,500 planned records", async () => {
-    const registration = await request("POST", "/api/auth/complete-registration", { ...user, termsAccepted: true });
+    const registration = await request("POST", "/api/auth/complete-registration", { ...user, termsAccepted: true, adultEligibilityAcknowledged: true });
     expect(registration.status).toBe(201);
     cookie = registration.cookie;
     ({ db, pool } = await import("../server/db"));

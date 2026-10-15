@@ -41,10 +41,10 @@ describeApi("Thread capability focus authenticated journey", () => {
 
   it("creates two isolated capability maps from completed onboarding", async () => {
     const owner = await request("POST", "/api/auth/complete-registration", {
-      email: `focus_owner_${stamp}@example.com`, password: "TestPass123!", displayName: `focus_owner_${stamp}`, termsAccepted: true,
+      email: `focus_owner_${stamp}@example.com`, password: "TestPass123!", displayName: `focus_owner_${stamp}`, termsAccepted: true, adultEligibilityAcknowledged: true,
     });
     const outsider = await request("POST", "/api/auth/complete-registration", {
-      email: `focus_outsider_${stamp}@example.com`, password: "TestPass123!", displayName: `focus_outsider_${stamp}`, termsAccepted: true,
+      email: `focus_outsider_${stamp}@example.com`, password: "TestPass123!", displayName: `focus_outsider_${stamp}`, termsAccepted: true, adultEligibilityAcknowledged: true,
     });
     expect(owner.status).toBe(201);
     expect(outsider.status).toBe(201);

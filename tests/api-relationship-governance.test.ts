@@ -21,8 +21,8 @@ describeApi("relationship intelligence governance authenticated journey", () => 
   });
 
   it("creates an owner-private relationship and denies another user", async () => {
-    const owner = await request("POST", "/api/auth/complete-registration", { email: `relationship_owner_${stamp}@example.com`, password: "TestPass123!", displayName: `owner_${stamp}`, termsAccepted: true });
-    const other = await request("POST", "/api/auth/complete-registration", { email: `relationship_other_${stamp}@example.com`, password: "TestPass123!", displayName: `other_${stamp}`, termsAccepted: true });
+    const owner = await request("POST", "/api/auth/complete-registration", { email: `relationship_owner_${stamp}@example.com`, password: "TestPass123!", displayName: `owner_${stamp}`, termsAccepted: true, adultEligibilityAcknowledged: true });
+    const other = await request("POST", "/api/auth/complete-registration", { email: `relationship_other_${stamp}@example.com`, password: "TestPass123!", displayName: `other_${stamp}`, termsAccepted: true, adultEligibilityAcknowledged: true });
     expect(owner.status).toBe(201); expect(other.status).toBe(201);
     ownerCookie = owner.cookie; otherCookie = other.cookie;
     const contact = await request("POST", "/api/contacts", { name: "Private relationship test", category: "personal", relationshipType: "friend", email: "never-share@example.com", notes: "never share this note" }, ownerCookie);
