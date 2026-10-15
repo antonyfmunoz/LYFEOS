@@ -18,6 +18,7 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [disclosuresReviewed, setDisclosuresReviewed] = useState(false);
+  const [adultEligibilityAcknowledged, setAdultEligibilityAcknowledged] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isOAuthRedirecting, setIsOAuthRedirecting] = useState(() => {
     return !!localStorage.getItem('lyfeos-oauth-redirect-pending');
@@ -74,8 +75,8 @@ export default function RegisterPage() {
       return;
     }
     
-    if (!disclosuresReviewed) {
-      setError("Review and acknowledge the beta access and privacy disclosures");
+    if (!disclosuresReviewed || !adultEligibilityAcknowledged) {
+      setError("Confirm that you are at least 18 and acknowledge the beta access and privacy disclosures");
       setIsLoading(false);
       return;
     }
@@ -96,6 +97,7 @@ export default function RegisterPage() {
         email: trimmedEmail,
         avatarColor: "#00e0ff",
         registrationDisclosureVersion: REGISTRATION_DISCLOSURE_VERSION,
+        adultEligibilityAcknowledged: true,
       }));
       localStorage.removeItem("lyfeos-has-seen-dashboard");
       localStorage.setItem("lyfeos-pending-onboarding", "true");
@@ -137,8 +139,8 @@ export default function RegisterPage() {
         <div className="space-y-2.5 mb-5">
           <button
             type="button"
-            onClick={() => loginWithGoogle('register')}
-            disabled={!disclosuresReviewed}
+            onClick={() => loginWithGoogle('register', adultEligibilityAcknowledged)}
+            disabled={!disclosuresReviewed || !adultEligibilityAcknowledged}
             className="w-full flex items-center justify-center gap-3 py-2.5 rounded border text-sm font-medium transition-colors hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-40"
             style={{ backgroundColor: 'rgba(255,255,255,0.05)', borderColor: accent?.border30 || 'rgba(255,255,255,0.2)' }}
           >
@@ -152,8 +154,8 @@ export default function RegisterPage() {
           </button>
           <button
             type="button"
-            onClick={() => loginWithApple('register')}
-            disabled={!disclosuresReviewed}
+            onClick={() => loginWithApple('register', adultEligibilityAcknowledged)}
+            disabled={!disclosuresReviewed || !adultEligibilityAcknowledged}
             className="w-full flex items-center justify-center gap-3 py-2.5 rounded border text-sm font-medium transition-colors hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-40"
             style={{ backgroundColor: 'rgba(255,255,255,0.05)', borderColor: accent?.border30 || 'rgba(255,255,255,0.2)' }}
           >
@@ -235,6 +237,15 @@ export default function RegisterPage() {
               <a href="/terms" target="_blank" rel="noreferrer" className="auth-link hover:opacity-80" style={{ color: accent?.color || 'white' }}>beta access</a>{" "}
               <a href="/privacy" target="_blank" rel="noreferrer" className="auth-link hover:opacity-80" style={{ color: accent?.color || 'white' }}>privacy notice</a>, and <a href="/health-privacy" target="_blank" rel="noreferrer" className="auth-link hover:opacity-80" style={{ color: accent?.color || 'white' }}>consumer health data notice</a>. These are not finalized legal terms.
             </div>
+          </div>
+          <div className="flex items-start space-x-2">
+            <Checkbox
+              id="adult-eligibility"
+              checked={adultEligibilityAcknowledged}
+              onCheckedChange={(checked) => setAdultEligibilityAcknowledged(checked === true)}
+              className="mt-1 border-white/50 data-[state=checked]:bg-white data-[state=checked]:text-black"
+            />
+            <label htmlFor="adult-eligibility" className="cursor-pointer text-sm text-white">I confirm that I am at least 18 years old.</label>
           </div>
           
           {error && (

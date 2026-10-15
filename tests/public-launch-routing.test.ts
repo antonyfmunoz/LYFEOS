@@ -29,6 +29,8 @@ describe("public launch routing", () => {
     expect(onboarding).toContain("registrationDisclosureVersion: REGISTRATION_DISCLOSURE_VERSION");
     expect(authRoutes).toContain('registrationDisclosureVersion: acknowledgedVersion');
     expect(authRoutes).toContain('termsAccepted: termsAccepted === true');
+    expect(registration).toContain("I confirm that I am at least 18 years old.");
+    expect(authRoutes).toContain("adultEligibilityAcknowledged !== true");
     expect(migration).toContain('"registration_disclosure_acknowledged_at" timestamp');
     expect(disclosure).toContain("does not currently publish approved consumer Terms of Service");
     expect(disclosure).toContain("factual summary of current product behavior");

@@ -32,6 +32,11 @@ export default function ConsumerPrivacyNoticePage() {
             This notice describes LyfeOS&apos;s current U.S. product behavior. It applies to visitors and users in every U.S. state. State privacy laws may apply only when their statutory thresholds or data definitions are met; LyfeOS provides these choices nationally rather than requiring you to identify your state.
           </p>
 
+          <section className="mt-8" aria-labelledby="age-heading">
+            <h2 id="age-heading" className="text-lg font-semibold text-foreground">Adults-only service</h2>
+            <p className="mt-3 text-sm leading-6 text-muted-foreground">LyfeOS is for people 18 and older. New users must confirm they are at least 18 before an email or OAuth account can be created. We do not offer a parental-consent path for children.</p>
+          </section>
+
           <section className="mt-8" aria-labelledby="collection-heading">
             <h2 id="collection-heading" className="text-lg font-semibold text-foreground">What we collect and why</h2>
             <div className="mt-3 space-y-3">

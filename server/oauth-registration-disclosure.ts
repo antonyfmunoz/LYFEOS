@@ -6,6 +6,7 @@ export const OAUTH_REGISTRATION_INTENT_TTL_MS = 10 * 60 * 1000;
 export interface OAuthRegistrationIntent {
   id: string;
   disclosureVersion: typeof REGISTRATION_DISCLOSURE_VERSION;
+  adultEligibilityAcknowledged: true;
   issuedAt: number;
   expiresAt: number;
 }
@@ -30,6 +31,7 @@ export function createOAuthRegistrationIntent(
   return {
     id,
     disclosureVersion: REGISTRATION_DISCLOSURE_VERSION,
+    adultEligibilityAcknowledged: true,
     issuedAt: now,
     expiresAt: now + OAUTH_REGISTRATION_INTENT_TTL_MS,
   };
@@ -56,6 +58,7 @@ export function canApplyOAuthRegistrationDisclosure(
   now = Date.now(),
 ): boolean {
   if (intent.disclosureVersion !== REGISTRATION_DISCLOSURE_VERSION) return false;
+  if (intent.adultEligibilityAcknowledged !== true) return false;
   if (now < intent.issuedAt || now > intent.expiresAt) return false;
   if (clerkUser.id !== localUser.clerkId || localUser.authProvider !== "clerk") return false;
   if (localUser.registrationDisclosureVersion || localUser.registrationDisclosureAcknowledgedAt) return false;

@@ -3772,6 +3772,13 @@ const migrations = [
       CREATE UNIQUE INDEX IF NOT EXISTS "message_bridge_threads_device_conversation_unique" ON "message_bridge_threads" ("device_id", "conversation_id");
     `,
   },
+  {
+    id: "0166_adult_eligibility_acknowledgment",
+    sql: `
+      ALTER TABLE "users"
+        ADD COLUMN IF NOT EXISTS "adult_eligibility_acknowledged_at" timestamp;
+    `,
+  },
 ];
 
 async function run(): Promise<void> {

@@ -49,6 +49,7 @@ export default function TrustDisclosurePage() {
               </p>
               <div className="mt-6 space-y-3 rounded-xl border border-primary/15 bg-background/30 p-4 text-sm leading-6 text-muted-foreground">
                 <p>LyfeOS records and visualizes information you enter. It does not diagnose, treat, certify competence, grant authority, or replace medical, legal, financial, or other qualified professional judgment.</p>
+                <p>LyfeOS is an adults-only service. New users must confirm they are at least 18; LyfeOS does not provide a parental-consent path for children.</p>
                 <p>High-risk actions remain yours. Review source information, stop conditions, evidence, and uncertainty before acting.</p>
                 <p>A lawyer-approved agreement, support commitment, refund policy, and paid entitlement contract must be published before LyfeOS presents a commercial offer.</p>
               </div>

@@ -40,6 +40,7 @@ interface LocalUserSeed {
   email: string;
   firstName?: string | null;
   lastName?: string | null;
+  adultEligibilityAcknowledgedAt?: Date | null;
 }
 
 async function initializeUserRecords(userId: number) {
@@ -109,6 +110,7 @@ async function provisionLocalUserOnce(seed: LocalUserSeed) {
         authProvider: "clerk",
         clerkId: seed.clerkId,
         termsAccepted: false,
+        adultEligibilityAcknowledgedAt: seed.adultEligibilityAcknowledgedAt ?? null,
       });
 
       await initializeUserRecords(user.id);
@@ -205,7 +207,13 @@ export const bindAuthenticatedPrincipal = async (req: Request, res: Response, ne
           delete req.session.oauthRegistrationIntent;
           return res.status(401).json({ error: "Start account creation from the LyfeOS registration page." });
         }
-        user = await provisionLocalUser({ clerkId: userId, email, firstName: clerkUser.firstName, lastName: clerkUser.lastName });
+        user = await provisionLocalUser({
+          clerkId: userId,
+          email,
+          firstName: clerkUser.firstName,
+          lastName: clerkUser.lastName,
+          adultEligibilityAcknowledgedAt: new Date(),
+        });
       }
     } catch (error) {
       logger.error("Unable to provision authenticated Clerk user:", error);
@@ -298,8 +306,8 @@ export function registerAuthRoutes(app: Express): void {
     if (clerkUserId || req.session.userId) {
       return res.status(409).json({ error: "Sign out before creating another account" });
     }
-    if (req.body?.registrationDisclosureVersion !== REGISTRATION_DISCLOSURE_VERSION) {
-      return res.status(400).json({ error: "Review and acknowledge the current registration disclosures" });
+    if (req.body?.registrationDisclosureVersion !== REGISTRATION_DISCLOSURE_VERSION || req.body?.adultEligibilityAcknowledged !== true) {
+      return res.status(400).json({ error: "Confirm that you are at least 18 and acknowledge the current registration disclosures" });
     }
 
     const intent = createOAuthRegistrationIntent();
@@ -352,19 +360,19 @@ export function registerAuthRoutes(app: Express): void {
 
   app.post("/api/auth/register", async (req: Request, res: Response) => {
     try {
-      const { email, password, termsAccepted, registrationDisclosureVersion, avatarColor } = req.body;
+      const { email, password, termsAccepted, registrationDisclosureVersion, avatarColor, adultEligibilityAcknowledged } = req.body;
       const acknowledgedVersion = registrationDisclosureVersion === REGISTRATION_DISCLOSURE_VERSION
         ? REGISTRATION_DISCLOSURE_VERSION
         : termsAccepted === true ? "legacy_terms_boolean" : null;
-      if (!z.string().email().safeParse(email).success || typeof password !== "string" || password.length < 6 || !acknowledgedVersion) {
-        return res.status(400).json({ error: "A valid email, password, and registration disclosure acknowledgment are required" });
+      if (!z.string().email().safeParse(email).success || typeof password !== "string" || password.length < 6 || !acknowledgedVersion || adultEligibilityAcknowledged !== true) {
+        return res.status(400).json({ error: "A valid email, password, adult eligibility acknowledgment, and registration disclosure acknowledgment are required" });
       }
       const normalizedEmail = email.trim().toLowerCase();
       if (await storage.getUserByEmail(normalizedEmail)) return res.status(409).json({ error: "An account with this email already exists" });
       const user = await storage.createUser({
         email: normalizedEmail, password: await bcrypt.hash(password, 12), displayName: normalizedEmail.split("@")[0],
         title: "COMMANDER", authProvider: "email", termsAccepted: termsAccepted === true,
-        registrationDisclosureVersion: acknowledgedVersion, registrationDisclosureAcknowledgedAt: new Date(), avatarColor: avatarColor || "#00e0ff",
+        registrationDisclosureVersion: acknowledgedVersion, registrationDisclosureAcknowledgedAt: new Date(), adultEligibilityAcknowledgedAt: new Date(), avatarColor: avatarColor || "#00e0ff",
       });
       await initializeUserRecords(user.id);
       bindSession(req, user);
@@ -392,12 +400,12 @@ export function registerAuthRoutes(app: Express): void {
 
   app.post("/api/auth/complete-registration", async (req: Request, res: Response) => {
     try {
-      const { email, password, displayName, firstName, lastName, avatarColor, termsAccepted, registrationDisclosureVersion } = req.body;
+      const { email, password, displayName, firstName, lastName, avatarColor, termsAccepted, registrationDisclosureVersion, adultEligibilityAcknowledged } = req.body;
       const acknowledgedVersion = registrationDisclosureVersion === REGISTRATION_DISCLOSURE_VERSION
         ? REGISTRATION_DISCLOSURE_VERSION
         : termsAccepted === true ? "legacy_terms_boolean" : null;
-      if (!z.string().email().safeParse(email).success || typeof password !== "string" || password.length < 6 || typeof displayName !== "string" || displayName.trim().length < 3 || !acknowledgedVersion) {
-        return res.status(400).json({ error: "Please provide a valid email, password, display name, and registration disclosure acknowledgment" });
+      if (!z.string().email().safeParse(email).success || typeof password !== "string" || password.length < 6 || typeof displayName !== "string" || displayName.trim().length < 3 || !acknowledgedVersion || adultEligibilityAcknowledged !== true) {
+        return res.status(400).json({ error: "Please provide a valid email, password, display name, adult eligibility acknowledgment, and registration disclosure acknowledgment" });
       }
       const normalizedEmail = email.trim().toLowerCase();
       if (await storage.getUserByEmail(normalizedEmail)) return res.status(409).json({ error: "An account with this email already exists" });
@@ -406,7 +414,7 @@ export function registerAuthRoutes(app: Express): void {
       const user = await storage.createUser({
         email: normalizedEmail, password: await bcrypt.hash(password, 12), displayName: displayName.trim(), firstName: firstName || null,
         lastName: lastName || null, title: "COMMANDER", authProvider: "email", termsAccepted: termsAccepted === true,
-        registrationDisclosureVersion: acknowledgedVersion, registrationDisclosureAcknowledgedAt: new Date(), avatarColor: avatarColor || "#00e0ff",
+        registrationDisclosureVersion: acknowledgedVersion, registrationDisclosureAcknowledgedAt: new Date(), adultEligibilityAcknowledgedAt: new Date(), avatarColor: avatarColor || "#00e0ff",
       });
       await initializeUserRecords(user.id);
       bindSession(req, user);

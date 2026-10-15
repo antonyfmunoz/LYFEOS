@@ -26,6 +26,7 @@ export const users = pgTable("users", {
   termsAccepted: boolean("terms_accepted").default(false), // Legacy legal-terms flag; new beta disclosure provenance is stored separately.
   registrationDisclosureVersion: text("registration_disclosure_version"),
   registrationDisclosureAcknowledgedAt: timestamp("registration_disclosure_acknowledged_at"),
+  adultEligibilityAcknowledgedAt: timestamp("adult_eligibility_acknowledged_at"),
   emailVerified: boolean("email_verified").default(false),
   emailVerificationToken: text("email_verification_token"),
   emailVerificationExpiry: timestamp("email_verification_expiry"),
@@ -1215,6 +1216,7 @@ export const insertUserSchema = createInsertSchema(users).pick({
   termsAccepted: true,
   registrationDisclosureVersion: true,
   registrationDisclosureAcknowledgedAt: true,
+  adultEligibilityAcknowledgedAt: true,
   lastLoginAt: true,
   stripeCustomerId: true,
   stripeSubscriptionId: true,
