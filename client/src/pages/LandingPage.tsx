@@ -567,12 +567,12 @@ export default function LandingPage() {
               <Link href="/login" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">
                 Login
               </Link>
-              <a href="#" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">
-                Privacy Policy
-              </a>
-              <a href="#" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">
-                Terms of Service
-              </a>
+              <Link href="/privacy" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">
+                Privacy disclosure
+              </Link>
+              <Link href="/terms" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">
+                Beta access disclosure
+              </Link>
               <a href="mailto:hello@lyfeos.com" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">
                 Contact
               </a>

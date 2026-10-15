@@ -6,6 +6,7 @@ const privacyFacts = [
   "Personal records are private to the signed-in owner unless the owner uses a specific sharing control.",
   "Health, finance, private messages, evidence, AI memory, and record text are excluded from product analytics.",
   "Product analytics is off by default and can be enabled or withdrawn from Profile only after the provider passes LyfeOS privacy checks.",
+  "Optional measurement and error monitoring require a browser-level choice. A Global Privacy Control signal keeps those optional services off.",
   "Profile includes account export and deletion controls. A connected provider may retain its own copy under that provider's rules.",
   "LyfeOS records source and revision history where needed for truthful correction, reversal, security, and recovery behavior.",
 ] as const;
@@ -38,7 +39,7 @@ export default function TrustDisclosurePage() {
                 {privacyFacts.map((fact) => <li key={fact} className="rounded-lg border border-primary/10 bg-background/30 px-4 py-3">{fact}</li>)}
               </ul>
               <p className="mt-6 text-sm leading-6 text-muted-foreground">
-                The signed-in Profile shows the detailed data-rights contract, provider boundaries, export controls, scoped deletion controls, and analytics consent state implemented by this release.
+                The signed-in Profile shows the detailed data-rights contract, provider boundaries, export controls, scoped deletion controls, analytics consent state, and cookie controls implemented by this release.
               </p>
             </>
           ) : (

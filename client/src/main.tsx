@@ -6,6 +6,8 @@ import "./index.css";
 import { startSentryAfterConsent } from "./instrument";
 import { COOKIE_CONSENT_CHANGED_EVENT, hasOptionalCookieConsent } from "./lib/cookieConsent";
 import LandingPage from "./pages/LandingPage";
+import TrustDisclosurePage from "./pages/TrustDisclosurePage";
+import { CookieConsentBanner } from "./components/CookieConsentBanner";
 
 const AppBootstrap = lazy(() => import("./AppBootstrap"));
 const CLERK_JS_VERSION = "5.127.2";
@@ -63,7 +65,10 @@ function ConsentGatedApplication() {
     return () => window.removeEventListener(COOKIE_CONSENT_CHANGED_EVENT, syncConsent);
   }, []);
 
-  if (!hasConsent) return <LandingPage />;
+  if (!hasConsent) {
+    const isPublicDisclosure = window.location.pathname === "/privacy" || window.location.pathname === "/terms";
+    return isPublicDisclosure ? <><TrustDisclosurePage /><CookieConsentBanner /></> : <LandingPage />;
+  }
   return <Suspense fallback={<div className="min-h-screen bg-background" aria-label="Loading LyfeOS" />}><AppBootstrap clerkJSVersion={CLERK_JS_VERSION} /></Suspense>;
 }
 

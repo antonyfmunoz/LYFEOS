@@ -92,6 +92,7 @@ import IMessageBridgeConnection from "@/components/profile/IMessageBridgeConnect
 import HealthPreferences from "@/components/health/HealthPreferences";
 import HealthConnections from "@/components/health/HealthConnections";
 import HealthDataRights from "@/components/health/HealthDataRights";
+import CookieSettings from "@/components/profile/CookieSettings";
 import {
   defaultGoogleIntegrationPermissions,
   defaultGoogleAccountPermissionPreferences,
@@ -2468,6 +2469,7 @@ export default function ProfilePage() {
             {widgetId === 'preferences' ? <PushNotificationSettings /> : null}
 
             {widgetId === 'privacy-data' ? <>
+            <CookieSettings />
             <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
               <div className="flex items-center gap-2 mb-2">
                 <Brain className="h-4 w-4 text-primary" />
