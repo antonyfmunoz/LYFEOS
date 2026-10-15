@@ -27,7 +27,7 @@
         }
 
         function consented() {
-          try { return localStorage.getItem("lyfeos.cookie-consent.v1") === "accepted"; }
+          try { return localStorage.getItem("lyfeos.cookie-consent.v1") === "accepted" && navigator.globalPrivacyControl !== true; }
           catch (error) { return false; }
         }
 

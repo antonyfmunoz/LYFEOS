@@ -7,9 +7,11 @@ describe("public launch routing", () => {
 
   it("keeps registration and account recovery publicly reachable", () => {
     expect(app).toContain('<Route path="/register" component={RegisterPage} />');
-    expect(app).toContain('<Route path="/privacy" component={TrustDisclosurePage} />');
+    expect(app).toContain('<Route path="/privacy" component={ConsumerPrivacyNoticePage} />');
+    expect(app).toContain('<Route path="/health-privacy" component={ConsumerHealthDataNoticePage} />');
+    expect(app).toContain('<Route path="/privacy-choices" component={PrivacyChoicesPage} />');
     expect(app).toContain('<Route path="/terms" component={TrustDisclosurePage} />');
-    expect(app).toContain("'/privacy', '/terms'");
+    expect(app).toContain("'/privacy', '/health-privacy', '/privacy-choices', '/terms'");
     expect(app).toContain('<Route path="/forgot-password" component={ForgotPasswordPage} />');
     expect(app).toContain('<Route path="/reset-password" component={ResetPasswordPage} />');
     expect(app).toContain("'/forgot-password', '/reset-password'");

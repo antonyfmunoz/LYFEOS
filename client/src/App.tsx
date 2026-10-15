@@ -96,6 +96,9 @@ const MessagesPage = lazyRoute(() => import("./pages/MessagesPage"));
 const WaitlistPage = lazyRoute(() => import("./pages/WaitlistPage"));
 const WaitlistThankYouPage = lazyRoute(() => import("./pages/WaitlistThankYouPage"));
 const TrustDisclosurePage = lazyRoute(() => import("./pages/TrustDisclosurePage"));
+const ConsumerPrivacyNoticePage = lazyRoute(() => import("./pages/ConsumerPrivacyNoticePage"));
+const ConsumerHealthDataNoticePage = lazyRoute(() => import("./pages/ConsumerHealthDataNoticePage"));
+const PrivacyChoicesPage = lazyRoute(() => import("./pages/PrivacyChoicesPage"));
 
 const isTouchDevice = () =>
   typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
@@ -348,7 +351,7 @@ function Router() {
     }
     
     // Public paths that don't require auth
-    const publicPaths = ['/login', '/register', '/forgot-password', '/reset-password', '/privacy', '/terms', '/login-success', '/sso-callback', '/waitlist', '/review-mission', '/forms/respond'];
+    const publicPaths = ['/login', '/register', '/forgot-password', '/reset-password', '/privacy', '/health-privacy', '/privacy-choices', '/terms', '/login-success', '/sso-callback', '/waitlist', '/review-mission', '/forms/respond'];
     const exactPublicPaths = ['/subscription'];
     if (publicPaths.some(path => currentPath.startsWith(path)) || exactPublicPaths.includes(currentPath)) {
       return;
@@ -383,7 +386,9 @@ function Router() {
       <Route path="/register" component={RegisterPage} />
       <Route path="/forgot-password" component={ForgotPasswordPage} />
       <Route path="/reset-password" component={ResetPasswordPage} />
-      <Route path="/privacy" component={TrustDisclosurePage} />
+      <Route path="/privacy" component={ConsumerPrivacyNoticePage} />
+      <Route path="/health-privacy" component={ConsumerHealthDataNoticePage} />
+      <Route path="/privacy-choices" component={PrivacyChoicesPage} />
       <Route path="/terms" component={TrustDisclosurePage} />
       <Route path="/login-success" component={LoginSuccessPage} />
       <Route path="/review-mission" component={MissionReviewPage} />

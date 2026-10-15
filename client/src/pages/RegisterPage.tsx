@@ -233,7 +233,7 @@ export default function RegisterPage() {
             <div id="trust-disclosure-links" className="text-sm text-white">
               <label htmlFor="trust-disclosures" className="cursor-pointer">I reviewed these disclosures:</label>{" "}
               <a href="/terms" target="_blank" rel="noreferrer" className="auth-link hover:opacity-80" style={{ color: accent?.color || 'white' }}>beta access</a>{" "}
-              and factual <a href="/privacy" target="_blank" rel="noreferrer" className="auth-link hover:opacity-80" style={{ color: accent?.color || 'white' }}>privacy</a>. These are not finalized legal terms.
+              <a href="/privacy" target="_blank" rel="noreferrer" className="auth-link hover:opacity-80" style={{ color: accent?.color || 'white' }}>privacy notice</a>, and <a href="/health-privacy" target="_blank" rel="noreferrer" className="auth-link hover:opacity-80" style={{ color: accent?.color || 'white' }}>consumer health data notice</a>. These are not finalized legal terms.
             </div>
           </div>
           

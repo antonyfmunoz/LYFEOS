@@ -8,6 +8,9 @@ import { COOKIE_CONSENT_CHANGED_EVENT, hasOptionalCookieConsent } from "./lib/co
 import LandingPage from "./pages/LandingPage";
 import TrustDisclosurePage from "./pages/TrustDisclosurePage";
 import { CookieConsentBanner } from "./components/CookieConsentBanner";
+import ConsumerPrivacyNoticePage from "./pages/ConsumerPrivacyNoticePage";
+import ConsumerHealthDataNoticePage from "./pages/ConsumerHealthDataNoticePage";
+import PrivacyChoicesPage from "./pages/PrivacyChoicesPage";
 
 const AppBootstrap = lazy(() => import("./AppBootstrap"));
 const CLERK_JS_VERSION = "5.127.2";
@@ -66,8 +69,12 @@ function ConsentGatedApplication() {
   }, []);
 
   if (!hasConsent) {
-    const isPublicDisclosure = window.location.pathname === "/privacy" || window.location.pathname === "/terms";
-    return isPublicDisclosure ? <><TrustDisclosurePage /><CookieConsentBanner /></> : <LandingPage />;
+    const publicPath = window.location.pathname;
+    if (publicPath === "/privacy") return <><ConsumerPrivacyNoticePage /><CookieConsentBanner /></>;
+    if (publicPath === "/health-privacy") return <><ConsumerHealthDataNoticePage /><CookieConsentBanner /></>;
+    if (publicPath === "/privacy-choices") return <PrivacyChoicesPage />;
+    if (publicPath === "/terms") return <><TrustDisclosurePage /><CookieConsentBanner /></>;
+    return <LandingPage />;
   }
   return <Suspense fallback={<div className="min-h-screen bg-background" aria-label="Loading LyfeOS" />}><AppBootstrap clerkJSVersion={CLERK_JS_VERSION} /></Suspense>;
 }
