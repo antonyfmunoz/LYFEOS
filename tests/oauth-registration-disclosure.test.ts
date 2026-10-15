@@ -39,6 +39,10 @@ describe("OAuth registration disclosure provenance", () => {
     expect(canApplyOAuthRegistrationDisclosure(intent, clerkUser, localUser, now + 2_000)).toBe(true);
   });
 
+  it("requires the server-bound adult eligibility acknowledgment", () => {
+    expect(canApplyOAuthRegistrationDisclosure({ ...intent, adultEligibilityAcknowledged: false as true }, clerkUser, localUser, now + 2_000)).toBe(false);
+  });
+
   it("rejects an existing account, expired intent, nonce mismatch, and non-Clerk local account", () => {
     expect(canApplyOAuthRegistrationDisclosure(intent, { ...clerkUser, createdAt: now - 1 }, localUser, now + 2_000)).toBe(false);
     expect(canApplyOAuthRegistrationDisclosure(intent, clerkUser, localUser, intent.expiresAt + 1)).toBe(false);
@@ -72,6 +76,8 @@ describe("OAuth registration disclosure provenance", () => {
     expect(authContext).toContain('localStorage.removeItem("lyfeos-ceremony-destination")');
     expect(authContext).toContain("signUp.authenticateWithRedirect");
     expect(authContext).toContain("lyfeosRegistrationIntentId: intent.intentId");
+    expect(authContext).toContain("adultEligibilityAcknowledged");
+    expect(authRoutes).toContain("adultEligibilityAcknowledgedAt");
     expect(app).toContain('<Route path="/sso-callback">');
     expect(app).toContain('transferable={oauthMode !== "login"}');
     expect(app).toContain('signInUrl="/login"');

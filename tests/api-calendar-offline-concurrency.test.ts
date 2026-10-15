@@ -27,7 +27,7 @@ describeApi("Calendar offline mutation convergence", () => {
 
   it("replays exact creates and rejects changed-payload mutation reuse", async () => {
     const registration = await request("POST", "/api/auth/complete-registration", {
-      email: `calendar_offline_${stamp}@example.com`, password: "TestPass123!", displayName: `calendar_offline_${stamp}`, termsAccepted: true,
+      email: `calendar_offline_${stamp}@example.com`, password: "TestPass123!", displayName: `calendar_offline_${stamp}`, termsAccepted: true, adultEligibilityAcknowledged: true,
     });
     expect(registration.status).toBe(201);
     cookie = registration.cookie;

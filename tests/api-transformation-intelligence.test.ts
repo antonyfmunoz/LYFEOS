@@ -42,8 +42,8 @@ describeApi("Transformation intelligence API", () => {
   });
 
   it("creates isolated owner and reviewer accounts", async () => {
-    const ownerRegistration = await request("POST", "/api/auth/complete-registration", { ...owner, termsAccepted: true });
-    const reviewerRegistration = await request("POST", "/api/auth/complete-registration", { ...reviewer, termsAccepted: true });
+    const ownerRegistration = await request("POST", "/api/auth/complete-registration", { ...owner, termsAccepted: true, adultEligibilityAcknowledged: true });
+    const reviewerRegistration = await request("POST", "/api/auth/complete-registration", { ...reviewer, termsAccepted: true, adultEligibilityAcknowledged: true });
     expect(ownerRegistration.status).toBe(201);
     expect(reviewerRegistration.status).toBe(201);
     ownerCookie = ownerRegistration.cookie;

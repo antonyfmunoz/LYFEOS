@@ -957,7 +957,7 @@ export default function OnboardingPage() {
       if (missionId === 0) {
         const pendingRegData = sessionStorage.getItem("lyfeos-pending-registration");
         if (pendingRegData) {
-          const { email, avatarColor, registrationDisclosureVersion } = JSON.parse(pendingRegData);
+          const { email, avatarColor, registrationDisclosureVersion, adultEligibilityAcknowledged } = JSON.parse(pendingRegData);
           const password = getPendingPassword();
           if (!password) {
             sessionStorage.removeItem("lyfeos-pending-registration");
@@ -978,6 +978,7 @@ export default function OnboardingPage() {
             birthday: birthdayStr,
             location,
             timezone,
+            adultEligibilityAcknowledged: adultEligibilityAcknowledged === true,
             ...(registrationDisclosureVersion === REGISTRATION_DISCLOSURE_VERSION
               ? { registrationDisclosureVersion: REGISTRATION_DISCLOSURE_VERSION }
               : { termsAccepted: true }),

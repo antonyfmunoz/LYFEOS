@@ -34,7 +34,7 @@ describeApi("canonical Mission source convergence", () => {
   it("converges concurrent Inbox retries into one Mission and one creation receipt", async () => {
     expect((await request("POST", "/api/inbox/captures", { text: "Private thought" })).status).toBe(401);
     const registration = await request("POST", "/api/auth/complete-registration", {
-      email: `mission_source_${stamp}@example.com`, password: "TestPass123!", displayName: `mission_source_${stamp}`, termsAccepted: true,
+      email: `mission_source_${stamp}@example.com`, password: "TestPass123!", displayName: `mission_source_${stamp}`, termsAccepted: true, adultEligibilityAcknowledged: true,
     });
     expect(registration.status).toBe(201);
     cookie = registration.cookie;

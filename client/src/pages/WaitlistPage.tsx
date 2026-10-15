@@ -223,6 +223,7 @@ function WaitlistForm({
       {error && (
         <p id={`${id}-error`} role="alert" className="text-sm text-red-400 w-full text-center sm:text-left">{error}</p>
       )}
+      <p className="w-full text-center text-xs leading-5 text-muted-foreground sm:text-left">By joining, you acknowledge the <a href="/privacy" className="text-primary underline">Privacy Notice</a>.</p>
     </form>
   );
 }

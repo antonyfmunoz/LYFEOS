@@ -56,7 +56,7 @@ describeApi('Auth API', () => {
     const { status, data } = await apiRequest('POST', '/api/auth/complete-registration', {
       email: testUser.email,
       password: 'TestPass123!',
-      termsAccepted: true,
+      termsAccepted: true, adultEligibilityAcknowledged: true,
     });
     expect(status).toBe(400);
     expect(data.error).toBeTruthy();
@@ -66,16 +66,25 @@ describeApi('Auth API', () => {
     const { status, data } = await apiRequest('POST', '/api/auth/complete-registration', {
       email: testUser.email,
       displayName: 'test',
-      termsAccepted: true,
+      termsAccepted: true, adultEligibilityAcknowledged: true,
     });
     expect(status).toBe(400);
     expect(data.error).toBeTruthy();
   });
 
+  it('rejects completed registration without an adult eligibility acknowledgment', async () => {
+    const { status, data } = await apiRequest('POST', '/api/auth/complete-registration', {
+      ...testUser,
+      termsAccepted: true,
+    });
+    expect(status).toBe(400);
+    expect(data.error).toContain('adult eligibility acknowledgment');
+  });
+
   it('registers a new user and chosen display name successfully', async () => {
     const { status, data, cookie } = await apiRequest('POST', '/api/auth/complete-registration', {
       ...testUser,
-      termsAccepted: true,
+      termsAccepted: true, adultEligibilityAcknowledged: true,
     });
     expect(status).toBe(201);
     expect(data.user).toBeTruthy();

@@ -34,8 +34,8 @@ describeApi("Health ownership, export, and deletion API", () => {
   });
 
   it("creates representative private Health records for one owner", async () => {
-    const ownerRegistration = await request("POST", "/api/auth/complete-registration", { ...owner, termsAccepted: true });
-    const otherRegistration = await request("POST", "/api/auth/complete-registration", { ...other, termsAccepted: true });
+    const ownerRegistration = await request("POST", "/api/auth/complete-registration", { ...owner, termsAccepted: true, adultEligibilityAcknowledged: true });
+    const otherRegistration = await request("POST", "/api/auth/complete-registration", { ...other, termsAccepted: true, adultEligibilityAcknowledged: true });
     expect(ownerRegistration.status).toBe(201);
     expect(otherRegistration.status).toBe(201);
     ownerCookie = ownerRegistration.cookie;

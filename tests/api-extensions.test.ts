@@ -38,7 +38,7 @@ describeApi("signed extensions authenticated and registry journey", () => {
   });
 
   it("installs only signed permissions and supports immediate revocation", async () => {
-    const account = await request("POST", "/api/auth/complete-registration", { email: `extension_${stamp}@example.com`, password: "TestPass123!", displayName: `extension_${stamp}`, termsAccepted: true });
+    const account = await request("POST", "/api/auth/complete-registration", { email: `extension_${stamp}@example.com`, password: "TestPass123!", displayName: `extension_${stamp}`, termsAccepted: true, adultEligibilityAcknowledged: true });
     expect(account.status).toBe(201); cookie = account.cookie; userId = account.data.user.id;
     const catalog = await request("GET", "/api/extensions", undefined, cookie);
     expect(catalog.status).toBe(200); expect(catalog.data.catalog.find((entry: any) => entry.id === packageId)).toMatchObject({ signatureVerified: true, manifestDigest: expect.stringMatching(/^sha256:/) });

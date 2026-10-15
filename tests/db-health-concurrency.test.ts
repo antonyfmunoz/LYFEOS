@@ -23,7 +23,7 @@ describeDb("Health database concurrency", () => {
     const [user] = await db.insert(users).values({
       displayName: `dbhealth_${stamp}`,
       email: `dbhealth_${stamp}@example.com`,
-      termsAccepted: true,
+      termsAccepted: true, adultEligibilityAcknowledged: true,
     }).returning({ id: users.id });
     userId = user.id;
     const [connection] = await db.insert(healthConnections).values({

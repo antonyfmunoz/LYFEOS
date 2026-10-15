@@ -68,8 +68,8 @@ describeApi("Mission consequence preflight authenticated journey", () => {
   });
 
   it("creates isolated owners and keeps a high-risk contract in draft", async () => {
-    const owner = await request("POST", "/api/auth/complete-registration", { email: `preflight_owner_${stamp}@example.com`, password: "TestPass123!", displayName: `preflight_owner_${stamp}`, termsAccepted: true });
-    const outsider = await request("POST", "/api/auth/complete-registration", { email: `preflight_outsider_${stamp}@example.com`, password: "TestPass123!", displayName: `preflight_outsider_${stamp}`, termsAccepted: true });
+    const owner = await request("POST", "/api/auth/complete-registration", { email: `preflight_owner_${stamp}@example.com`, password: "TestPass123!", displayName: `preflight_owner_${stamp}`, termsAccepted: true, adultEligibilityAcknowledged: true });
+    const outsider = await request("POST", "/api/auth/complete-registration", { email: `preflight_outsider_${stamp}@example.com`, password: "TestPass123!", displayName: `preflight_outsider_${stamp}`, termsAccepted: true, adultEligibilityAcknowledged: true });
     expect(owner.status).toBe(201);
     expect(outsider.status).toBe(201);
     ownerCookie = owner.cookie;

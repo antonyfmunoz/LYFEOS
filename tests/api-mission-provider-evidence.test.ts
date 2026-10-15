@@ -38,10 +38,10 @@ describeApi("Mission provider evidence authenticated journey", () => {
 
   it("creates isolated imported records for two users", async () => {
     const owner = await request("POST", "/api/auth/complete-registration", {
-      email: `provider_owner_${stamp}@example.com`, password: "TestPass123!", displayName: `provider_owner_${stamp}`, termsAccepted: true,
+      email: `provider_owner_${stamp}@example.com`, password: "TestPass123!", displayName: `provider_owner_${stamp}`, termsAccepted: true, adultEligibilityAcknowledged: true,
     });
     const reviewer = await request("POST", "/api/auth/complete-registration", {
-      email: `provider_reviewer_${stamp}@example.com`, password: "TestPass123!", displayName: `provider_reviewer_${stamp}`, termsAccepted: true,
+      email: `provider_reviewer_${stamp}@example.com`, password: "TestPass123!", displayName: `provider_reviewer_${stamp}`, termsAccepted: true, adultEligibilityAcknowledged: true,
     });
     expect(owner.status).toBe(201);
     expect(reviewer.status).toBe(201);

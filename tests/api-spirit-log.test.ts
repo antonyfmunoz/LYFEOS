@@ -27,7 +27,7 @@ describeApi("Spirit Log authenticated contract", () => {
 
   it("requires authentication and stores only an owner-authored private record", async () => {
     expect((await request("GET", "/api/spirit-entries")).status).toBe(401);
-    const owner = await request("POST", "/api/auth/complete-registration", { email: `spirit_${stamp}@example.com`, password: "TestPass123!", displayName: `spirit_${stamp}`, termsAccepted: true });
+    const owner = await request("POST", "/api/auth/complete-registration", { email: `spirit_${stamp}@example.com`, password: "TestPass123!", displayName: `spirit_${stamp}`, termsAccepted: true, adultEligibilityAcknowledged: true });
     expect(owner.status).toBe(201); ownerCookie = owner.cookie; ownerId = owner.data.user.id;
     const created = await request("POST", "/api/spirit-entries", { entryDate: "2026-09-16", kind: "bible_study", title: "Abide", scripture: "John 15:1–8", content: "Study notes in my own words." }, ownerCookie);
     expect(created.status).toBe(201); entryId = created.data.id;
@@ -39,7 +39,7 @@ describeApi("Spirit Log authenticated contract", () => {
   });
 
   it("supports correction, ownership isolation, export, deletion, and account erasure", async () => {
-    const other = await request("POST", "/api/auth/complete-registration", { email: `spirit_other_${stamp}@example.com`, password: "TestPass123!", displayName: `spirit_other_${stamp}`, termsAccepted: true });
+    const other = await request("POST", "/api/auth/complete-registration", { email: `spirit_other_${stamp}@example.com`, password: "TestPass123!", displayName: `spirit_other_${stamp}`, termsAccepted: true, adultEligibilityAcknowledged: true });
     expect(other.status).toBe(201); otherCookie = other.cookie;
     expect((await request("PATCH", `/api/spirit-entries/${entryId}`, { title: "Forged" }, otherCookie)).status).toBe(404);
     const corrected = await request("PATCH", `/api/spirit-entries/${entryId}`, { entryDate: "2026-09-17", kind: "prayer", title: "Prayer for wisdom", scripture: null, content: "A private prayer." }, ownerCookie);

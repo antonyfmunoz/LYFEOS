@@ -29,7 +29,7 @@ describeApi("unified gamification authenticated journey", () => {
   });
 
   it("starts with explicit, separate zero-state tracks", async () => {
-    const registration = await request("POST", "/api/auth/complete-registration", { ...account, termsAccepted: true });
+    const registration = await request("POST", "/api/auth/complete-registration", { ...account, termsAccepted: true, adultEligibilityAcknowledged: true });
     expect(registration.status).toBe(201);
     cookie = registration.cookie;
     userId = registration.data.user.id;

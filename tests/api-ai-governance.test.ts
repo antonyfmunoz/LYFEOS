@@ -47,7 +47,7 @@ describeApi("AI persona and memory governance authenticated journey", () => {
 
   it("creates a private local persona and rejects anonymous access", async () => {
     expect((await request("GET", "/api/ai/persona")).status).toBe(401);
-    const registration = await request("POST", "/api/auth/complete-registration", { ...account, termsAccepted: true });
+    const registration = await request("POST", "/api/auth/complete-registration", { ...account, termsAccepted: true, adultEligibilityAcknowledged: true });
     expect(registration.status).toBe(201);
     cookie = registration.cookie;
     userId = registration.data.user.id;
@@ -204,7 +204,7 @@ describeApi("AI persona and memory governance authenticated journey", () => {
       email: `ai_governance_other_${stamp}@example.com`,
       password: account.password,
       displayName: `other_${stamp}`,
-      termsAccepted: true,
+      termsAccepted: true, adultEligibilityAcknowledged: true,
     });
     expect(other.status).toBe(201);
     otherCookie = other.cookie;

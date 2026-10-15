@@ -33,7 +33,7 @@ describeApi("installation branding authority contract", () => {
   });
 
   it("requires an explicit grant and preserves optimistic brand history", async () => {
-    const admin = await request("POST", "/api/auth/complete-registration", { email: `brand_${stamp}@example.com`, password: "TestPass123!", displayName: `brand_${stamp}`, termsAccepted: true });
+    const admin = await request("POST", "/api/auth/complete-registration", { email: `brand_${stamp}@example.com`, password: "TestPass123!", displayName: `brand_${stamp}`, termsAccepted: true, adultEligibilityAcknowledged: true });
     expect(admin.status).toBe(201); adminCookie = admin.cookie; adminId = admin.data.user.id;
     expect((await request("GET", "/api/installation/admin", undefined, adminCookie)).status).toBe(403);
     await pool.query(`INSERT INTO installation_admin_grants (installation_id,user_id,role,status) VALUES ('default',$1,'installation_owner','active')`, [adminId]);
@@ -50,7 +50,7 @@ describeApi("installation branding authority contract", () => {
     expect(created.status).toBe(201); domainId = created.data.id; expect(created.data.dns.value).toMatch(/^lyfeos-verification=/);
     const stored = await pool.query(`SELECT verification_token_hash FROM installation_domain_bindings WHERE id = $1`, [domainId]);
     expect(stored.rows[0].verification_token_hash).toMatch(/^[0-9a-f]{64}$/); expect(stored.rows[0].verification_token_hash).not.toContain(created.data.dns.value.slice(20));
-    const other = await request("POST", "/api/auth/complete-registration", { email: `brand_other_${stamp}@example.com`, password: "TestPass123!", displayName: `brand_other_${stamp}`, termsAccepted: true });
+    const other = await request("POST", "/api/auth/complete-registration", { email: `brand_other_${stamp}@example.com`, password: "TestPass123!", displayName: `brand_other_${stamp}`, termsAccepted: true, adultEligibilityAcknowledged: true });
     expect(other.status).toBe(201); otherCookie = other.cookie;
     expect((await request("GET", "/api/installation/admin", undefined, otherCookie)).status).toBe(403);
     expect((await request("DELETE", `/api/installation/admin/domains/${domainId}`, undefined, adminCookie)).status).toBe(200);

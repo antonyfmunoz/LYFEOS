@@ -24,8 +24,8 @@ describeApi("Tables, relations, and governed Forms API", () => {
   });
 
   it("creates isolated owners and canonical related Tables", async () => {
-    const ownerRegistration = await request("POST", "/api/auth/complete-registration", { ...owner, termsAccepted: true });
-    const otherRegistration = await request("POST", "/api/auth/complete-registration", { ...other, termsAccepted: true });
+    const ownerRegistration = await request("POST", "/api/auth/complete-registration", { ...owner, termsAccepted: true, adultEligibilityAcknowledged: true });
+    const otherRegistration = await request("POST", "/api/auth/complete-registration", { ...other, termsAccepted: true, adultEligibilityAcknowledged: true });
     expect(ownerRegistration.status).toBe(201); expect(otherRegistration.status).toBe(201); ownerCookie = ownerRegistration.cookie; otherCookie = otherRegistration.cookie;
     const target = await request("POST", "/api/databases", { title: "People", description: null, category: "test", favorite: false, definition: { version: 1, columns: [textColumn("name", "Name", true)] } }, ownerCookie);
     expect(target.status).toBe(201); targetId = target.data.database.id;

@@ -23,7 +23,7 @@ describeApi("Personal Finance authenticated contract", () => {
 
   it("is private and keeps liability and currency arithmetic truthful", async () => {
     expect((await request("GET", "/api/finance/summary?month=2026-08")).status).toBe(401);
-    const owner = await request("POST", "/api/auth/complete-registration", { email: `finance_${stamp}@example.com`, password: "TestPass123!", displayName: `finance_${stamp}`, termsAccepted: true });
+    const owner = await request("POST", "/api/auth/complete-registration", { email: `finance_${stamp}@example.com`, password: "TestPass123!", displayName: `finance_${stamp}`, termsAccepted: true, adultEligibilityAcknowledged: true });
     expect(owner.status).toBe(201); ownerCookie = owner.cookie; ownerId = owner.data.user.id;
     const checking = await request("POST", "/api/finance/accounts", { name: "Operating", accountType: "checking", currency: "usd", balanceMinor: 250000, includeInNetWorth: true }, ownerCookie);
     expect(checking.status).toBe(201); checkingId = checking.data.id; checkingVersion = checking.data.version;
@@ -77,7 +77,7 @@ describeApi("Personal Finance authenticated contract", () => {
   });
 
   it("isolates owners and includes the domain in portable export and exact erasure", async () => {
-    const other = await request("POST", "/api/auth/complete-registration", { email: `finance_other_${stamp}@example.com`, password: "TestPass123!", displayName: `finance_other_${stamp}`, termsAccepted: true });
+    const other = await request("POST", "/api/auth/complete-registration", { email: `finance_other_${stamp}@example.com`, password: "TestPass123!", displayName: `finance_other_${stamp}`, termsAccepted: true, adultEligibilityAcknowledged: true });
     expect(other.status).toBe(201); otherCookie = other.cookie;
     expect((await request("PATCH", `/api/finance/accounts/${checkingId}`, { expectedVersion: checkingVersion + 1, balanceMinor: 1 }, otherCookie)).status).toBe(404);
     const exported = await request("GET", "/api/account/export", undefined, ownerCookie);

@@ -36,7 +36,7 @@ describeApi("product analytics consent boundary", () => {
   it("denies anonymous reads and defaults a new account to no capture", async () => {
     expect((await request("GET", "/api/product-analytics")).status).toBe(401);
     const registration = await request("POST", "/api/auth/complete-registration", {
-      email: `analytics_${stamp}@example.com`, password: "TestPass123!", displayName: `analytics_${stamp}`, termsAccepted: true,
+      email: `analytics_${stamp}@example.com`, password: "TestPass123!", displayName: `analytics_${stamp}`, termsAccepted: true, adultEligibilityAcknowledged: true,
     });
     expect(registration.status).toBe(201);
     userId = Number(registration.data.user?.id);

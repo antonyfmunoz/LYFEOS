@@ -28,12 +28,12 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (identifier: string, password: string) => Promise<void>;
-  register: (email: string, password: string, extraData?: { avatarColor?: string }) => Promise<void>;
+  register: (email: string, password: string, extraData?: { avatarColor?: string; adultEligibilityAcknowledged?: boolean }) => Promise<void>;
   completeRegistration: (data: Record<string, any>) => Promise<{ id: number; displayName: string } | null>;
   logout: () => void;
-  loginWithGoogle: (mode?: 'login' | 'register') => Promise<void>;
+  loginWithGoogle: (mode?: 'login' | 'register', adultEligibilityAcknowledged?: boolean) => Promise<void>;
   linkGoogleSignIn: (currentPassword: string) => Promise<void>;
-  loginWithApple: (mode?: 'login' | 'register') => Promise<void>;
+  loginWithApple: (mode?: 'login' | 'register', adultEligibilityAcknowledged?: boolean) => Promise<void>;
   registerPreLogoutCallback: (callback: () => Promise<void> | void) => void;
   unregisterPreLogoutCallback: (callback: () => Promise<void> | void) => void;
   setPendingPassword: (password: string) => void;
@@ -282,7 +282,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const register = async (email: string, password: string, extraData?: { avatarColor?: string }) => {
+  const register = async (email: string, password: string, extraData?: { avatarColor?: string; adultEligibilityAcknowledged?: boolean }) => {
     try {
       setIsLoading(true);
       console.log("Attempting to register with email:", email);
@@ -305,6 +305,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           variant: "destructive",
         });
         throw error;
+      }
+
+      if (extraData?.adultEligibilityAcknowledged !== true) {
+        throw new Error("Confirm that you are at least 18 before creating an account");
       }
 
       const response = await fetch("/api/auth/register", {
@@ -452,13 +456,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const requestOAuthRegistrationIntent = async () => {
+  const requestOAuthRegistrationIntent = async (adultEligibilityAcknowledged: boolean) => {
     const requestIntent = async () => {
       const response = await fetch("/api/auth/oauth-registration-intent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ registrationDisclosureVersion: REGISTRATION_DISCLOSURE_VERSION }),
+        body: JSON.stringify({ registrationDisclosureVersion: REGISTRATION_DISCLOSURE_VERSION, adultEligibilityAcknowledged }),
       });
       return { response, intent: await response.json() };
     };
@@ -497,7 +501,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return result.intent;
   };
 
-  const loginWithGoogle = async (mode: 'login' | 'register' = 'login') => {
+  const loginWithGoogle = async (mode: 'login' | 'register' = 'login', adultEligibilityAcknowledged = false) => {
     try {
       setIsLoading(true);
       localStorage.removeItem("lyfeos-primary-color");
@@ -513,7 +517,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem("lyfeos-ceremony-mode");
         localStorage.removeItem("lyfeos-ceremony-destination");
         if (!signUp) throw new Error("Sign-up not available");
-        const intent = await requestOAuthRegistrationIntent();
+        if (!adultEligibilityAcknowledged) throw new Error("Confirm that you are at least 18 before creating an account");
+        const intent = await requestOAuthRegistrationIntent(adultEligibilityAcknowledged);
         await signUp.authenticateWithRedirect({
           strategy: "oauth_google",
           redirectUrl: "/sso-callback",
@@ -581,7 +586,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const loginWithApple = async (mode: 'login' | 'register' = 'login') => {
+  const loginWithApple = async (mode: 'login' | 'register' = 'login', adultEligibilityAcknowledged = false) => {
     try {
       setIsLoading(true);
       localStorage.removeItem("lyfeos-primary-color");
@@ -597,7 +602,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem("lyfeos-ceremony-mode");
         localStorage.removeItem("lyfeos-ceremony-destination");
         if (!signUp) throw new Error("Sign-up not available");
-        const intent = await requestOAuthRegistrationIntent();
+        if (!adultEligibilityAcknowledged) throw new Error("Confirm that you are at least 18 before creating an account");
+        const intent = await requestOAuthRegistrationIntent(adultEligibilityAcknowledged);
         await signUp.authenticateWithRedirect({
           strategy: "oauth_apple",
           redirectUrl: "/sso-callback",

@@ -28,7 +28,7 @@ describeApi("account data-rights journey", () => {
 
   it("denies anonymous access and returns the complete private contract to its owner", async () => {
     expect((await request("GET", "/api/account/data-rights")).status).toBe(401);
-    const registration = await request("POST", "/api/auth/complete-registration", { ...account, termsAccepted: true });
+    const registration = await request("POST", "/api/auth/complete-registration", { ...account, termsAccepted: true, adultEligibilityAcknowledged: true });
     expect(registration.status).toBe(201);
     cookie = registration.cookie;
 

@@ -34,8 +34,8 @@ describeApi("Cross-domain hypothesis authenticated journey", () => {
 
   it("defaults every domain off and refuses unconsented analysis", async () => {
     expect((await request("GET", "/api/hypotheses")).status).toBe(401);
-    const owner = await request("POST", "/api/auth/complete-registration", { email: `hypothesis_owner_${stamp}@example.com`, password: "TestPass123!", displayName: `hypothesis_owner_${stamp}`, termsAccepted: true });
-    const outsider = await request("POST", "/api/auth/complete-registration", { email: `hypothesis_outsider_${stamp}@example.com`, password: "TestPass123!", displayName: `hypothesis_outsider_${stamp}`, termsAccepted: true });
+    const owner = await request("POST", "/api/auth/complete-registration", { email: `hypothesis_owner_${stamp}@example.com`, password: "TestPass123!", displayName: `hypothesis_owner_${stamp}`, termsAccepted: true, adultEligibilityAcknowledged: true });
+    const outsider = await request("POST", "/api/auth/complete-registration", { email: `hypothesis_outsider_${stamp}@example.com`, password: "TestPass123!", displayName: `hypothesis_outsider_${stamp}`, termsAccepted: true, adultEligibilityAcknowledged: true });
     expect(owner.status).toBe(201); expect(outsider.status).toBe(201);
     ownerCookie = owner.cookie; outsiderCookie = outsider.cookie; ownerId = owner.data.user.id;
     const dictionary = await request("GET", "/api/hypotheses/signals", undefined, ownerCookie);
