@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import fs from "node:fs";
 
 const onboarding = fs.readFileSync("client/src/pages/OnboardingPage.tsx", "utf8");
+const ceremony = fs.readFileSync("client/src/pages/CeremonyPage.tsx", "utf8");
 const profile = fs.readFileSync("client/src/pages/ProfilePage.tsx", "utf8");
 const app = fs.readFileSync("client/src/App.tsx", "utf8");
 const acceptance = fs.readFileSync("scripts/production-onboarding-browser-acceptance.ts", "utf8");
@@ -70,6 +71,11 @@ describe("rendered onboarding acceptance contract", () => {
     expect(onboarding.match(/const isInitialOnboarding = localStorage\.getItem\("lyfeos-pending-onboarding"\) === "true";/g)).toHaveLength(2);
     expect(onboarding.match(/if \(isInitialOnboarding \|\| !hasSeenDashboard\)/g)).toHaveLength(2);
     expect(onboarding).toContain('localStorage.setItem("lyfeos-ceremony-destination", "/dashboard")');
+    expect(onboarding).toContain("const isLeavingOnboardingRef = useRef(false);");
+    expect(onboarding).toContain("if (isLeavingOnboardingRef.current) return;");
+    expect(onboarding).toContain("const clearOnboardingProgress = () => {");
+    expect(ceremony).toContain('const destination = customDestination || (resumeData ? "/onboarding" : "/dashboard");');
+    expect(ceremony).toContain('localStorage.removeItem("lyfeos-onboarding-resume");');
   });
 
   it("excuses only a teardown-aborted Sentry telemetry envelope, never an account write", () => {
