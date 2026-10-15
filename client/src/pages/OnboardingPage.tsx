@@ -626,6 +626,7 @@ export default function OnboardingPage() {
   const [currentMission, setCurrentMission] = useState(0);
   const restoredOnboardingPositionRef = useRef(false);
   const reconciledProfilePositionRef = useRef(false);
+  const isLeavingOnboardingRef = useRef(false);
   const missionStartTimeRef = useRef<Date>(new Date());
   const [continuedPastMission0, setContinuedPastMission0] = useState(() => {
     return localStorage.getItem("lyfeos-continued-past-mission0") === "true";
@@ -703,7 +704,17 @@ export default function OnboardingPage() {
     localStorage.setItem("lyfeos-onboarding-resume", JSON.stringify({ mission, step, missionComplete }));
   };
 
+  const clearOnboardingProgress = () => {
+    // State changes made while handing off to the ceremony can run this page's
+    // persistence effect one last time. Mark the handoff first so a stale
+    // resume record cannot override the ceremony's explicit dashboard route.
+    isLeavingOnboardingRef.current = true;
+    localStorage.removeItem("lyfeos-onboarding-resume");
+    localStorage.removeItem(STORAGE_KEY);
+  };
+
   useEffect(() => {
+    if (isLeavingOnboardingRef.current) return;
     persistOnboardingPosition(currentMission, currentStep, showMissionComplete);
   }, [currentMission, currentStep, showMissionComplete]);
   
@@ -1350,9 +1361,8 @@ export default function OnboardingPage() {
     }
 
     localStorage.removeItem("lyfeos-pending-onboarding");
-    localStorage.removeItem("lyfeos-onboarding-resume");
     localStorage.removeItem("lyfeos-continued-past-mission0");
-    localStorage.removeItem(STORAGE_KEY);
+    clearOnboardingProgress();
     
     const hasSeenDashboard = localStorage.getItem("lyfeos-has-seen-dashboard") === "true";
     if (isInitialOnboarding || !hasSeenDashboard) {
@@ -1416,9 +1426,8 @@ export default function OnboardingPage() {
   const handleSkipToSystem = async () => {
     const isInitialOnboarding = localStorage.getItem("lyfeos-pending-onboarding") === "true";
     localStorage.removeItem("lyfeos-pending-onboarding");
-    localStorage.removeItem("lyfeos-onboarding-resume");
     localStorage.removeItem("lyfeos-continued-past-mission0");
-    localStorage.removeItem(STORAGE_KEY);
+    clearOnboardingProgress();
     
     const isFinalMission = currentMission === MISSIONS.length - 1;
     const isMission0 = currentMission === 0;

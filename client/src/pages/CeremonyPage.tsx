@@ -28,7 +28,13 @@ export default function CeremonyPage() {
   useEffect(() => {
     const resumeData = localStorage.getItem("lyfeos-onboarding-resume");
     const customDestination = localStorage.getItem("lyfeos-ceremony-destination");
-    const destination = resumeData ? "/onboarding" : (customDestination || "/dashboard");
+    // A terminal onboarding handoff deliberately sets its destination. It must
+    // win over any resume data that a final render may have left behind.
+    const destination = customDestination || (resumeData ? "/onboarding" : "/dashboard");
+
+    if (customDestination) {
+      localStorage.removeItem("lyfeos-onboarding-resume");
+    }
     
     localStorage.removeItem("lyfeos-ceremony-mode");
     localStorage.removeItem("lyfeos-ceremony-destination");
