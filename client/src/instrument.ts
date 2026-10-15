@@ -1,4 +1,4 @@
-import * as Sentry from "@sentry/react";
+import { COOKIE_CONSENT_CHANGED_EVENT, hasOptionalCookieConsent } from "./lib/cookieConsent";
 
 type RuntimeConfig = {
   clerkPublishableKey?: string;
@@ -14,31 +14,49 @@ const runtimeConfig = (window as Window & {
 const dsn = runtimeConfig?.sentryDsn || import.meta.env.VITE_SENTRY_DSN;
 const environment = runtimeConfig?.environment || import.meta.env.MODE;
 
-// This module must remain the first import in main.tsx so global handlers and
-// browser tracing are ready before React or application code executes.
-Sentry.init({
-  dsn,
-  enabled: Boolean(dsn),
-  environment,
-  release: runtimeConfig?.sentryRelease || import.meta.env.VITE_SENTRY_RELEASE,
-  // Route browser envelopes through LyfeOS so the app's trusted server can
-  // forward them to the configured project without a browser CORS dependency.
-  tunnel: "/api/sentry-tunnel",
-  integrations: [Sentry.browserTracingIntegration()],
-  tracesSampleRate: environment === "production" ? 0.1 : 1,
-  tracePropagationTargets: ["localhost", /^\/api\//],
-  // LyfeOS may contain deeply personal data. Keep operational context while
-  // disabling automatic collection of identities, request content, and local
-  // variable values until a documented privacy policy says otherwise.
-  dataCollection: {
-    userInfo: false,
-    cookies: false,
-    httpHeaders: { request: false, response: false },
-    queryParams: false,
-    httpBodies: [],
-    genAI: { inputs: false, outputs: false },
-    stackFrameVariables: false,
-  },
-});
+let sentry: typeof import("@sentry/react") | null = null;
+let sentryStart: Promise<void> | null = null;
 
-export const sentryEnabled = Boolean(dsn);
+export function startSentryAfterConsent(): Promise<void> {
+  if (!dsn || !hasOptionalCookieConsent()) return Promise.resolve();
+  sentryStart ||= import("@sentry/react").then((module) => {
+    sentry = module;
+    module.init({
+      dsn,
+      enabled: true,
+      environment,
+      release: runtimeConfig?.sentryRelease || import.meta.env.VITE_SENTRY_RELEASE,
+      tunnel: "/api/sentry-tunnel",
+      integrations: [module.browserTracingIntegration()],
+      tracesSampleRate: environment === "production" ? 0.1 : 1,
+      tracePropagationTargets: ["localhost", /^\/api\//],
+      dataCollection: {
+        userInfo: false,
+        cookies: false,
+        httpHeaders: { request: false, response: false },
+        queryParams: false,
+        httpBodies: [],
+        genAI: { inputs: false, outputs: false },
+        stackFrameVariables: false,
+      },
+    });
+  }).catch(() => { sentryStart = null; });
+  return sentryStart;
+}
+
+export function stopSentryAfterConsentWithdrawal(): void {
+  if (!sentry) return;
+  void sentry.close();
+  sentry = null;
+  sentryStart = null;
+}
+
+export async function captureSentryException(error: unknown): Promise<void> {
+  await startSentryAfterConsent();
+  sentry?.captureException(error);
+}
+
+window.addEventListener(COOKIE_CONSENT_CHANGED_EVENT, () => {
+  if (hasOptionalCookieConsent()) void startSentryAfterConsent();
+  else stopSentryAfterConsentWithdrawal();
+});

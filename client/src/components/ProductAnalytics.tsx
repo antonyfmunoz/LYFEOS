@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useAuth } from "@/lib/authContext";
@@ -9,6 +9,7 @@ import {
   disableProductAnalytics,
   type ProductAnalyticsStatus,
 } from "@/lib/productAnalytics";
+import { COOKIE_CONSENT_CHANGED_EVENT, hasOptionalCookieConsent } from "@/lib/cookieConsent";
 
 export function ProductAnalytics() {
   const { user, registerPreLogoutCallback, unregisterPreLogoutCallback } = useAuth();
@@ -16,14 +17,28 @@ export function ProductAnalytics() {
   const readyRef = useRef(false);
   const lastAreaRef = useRef<string | null>(null);
   const sessionSubjectRef = useRef<string | null>(null);
+  const [cookieConsent, setCookieConsent] = useState(hasOptionalCookieConsent);
   const { data } = useQuery<ProductAnalyticsStatus>({
     queryKey: ["/api/product-analytics"],
-    enabled: Boolean(user?.id),
+    enabled: Boolean(user?.id) && cookieConsent,
     staleTime: 30_000,
   });
 
   useEffect(() => {
-    if (!data) return;
+    const syncConsent = () => setCookieConsent(hasOptionalCookieConsent());
+    window.addEventListener(COOKIE_CONSENT_CHANGED_EVENT, syncConsent);
+    return () => window.removeEventListener(COOKIE_CONSENT_CHANGED_EVENT, syncConsent);
+  }, []);
+
+  useEffect(() => {
+    if (cookieConsent) return;
+    readyRef.current = false;
+    sessionSubjectRef.current = null;
+    void disableProductAnalytics();
+  }, [cookieConsent]);
+
+  useEffect(() => {
+    if (!cookieConsent || !data) return;
     let active = true;
     void configureProductAnalytics(data).then((ready) => {
       if (!active) return;
@@ -39,14 +54,14 @@ export function ProductAnalytics() {
       }
     });
     return () => { active = false; };
-  }, [data?.enabled, data?.capture?.distinctId, data?.capture?.projectKey, data?.capture?.host]);
+  }, [cookieConsent, data?.enabled, data?.capture?.distinctId, data?.capture?.projectKey, data?.capture?.host]);
 
   useEffect(() => {
     const area = analyticsAreaForPath(location);
-    if (!readyRef.current || !area || lastAreaRef.current === area) return;
+    if (!cookieConsent || !readyRef.current || !area || lastAreaRef.current === area) return;
     lastAreaRef.current = area;
     captureProductEvent("lyfeos_area_viewed", { area });
-  }, [location, data?.capture?.distinctId]);
+  }, [cookieConsent, location, data?.capture?.distinctId]);
 
   useEffect(() => {
     registerPreLogoutCallback(disableProductAnalytics);

@@ -38,6 +38,15 @@ export default defineConfig({
           // requests. A single, still tree-shaken icon chunk preserves route
           // splitting while making application startup materially less fragile.
           if (id.includes("node_modules/lucide-react")) return "icons";
+          // Sentry is loaded only after optional-cookie consent. Keep its
+          // implementation in a separate deferred chunk so it cannot inflate
+          // the entry bundle or another optional feature's chunk.
+          if (id.includes("node_modules/@sentry/browser/")) return "sentry-browser";
+          if (id.includes("node_modules/@sentry/core/")) return "sentry-core";
+          if (id.includes("node_modules/@sentry/feedback/")) return "sentry-feedback";
+          if (id.includes("node_modules/@sentry/replay/")) return "sentry-replay";
+          if (id.includes("node_modules/@sentry/react/")) return "sentry-react";
+          if (id.includes("node_modules/@sentry/")) return "sentry-shared";
         },
       },
     },
