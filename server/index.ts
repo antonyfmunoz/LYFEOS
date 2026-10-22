@@ -38,6 +38,7 @@ import { SESSION_COOKIE_NAME } from "./session-config";
 import { consumeDistributedRateLimit, deleteExpiredRateLimits, rateLimitBucketHash } from "./distributed-rate-limit";
 import { migrateLegacyIntegrationCredentials } from "./integration-provider-credentials";
 import { startAIMemoryRetentionWorker, stopAIMemoryRetentionWorker } from "./ai-memory-retention-worker";
+import { databasePoolErrorMetadata, observeDatabasePoolErrors } from "./database-pool-observability";
 
 const sentryDsn = process.env.SENTRY_DSN;
 const sentryEnvironment = process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || "development";
@@ -65,6 +66,18 @@ Sentry.init({
     }
     return event;
   },
+});
+
+observeDatabasePoolErrors(pool, (error) => {
+  const metadata = databasePoolErrorMetadata(error);
+  log(`[database] idle pool connection error name=${metadata.name}${metadata.code ? ` code=${metadata.code}` : ""}`);
+  Sentry.withScope((scope) => {
+    scope.setTag("subsystem", "database");
+    scope.setTag("pool_event", "idle_client_error");
+    scope.setTag("database_error_name", metadata.name);
+    if (metadata.code) scope.setTag("database_error_code", metadata.code);
+    Sentry.captureException(error);
+  });
 });
 
 const app = express();
