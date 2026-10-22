@@ -242,7 +242,7 @@ async function runViewport(browser: Browser, pool: pg.Pool, viewport: { name: st
   const isolatedProviderResourceErrors: string[] = [];
   const page = await browser.newPage();
   try {
-    const registration = await request("POST", "/api/auth/complete-registration", { email, password: PASSWORD, displayName, termsAccepted: true });
+    const registration = await request("POST", "/api/auth/complete-registration", { email, password: PASSWORD, displayName, termsAccepted: true, adultEligibilityAcknowledged: true });
     assert(registration.status === 201, `Registration returned ${registration.status}.`);
     cookie = registration.cookie;
     userId = Number(registration.body.user?.id);

@@ -220,6 +220,7 @@ async function createAccount(): Promise<FixtureAccount> {
     password: PASSWORD,
     displayName: account.displayName,
     termsAccepted: true,
+    adultEligibilityAcknowledged: true,
   });
   assert(registration.status === 201, `Registration returned ${registration.status}.`);
   account.id = Number(registration.body.user?.id);

@@ -28,4 +28,22 @@ describe("cookie consent boundary", () => {
     expect(source("client/src/pages/ConsumerPrivacyNoticePage.tsx")).toContain("Global Privacy Control");
     expect(source("client/src/pages/ConsumerHealthDataNoticePage.tsx")).toContain("Consumer Health Data Notice");
   });
+
+  it("makes browser fixtures record an explicit consent choice before opening protected routes", () => {
+    const fixtureSignals = source("scripts/lib/production-browser-signals.ts");
+    expect(fixtureSignals).toContain('COOKIE_CONSENT_STORAGE_KEY = "lyfeos.cookie-consent.v1"');
+    expect(fixtureSignals).toContain('localStorage.setItem(consentStorageKey, "accepted")');
+    for (const script of [
+      "scripts/automation-recovery-browser-acceptance.ts",
+      "scripts/ai-memory-browser-acceptance.ts",
+      "scripts/thread-successor-browser-acceptance.ts",
+      "scripts/messages-browser-acceptance.ts",
+      "scripts/mission-safety-browser-acceptance.ts",
+      "scripts/production-projects-browser-acceptance.ts",
+      "scripts/production-search-browser-acceptance.ts",
+    ]) {
+      expect(source(script)).toContain("installFixtureUserStorageSeed");
+      expect(source(script)).toContain("adultEligibilityAcknowledged: true");
+    }
+  });
 });

@@ -182,6 +182,7 @@ async function createAccount(label: string): Promise<FixtureAccount> {
       password: account.password,
       displayName: account.displayName,
       termsAccepted: true,
+      adultEligibilityAcknowledged: true,
     });
     if (registration.status === 201 || registration.status !== 429 || attempt === 1) break;
     const waitSeconds = Math.min(61, Math.max(1, registration.retryAfterSeconds || 60));

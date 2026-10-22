@@ -191,6 +191,7 @@ async function main(): Promise<void> {
       password: PASSWORD,
       displayName: DISPLAY_NAME,
       termsAccepted: true,
+      adultEligibilityAcknowledged: true,
     });
     assert(registration.status === 201, `Registration returned ${registration.status}.`);
     cookie = registration.cookie;
