@@ -4,7 +4,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import puppeteer, { type Browser, type BrowserContext, type Page, type Viewport } from "puppeteer-core";
-import { acknowledgeBoundedChunkRecovery, hasUnexpectedBrowserSignals, isIsolatedClerkBootstrapError, type BrowserSignals } from "./lib/production-browser-signals";
+import { acknowledgeBoundedChunkRecovery, hasUnexpectedBrowserSignals, installFixtureUserStorageSeed, isIsolatedClerkBootstrapError, type BrowserSignals } from "./lib/production-browser-signals";
 
 type ApiResult = { status: number; body: any; cookie: string; retryAfterSeconds: number | null };
 type Account = { id: number; email: string; displayName: string; cookie: string };
@@ -72,7 +72,7 @@ async function request(method: string, pathname: string, body?: unknown, cookie 
 async function registerDisposableAccount(account: Account): Promise<ApiResult> {
   let result: ApiResult | null = null;
   for (let attempt = 0; attempt < 2; attempt += 1) {
-    result = await request("POST", "/api/auth/complete-registration", { email: account.email, password: PASSWORD, displayName: account.displayName, termsAccepted: true });
+    result = await request("POST", "/api/auth/complete-registration", { email: account.email, password: PASSWORD, displayName: account.displayName, termsAccepted: true, adultEligibilityAcknowledged: true });
     if (result.status === 201) {
       Object.assign(account, { id: Number(result.body.user?.id), cookie: result.cookie });
       return result;
@@ -272,9 +272,7 @@ async function runViewport(browser: Browser, viewport: { name: string; value: Vi
     const signals = captureSignals(page);
     const session = cookieParts(owner.cookie);
     await page.setCookie({ ...session, url: BASE_URL.origin, path: "/", httpOnly: true, secure: BASE_URL.protocol === "https:", sameSite: "Lax" });
-    await page.evaluateOnNewDocument((fixtureUser) => {
-      try { localStorage.setItem("lyfeos_user", JSON.stringify(fixtureUser)); } catch { /* Origin not ready. */ }
-    }, { id: owner.id, displayName: owner.displayName });
+    await installFixtureUserStorageSeed(page, { id: owner.id, displayName: owner.displayName });
     await page.setViewport(viewport.value);
     await page.setCacheEnabled(false);
     await page.goto(new URL("/projects", BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60_000 });

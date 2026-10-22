@@ -17,6 +17,7 @@ export type BrowserSignals = {
 
 export const CHUNK_RECOVERY_STORAGE_KEY = "lyfeos-chunk-recovery";
 export const CHUNK_RECOVERY_EVIDENCE_WINDOW_MS = 120_000;
+export const COOKIE_CONSENT_STORAGE_KEY = "lyfeos.cookie-consent.v1";
 
 export type FixtureBrowserUser = {
   id: number;
@@ -67,13 +68,17 @@ export async function installFixtureUserStorageSeed(
   page: Page,
   fixtureUser: FixtureBrowserUser,
 ): Promise<void> {
-  await page.evaluateOnNewDocument((user) => {
+  await page.evaluateOnNewDocument(({ user, consentStorageKey }) => {
     try {
       localStorage.setItem("lyfeos_user", JSON.stringify(user));
+      // Browser acceptance journeys exercise signed-in routes. Give the
+      // disposable fixture the same explicit optional-service choice that a
+      // real visitor must make before the consent gate loads the application.
+      localStorage.setItem(consentStorageKey, "accepted");
     } catch {
       // A later target-origin document receives the same callback.
     }
-  }, fixtureUser);
+  }, { user: fixtureUser, consentStorageKey: COOKIE_CONSENT_STORAGE_KEY });
 }
 
 export function isExternalProviderTransportError(message: string, locationUrl = ""): boolean {

@@ -65,7 +65,7 @@ async function request(method: string, pathname: string, body?: unknown, cookie 
 async function register(account: Account, label: string): Promise<void> {
   let result: ApiResult | null = null;
   for (let attempt = 0; attempt < 2; attempt += 1) {
-    result = await request("POST", "/api/auth/complete-registration", { email: account.email, password: PASSWORD, displayName: account.displayName, termsAccepted: true });
+    result = await request("POST", "/api/auth/complete-registration", { email: account.email, password: PASSWORD, displayName: account.displayName, termsAccepted: true, adultEligibilityAcknowledged: true });
     if (result.status === 201 || result.status !== 429 || attempt === 1) break;
     await new Promise((resolve) => setTimeout(resolve, Math.min(61, Math.max(1, result!.retryAfterSeconds || 60)) * 1_000 + 250));
   }
