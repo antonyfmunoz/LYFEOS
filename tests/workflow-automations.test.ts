@@ -168,6 +168,7 @@ describe("workflow automations", () => {
     expect(acceptance).toContain('followUpCount === 1');
     expect(acceptance).toContain('scheduledFollowUpCount === 1');
     expect(acceptance).toContain('lyfeos.isolated-automation-recovery-browser.v2');
+    expect(acceptance).toContain("adultEligibilityAcknowledged: true");
     expect(acceptance).toContain('confirmation: "DELETE MY ACCOUNT"');
     expect(acceptance).toContain("accountErased");
     expect(workflow).toContain("browser-actions/setup-chrome@v2");
